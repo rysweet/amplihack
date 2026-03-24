@@ -84,8 +84,8 @@ npm ERR! network request failed...
 
 The fix simplifies installation verification:
 
-1. **Check if already installed**: `shutil.which("github-copilot-cli")`
-2. **Install if needed**: `npm install -g github-copilot-cli`
+1. **Check if already installed**: `shutil.which("copilot")`
+2. **Install if needed**: `npm install -g @github/copilot`
 3. **Trust npm exit code**: 0 = success, non-zero = failure
 4. **Report status accurately**: Based on installation result
 
@@ -98,7 +98,7 @@ The original code performed redundant verification:
 success = install_copilot()  # npm returns success
 
 # Redundant check (race condition)
-if not shutil.which("github-copilot-cli"):
+if not shutil.which("copilot"):
     # PATH hasn't propagated yet - FALSE NEGATIVE!
     print("Failed to install...")
 ```
@@ -120,6 +120,11 @@ if not success:
 
 print("Successfully installed Copilot CLI")
 ```
+
+## Current runtime note
+
+The current supported binary is `copilot`, not `github-copilot-cli`. The older
+name remains in this document only as historical context for the original bug.
 
 ## Migration
 

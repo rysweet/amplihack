@@ -1,244 +1,144 @@
 #!/usr/bin/env python3
-"""
-XPIA Security Pre-Tool-Use Hook
+"""Rust-backed XPIA PreToolUse hook.
 
-Validates commands before execution to prevent prompt injection attacks.
-Specifically focuses on Bash tool security validation.
+Validates Bash commands by calling the Rust-backed ``amplihack.security.rust_xpia``
+bridge, which shells out to the ``xpia-defend`` binary. The Claude Code hook
+contract is:
+
+- Input on stdin as JSON with top-level ``tool_name`` / ``tool_input`` fields
+- Output ``{}`` to allow
+- Output ``{"permissionDecision": "deny", "message": "..."}`` to block
+- Exit code always ``0``; the JSON payload controls behavior
 """
+
+from __future__ import annotations
 
 import json
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any
-
-# Add project src to path for imports - find project root by .claude marker
-current = Path(__file__).resolve()
-project_root = None
-for parent in current.parents:
-    if (parent / ".claude").exists() and (parent / "CLAUDE.md").exists():
-        project_root = parent
-        break
-if project_root is None:
-    # Not in an amplihack project context (e.g. running from global settings).
-    # Fail-open: exit cleanly so Claude Code doesn't report a hook error.
-    print(json.dumps({}))
-    sys.exit(0)
-sys.path.insert(0, str(project_root / "src"))
-sys.path.insert(0, str(project_root / "Specs"))
-
-try:
-    from xpia_defense_interface import (  # type: ignore
-        ContentType,
-        RiskLevel,
-    )
-except ImportError:
-    # Mock classes for graceful degradation
-    class ContentType:
-        COMMAND = "command"
-
-    class RiskLevel:
-        NONE = "none"
-        LOW = "low"
-        MEDIUM = "medium"
-        HIGH = "high"
-        CRITICAL = "critical"
 
 
-def log_security_event(event_type: str, data: dict) -> None:
-    """Log security event to XPIA security log"""
+def _is_amplihack_root(candidate: Path) -> bool:
+    return (candidate / "pyproject.toml").exists() and (
+        candidate / "src" / "amplihack" / "__init__.py"
+    ).is_file()
+
+
+def _find_project_root(cwd_override: str | None = None) -> Path | None:
+    """Find the amplihack repo root from hook cwd or file location."""
+    starts = []
+    if cwd_override:
+        starts.append(Path(cwd_override))
+    starts.append(Path.cwd())
+    starts.append(Path(__file__).resolve())
+
+    for start in starts:
+        for candidate in [start, *start.parents]:
+            if _is_amplihack_root(candidate):
+                return candidate
+    return None
+
+
+def _import_rust_xpia(project_root: Path | None):
+    """Import the Rust XPIA bridge from source or installed package."""
+    if project_root is not None:
+        sys.path.insert(0, str(project_root / "src"))
+
+    try:
+        from amplihack.security.rust_xpia import is_available, validate_bash_command
+    except ImportError as exc:
+        raise ImportError(
+            "Cannot import amplihack.security.rust_xpia from the repo source tree "
+            "or the active Python environment."
+        ) from exc
+
+    return is_available, validate_bash_command
+
+
+def _log_event(event_type: str, data: dict) -> None:
+    """Write an XPIA audit log entry without breaking tool execution."""
     log_dir = Path.home() / ".claude" / "logs" / "xpia"
     log_dir.mkdir(parents=True, exist_ok=True)
-
-    log_file = log_dir / f"security_{datetime.now().strftime('%Y%m%d')}.log"
-
-    log_entry = {"timestamp": datetime.now().isoformat(), "event_type": event_type, "data": data}
-
+    log_file = log_dir / f"rust_security_{datetime.now().strftime('%Y%m%d')}.log"
+    entry = {
+        "timestamp": datetime.now().isoformat(),
+        "event_type": event_type,
+        "backend": "rust",
+        "data": data,
+    }
     try:
-        with open(log_file, "a") as f:
-            f.write(json.dumps(log_entry) + "\n")
-    except Exception as e:
-        # Don't fail tool execution if logging fails
-        print(f"[xpia] Security event logging failed (non-fatal): {e}", file=sys.stderr)
+        with open(log_file, "a") as handle:
+            handle.write(json.dumps(entry) + "\n")
+    except Exception:
+        pass
 
 
-def validate_bash_command(command: str, context: dict[str, Any]) -> dict[str, Any]:
-    """
-    Validate bash command for security threats
+def _allow() -> None:
+    print(json.dumps({}))
+    sys.exit(0)
 
-    Returns validation result with risk assessment
-    """
+
+def _deny(message: str) -> None:
+    print(json.dumps({"permissionDecision": "deny", "message": message}))
+    sys.exit(0)
+
+
+def main() -> None:
     try:
-        # Basic threat patterns (simplified for initial implementation)
-        high_risk_patterns = [
-            r"rm\s+-rf\s+/[^a-zA-Z]",  # rm -rf / but not /path
-            r"rm\s+-rf\s+/$",  # rm -rf / at end of line
-            r"chmod\s+777",
-            r"sudo\s+rm",
-            r"curl.*\|\s*bash",
-            r"wget.*\|\s*sh",
-            r"eval\s*\(",
-            r"exec\s*\(",
-        ]
-
-        medium_risk_patterns = [
-            r"rm\s+-rf",
-            r"chmod\s+\+x",
-            r"sudo",
-            r"curl.*download",
-            r"wget.*download",
-        ]
-
-        # Check for high-risk patterns
-        import re
-
-        for pattern in high_risk_patterns:
-            if re.search(pattern, command, re.IGNORECASE):
-                return {
-                    "risk_level": RiskLevel.HIGH,
-                    "should_block": True,
-                    "threats": [
-                        {
-                            "type": "command_injection",
-                            "description": f"High-risk command pattern detected: {pattern}",
-                            "severity": RiskLevel.HIGH,
-                        }
-                    ],
-                    "recommendations": [
-                        "Review command for security implications",
-                        "Consider safer alternatives",
-                    ],
-                }
-
-        # Check for medium-risk patterns
-        for pattern in medium_risk_patterns:
-            if re.search(pattern, command, re.IGNORECASE):
-                return {
-                    "risk_level": RiskLevel.MEDIUM,
-                    "should_block": False,
-                    "threats": [
-                        {
-                            "type": "elevated_privileges",
-                            "description": f"Medium-risk command pattern detected: {pattern}",
-                            "severity": RiskLevel.MEDIUM,
-                        }
-                    ],
-                    "recommendations": ["Verify command necessity", "Monitor execution results"],
-                }
-
-        # Command appears safe
-        return {
-            "risk_level": RiskLevel.NONE,
-            "should_block": False,
-            "threats": [],
-            "recommendations": ["Command appears safe"],
-        }
-
-    except Exception as e:
-        # On validation error, allow command but log the issue
-        return {
-            "risk_level": RiskLevel.LOW,
-            "should_block": False,
-            "threats": [],
-            "recommendations": [f"Validation error: {e}"],
-            "error": str(e),
-        }
-
-
-def process_tool_use_request(tool_name: str, parameters: dict[str, Any]) -> dict[str, Any]:
-    """Process pre-tool-use validation.
-
-    Returns Claude Code hook protocol format:
-    - {} for allow (default behavior)
-    - {"permissionDecision": "deny", "message": "..."} for block
-    """
-    try:
-        # Only validate Bash tool usage
-        if tool_name != "Bash":
-            # Return empty dict to allow - this is the correct Claude Code protocol
-            return {}
-
-        # Extract command from parameters
-        command = parameters.get("command", "")
-        if not command:
-            return {}  # Allow - no command to validate
-
-        # Validate the command
-        validation_result = validate_bash_command(command, parameters)
-
-        # Log the validation
-        log_data = {
-            "tool": tool_name,
-            "command": command[:100] + "..." if len(command) > 100 else command,
-            "validation_result": validation_result,
-            "session_id": os.environ.get("CLAUDE_SESSION_ID", "unknown"),
-        }
-        log_security_event("pre_tool_validation", log_data)
-
-        # Determine action using correct Claude Code hook protocol
-        if validation_result["should_block"]:
-            # CORRECT FORMAT: Use permissionDecision for PreToolUse hooks
-            return {
-                "permissionDecision": "deny",
-                "message": f"🚫 XPIA Security Block: Command blocked due to security risk ({validation_result['risk_level']})\n"
-                f"Threats detected: {validation_result.get('threats', [])}\n"
-                f"Recommendations: {validation_result.get('recommendations', [])}",
-            }
-
-        # Allow - return empty dict (correct Claude Code protocol)
-        return {}
-
-    except Exception as e:
-        # Log error but allow command execution
-        log_security_event(
-            "pre_tool_error",
-            {"error": str(e), "tool": tool_name, "parameters": str(parameters)[:200]},
-        )
-        # Return empty dict to allow on error (fail-open)
-        return {}
-
-
-def main():
-    """Main hook execution.
-
-    Claude Code PreToolUse hook protocol:
-    - Input: JSON on stdin with top-level keys:
-             tool_name, tool_input, session_id, cwd, hook_event_name, etc.
-    - Output: {} to allow, {"permissionDecision": "deny", "message": "..."} to block
-    - Exit 0 always (hook doesn't control exit code, output controls behavior)
-    """
-    try:
-        # Parse input from Claude Code
-        input_data = {}
         if len(sys.argv) > 1:
-            # Command line argument
             input_data = json.loads(sys.argv[1])
         else:
-            # Read from stdin
-            input_line = sys.stdin.read().strip()
-            if input_line:
-                input_data = json.loads(input_line)
+            stdin_text = sys.stdin.read().strip()
+            input_data = json.loads(stdin_text) if stdin_text else {}
 
-        # Claude Code sends top-level tool_name and tool_input
         tool_name = input_data.get("tool_name", "")
-        parameters = input_data.get("tool_input", {})
+        tool_input = input_data.get("tool_input", {})
 
-        # Process the validation
-        result = process_tool_use_request(tool_name, parameters)
+        if tool_name != "Bash":
+            _allow()
 
-        # Output result using correct protocol
-        print(json.dumps(result))
+        command = tool_input.get("command", "")
+        if not command:
+            _allow()
 
-        # Always exit 0 - the output JSON controls behavior, not exit code
-        sys.exit(0)
+        project_root = _find_project_root(input_data.get("cwd"))
+        is_available, validate_bash_command = _import_rust_xpia(project_root)
 
-    except Exception as e:
-        # Output empty dict to allow on error (fail-open)
-        # This follows Claude Code protocol for graceful degradation
-        print(f"[xpia] pre_tool_use hook failed (fail-open): {e}", file=sys.stderr)
-        print(json.dumps({}))
-        sys.exit(0)
+        if not is_available():
+            _log_event("rust_unavailable", {"command": command[:100]})
+            _deny(
+                "🚫 XPIA Security: Rust defense binary (xpia-defend) not found. "
+                "All bash commands blocked until binary is installed."
+            )
+
+        result = validate_bash_command(command)
+
+        _log_event(
+            "pre_tool_validation",
+            {
+                "command": command[:100],
+                "is_valid": result.is_valid,
+                "risk_level": result.risk_level,
+                "threats": len(result.threats),
+                "session_id": input_data.get("session_id", "unknown"),
+            },
+        )
+
+        if result.should_block or not result.is_valid:
+            threat_descriptions = [
+                threat.get("description", "unknown") for threat in result.threats[:3]
+            ]
+            _deny(
+                f"🚫 XPIA Security Block (Rust): Command blocked — {result.risk_level} risk\n"
+                f"Threats: {', '.join(threat_descriptions)}\n"
+                f"Recommendations: {', '.join(result.recommendations[:2])}"
+            )
+
+        _allow()
+    except Exception as exc:
+        _log_event("hook_error", {"error": str(exc)})
+        _deny(f"🚫 XPIA Security: Hook error (fail-closed): {exc}")
 
 
 if __name__ == "__main__":

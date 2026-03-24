@@ -101,12 +101,20 @@ This launches an interactive Claude Code session enhanced with amplihack's
 workflows, specialized agents, and development tools. You'll get a CLI prompt
 where you can describe tasks and the framework orchestrates their execution.
 
-### Trial the Rust CLI without replacing your current install
+### Rust CLI status
 
-Use the opt-in helper below to run the bundled Rust CLI under an isolated home
-directory. On a fresh machine, the helper downloads the latest compatible
-published `amplihack-rs` release binary automatically. Trial state stays out of
-your real `~/.claude` setup.
+The main `amplihack` entrypoint is still Python-owned today, but the runtime is
+no longer purely Python-first:
+
+- when an installed Rust CLI is available, the Python entrypoint now hands
+  `install`, `recipe`, `mode`, and `update` through to that Rust binary
+- when `amplihack-hooks` is installed, hook configuration now prefers the Rust
+  hook engine automatically unless `AMPLIHACK_HOOK_ENGINE=python` is set
+
+The fully isolated helper below is still the easiest way to exercise the Rust
+CLI end-to-end without touching your real `~/.claude` state. On a fresh machine,
+it downloads the latest compatible published `amplihack-rs` release binary
+automatically.
 
 ```bash
 # Single-command fresh-machine flow
@@ -120,8 +128,9 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial recipe 
 uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial mode detect
 ```
 
-By default the helper stores trial state under `~/.amplihack-rust-trial` and
-does not change the default Python-based `amplihack` entrypoint.
+By default the helper stores trial state under `~/.amplihack-rust-trial`. It
+remains useful for proving end-to-end Rust behavior because the default product
+entrypoint and install/bootstrap flow are still not fully Rust-native.
 
 **Option 2: Global Install** (for daily use)
 
