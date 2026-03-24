@@ -509,9 +509,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     )
 
     # Launch command (new)
-    launch_parser = subparsers.add_parser(
-        "launch", help="Launch Claude Code with optional proxy configuration"
-    )
+    launch_parser = subparsers.add_parser("launch", help="Launch Claude Code")
     add_claude_specific_args(launch_parser)
     add_auto_mode_args(launch_parser)
     add_common_sdk_args(launch_parser)
