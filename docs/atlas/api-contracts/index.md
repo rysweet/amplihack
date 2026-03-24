@@ -216,7 +216,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-19T00:27:26.095238+00
 
 <div class="atlas-crossref" markdown>
 
-- [Layer 8: User Journeys](../user-journeys/)
+- [Layer 8: User Journeys](../user-journeys/index.md)
 
 </div>
 

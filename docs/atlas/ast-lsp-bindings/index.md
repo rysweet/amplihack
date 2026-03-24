@@ -133,10 +133,10 @@ Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:18.282947+00
 
 <div class="atlas-crossref" markdown>
 
-- [Layer 1: Repository Surface](../repo-surface/)
-- [Layer 3: Compile-time Dependencies](../compile-deps/)
-- [Layer 7: Service Components](../service-components/)
-- [Layer 8: User Journeys](../user-journeys/)
+- [Layer 1: Repository Surface](../repo-surface/index.md)
+- [Layer 3: Compile-time Dependencies](../compile-deps/index.md)
+- [Layer 7: Service Components](../service-components/index.md)
+- [Layer 8: User Journeys](../user-journeys/index.md)
 
 </div>
 
