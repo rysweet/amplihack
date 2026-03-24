@@ -7,6 +7,7 @@ execution fails immediately with a clear error.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -15,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -64,6 +66,21 @@ def _sanitize_key(key: str) -> str:
     """Return a filesystem-safe name derived from an env-var key."""
     safe = _KEY_SANITIZE_RE.sub("_", key)[:64]
     return safe if safe else "_empty_key_"
+
+
+@contextlib.contextmanager
+def _project_dir_context(project_dir: str) -> Generator[None, None, None]:
+    """Temporarily seed ``CLAUDE_PROJECT_DIR`` when the caller did not set one."""
+    original = os.environ.get("CLAUDE_PROJECT_DIR")
+    if original:
+        yield
+        return
+
+    os.environ["CLAUDE_PROJECT_DIR"] = project_dir
+    try:
+        yield
+    finally:
+        os.environ.pop("CLAUDE_PROJECT_DIR", None)
 
 
 # Context spill helpers ------------------------------------------------------
@@ -321,6 +338,7 @@ def run_recipe_via_rust(
     """Execute a recipe using the Rust binary."""
     print(f"[recipe-runner] Preparing recipe '{name}'...", file=sys.stderr, flush=True)
     binary = _find_rust_binary()
+    resolved_working_dir = str(Path(working_dir).resolve())
     effective_recipe_dirs = _resolve_effective_recipe_dirs(recipe_dirs, working_dir=working_dir)
     resolved_name = _resolve_recipe_target(
         name,
@@ -347,7 +365,8 @@ def run_recipe_via_rust(
                 name,
                 _redact_command_for_log(cmd),
             )
-        return _execute_rust_command(cmd, name=name, progress=progress)
+        with _project_dir_context(resolved_working_dir):
+            return _execute_rust_command(cmd, name=name, progress=progress)
     finally:
         _cleanup_context_spill_dir(tmp_dir)
         _cleanup_progress_file(name)

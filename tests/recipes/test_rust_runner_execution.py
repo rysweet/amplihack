@@ -195,6 +195,27 @@ class TestRunRecipeViaRust:
         assert "verbose=true" in set_args
         assert any('"key"' in a for a in set_args)
 
+    @patch.dict("os.environ", {"PATH": "/usr/bin", "PYTHONPATH": "/repo/src"}, clear=True)
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.run")
+    def test_forwards_pythonpath_and_seeds_claude_project_dir(
+        self, mock_run, mock_find
+    ):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=self._make_rust_output(),
+            stderr="",
+        )
+
+        run_recipe_via_rust("test-recipe", working_dir="/repo/worktree")
+
+        env = mock_run.call_args.kwargs["env"]
+        assert env["PYTHONPATH"] == "/repo/src"
+        assert env["CLAUDE_PROJECT_DIR"] == "/repo/worktree"
+
     @patch(
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
