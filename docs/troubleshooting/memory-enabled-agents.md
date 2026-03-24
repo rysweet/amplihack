@@ -1,6 +1,6 @@
 # Troubleshooting Memory-Enabled Agents (Superseded)
 
-This older troubleshooting page referenced commands and storage assumptions that are no longer current, including removed top-level CLI surfaces such as `memory clean`, `memory query`, and `memory metrics`.
+This older troubleshooting page referenced commands and storage assumptions that are no longer current, including removed top-level CLI surfaces such as `memory query` and `memory metrics`.
 
 ## Use These Docs Instead
 
@@ -14,6 +14,7 @@ This older troubleshooting page referenced commands and storage assumptions that
 The verified top-level commands in this checkout are:
 
 - `amplihack memory tree`
+- `amplihack memory clean`
 - `amplihack memory export`
 - `amplihack memory import`
 - `amplihack new --enable-memory`
@@ -21,6 +22,7 @@ The verified top-level commands in this checkout are:
 ## Current Memory Surface Split
 
 - `amplihack memory tree` shows the top-level SQLite session graph at `~/.amplihack/memory.db`
+- `amplihack memory clean` deletes matching top-level SQLite sessions, with dry-run by default
 - `amplihack memory export` / `amplihack memory import` operate on agent-local hierarchical stores
 - generated goal-agent packages created with `--enable-memory` use their own local `./memory/` directory
 
