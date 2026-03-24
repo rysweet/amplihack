@@ -9,7 +9,7 @@ title: "Layer 4: Runtime Topology"
 # Layer 4: Runtime Topology
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:55.721123+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-24T16:58:04.407924+00:00
 </div>
 
 ## Map
@@ -93,11 +93,11 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:55.721123+00
 
     | Metric | Value |
     |--------|-------|
-    | Subprocess calls | 1047 |
-    | Unique files with subprocesses | 335 |
+    | Subprocess calls | 1051 |
+    | Unique files with subprocesses | 338 |
     | Port bindings | 8 |
     | Docker services | 0 |
-    | Environment variables | 863 |
+    | Environment variables | 869 |
 
 ## Legend
 
@@ -114,8 +114,8 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:55.721123+00
 
 ## Key Findings
 
-- 1047 subprocess calls across 335 files
-- 863 environment variable reads
+- 1051 subprocess calls across 338 files
+- 869 environment variable reads
 
 ## Detail
 
@@ -123,12 +123,12 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:55.721123+00
 
     **Summary metrics:**
     
-    - **Subprocess Call Count**: 1047
-    - **Unique Subprocess Files**: 335
+    - **Subprocess Call Count**: 1051
+    - **Unique Subprocess Files**: 338
     - **Port Binding Count**: 8
     - **Docker Service Count**: 0
     - **Dockerfile Count**: 1
-    - **Env Var Count**: 863
+    - **Env Var Count**: 869
 
 ## Cross-References
 

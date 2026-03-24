@@ -1,0 +1,10 @@
+{
+  "name": "frontend",
+  "scripts": {
+    "build": "npx webpack --config webpack.config.js",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "webpack": "^5.91.0"
+  }
+}

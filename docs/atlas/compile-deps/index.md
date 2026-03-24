@@ -39,7 +39,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:57.864118+00
             E18["flask<br/>imports: 1"]
             E19["json-repair<br/>imports: 1"]
         end
-    
+
         subgraph int["Internal Packages"]
             P0["claude"]
             P1["check_point_in_time_docs"]
@@ -72,7 +72,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:57.864118+00
             P28["conftest"]
             P29["update_work_item"]
         end
-    
+
         click P0 "../compile-deps/" "View compile deps"
     ```
 
@@ -120,11 +120,11 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:57.864118+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| `ext` subgraph | External dependencies |
-| `int` subgraph | Internal packages |
-| Edge label N | Import count between packages |
+| Symbol         | Meaning                       |
+| -------------- | ----------------------------- |
+| `ext` subgraph | External dependencies         |
+| `int` subgraph | Internal packages             |
+| Edge label N   | Import count between packages |
 
 </div>
 
@@ -138,7 +138,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:57.864118+00
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-    
+
     - **External Dep Count**: 67
     - **Internal Packages**: 2303
     - **Internal Edges**: 1498
