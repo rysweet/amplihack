@@ -30,6 +30,13 @@ class PreCompactHook(HookProcessor):
         self.session_dir = self.log_dir / self.session_id
         self.session_dir.mkdir(parents=True, exist_ok=True)
 
+    def _bind_session(self, session_id: str | None):
+        """Rebind session artifacts to the runtime event's session_id when provided."""
+        if session_id:
+            self.session_id = session_id
+        self.session_dir = self.log_dir / self.session_id
+        self.session_dir.mkdir(parents=True, exist_ok=True)
+
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process pre-compact event and export conversation transcript.
 
@@ -40,6 +47,8 @@ class PreCompactHook(HookProcessor):
             Confirmation of export completion
         """
         try:
+            self._bind_session(input_data.get("session_id"))
+
             # Get conversation data
             conversation = input_data.get("conversation", [])
             messages = input_data.get("messages", [])
