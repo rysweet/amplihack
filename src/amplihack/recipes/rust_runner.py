@@ -652,28 +652,12 @@ def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> Recip
             "Set the env var via the amplihack CLI dispatcher to use a different agent."
         )
 
-    started_at = time.time()
-
-    if progress:
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
-            env=env,
-        )
-        stdout, stderr, returncode = _stream_process_output_with_progress(process, name, started_at)
-    else:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-        stdout = result.stdout
-        stderr = result.stderr
-        returncode = result.returncode
+    stdout, stderr, returncode = rust_runner_execution._run_rust_process(
+        cmd,
+        progress=progress,
+        env=env,
+        recipe_name=name,
+    )
 
     try:
         data = json.loads(stdout)
