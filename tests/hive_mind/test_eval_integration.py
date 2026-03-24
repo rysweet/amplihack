@@ -14,7 +14,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from amplihack_eval.adapters.learning_agent import LearningAgentAdapter
 from amplihack_eval.core.multi_seed import MultiSeedReport
 from amplihack_eval.core.runner import EvalRunner
@@ -48,7 +47,11 @@ class TestAdapterWithHiveStore:
     """Verify LearningAgentAdapter accepts and uses hive_store param."""
 
     @pytest.mark.asyncio
-    @patch("amplihack.llm.completion", new_callable=AsyncMock, side_effect=_mock_completion)
+    @patch(
+        "amplihack.agents.goal_seeking.learning_agent._llm_completion",
+        new_callable=AsyncMock,
+        side_effect=_mock_completion,
+    )
     async def test_adapter_accepts_hive_store_param(self, mock_llm):
         """Test 1: LearningAgentAdapter can be constructed with hive_store=InMemoryHiveGraph."""
         hive = InMemoryHiveGraph(hive_id="eval-test-hive")
@@ -65,7 +68,11 @@ class TestAdapterWithHiveStore:
             adapter.close()
 
     @pytest.mark.asyncio
-    @patch("amplihack.llm.completion", new_callable=AsyncMock, side_effect=_mock_completion)
+    @patch(
+        "amplihack.agents.goal_seeking.learning_agent._llm_completion",
+        new_callable=AsyncMock,
+        side_effect=_mock_completion,
+    )
     async def test_adapter_learn_stores_in_hive(self, mock_llm):
         """Test 2: adapter.learn() stores facts in both local DB and hive."""
         hive = InMemoryHiveGraph(hive_id="learn-test-hive")
@@ -91,7 +98,11 @@ class TestAdapterWithHiveStore:
             adapter.close()
 
     @pytest.mark.asyncio
-    @patch("amplihack.llm.completion", new_callable=AsyncMock, side_effect=_mock_completion_answer)
+    @patch(
+        "amplihack.agents.goal_seeking.learning_agent._llm_completion",
+        new_callable=AsyncMock,
+        side_effect=_mock_completion_answer,
+    )
     async def test_adapter_answer_retrieves_from_hive(self, mock_llm):
         """Test 3: adapter.answer() can retrieve from both local and hive."""
         hive = InMemoryHiveGraph(hive_id="answer-test-hive")
@@ -139,7 +150,11 @@ class TestAdapterCleanup:
     """Verify adapter.close() cleans up properly."""
 
     @pytest.mark.asyncio
-    @patch("amplihack.llm.completion", new_callable=AsyncMock, side_effect=_mock_completion)
+    @patch(
+        "amplihack.agents.goal_seeking.learning_agent._llm_completion",
+        new_callable=AsyncMock,
+        side_effect=_mock_completion,
+    )
     async def test_adapter_close_cleans_up(self, mock_llm):
         """Test 4: adapter.close() runs without error and cleans up resources."""
         hive = InMemoryHiveGraph(hive_id="cleanup-test-hive")

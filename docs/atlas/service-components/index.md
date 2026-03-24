@@ -25,7 +25,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:47:22.832196+00
             P3["plugin_manager<br/>2 files<br/>I=0.20"]
             P4["types<br/>2 files<br/>I=0.10"]
         end
-    
+
         subgraph feature["Feature Packages"]
             P5["claude<br/>1 files<br/>I=0.00"]
             P6["az-devops-tools<br/>14 files<br/>I=0.00"]
@@ -112,7 +112,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:47:22.832196+00
             P87["mode_detector<br/>3 files<br/>I=0.50"]
             P88["plugin_cli<br/>4 files<br/>I=0.67"]
             P89["power_steering<br/>2 files<br/>I=0.33"]
-            P90["proxy<br/>30 files<br/>I=0.38"]
+            P90["llm<br/>1 files<br/>I=0.38"]
             P91["recipe_cli<br/>3 files<br/>I=0.67"]
             P92["recipes<br/>6 files<br/>I=0.00"]
             P93["tests<br/>3 files<br/>I=0.00"]
@@ -167,7 +167,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:47:22.832196+00
             P142["e2e<br/>7 files<br/>I=0.00"]
             P143["integration<br/>3 files<br/>I=0.00"]
             P144["plugin<br/>8 files<br/>I=0.00"]
-            P145["proxy<br/>17 files<br/>I=0.00"]
+            P145["llm<br/>1 files<br/>I=0.00"]
             P146["skills<br/>17 files<br/>I=0.00"]
             P147["tracing<br/>7 files<br/>I=0.00"]
             P148["recipes<br/>8 files<br/>I=0.00"]
@@ -176,7 +176,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:47:22.832196+00
             P151["workflows<br/>2 files<br/>I=0.00"]
             P152["workloads<br/>2 files<br/>I=0.00"]
         end
-    
+
         subgraph leaf["Leaf Packages"]
             P153["check-broken-links<br/>2 files<br/>I=1.00"]
             P154["mcp-manager<br/>4 files<br/>I=1.00"]
@@ -246,7 +246,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:47:22.832196+00
             P218["cli<br/>4 files<br/>I=1.00"]
             P219["workflows<br/>8 files<br/>I=1.00"]
         end
-    
+
         P16 -->|1| P0
         P160 -->|2| P16
         P160 -->|2| P0
@@ -287,7 +287,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:47:22.832196+00
         P73 -->|1| P72
         P76 -->|2| P77
         P197 -->|19| P76
-    
+
         click P0 "../service-components/" "View details"
     ```
 
@@ -306,7 +306,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:47:22.832196+00
     | `src.amplihack.fleet` | 54 | 0 | 2 | 1.00 | leaf |
     | `.claude.tools.amplihack.hooks` | 42 | 1 | 0 | 0.00 | feature |
     | `src.amplihack.fleet.tests` | 32 | 0 | 0 | 0.00 | feature |
-    | `src.amplihack.proxy` | 30 | 5 | 3 | 0.38 | feature |
+    | `src.amplihack.llm` | 1 | 5 | 3 | 0.38 | feature |
     | `tests.hive_mind` | 29 | 0 | 0 | 0.00 | feature |
     | `src.amplihack.eval` | 26 | 1 | 11 | 0.92 | feature |
     | `src.amplihack.launcher` | 26 | 3 | 17 | 0.85 | feature |
@@ -324,7 +324,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:47:22.832196+00
     | `src.amplihack.agents.goal_seeking` | 18 | 3 | 16 | 0.84 | feature |
     | `src.amplihack.bundle_generator` | 17 | 2 | 8 | 0.80 | feature |
     | `src.amplihack.vendor.blarify.agents.prompt_templates` | 17 | 2 | 15 | 0.88 | feature |
-    | `tests.proxy` | 17 | 0 | 0 | 0.00 | feature |
+    | `tests.llm` | 1 | 0 | 0 | 0.00 | feature |
     | `tests.skills` | 17 | 0 | 0 | 0.00 | feature |
     | `.claude.skills.e2e-outside-in-test-generator.generator` | 15 | 0 | 3 | 1.00 | leaf |
     | `.claude.tools.amplihack.remote` | 15 | 2 | 7 | 0.78 | feature |
@@ -336,12 +336,12 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:47:22.832196+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| Subgraph | Package classification |
-| Rectangle | Package |
-| `I=` | Instability metric (0=stable, 1=unstable) |
-| Edge label N | Coupling count |
+| Symbol       | Meaning                                   |
+| ------------ | ----------------------------------------- |
+| Subgraph     | Package classification                    |
+| Rectangle    | Package                                   |
+| `I=`         | Instability metric (0=stable, 1=unstable) |
+| Edge label N | Coupling count                            |
 
 </div>
 
@@ -355,7 +355,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:47:22.832196+00
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-    
+
     - **Total Packages**: 220
     - **By Classification**:
         - `feature`: 148

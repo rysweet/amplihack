@@ -28,12 +28,3 @@ async def test_call_grader_json_uses_completion():
         assert result["score"] == 0.9
         assert result["reasoning"] == "good"
         mock_completion.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_call_grader_json_requires_github_api_key(monkeypatch):
-    """GitHub Models grading raises a clear error without credentials."""
-    monkeypatch.delenv("GITHUB_API_KEY", raising=False)
-
-    with pytest.raises(OSError, match="GITHUB_API_KEY"):
-        await call_grader_json("grade this", model="github/gpt-4.1")

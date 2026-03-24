@@ -13,13 +13,13 @@ Philosophy:
 - Temporal metadata tracked on episodic memories for chronological reasoning
 """
 
+import asyncio
 import itertools
 import json
 import logging
 import os
 import re
 import threading
-import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -237,7 +237,7 @@ class LearningAgent:
                     _retry_attempt + 1,
                     max_retries,
                 )
-                time.sleep(delay)
+                await asyncio.sleep(delay)
                 last_exception = exc
         raise last_exception  # type: ignore[misc]
 
@@ -365,7 +365,9 @@ class LearningAgent:
 
         return store_kwargs
 
-    async def _build_summary_store_kwargs(self, facts: list[dict[str, Any]]) -> dict[str, Any] | None:
+    async def _build_summary_store_kwargs(
+        self, facts: list[dict[str, Any]]
+    ) -> dict[str, Any] | None:
         """Generate SUMMARY-node store kwargs for a learned fact batch."""
         fact_list = "\n".join(
             f"- [{f.get('context', 'General')}] {f.get('fact', '')}" for f in facts[:15]
@@ -373,17 +375,19 @@ class LearningAgent:
 
         prompt = _load_prompt("concept_map_user", fact_list=fact_list)
         try:
-            summary = (await _llm_completion(
-                [
-                    {
-                        "role": "system",
-                        "content": load_prompt("concept_map_system"),
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                model=self.model,
-                temperature=0.2,
-            )).strip()
+            summary = (
+                await _llm_completion(
+                    [
+                        {
+                            "role": "system",
+                            "content": load_prompt("concept_map_system"),
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    model=self.model,
+                    temperature=0.2,
+                )
+            ).strip()
             return {
                 "context": "SUMMARY",
                 "fact": summary,
@@ -394,7 +398,9 @@ class LearningAgent:
             logger.debug("Failed to generate summary concept map: %s", e)
             return None
 
-    async def prepare_fact_batch(self, content: str, include_summary: bool = True) -> dict[str, Any]:
+    async def prepare_fact_batch(
+        self, content: str, include_summary: bool = True
+    ) -> dict[str, Any]:
         """Extract a content batch once so peers can store facts directly.
 
         The returned payload contains only direct-storage kwargs plus enough
@@ -602,13 +608,15 @@ class LearningAgent:
 
         prompt = _load_prompt("temporal_detection_user", content=content[:500])
         try:
-            response_text = (await self._llm_completion_with_retry(
-                messages=[
-                    {"role": "system", "content": load_prompt("temporal_detection_system")},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.0,
-            )).strip()
+            response_text = (
+                await self._llm_completion_with_retry(
+                    messages=[
+                        {"role": "system", "content": load_prompt("temporal_detection_system")},
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=0.0,
+                )
+            ).strip()
 
             # Parse JSON response
             try:
@@ -1005,7 +1013,9 @@ class LearningAgent:
 
         if is_temporal_code_candidate:
             try:
-                code_result = await self._code_generation_tool(question, candidate_facts=relevant_facts)
+                code_result = await self._code_generation_tool(
+                    question, candidate_facts=relevant_facts
+                )
                 if code_result.get("result") is not None:
                     intent["temporal_code"] = code_result
                     logger.info(
@@ -1249,11 +1259,13 @@ class LearningAgent:
         )
 
         try:
-            raw = (await _llm_completion(
-                [{"role": "user", "content": prompt}],
-                model=self.model,
-                temperature=0.0,
-            )).strip()
+            raw = (
+                await _llm_completion(
+                    [{"role": "user", "content": prompt}],
+                    model=self.model,
+                    temperature=0.0,
+                )
+            ).strip()
 
             # Parse JSON -- handle markdown code fences if the LLM wraps it
             if raw.startswith("```"):
@@ -2839,17 +2851,19 @@ class LearningAgent:
         prompt = _load_prompt("intent_classification_user", question=question)
 
         try:
-            response_text = (await _llm_completion(
-                [
-                    {
-                        "role": "system",
-                        "content": load_prompt("intent_classification_system"),
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                model=self.model,
-                temperature=0.0,
-            )).strip()
+            response_text = (
+                await _llm_completion(
+                    [
+                        {
+                            "role": "system",
+                            "content": load_prompt("intent_classification_system"),
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    model=self.model,
+                    temperature=0.0,
+                )
+            ).strip()
 
             try:
                 result = json.loads(response_text)
@@ -2965,17 +2979,19 @@ class LearningAgent:
         )
 
         try:
-            response_text = (await _llm_completion(
-                [
-                    {
-                        "role": "system",
-                        "content": load_prompt("number_extraction_system"),
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                model=self.model,
-                temperature=0.0,
-            )).strip()
+            response_text = (
+                await _llm_completion(
+                    [
+                        {
+                            "role": "system",
+                            "content": load_prompt("number_extraction_system"),
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    model=self.model,
+                    temperature=0.0,
+                )
+            ).strip()
 
             # Parse JSON response
             try:
@@ -3031,17 +3047,19 @@ class LearningAgent:
         prompt = _load_prompt("keyword_expansion_user", question=question)
 
         try:
-            response_text = (await _llm_completion(
-                [
-                    {
-                        "role": "system",
-                        "content": load_prompt("keyword_expansion_system"),
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                model=self.model,
-                temperature=0.0,
-            )).strip()
+            response_text = (
+                await _llm_completion(
+                    [
+                        {
+                            "role": "system",
+                            "content": load_prompt("keyword_expansion_system"),
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    model=self.model,
+                    temperature=0.0,
+                )
+            ).strip()
             try:
                 phrases = json.loads(response_text)
             except json.JSONDecodeError:
@@ -3781,16 +3799,19 @@ class LearningAgent:
         )
 
         try:
-            return (await self._llm_completion_with_retry(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": self._variant_system_prompt or load_prompt("synthesis_system"),
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.3,
-            )).strip()
+            return (
+                await self._llm_completion_with_retry(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": self._variant_system_prompt
+                            or load_prompt("synthesis_system"),
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=0.3,
+                )
+            ).strip()
 
         except Exception as e:
             logger.error("LLM synthesis failed: %s", e)
@@ -3838,14 +3859,16 @@ class LearningAgent:
         )
 
         try:
-            return (await _llm_completion(
-                [
-                    {"role": "system", "content": load_prompt("explanation_system")},
-                    {"role": "user", "content": prompt},
-                ],
-                model=self.model,
-                temperature=0.3,
-            )).strip()
+            return (
+                await _llm_completion(
+                    [
+                        {"role": "system", "content": load_prompt("explanation_system")},
+                        {"role": "user", "content": prompt},
+                    ],
+                    model=self.model,
+                    temperature=0.3,
+                )
+            ).strip()
         except Exception as e:
             logger.error("Explanation generation failed: %s", e)
             return f"Unable to generate explanation for '{topic}'."
@@ -4529,14 +4552,19 @@ class LearningAgent:
         prompt = _load_prompt("entity_field_extraction_user", question=question)
 
         try:
-            response_text = (await _llm_completion(
-                [
-                    {"role": "system", "content": load_prompt("entity_field_extraction_system")},
-                    {"role": "user", "content": prompt},
-                ],
-                model=self.model,
-                temperature=0.0,
-            )).strip()
+            response_text = (
+                await _llm_completion(
+                    [
+                        {
+                            "role": "system",
+                            "content": load_prompt("entity_field_extraction_system"),
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    model=self.model,
+                    temperature=0.0,
+                )
+            ).strip()
             parsed = json.loads(response_text)
             if isinstance(parsed, dict):
                 entity = parsed.get("entity", "").strip()
