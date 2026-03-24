@@ -2,6 +2,75 @@
 
 This document tracks recent bug fixes and improvements to the Recipe Runner and Skills systems following the Diátaxis framework.
 
+## Recipe Runner Progress Banners and Progress File Cleanup (PR #3487)
+
+### Startup banners to stderr
+
+**What changed**: `run_recipe_via_rust()` now emits two informational banners to
+stderr so parent sessions (and human operators) can observe subprocess activity:
+
+```
+[recipe-runner] Preparing recipe 'default-workflow'...
+[recipe-runner] Launching recipe 'default-workflow' (pid 12345)...
+```
+
+The first banner appears before binary lookup and recipe resolution. The second
+appears immediately before the Rust binary is executed, and includes the process
+ID for cross-referencing with system tools (e.g. `ps`, `top`).
+
+**Why it matters**: In nested subprocess environments (Claude Code inside tmux,
+fleet agents, CI pipelines) it was hard to tell whether a recipe had started at
+all. These banners provide an unambiguous signal in the parent session's terminal
+without adding noise to the recipe's own stdout/stderr.
+
+### Progress file cleanup on completion
+
+**What changed**: `run_recipe_via_rust()` now calls `_cleanup_progress_file()`
+in a `finally` block so the JSON progress file written by the Rust binary is
+removed when the recipe finishes — whether it succeeds or fails.
+
+**Why it matters**: Previously, progress files were left in `$TMPDIR` after
+every run, accumulating over time. They are now removed automatically. If you
+need to inspect the final progress snapshot for debugging, redirect it yourself
+before the run ends or use the `get_recipe_progress()` API during execution.
+
+**Cleanup behaviour**:
+- Best-effort: catches `OSError` silently to avoid obscuring the real recipe result
+- File name pattern: `amplihack-progress-<name_slug>-<pid>.json` in `$TMPDIR`
+- Works for both success and failure paths
+
+---
+
+## Recipe Condition Security: simpleeval Replaces bare eval() (PR #3486)
+
+**What changed**: `Step.evaluate_condition()` in `src/amplihack/recipes/models.py`
+now uses `simpleeval.EvalWithCompoundTypes` instead of the standard Python
+`eval()` built-in to evaluate recipe step `condition` expressions.
+
+**Why it matters**: Bare `eval()` with `{"__builtins__": {}}` is insufficient
+isolation — several techniques allow escaping the restricted namespace. Switching
+to `simpleeval` provides a safe-by-default arithmetic and comparison evaluator
+that explicitly blocks dangerous builtins.
+
+**Blocked operations** (raise an error, which defaults to `True` so the step runs):
+- `__import__('os').system(...)` — import-based code execution
+- `open('/etc/passwd').read()` — file system access
+
+**Supported operations** (unchanged):
+- Comparisons: `count >= 4`, `status == 'done'`
+- Boolean logic: `force == 'true' and count >= 2`
+- Membership: `'API' in description`
+- `is None` checks
+
+**New dependency**: `simpleeval>=0.9.13` (installed automatically as a package
+dependency — no action required for existing installs once you upgrade amplihack).
+
+**Error handling**: When `simpleeval` cannot evaluate an expression, it raises
+an exception that is caught by the existing `except Exception` guard. The step
+runs by default (same behaviour as before).
+
+---
+
 ## Dev-Orchestrator Execution Modes (PRs #3214, #3216)
 
 ### Direct subprocess is now the default (PR #3214)
@@ -451,6 +520,11 @@ amplihack recipe run investigation --context task_description="How does auth wor
 ---
 
 ## Version History
+
+All fixes released in **amplihack v0.9.2** (March 2026):
+
+- **Progress banners + cleanup** (PR #3487) - `[recipe-runner]` stderr banners; progress file removed on completion
+- **Recipe condition security** (PR #3486) - `simpleeval` replaces bare `eval()` in `Step.evaluate_condition()`
 
 All fixes released in **amplihack v0.9.1** (March 2026):
 

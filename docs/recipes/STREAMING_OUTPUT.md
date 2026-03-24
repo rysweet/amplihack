@@ -4,6 +4,19 @@
 
 Recipe adapters implement streaming output monitoring to replace hard timeouts with intelligent progress tracking. This provides a better user experience for long-running agent operations while maintaining fast feedback for quick tasks.
 
+## Startup Banners
+
+Before the Rust binary executes, the Python wrapper (`rust_runner.py`) emits two informational banners to **stderr**:
+
+```
+[recipe-runner] Preparing recipe 'default-workflow'...
+[recipe-runner] Launching recipe 'default-workflow' (pid 12345)...
+```
+
+These banners appear even before any streaming output from the recipe itself. They let parent processes, CI logs, and human operators confirm that recipe execution started without needing to parse Rust binary output.
+
+The PID in the launching banner identifies the Python process that wraps the Rust binary — useful for correlating with system monitoring tools.
+
 ## Problem
 
 Previous implementation used hard 30-minute timeouts on agent steps, which:
