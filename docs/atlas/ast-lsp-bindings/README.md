@@ -3,7 +3,7 @@ Mode: static-approximation
 # Layer 2: AST+LSP Symbol Bindings
 
 **Slug:** `ast-lsp-bindings` | **Display Order:** 2
-**Last rebuilt:** 2026-03-25 | **Built from ref:** 2c4fac5ae | **Package version:** 0.6.99
+**Last rebuilt:** 2026-03-25 | **Built from ref:** 2c4fac5ae | **Package version:** 0.6.99 | **Trigger:** merge-ready skill tests
 
 No LSP server was available for this analysis. All symbol bindings were derived via static grep/read of `__all__` exports and `from amplihack.X import Y` statements.
 
@@ -78,6 +78,10 @@ Key import relationships between top-level subpackages:
 - `deploy/azure_hive/tests/test_partition_routing.py` now serves as the
   user-visible regression surface for those bindings, including the warning path
   when partition-count discovery falls back to the default.
+
+- `tests/skills/test_gadugi_scenarios_merge_ready.py` adds 31 pytest-driven
+  validation tests for the new merge-ready skill gadugi scenario, covering
+  YAML structure, skill structure, merge criteria, guardrails, and PR template.
 
 ## Dead Code Candidates
 
