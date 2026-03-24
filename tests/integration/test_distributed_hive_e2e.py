@@ -44,7 +44,9 @@ from amplihack.agents.goal_seeking.hive_mind.event_bus import (
 from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
 
 
-def _make_eh_transport(bus: LocalEventBus, agent_id: str, timeout: float = 5.0) -> EventHubsShardTransport:
+def _make_eh_transport(
+    bus: LocalEventBus, agent_id: str, timeout: float = 5.0
+) -> EventHubsShardTransport:
     """Create EventHubsShardTransport wired to a LocalEventBus for in-process testing.
 
     Uses ``_start_receiving=False`` to skip the background Azure EH consumer
@@ -74,6 +76,7 @@ def _make_eh_transport(bus: LocalEventBus, agent_id: str, timeout: float = 5.0) 
     t.poll = bus.poll  # type: ignore[method-assign]
 
     return t
+
 
 # Load _shard_query_listener from the deploy entrypoint
 _ENTRYPOINT_PATH = (

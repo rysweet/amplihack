@@ -2,22 +2,14 @@
 
 from __future__ import annotations
 
-import threading
-import time
-from unittest.mock import MagicMock, patch
-
-import pytest
-
 from amplihack.memory.memory_store import InMemoryGraphStore
 from amplihack.memory.network_store import (
-    AgentRegistry,
-    NetworkGraphStore,
-    _OP_CREATE_EDGE,
     _OP_CREATE_NODE,
     _OP_SEARCH_QUERY,
     _OP_SEARCH_RESPONSE,
+    AgentRegistry,
+    NetworkGraphStore,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -144,7 +136,7 @@ class TestNetworkGraphStoreMerge:
 
     def test_merge_respects_limit(self):
         local = [{"node_id": str(i), "content": f"c{i}"} for i in range(5)]
-        remote = [{"node_id": str(i + 5), "content": f"c{i+5}"} for i in range(5)]
+        remote = [{"node_id": str(i + 5), "content": f"c{i + 5}"} for i in range(5)]
         merged = NetworkGraphStore._merge_results(local, remote, limit=7)
         assert len(merged) == 7
 
@@ -199,9 +191,7 @@ class TestNetworkGraphStoreProcessIncoming:
 
     def test_handle_search_query_publishes_response(self):
         store = _make_store()
-        store._local.create_node(
-            "semantic_memory", {"node_id": "q1", "content": "blue sky"}
-        )
+        store._local.create_node("semantic_memory", {"node_id": "q1", "content": "blue sky"})
         published = []
         original_publish = store._publish
 
@@ -404,11 +394,15 @@ class TestAgentRegistry:
     def test_multiple_stores_share_registry(self):
         registry = AgentRegistry()
         s1 = NetworkGraphStore(
-            agent_id="s1", local_store=InMemoryGraphStore(), transport="local",
+            agent_id="s1",
+            local_store=InMemoryGraphStore(),
+            transport="local",
             agent_registry=registry,
         )
         s2 = NetworkGraphStore(
-            agent_id="s2", local_store=InMemoryGraphStore(), transport="local",
+            agent_id="s2",
+            local_store=InMemoryGraphStore(),
+            transport="local",
             agent_registry=registry,
         )
         assert set(registry.list_agents()) == {"s1", "s2"}
@@ -530,9 +524,7 @@ class TestLearnContentReceiver:
         from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
 
         store = _make_store()
-        store._handle_event(
-            make_event("SOME_UNKNOWN_TYPE", "other", {"data": "irrelevant"})
-        )
+        store._handle_event(make_event("SOME_UNKNOWN_TYPE", "other", {"data": "irrelevant"}))
         events = store.receive_events()
         assert events == []
         store.close()
@@ -567,8 +559,8 @@ class TestMemoryFacadeReceiveEvents:
 
     def test_receive_events_delegates_to_network_store(self):
         from amplihack.agents.goal_seeking.hive_mind.event_bus import make_event
-        from amplihack.memory.network_store import NetworkGraphStore
         from amplihack.memory.memory_store import InMemoryGraphStore
+        from amplihack.memory.network_store import NetworkGraphStore
 
         ns = NetworkGraphStore(
             agent_id="facade-agent",
@@ -582,6 +574,7 @@ class TestMemoryFacadeReceiveEvents:
 
         # Patch the graph_store on a Memory instance
         from amplihack.memory.facade import Memory
+
         mem = Memory("facade-agent", topology="single", backend="cognitive")
         mem._graph_store = ns
 

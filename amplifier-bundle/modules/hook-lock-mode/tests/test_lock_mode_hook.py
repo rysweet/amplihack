@@ -6,7 +6,6 @@ import asyncio
 from pathlib import Path
 
 import pytest
-
 from amplifier_hook_lock_mode import LockModeHook
 
 
@@ -30,31 +29,24 @@ def _patch_paths(lock_dir: Path):
 
 
 class TestLockModeHook:
-
     @pytest.mark.usefixtures("_patch_paths")
     def test_returns_none_when_not_locked(self, lock_dir: Path):
         hook = LockModeHook()
-        result = asyncio.get_event_loop().run_until_complete(
-            hook("provider:request", {})
-        )
+        result = asyncio.get_event_loop().run_until_complete(hook("provider:request", {}))
         assert result is None
 
     @pytest.mark.usefixtures("_patch_paths")
     def test_returns_none_for_non_provider_events(self, lock_dir: Path):
         (lock_dir / ".lock_active").write_text("locked")
         hook = LockModeHook()
-        result = asyncio.get_event_loop().run_until_complete(
-            hook("session:end", {})
-        )
+        result = asyncio.get_event_loop().run_until_complete(hook("session:end", {}))
         assert result is None
 
     @pytest.mark.usefixtures("_patch_paths")
     def test_disabled_hook_returns_none(self, lock_dir: Path):
         (lock_dir / ".lock_active").write_text("locked")
         hook = LockModeHook(config={"enabled": False})
-        result = asyncio.get_event_loop().run_until_complete(
-            hook("provider:request", {})
-        )
+        result = asyncio.get_event_loop().run_until_complete(hook("provider:request", {}))
         assert result is None
 
     @pytest.mark.usefixtures("_patch_paths")
@@ -62,9 +54,7 @@ class TestLockModeHook:
         (lock_dir / ".lock_active").write_text("locked")
         (lock_dir / ".lock_goal").write_text("Fix the auth bug")
         hook = LockModeHook()
-        result = asyncio.get_event_loop().run_until_complete(
-            hook("provider:request", {})
-        )
+        result = asyncio.get_event_loop().run_until_complete(hook("provider:request", {}))
         assert result is not None
         assert result.action == "inject_context"
         assert "Fix the auth bug" in result.context_injection
@@ -75,9 +65,7 @@ class TestLockModeHook:
     def test_default_goal_when_no_goal_file(self, lock_dir: Path):
         (lock_dir / ".lock_active").write_text("locked")
         hook = LockModeHook()
-        result = asyncio.get_event_loop().run_until_complete(
-            hook("provider:request", {})
-        )
+        result = asyncio.get_event_loop().run_until_complete(hook("provider:request", {}))
         assert result is not None
         assert "Continue working" in result.context_injection
 

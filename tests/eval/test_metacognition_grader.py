@@ -1,6 +1,17 @@
-"""Tests for the metacognition grader with 4-dimension scoring."""
+"""Tests for the metacognition grader with 4-dimension scoring.
 
-from unittest.mock import MagicMock, patch
+TDD tests updated for Phase 3 refactoring:
+- _grade_with_llm(), grade(), batch_grade() are now async
+- grade_metacognition() stays SYNC (asyncio.run bridge)
+- Uses amplihack.llm.client.completion (not litellm)
+- Mock target: amplihack.eval.metacognition_grader.completion
+- Mock type: AsyncMock(return_value="plain string")
+- _mock_llm_response() helper is removed
+"""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -9,14 +20,6 @@ from amplihack.eval.metacognition_grader import (
     MetacognitionGrader,
     MetacognitionScore,
 )
-
-
-def _mock_llm_response(text: str) -> MagicMock:
-    """Create a mock litellm response."""
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = text
-    return mock_response
 
 
 class TestDimension:
@@ -86,23 +89,62 @@ class TestMetacognitionGrader:
         grader = MetacognitionGrader(model="gpt-4")
         assert grader.model == "gpt-4"
 
-    @patch("litellm.completion")
-    def test_grade_produces_4_dimensions(self, mock_completion):
-        """Grading produces exactly 4 metacognition dimensions."""
-        mock_completion.return_value = _mock_llm_response(
-            '{"factual_accuracy": {"score": 0.9, "reasoning": "Good recall"}, '
-            '"self_awareness": {"score": 0.8, "reasoning": "Knows limits"}, '
-            '"knowledge_boundaries": {"score": 0.7, "reasoning": "Some gaps"}, '
-            '"explanation_quality": {"score": 0.85, "reasoning": "Clear explanations"}}'
+    def test_grader_does_not_import_litellm(self):
+        """metacognition_grader.py must not import litellm after refactoring."""
+        import amplihack.eval.metacognition_grader as grader_module
+
+        assert not hasattr(grader_module, "litellm"), (
+            "litellm should be removed from metacognition_grader.py after refactoring"
         )
 
+    def test_grade_is_async(self):
+        """grade() must be a coroutine function (async def)."""
+        import inspect
+
         grader = MetacognitionGrader()
-        score = grader.grade(
-            question="What does L1 evaluate?",
-            expected_answer="L1 evaluates direct recall of facts from a single source.",
-            student_answer="L1 tests recall of facts.",
-            self_explanation="I know this because recall means remembering directly.",
+        assert inspect.iscoroutinefunction(grader.grade), "grade() must be async after refactoring"
+
+    def test_batch_grade_is_async(self):
+        """batch_grade() must be a coroutine function (async def)."""
+        import inspect
+
+        grader = MetacognitionGrader()
+        assert inspect.iscoroutinefunction(grader.batch_grade), (
+            "batch_grade() must be async after refactoring"
         )
+
+    def test_grade_metacognition_stays_sync(self):
+        """grade_metacognition() module-level function stays SYNCHRONOUS."""
+        import inspect
+
+        from amplihack.eval.metacognition_grader import grade_metacognition
+
+        assert not inspect.iscoroutinefunction(grade_metacognition), (
+            "grade_metacognition() must remain SYNCHRONOUS (asyncio.run bridge "
+            "to protect progressive_test_suite.py callers)"
+        )
+
+    @pytest.mark.asyncio
+    async def test_grade_produces_4_dimensions(self):
+        """Grading produces exactly 4 metacognition dimensions."""
+        with patch(
+            "amplihack.eval.metacognition_grader.completion",
+            new=AsyncMock(
+                return_value=(
+                    '{"factual_accuracy": {"score": 0.9, "reasoning": "Test LLM response: Good recall"}, '
+                    '"self_awareness": {"score": 0.8, "reasoning": "Test LLM response: Knows limits"}, '
+                    '"knowledge_boundaries": {"score": 0.7, "reasoning": "Test LLM response: Some gaps"}, '
+                    '"explanation_quality": {"score": 0.85, "reasoning": "Test LLM response: Clear"}}'
+                )
+            ),
+        ):
+            grader = MetacognitionGrader()
+            score = await grader.grade(
+                question="What does L1 evaluate?",
+                expected_answer="L1 evaluates direct recall of facts from a single source.",
+                student_answer="L1 tests recall of facts.",
+                self_explanation="Test LLM response: I know this because recall means remembering directly.",
+            )
 
         assert isinstance(score, MetacognitionScore)
         assert len(score.dimensions) == 4
@@ -112,90 +154,206 @@ class TestMetacognitionGrader:
         assert "knowledge_boundaries" in dimension_names
         assert "explanation_quality" in dimension_names
 
-    @patch("litellm.completion")
-    def test_grade_computes_overall_score(self, mock_completion):
-        """Overall score is mean of all dimensions."""
-        mock_completion.return_value = _mock_llm_response(
-            '{"factual_accuracy": {"score": 0.8, "reasoning": "Good"}, '
-            '"self_awareness": {"score": 0.6, "reasoning": "Fair"}, '
-            '"knowledge_boundaries": {"score": 1.0, "reasoning": "Excellent"}, '
-            '"explanation_quality": {"score": 0.4, "reasoning": "Poor"}}'
-        )
-
-        grader = MetacognitionGrader()
-        score = grader.grade(
-            question="Test?",
-            expected_answer="Expected",
-            student_answer="Actual",
-            self_explanation="Because reasons",
-        )
+    @pytest.mark.asyncio
+    async def test_grade_computes_overall_score(self):
+        """Overall score is mean of all 4 dimensions."""
+        with patch(
+            "amplihack.eval.metacognition_grader.completion",
+            new=AsyncMock(
+                return_value=(
+                    '{"factual_accuracy": {"score": 0.8, "reasoning": "Test LLM response: Good"}, '
+                    '"self_awareness": {"score": 0.6, "reasoning": "Test LLM response: Fair"}, '
+                    '"knowledge_boundaries": {"score": 1.0, "reasoning": "Test LLM response: Excellent"}, '
+                    '"explanation_quality": {"score": 0.4, "reasoning": "Test LLM response: Poor"}}'
+                )
+            ),
+        ):
+            grader = MetacognitionGrader()
+            score = await grader.grade(
+                question="Test?",
+                expected_answer="Expected",
+                student_answer="Actual",
+                self_explanation="Test LLM response: Because reasons",
+            )
 
         expected_overall = (0.8 + 0.6 + 1.0 + 0.4) / 4
         assert score.overall_score == pytest.approx(expected_overall, abs=0.001)
 
-    @patch("litellm.completion")
-    def test_grade_handles_empty_self_explanation(self, mock_completion):
+    @pytest.mark.asyncio
+    async def test_grade_handles_empty_self_explanation(self):
         """Grader handles student with no self-explanation."""
-        mock_completion.return_value = _mock_llm_response(
-            '{"factual_accuracy": {"score": 0.5, "reasoning": "Partial"}, '
-            '"self_awareness": {"score": 0.1, "reasoning": "No self-reflection"}, '
-            '"knowledge_boundaries": {"score": 0.2, "reasoning": "Unclear"}, '
-            '"explanation_quality": {"score": 0.0, "reasoning": "No explanation given"}}'
-        )
+        with patch(
+            "amplihack.eval.metacognition_grader.completion",
+            new=AsyncMock(
+                return_value=(
+                    '{"factual_accuracy": {"score": 0.5, "reasoning": "Test LLM response: Partial"}, '
+                    '"self_awareness": {"score": 0.1, "reasoning": "Test LLM response: No self-reflection"}, '
+                    '"knowledge_boundaries": {"score": 0.2, "reasoning": "Test LLM response: Unclear"}, '
+                    '"explanation_quality": {"score": 0.0, "reasoning": "Test LLM response: No explanation"}}'
+                )
+            ),
+        ):
+            grader = MetacognitionGrader()
+            score = await grader.grade(
+                question="What is L2?",
+                expected_answer="L2 tests inference.",
+                student_answer="Test LLM response: I think L2 is something.",
+                self_explanation="",
+            )
 
-        grader = MetacognitionGrader()
-        score = grader.grade(
-            question="What is L2?",
-            expected_answer="L2 tests inference.",
-            student_answer="I think L2 is something.",
-            self_explanation="",
-        )
+        assert score.overall_score < 0.5
 
-        assert score.overall_score < 0.5  # Should be low without explanation
-
-    @patch("litellm.completion")
-    def test_grade_handles_llm_error(self, mock_completion):
-        """Grader returns zero scores on LLM error."""
-        mock_completion.side_effect = Exception("API Error")
-
-        grader = MetacognitionGrader()
-        score = grader.grade(
-            question="Test?",
-            expected_answer="Expected",
-            student_answer="Actual",
-            self_explanation="Explanation",
-        )
+    @pytest.mark.asyncio
+    async def test_grade_handles_llm_error(self):
+        """grade() returns zero scores on LLM/completion error (fail-open)."""
+        with patch(
+            "amplihack.eval.metacognition_grader.completion",
+            new=AsyncMock(side_effect=Exception("Test LLM response: API Error")),
+        ):
+            grader = MetacognitionGrader()
+            score = await grader.grade(
+                question="Test?",
+                expected_answer="Expected",
+                student_answer="Actual",
+                self_explanation="Test LLM response: Explanation",
+            )
 
         assert score.overall_score == 0.0
         assert len(score.dimensions) == 4
         assert all(d.score == 0.0 for d in score.dimensions)
 
-    @patch("litellm.completion")
-    def test_batch_grade(self, mock_completion):
+    @pytest.mark.asyncio
+    async def test_batch_grade(self):
         """Batch grading scores multiple question-answer pairs."""
-        mock_completion.return_value = _mock_llm_response(
-            '{"factual_accuracy": {"score": 0.9, "reasoning": "Good"}, '
-            '"self_awareness": {"score": 0.8, "reasoning": "Good"}, '
-            '"knowledge_boundaries": {"score": 0.7, "reasoning": "Good"}, '
-            '"explanation_quality": {"score": 0.85, "reasoning": "Good"}}'
-        )
+        with patch(
+            "amplihack.eval.metacognition_grader.completion",
+            new=AsyncMock(
+                return_value=(
+                    '{"factual_accuracy": {"score": 0.9, "reasoning": "Test LLM response: Good"}, '
+                    '"self_awareness": {"score": 0.8, "reasoning": "Test LLM response: Good"}, '
+                    '"knowledge_boundaries": {"score": 0.7, "reasoning": "Test LLM response: Good"}, '
+                    '"explanation_quality": {"score": 0.85, "reasoning": "Test LLM response: Good"}}'
+                )
+            ),
+        ):
+            grader = MetacognitionGrader()
+            items = [
+                {
+                    "question": "What is L1?",
+                    "expected": "Recall",
+                    "actual": "Test LLM response: Recall of facts",
+                    "explanation": "Test LLM response: Direct recall",
+                },
+                {
+                    "question": "What is L2?",
+                    "expected": "Inference",
+                    "actual": "Test LLM response: Reasoning from facts",
+                    "explanation": "Test LLM response: Connecting facts",
+                },
+            ]
 
-        grader = MetacognitionGrader()
-        items = [
-            {
-                "question": "What is L1?",
-                "expected": "Recall",
-                "actual": "Recall of facts",
-                "explanation": "Direct recall",
-            },
-            {
-                "question": "What is L2?",
-                "expected": "Inference",
-                "actual": "Reasoning from facts",
-                "explanation": "Connecting facts",
-            },
-        ]
+            scores = await grader.batch_grade(items)
 
-        scores = grader.batch_grade(items)
         assert len(scores) == 2
         assert all(isinstance(s, MetacognitionScore) for s in scores)
+
+    @pytest.mark.asyncio
+    async def test_completion_plain_string_used_directly(self):
+        """_grade_with_llm uses completion() result as plain str (no .choices[0])."""
+        json_response = (
+            '{"factual_accuracy": {"score": 0.9, "reasoning": "Test LLM response: Good"}, '
+            '"self_awareness": {"score": 0.8, "reasoning": "Test LLM response: Good"}, '
+            '"knowledge_boundaries": {"score": 0.7, "reasoning": "Test LLM response: Good"}, '
+            '"explanation_quality": {"score": 0.85, "reasoning": "Test LLM response: Good"}}'
+        )
+
+        with patch(
+            "amplihack.eval.metacognition_grader.completion",
+            new=AsyncMock(return_value=json_response),
+        ):
+            grader = MetacognitionGrader()
+            # This will fail if code tries response.choices[0].message.content
+            # since the mock returns a plain string
+            score = await grader.grade(
+                question="Test?",
+                expected_answer="Expected",
+                student_answer="Test LLM response: Actual",
+                self_explanation="Test LLM response: Explanation",
+            )
+
+        assert isinstance(score, MetacognitionScore)
+        assert score.overall_score > 0.0
+
+
+class TestGradeMetacognitionSyncBridge:
+    """Tests for grade_metacognition() synchronous bridge function."""
+
+    def test_grade_metacognition_is_callable(self):
+        """grade_metacognition() is importable and callable."""
+        from amplihack.eval.metacognition_grader import grade_metacognition
+
+        assert callable(grade_metacognition)
+
+    def test_grade_metacognition_accepts_trace_dict(self):
+        """grade_metacognition() accepts dict trace and returns ReasoningTraceScore."""
+        from amplihack.eval.metacognition_grader import ReasoningTraceScore, grade_metacognition
+
+        with patch(
+            "amplihack.eval.metacognition_grader.completion",
+            new=AsyncMock(
+                return_value=(
+                    '{"factual_accuracy": {"score": 0.5, "reasoning": "Test LLM response: OK"}, '
+                    '"self_awareness": {"score": 0.5, "reasoning": "Test LLM response: OK"}, '
+                    '"knowledge_boundaries": {"score": 0.5, "reasoning": "Test LLM response: OK"}, '
+                    '"explanation_quality": {"score": 0.5, "reasoning": "Test LLM response: OK"}}'
+                )
+            ),
+        ):
+            result = grade_metacognition(
+                trace={"step": "reasoning", "output": "result"},
+                answer_score=0.8,
+                level="L1",
+            )
+
+        assert isinstance(result, ReasoningTraceScore)
+        assert isinstance(result.overall, float)
+
+    def test_grade_metacognition_accepts_string_trace(self):
+        """grade_metacognition() accepts string trace."""
+        from amplihack.eval.metacognition_grader import grade_metacognition
+
+        with patch(
+            "amplihack.eval.metacognition_grader.completion",
+            new=AsyncMock(
+                return_value=(
+                    '{"factual_accuracy": {"score": 0.5, "reasoning": "Test LLM response: OK"}, '
+                    '"self_awareness": {"score": 0.5, "reasoning": "Test LLM response: OK"}, '
+                    '"knowledge_boundaries": {"score": 0.5, "reasoning": "Test LLM response: OK"}, '
+                    '"explanation_quality": {"score": 0.5, "reasoning": "Test LLM response: OK"}}'
+                )
+            ),
+        ):
+            result = grade_metacognition(
+                trace="Test LLM response: reasoning trace as string",
+                answer_score=0.7,
+                level="L2",
+            )
+
+        assert result is not None
+        assert isinstance(result.overall, float)
+
+    def test_grade_metacognition_returns_zero_on_error(self):
+        """grade_metacognition() returns zero-score on error (fail-open)."""
+        from amplihack.eval.metacognition_grader import grade_metacognition
+
+        with patch(
+            "amplihack.eval.metacognition_grader.completion",
+            new=AsyncMock(side_effect=Exception("Test LLM response: API Error")),
+        ):
+            result = grade_metacognition(
+                trace="Test LLM response: trace",
+                answer_score=0.0,
+                level="L1",
+            )
+
+        assert result.overall == 0.0

@@ -688,7 +688,10 @@ class StopHook(HookProcessor):
                 f"[CAUSE] Cannot import claude_reflection module. [IMPACT] Reflection functionality unavailable. [ACTION] Check if claude_reflection.py exists and is accessible. Error: {e}",
                 "WARNING",
             )
-            print(f"WARNING: claude_reflection not available - reflection disabled: {e}", file=sys.stderr)
+            print(
+                f"WARNING: claude_reflection not available - reflection disabled: {e}",
+                file=sys.stderr,
+            )
             self.save_metric("reflection_import_errors", 1)
             return None
 

@@ -89,7 +89,7 @@ Centralized plugin system that works across all your projects:
 - Requires: `$ANTHROPIC_API_KEY` environment variable for Anthropic models
 - Plugin mode: Install globally with [Plugin Installation Guide](plugin/INSTALLATION.md)
 - Per-project mode: Copy `~/.amplihack/.claude/` directory to your project
-- Azure OpenAI: Use proxy configuration (see [Proxy Configuration](PROXY_CONFIG_GUIDE.md))
+- Azure OpenAI: Set `ANTHROPIC_BASE_URL` and `ANTHROPIC_API_KEY` (see [Azure OpenAI Integration](AZURE_INTEGRATION.md))
 
 **Microsoft Amplifier**
 
@@ -108,8 +108,7 @@ amplihack copilot
 - Uses GitHub Copilot models (switch with `/model` command)
 - Adaptive hooks enable preference injection and context loading
 - All 38 agents available via `--agent <name>` flag
-- See [GitHub Copilot Integration](github-copilot-litellm-integration.md) for complete guide
-- See [How to Use amplihack with a Non-Claude Agent](howto/use-non-claude-agent.md) for `AMPLIHACK_AGENT_BINARY` propagation and nested Copilot compatibility details
+- See [Copilot CLI Guide](COPILOT_CLI.md) for complete guide
 
 **Codex**
 
@@ -120,7 +119,6 @@ amplihack copilot
 #### General Configuration
 
 - [Profile Management](PROFILE_MANAGEMENT.md) - Multiple environment configurations
-- [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup (Azure OpenAI, custom endpoints)
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
 - [Memory Configuration Consent](features/memory-consent-prompt.md) - Intelligent memory settings with timeout protection
 - [Verify .claude/ Staging](howto/verify-claude-staging.md) - Check that framework files are properly staged
@@ -153,6 +151,7 @@ Understand the philosophy and architecture behind amplihack.
 - [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
 - [Framework Injection Architecture](concepts/framework-injection-architecture.md) - How AMPLIHACK.md injection works
 - [Unified Distributed Cognitive Memory](concepts/unified-distributed-cognitive-memory.md) - Planned architecture for deterministic cluster-wide memory retrieval
+- [LLM Routing Architecture](concepts/llm-routing-architecture.md) - How `amplihack.llm` routes completions to Claude or Copilot SDKs
 - [How to Use Blarify Code Graph](howto/blarify-code-graph.md) - Enable, query, and configure
 - [Enable Blarify Code Indexing](howto/enable-blarify.md) - `AMPLIHACK_ENABLE_BLARIFY`, non-interactive skip, staleness detection
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
@@ -230,7 +229,8 @@ Code-enforced workflow execution engine with declarative YAML recipes.
 - [Recipe Runner Overview](recipes/README.md) - Architecture, YAML format, and creating custom recipes
 - [UltraThink Recipe Runner Integration](recipes/RECIPE_RUNNER_ULTRATHINK_INTEGRATION.md) - How ultrathink uses Recipe Runner for code-enforced workflow execution
 - [Recipe CLI Commands How-To](howto/recipe-cli-commands.md) - Task-oriented guide for using recipe commands
-- [CLI Reference](reference/cli.md) - Top-level `amplihack` command, `--version` flag, global environment variables
+- [CLI Reference](reference/cli.md) - Top-level `amplihack` command, `launch` flags, global environment variables
+- [Health Check Reference](reference/health-check.md) - `check_health()` API, `HealthReport` dataclass, dependency and path checks
 - [Recipe CLI Reference](reference/recipe-cli-reference.md) - Complete command-line documentation
 - [Token Sanitizer](reference/token-sanitizer.md) - Pattern ordering, audit labels, and custom patterns for secret redaction
 - [RecipeResult](reference/recipe-result.md) - `RecipeResult` and `StepResult` dataclasses, `str()` format, JSON serialisation
@@ -289,16 +289,19 @@ Specialized AI agents and tools for every development task.
 **📚 Tutorials (Learning-Oriented)**
 
 - **[Goal-Seeking Agent Tutorial](tutorials/GOAL_SEEKING_AGENT_TUTORIAL.md)** - Interactive 10-lesson tutorial covering agent generation, SDK selection, multi-agent architecture, evaluations (L1-L12), and self-improvement loops
+- [Using the amplihack LLM Client](tutorials/llm-client-tutorial.md) - Build async graders and eval code using `amplihack.llm.completion()` (20 minutes)
 
 **📖 How-To Guides (Problem-Oriented)**
 
 - [Goal Agent Generator Guide](GOAL_AGENT_GENERATOR_GUIDE.md) - Create custom goal-seeking agents with `amplihack new`
 - [SDK Adapters Guide](SDK_ADAPTERS_GUIDE.md) - Choose and configure Copilot, Claude, Microsoft, or Mini SDK backends
+- [Migrate from litellm to amplihack.llm](howto/migrate-litellm-to-llm-client.md) - Replace direct `litellm.completion()` calls with the routing adapter
 
 **📋 Reference (Information-Oriented)**
 
 - **[Quick Reference Card](reference/goal-seeking-agents-quick-reference.md)** - Fast lookup: commands, SDK selection, eval levels, common patterns
 - [Eval System Architecture](EVAL_SYSTEM_ARCHITECTURE.md) - Progressive test suite (L1-L12), grading pipeline, domain agents, long-horizon memory eval, self-improvement runner
+- [LLM Client API Reference](reference/llm-client-api.md) - `amplihack.llm.completion()` — parameters, routing, error handling, security
 - [Goal Agent Generator Design](agent-bundle-generator-design.md) - Architecture and design patterns
 - [Goal Agent Requirements](agent-bundle-generator-requirements.md) - Technical specifications
 - [Implementation Summary](goal_agent_generator/IMPLEMENTATION_SUMMARY.md) - Current implementation status
@@ -441,7 +444,6 @@ Execute complex tasks with simple slash commands.
 
 - [Auto Mode Guide](AUTO_MODE.md) - Autonomous multi-turn execution
 - [Auto Mode Safety](AUTOMODE_SAFETY.md) - Safety guardrails and best practices
-- [Passthrough Mode](PASSTHROUGH_MODE.md) - Direct API access
 
 ---
 
@@ -582,7 +584,7 @@ Robust handling of conversation compaction in long sessions:
 
 ### Third-Party Integrations
 
-- [GitHub Copilot via LiteLLM](github-copilot-litellm-integration.md) - Use Copilot with amplihack
+- [GitHub Copilot CLI](COPILOT_CLI.md) - Use Copilot with amplihack
 - [OpenAI Responses API](OPENAI_RESPONSES_API.md) - OpenAI integration patterns
 - [MCP Evaluation](mcp_evaluation/README.md) - Model Context Protocol evaluation
 
@@ -595,16 +597,17 @@ Advanced configuration, deployment patterns, and environment management.
 ### Configuration
 
 - [Profile Management](PROFILE_MANAGEMENT.md) - Multiple environment configurations
-- [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
 - [Shell Command Hook](SHELL_COMMAND_HOOK.md) - Custom shell integrations
+- [Azure OpenAI Integration](AZURE_INTEGRATION.md) - Direct Azure OpenAI connection via environment variables
+- [Configure Azure OpenAI (how-to)](howto/configure-azure-openai.md) - Step-by-step Azure credentials setup
+- [Migrate from built-in proxy](howto/migrate-from-proxy.md) - Upgrade guide for users of the removed LiteLLM proxy subsystem
+- [Why the proxy was removed](concepts/proxy-removal.md) - Architecture rationale and before/after comparison
 
 ### Deployment
 
 - [UVX Deployment Solutions](UVX_DEPLOYMENT_SOLUTIONS.md) - Production deployment with uvx
 - [UVX Data Models](UVX_DATA_MODELS.md) - Understanding uvx data structures
-- [Azure Integration](AZURE_INTEGRATION.md) - Deploy to Azure cloud
-- [Test Azure Proxy](TEST_AZURE_PROXY.md) - Validate Azure proxy setup
 
 ### Build System
 
@@ -650,7 +653,6 @@ Security guidelines, context preservation, and best practices.
 ### Safe Operations
 
 - [Auto Mode Safety](AUTOMODE_SAFETY.md) - Autonomous operation guardrails
-- [Passthrough Mode](PASSTHROUGH_MODE.md) - Direct API access patterns
 
 ---
 

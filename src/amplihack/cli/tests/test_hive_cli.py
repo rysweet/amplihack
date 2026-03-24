@@ -2,30 +2,19 @@
 
 from __future__ import annotations
 
-import json
 import os
 import signal
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from amplihack.cli.hive import (
-    _config_path,
-    _hive_dir,
     _is_running,
     _load_config,
     _load_pids,
-    _save_config,
     _save_pids,
-    cmd_add_agent,
-    cmd_create,
-    cmd_status,
-    cmd_stop,
     main,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -36,6 +25,7 @@ from amplihack.cli.hive import (
 def tmp_hives(tmp_path, monkeypatch):
     """Redirect hive directory to a temp location."""
     import amplihack.cli.hive as hive_module
+
     monkeypatch.setattr(hive_module, "_HIVES_DIR", tmp_path / "hives")
     return tmp_path / "hives"
 
@@ -55,23 +45,34 @@ class TestCreate:
     def test_create_sets_agent_count(self, tmp_hives):
         main(["create", "--name", "testhive", "--agents", "3"])
         import amplihack.cli.hive as m
+
         cfg = m._load_config("testhive")
         assert len(cfg["agents"]) == 3
 
     def test_create_agent_names(self, tmp_hives):
         main(["create", "--name", "namehive", "--agents", "2"])
         import amplihack.cli.hive as m
+
         cfg = m._load_config("namehive")
         names = [a["name"] for a in cfg["agents"]]
         assert names == ["agent_0", "agent_1"]
 
     def test_create_with_transport(self, tmp_hives):
-        main([
-            "create", "--name", "azurehive", "--agents", "1",
-            "--transport", "azure_service_bus",
-            "--connection-string", "Endpoint=sb://test",
-        ])
+        main(
+            [
+                "create",
+                "--name",
+                "azurehive",
+                "--agents",
+                "1",
+                "--transport",
+                "azure_service_bus",
+                "--connection-string",
+                "Endpoint=sb://test",
+            ]
+        )
         import amplihack.cli.hive as m
+
         cfg = m._load_config("azurehive")
         assert cfg["transport"] == "azure_service_bus"
         assert cfg["connection_string"] == "Endpoint=sb://test"
@@ -79,6 +80,7 @@ class TestCreate:
     def test_create_default_transport_is_local(self, tmp_hives):
         main(["create", "--name", "localhive", "--agents", "1"])
         import amplihack.cli.hive as m
+
         cfg = m._load_config("localhive")
         assert cfg["transport"] == "local"
 
@@ -98,26 +100,41 @@ class TestAddAgent:
 
     def test_add_agent_appends(self, tmp_hives):
         self._setup_hive("addhive")
-        rc = main([
-            "add-agent", "--hive", "addhive",
-            "--agent-name", "new_agent",
-            "--prompt", "You are a tester",
-        ])
+        rc = main(
+            [
+                "add-agent",
+                "--hive",
+                "addhive",
+                "--agent-name",
+                "new_agent",
+                "--prompt",
+                "You are a tester",
+            ]
+        )
         assert rc == 0
         import amplihack.cli.hive as m
+
         cfg = m._load_config("addhive")
         names = [a["name"] for a in cfg["agents"]]
         assert "new_agent" in names
 
     def test_add_agent_with_kuzu_db(self, tmp_hives):
         self._setup_hive("kuzuhive")
-        main([
-            "add-agent", "--hive", "kuzuhive",
-            "--agent-name", "kuzu_agent",
-            "--prompt", "You are a DB agent",
-            "--kuzu-db", "/tmp/test.kuzu",
-        ])
+        main(
+            [
+                "add-agent",
+                "--hive",
+                "kuzuhive",
+                "--agent-name",
+                "kuzu_agent",
+                "--prompt",
+                "You are a DB agent",
+                "--kuzu-db",
+                "/tmp/test.kuzu",
+            ]
+        )
         import amplihack.cli.hive as m
+
         cfg = m._load_config("kuzuhive")
         kuzu_agents = [a for a in cfg["agents"] if a.get("kuzu_db")]
         assert len(kuzu_agents) == 1
@@ -125,19 +142,31 @@ class TestAddAgent:
 
     def test_add_agent_duplicate_returns_1(self, tmp_hives):
         main(["create", "--name", "duphive", "--agents", "1"])
-        rc = main([
-            "add-agent", "--hive", "duphive",
-            "--agent-name", "agent_0",
-            "--prompt", "Duplicate",
-        ])
+        rc = main(
+            [
+                "add-agent",
+                "--hive",
+                "duphive",
+                "--agent-name",
+                "agent_0",
+                "--prompt",
+                "Duplicate",
+            ]
+        )
         assert rc == 1
 
     def test_add_agent_missing_hive_returns_1(self, tmp_hives):
-        rc = main([
-            "add-agent", "--hive", "nonexistent",
-            "--agent-name", "x",
-            "--prompt", "y",
-        ])
+        rc = main(
+            [
+                "add-agent",
+                "--hive",
+                "nonexistent",
+                "--agent-name",
+                "x",
+                "--prompt",
+                "y",
+            ]
+        )
         assert rc == 1
 
 
@@ -158,7 +187,6 @@ class TestStatus:
 
     def test_status_shows_stopped_for_dead_pids(self, tmp_hives, capsys):
         main(["create", "--name", "deadhive", "--agents", "1"])
-        import amplihack.cli.hive as m
         # Save a fake PID that isn't running
         _save_pids("deadhive", {"agent_0": 999999999})
         main(["status", "--hive", "deadhive"])
@@ -179,7 +207,6 @@ class TestStop:
 
     def test_stop_sends_sigterm(self, tmp_hives):
         main(["create", "--name", "stophive", "--agents", "1"])
-        import amplihack.cli.hive as m
 
         # Simulate a running process by using os.getpid() (our own PID)
         # but mock os.kill so we don't actually kill ourselves
@@ -203,7 +230,6 @@ class TestStop:
 
     def test_stop_clears_pids(self, tmp_hives):
         main(["create", "--name", "clearpidshive", "--agents", "1"])
-        import amplihack.cli.hive as m
         _save_pids("clearpidshive", {"agent_0": 999999999})
 
         # Mock _is_running to return False (already gone)

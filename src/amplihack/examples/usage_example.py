@@ -8,24 +8,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from amplihack.launcher import ClaudeDirectoryDetector, ClaudeLauncher
-from amplihack.proxy import ProxyConfig
 
 # PathResolver removed in simplification
-
-
-def example_proxy_configuration():
-    """Example of setting up proxy configuration."""
-    print("=== Proxy Configuration Example ===")
-
-    # Create a proxy configuration
-    config_path = Path("proxy-config.env.example")
-    if config_path.exists():
-        config = ProxyConfig(config_path)
-        print(f"Loaded configuration from: {config_path}")
-        print(f"API Key present: {bool(config.get('ANTHROPIC_API_KEY'))}")
-        print(f"Valid configuration: {config.validate()}")
-    else:
-        print(f"No configuration file found at: {config_path}")
 
 
 def example_directory_detection():
@@ -73,7 +57,7 @@ def example_launcher_setup():
     """Example of setting up the launcher (without actually launching)."""
     print("\n=== Launcher Setup Example ===")
 
-    # Create a launcher with no proxy (dry run)
+    # Create a launcher (dry run)
     launcher = ClaudeLauncher()
 
     # Build command that would be executed
@@ -93,7 +77,6 @@ def main():
     print("Amplihack Module Usage Examples\n")
 
     examples = [
-        example_proxy_configuration,
         example_directory_detection,
         example_path_utilities,
         example_launcher_setup,

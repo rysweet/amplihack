@@ -169,15 +169,17 @@ def _extract_file_io(tree: ast.Module, filepath: str) -> list[dict]:
             if matched == "open" and operation == "read":
                 fmt = "text"  # generic open
 
-            io_ops.append({
-                "file": filepath,
-                "lineno": node.lineno,
-                "operation": operation,
-                "format": fmt,
-                "target_path": target_path,
-                "function_context": func_ctx,
-                "call": call_name,
-            })
+            io_ops.append(
+                {
+                    "file": filepath,
+                    "lineno": node.lineno,
+                    "operation": operation,
+                    "format": fmt,
+                    "target_path": target_path,
+                    "function_context": func_ctx,
+                    "call": call_name,
+                }
+            )
             continue
 
         # Check write patterns
@@ -187,15 +189,17 @@ def _extract_file_io(tree: ast.Module, filepath: str) -> list[dict]:
             func_ctx = _find_enclosing_function(tree, node.lineno)
             fmt = _infer_format(call_name)
 
-            io_ops.append({
-                "file": filepath,
-                "lineno": node.lineno,
-                "operation": "write",
-                "format": fmt,
-                "target_path": target_path,
-                "function_context": func_ctx,
-                "call": call_name,
-            })
+            io_ops.append(
+                {
+                    "file": filepath,
+                    "lineno": node.lineno,
+                    "operation": "write",
+                    "format": fmt,
+                    "target_path": target_path,
+                    "function_context": func_ctx,
+                    "call": call_name,
+                }
+            )
 
     return io_ops
 
@@ -236,7 +240,9 @@ def _extract_database_ops(tree: ast.Module, filepath: str) -> list[dict]:
         if not matched:
             continue
 
-        db_type, op_type = _DB_PATTERNS.get(matched, dynamic_db_patterns.get(matched, ("unknown", None)))
+        db_type, op_type = _DB_PATTERNS.get(
+            matched, dynamic_db_patterns.get(matched, ("unknown", None))
+        )
 
         # Try to determine operation from query literal
         query_literal = _get_string_arg(node, 0)
@@ -244,7 +250,9 @@ def _extract_database_ops(tree: ast.Module, filepath: str) -> list[dict]:
             q_upper = query_literal.strip().upper()
             if q_upper.startswith(("SELECT", "MATCH", "RETURN")):
                 op_type = "read"
-            elif q_upper.startswith(("INSERT", "CREATE", "UPDATE", "DELETE", "DROP", "ALTER", "MERGE")):
+            elif q_upper.startswith(
+                ("INSERT", "CREATE", "UPDATE", "DELETE", "DROP", "ALTER", "MERGE")
+            ):
                 op_type = "write"
             else:
                 op_type = "unknown"
@@ -253,15 +261,17 @@ def _extract_database_ops(tree: ast.Module, filepath: str) -> list[dict]:
 
         func_ctx = _find_enclosing_function(tree, node.lineno)
 
-        ops.append({
-            "file": filepath,
-            "lineno": node.lineno,
-            "db_type": db_type,
-            "operation": op_type,
-            "query_literal": query_literal,
-            "function_context": func_ctx,
-            "call": call_name,
-        })
+        ops.append(
+            {
+                "file": filepath,
+                "lineno": node.lineno,
+                "db_type": db_type,
+                "operation": op_type,
+                "query_literal": query_literal,
+                "function_context": func_ctx,
+                "call": call_name,
+            }
+        )
 
     return ops
 
@@ -288,14 +298,16 @@ def _extract_network_io(tree: ast.Module, filepath: str) -> list[dict]:
             url_pattern = "dynamic"
         func_ctx = _find_enclosing_function(tree, node.lineno)
 
-        ops.append({
-            "file": filepath,
-            "lineno": node.lineno,
-            "method": method,
-            "url_pattern": url_pattern,
-            "function_context": func_ctx,
-            "call": call_name,
-        })
+        ops.append(
+            {
+                "file": filepath,
+                "lineno": node.lineno,
+                "method": method,
+                "url_pattern": url_pattern,
+                "function_context": func_ctx,
+                "call": call_name,
+            }
+        )
 
     return ops
 
@@ -340,12 +352,14 @@ def _find_transformation_points(
             # Deduplicate
             reads = sorted(set(ops["reads"]))
             writes = sorted(set(ops["writes"]))
-            transforms.append({
-                "file": filepath,
-                "function": func_name,
-                "reads": reads,
-                "writes": writes,
-            })
+            transforms.append(
+                {
+                    "file": filepath,
+                    "function": func_name,
+                    "reads": reads,
+                    "writes": writes,
+                }
+            )
 
     return transforms
 
@@ -387,9 +401,7 @@ def extract(manifest: dict) -> dict:
             all_network_io.extend(nio)
             files_with_io.add(filepath)
 
-    transforms = _find_transformation_points(
-        all_file_io, all_database_ops, all_network_io
-    )
+    transforms = _find_transformation_points(all_file_io, all_database_ops, all_network_io)
 
     return {
         "layer": "data-flow",
@@ -440,7 +452,7 @@ def main() -> int:
     out_path = write_layer_json("layer6_data_flow", data, output)
 
     s = data["summary"]
-    print(f"Layer 6: data-flow")
+    print("Layer 6: data-flow")
     print(f"  File I/O ops:          {s['file_io_count']}")
     print(f"  Database ops:          {s['database_op_count']}")
     print(f"  Network I/O ops:       {s['network_io_count']}")

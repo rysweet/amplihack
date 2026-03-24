@@ -23,7 +23,6 @@ class TestClaudeLauncherEnvVars:
         with patch.object(ClaudeLauncher, "__init__", return_value=None):
             launcher = ClaudeLauncher.__new__(ClaudeLauncher)
         # Provide the minimal attributes used by launch()
-        launcher.proxy_manager = None
         launcher._target_directory = None
         launcher.uvx_manager = MagicMock()
         launcher.uvx_manager.get_environment_variables.return_value = {}

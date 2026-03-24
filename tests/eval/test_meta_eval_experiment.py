@@ -1,7 +1,22 @@
-"""Tests for the meta-eval teaching experiment runner."""
+"""Tests for the meta-eval teaching experiment runner.
+
+TDD tests updated for Phase 3 refactoring:
+- _quiz_student() and run() are now async
+- Uses amplihack.llm.client.completion (not litellm)
+- Mock targets: module-local completion references in each sub-module
+  - amplihack.eval.teaching_session.completion (for TeachingSession)
+  - amplihack.eval.metacognition_grader.completion (for MetacognitionGrader)
+  - amplihack.eval.meta_eval_experiment.completion (for _quiz_student)
+- Mock type: AsyncMock(return_value="plain string")
+- _mock_llm_response() helper is removed
+"""
+
+from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from amplihack.eval.meta_eval_experiment import (
     ExperimentConfig,
@@ -9,13 +24,22 @@ from amplihack.eval.meta_eval_experiment import (
     MetaEvalExperiment,
 )
 
-
-def _mock_llm_response(text: str) -> MagicMock:
-    """Create a mock litellm response."""
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = text
-    return mock_response
+# Common mock response strings (plain strings — NOT response objects)
+_TEACHER_MSG = "Test LLM response: L1 tests recall of direct facts from single sources."
+_STUDENT_MSG = (
+    '{"response": "Test LLM response: L1 is recall.", '
+    '"self_explanation": "Test LLM response: Direct facts."}'
+)
+_GRADER_MSG = (
+    '{"factual_accuracy": {"score": 0.9, "reasoning": "Test LLM response: Good"}, '
+    '"self_awareness": {"score": 0.8, "reasoning": "Test LLM response: Good"}, '
+    '"knowledge_boundaries": {"score": 0.7, "reasoning": "Test LLM response: Good"}, '
+    '"explanation_quality": {"score": 0.85, "reasoning": "Test LLM response: Good"}}'
+)
+_QUIZ_MSG = (
+    '{"answer": "Test LLM response: The four levels are L1-L4.", '
+    '"self_explanation": "Test LLM response: The teacher explained them."}'
+)
 
 
 class TestExperimentConfig:
@@ -82,7 +106,6 @@ class TestMetaEvalExperiment:
         kb = experiment.build_knowledge_base()
         assert isinstance(kb, list)
         assert len(kb) > 0
-        # Should contain info about L1-L4 levels
         combined = " ".join(kb)
         assert "L1" in combined or "recall" in combined.lower()
 
@@ -97,74 +120,100 @@ class TestMetaEvalExperiment:
             assert "question" in q
             assert "expected_answer" in q
 
-    @patch("litellm.completion")
-    def test_run_experiment_produces_report(self, mock_completion, tmp_path):
-        """Full experiment produces a structured report."""
-        # Mock all LLM calls
-        teacher_msg = _mock_llm_response("L1 tests recall of direct facts from single sources.")
-        student_msg = _mock_llm_response(
-            '{"response": "L1 is recall.", "self_explanation": "Direct facts."}'
-        )
-        grader_msg = _mock_llm_response(
-            '{"factual_accuracy": {"score": 0.9, "reasoning": "Good"}, '
-            '"self_awareness": {"score": 0.8, "reasoning": "Good"}, '
-            '"knowledge_boundaries": {"score": 0.7, "reasoning": "Good"}, '
-            '"explanation_quality": {"score": 0.85, "reasoning": "Good"}}'
+    def test_run_is_async(self):
+        """run() must be a coroutine function (async def)."""
+        import inspect
+
+        experiment = MetaEvalExperiment(config=ExperimentConfig())
+        assert inspect.iscoroutinefunction(experiment.run), "run() must be async after refactoring"
+
+    def test_quiz_student_is_async(self):
+        """_quiz_student() must be a coroutine function (async def)."""
+        import inspect
+
+        experiment = MetaEvalExperiment(config=ExperimentConfig())
+        assert inspect.iscoroutinefunction(experiment._quiz_student), (
+            "_quiz_student() must be async after refactoring"
         )
 
-        # Teaching turns (teacher + student per turn) + grading calls
-        mock_completion.side_effect = [
-            teacher_msg,
-            student_msg,  # Turn 1
-            teacher_msg,
-            student_msg,  # Turn 2
-            grader_msg,  # Grade Q1
-            grader_msg,  # Grade Q2
-            grader_msg,  # Grade Q3
-        ]
+    def test_does_not_use_litellm_in_quiz_student(self):
+        """_quiz_student no longer defers to litellm — uses module-level completion import."""
 
-        config = ExperimentConfig(
-            teaching_turns=2,
-            quiz_questions=3,
-            output_dir=str(tmp_path),
+        import amplihack.eval.meta_eval_experiment as exp_module
+
+        # After refactoring, the module-level 'completion' reference exists
+        assert hasattr(exp_module, "completion"), (
+            "amplihack.eval.meta_eval_experiment must import completion at module level"
         )
-        experiment = MetaEvalExperiment(config=config)
-        report = experiment.run()
+
+    @pytest.mark.asyncio
+    async def test_run_experiment_produces_report(self, tmp_path):
+        """Full async experiment produces a structured report."""
+        call_count = 0
+
+        async def teaching_session_mock(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            return _TEACHER_MSG if call_count % 2 == 1 else _STUDENT_MSG
+
+        with (
+            patch(
+                "amplihack.eval.teaching_session.completion",
+                side_effect=teaching_session_mock,
+            ),
+            patch(
+                "amplihack.eval.meta_eval_experiment.completion",
+                new=AsyncMock(return_value=_QUIZ_MSG),
+            ),
+            patch(
+                "amplihack.eval.metacognition_grader.completion",
+                new=AsyncMock(return_value=_GRADER_MSG),
+            ),
+        ):
+            config = ExperimentConfig(
+                teaching_turns=2,
+                quiz_questions=3,
+                output_dir=str(tmp_path),
+            )
+            experiment = MetaEvalExperiment(config=config)
+            report = await experiment.run()
 
         assert isinstance(report, ExperimentReport)
         assert report.teaching_turns_completed == 2
         assert report.knowledge_base_size > 0
         assert 0.0 <= report.overall_score <= 1.0
 
-    @patch("litellm.completion")
-    def test_run_experiment_saves_report(self, mock_completion, tmp_path):
+    @pytest.mark.asyncio
+    async def test_run_experiment_saves_report(self, tmp_path):
         """Experiment saves JSON report to output directory."""
-        teacher_msg = _mock_llm_response("Teaching content.")
-        student_msg = _mock_llm_response(
-            '{"response": "Got it.", "self_explanation": "Makes sense."}'
-        )
-        grader_msg = _mock_llm_response(
-            '{"factual_accuracy": {"score": 0.5, "reasoning": "OK"}, '
-            '"self_awareness": {"score": 0.5, "reasoning": "OK"}, '
-            '"knowledge_boundaries": {"score": 0.5, "reasoning": "OK"}, '
-            '"explanation_quality": {"score": 0.5, "reasoning": "OK"}}'
-        )
+        call_count = 0
 
-        mock_completion.side_effect = [
-            teacher_msg,
-            student_msg,  # Turn 1
-            grader_msg,  # Grade Q1
-            grader_msg,  # Grade Q2
-            grader_msg,  # Grade Q3
-        ]
+        async def teaching_session_mock(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            return _TEACHER_MSG if call_count % 2 == 1 else _STUDENT_MSG
 
-        config = ExperimentConfig(
-            teaching_turns=1,
-            quiz_questions=3,
-            output_dir=str(tmp_path),
-        )
-        experiment = MetaEvalExperiment(config=config)
-        experiment.run()
+        with (
+            patch(
+                "amplihack.eval.teaching_session.completion",
+                side_effect=teaching_session_mock,
+            ),
+            patch(
+                "amplihack.eval.meta_eval_experiment.completion",
+                new=AsyncMock(return_value=_QUIZ_MSG),
+            ),
+            patch(
+                "amplihack.eval.metacognition_grader.completion",
+                new=AsyncMock(return_value=_GRADER_MSG),
+            ),
+        ):
+            config = ExperimentConfig(
+                teaching_turns=1,
+                quiz_questions=3,
+                output_dir=str(tmp_path),
+            )
+            experiment = MetaEvalExperiment(config=config)
+            await experiment.run()
 
         report_file = tmp_path / "meta_eval_report.json"
         assert report_file.exists()
@@ -174,19 +223,94 @@ class TestMetaEvalExperiment:
         assert "overall_score" in saved
         assert "knowledge_base_size" in saved
 
-    @patch("litellm.completion")
-    def test_experiment_handles_llm_errors(self, mock_completion, tmp_path):
-        """Experiment handles LLM failures gracefully."""
-        mock_completion.side_effect = Exception("API Error")
+    @pytest.mark.asyncio
+    async def test_experiment_handles_teaching_failure(self, tmp_path):
+        """Experiment returns error report when teaching session fails."""
+        with patch(
+            "amplihack.eval.teaching_session.completion",
+            new=AsyncMock(side_effect=Exception("Test LLM response: Teaching API Error")),
+        ):
+            config = ExperimentConfig(
+                teaching_turns=1,
+                quiz_questions=1,
+                output_dir=str(tmp_path),
+            )
+            experiment = MetaEvalExperiment(config=config)
+            report = await experiment.run()
 
-        config = ExperimentConfig(
-            teaching_turns=1,
-            quiz_questions=1,
-            output_dir=str(tmp_path),
-        )
-        experiment = MetaEvalExperiment(config=config)
-        report = experiment.run()
-
-        # Should still produce a report, just with zero scores
+        # Should produce an error report with zero scores, not raise
         assert isinstance(report, ExperimentReport)
         assert report.overall_score == 0.0
+
+    @pytest.mark.asyncio
+    async def test_quiz_student_uses_module_local_completion(self, tmp_path):
+        """_quiz_student() calls module-local completion (not litellm)."""
+        call_count = 0
+
+        async def teaching_session_mock(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            return _TEACHER_MSG if call_count % 2 == 1 else _STUDENT_MSG
+
+        with (
+            patch(
+                "amplihack.eval.teaching_session.completion",
+                side_effect=teaching_session_mock,
+            ),
+            patch(
+                "amplihack.eval.meta_eval_experiment.completion",
+                new=AsyncMock(return_value=_QUIZ_MSG),
+            ) as mock_quiz_completion,
+            patch(
+                "amplihack.eval.metacognition_grader.completion",
+                new=AsyncMock(return_value=_GRADER_MSG),
+            ),
+        ):
+            config = ExperimentConfig(
+                teaching_turns=1,
+                quiz_questions=2,
+                output_dir=str(tmp_path),
+            )
+            experiment = MetaEvalExperiment(config=config)
+            await experiment.run()
+
+        # _quiz_student calls completion once per quiz question
+        assert mock_quiz_completion.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_quiz_results_use_parsed_json_answer(self, tmp_path):
+        """Quiz results extract 'answer' from JSON response."""
+        call_count = 0
+
+        async def teaching_session_mock(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            return _TEACHER_MSG if call_count % 2 == 1 else _STUDENT_MSG
+
+        with (
+            patch(
+                "amplihack.eval.teaching_session.completion",
+                side_effect=teaching_session_mock,
+            ),
+            patch(
+                "amplihack.eval.meta_eval_experiment.completion",
+                new=AsyncMock(return_value=_QUIZ_MSG),
+            ),
+            patch(
+                "amplihack.eval.metacognition_grader.completion",
+                new=AsyncMock(return_value=_GRADER_MSG),
+            ),
+        ):
+            config = ExperimentConfig(
+                teaching_turns=1,
+                quiz_questions=1,
+                output_dir=str(tmp_path),
+            )
+            experiment = MetaEvalExperiment(config=config)
+            report = await experiment.run()
+
+        assert len(report.quiz_results) == 1
+        quiz_result = report.quiz_results[0]
+        assert "student_answer" in quiz_result
+        # Answer comes from JSON "answer" field
+        assert "Test LLM response" in quiz_result["student_answer"]

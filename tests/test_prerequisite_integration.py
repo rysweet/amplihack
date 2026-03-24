@@ -34,7 +34,6 @@ class TestLauncherIntegration:
 
             # Mock other launcher dependencies
             with (
-                patch.object(launcher, "_start_proxy_if_needed", return_value=True),
                 patch.object(launcher.detector, "find_claude_directory", return_value=None),
             ):
                 result = launcher.prepare_launch()
@@ -67,19 +66,15 @@ class TestLauncherIntegration:
             # Should not have changed directory if prerequisites failed
             assert Path.cwd() == original_cwd
 
-    def test_prerequisite_check_happens_before_proxy_start(self):
-        """Test that prerequisites are checked before starting proxy."""
-        from amplihack.proxy.manager import ProxyManager
-
-        proxy_manager = Mock(spec=ProxyManager)
-        launcher = ClaudeLauncher(proxy_manager=proxy_manager)
+    def test_prerequisite_check_happens_before_launch(self):
+        """Test that prerequisites are checked before launch."""
+        launcher = ClaudeLauncher()
 
         with patch("shutil.which", return_value=None):
-            launcher.prepare_launch()
+            result = launcher.prepare_launch()
 
-            # Proxy should not have been started if prerequisites failed
-            # (will depend on implementation order)
-            assert isinstance(proxy_manager, Mock)
+            # Should fail if prerequisites not met
+            assert isinstance(result, bool)
 
 
 class TestClaudeTraceIntegration:

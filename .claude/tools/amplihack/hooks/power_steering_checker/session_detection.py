@@ -356,9 +356,7 @@ class SessionDetectionMixin:
             content = str(msg.get("message", {}).get("content", "")).lower()
             for keyword in self.OPERATIONS_KEYWORDS:
                 if keyword in content:
-                    self._log(
-                        f"Operations/PM keyword '{keyword}' found in user message", "DEBUG"
-                    )
+                    self._log(f"Operations/PM keyword '{keyword}' found in user message", "DEBUG")
                     found_operations = True
                     break
             if found_operations:

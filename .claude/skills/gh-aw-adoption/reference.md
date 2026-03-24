@@ -779,6 +779,7 @@ environment (e.g., `docker-mcp` requires Docker which isn't available in the AWF
    - ❌ filesystem with host paths - Fails (sandboxed)
 
 3. **Test MCP servers locally first**:
+
    ```bash
    # Test if MCP server works in restricted environment
    uvx docker-mcp  # If this fails, it will fail in CI too

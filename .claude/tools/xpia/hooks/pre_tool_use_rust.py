@@ -14,9 +14,9 @@ Protocol (Claude Code PreToolUse):
 """
 
 import json
-import os
 import sys
 from pathlib import Path
+
 
 # Find project root: Claude Code provides CWD in the hook input,
 # and also sets the process CWD to the project directory.
@@ -33,11 +33,14 @@ def _find_project_root(cwd_override: str | None = None) -> Path | None:
                 return candidate
     return None
 
+
 def _log_event(event_type: str, data: dict) -> None:
     """Log to XPIA security log."""
     log_dir = Path.home() / ".claude" / "logs" / "xpia"
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / f"rust_security_{__import__('datetime').datetime.now().strftime('%Y%m%d')}.log"
+    log_file = (
+        log_dir / f"rust_security_{__import__('datetime').datetime.now().strftime('%Y%m%d')}.log"
+    )
     entry = {
         "timestamp": __import__("datetime").datetime.now().isoformat(),
         "event_type": event_type,
@@ -92,7 +95,7 @@ def main():
 
         sys.path.insert(0, str(project_root / "src"))
         try:
-            from amplihack.security.rust_xpia import validate_bash_command, is_available
+            from amplihack.security.rust_xpia import is_available, validate_bash_command
         except ImportError:
             _deny("🚫 XPIA: Cannot import rust_xpia bridge — blocking (fail-closed).")
             return  # unreachable, _deny calls sys.exit
@@ -107,13 +110,16 @@ def main():
         # Call Rust binary via subprocess bridge
         result = validate_bash_command(command)
 
-        _log_event("pre_tool_validation", {
-            "command": command[:100],
-            "is_valid": result.is_valid,
-            "risk_level": result.risk_level,
-            "threats": len(result.threats),
-            "session_id": input_data.get("session_id", "unknown"),
-        })
+        _log_event(
+            "pre_tool_validation",
+            {
+                "command": command[:100],
+                "is_valid": result.is_valid,
+                "risk_level": result.risk_level,
+                "threats": len(result.threats),
+                "session_id": input_data.get("session_id", "unknown"),
+            },
+        )
 
         if result.should_block or not result.is_valid:
             threat_descs = [t.get("description", "unknown") for t in result.threats[:3]]

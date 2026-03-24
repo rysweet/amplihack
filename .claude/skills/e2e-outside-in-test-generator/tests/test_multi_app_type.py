@@ -5,22 +5,32 @@ Testing pyramid: 80% unit (detection + generation), 20% integration (orchestrato
 """
 
 import json
-import tempfile
+import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from generator.models import AppType, CLICommand, CLIConfig, TUIConfig, TUIWidget, APIConfig, APIEndpointSpec, MCPConfig, MCPTool
-from generator.app_type_detector import detect_app_type, detect_cli_config, detect_api_config, detect_mcp_config
-from generator.template_manager import TemplateManager
-from generator.cli_test_generator import generate_cli_tests
-from generator.tui_test_generator import generate_tui_tests
 from generator.api_test_generator import generate_api_tests
+from generator.app_type_detector import (
+    detect_app_type,
+)
+from generator.cli_test_generator import generate_cli_tests
 from generator.mcp_test_generator import generate_mcp_tests
+from generator.models import (
+    APIConfig,
+    APIEndpointSpec,
+    AppType,
+    CLICommand,
+    CLIConfig,
+    MCPConfig,
+    MCPTool,
+    TUIConfig,
+    TUIWidget,
+)
+from generator.template_manager import TemplateManager
+from generator.tui_test_generator import generate_tui_tests
 
 
 @pytest.fixture(autouse=True)
@@ -108,7 +118,9 @@ class TestCLITestGenerator:
         assert any(r.category.value == "cli_error_handling" for r in results)
 
     def test_output_files_are_yaml(self, tmp_path):
-        config = CLIConfig(binary_path="myapp", framework="click", commands=[CLICommand(name="test")])
+        config = CLIConfig(
+            binary_path="myapp", framework="click", commands=[CLICommand(name="test")]
+        )
         template_mgr = TemplateManager()
         results = generate_cli_tests(config, template_mgr, tmp_path)
         for r in results:
@@ -127,7 +139,9 @@ class TestTUITestGenerator:
         assert any(r.category.value == "tui_smoke" for r in results)
 
     def test_generates_navigation_tests(self, tmp_path):
-        config = TUIConfig(binary_path="myapp", framework="textual", keyboard_shortcuts={"j": "down", "k": "up"})
+        config = TUIConfig(
+            binary_path="myapp", framework="textual", keyboard_shortcuts={"j": "down", "k": "up"}
+        )
         template_mgr = TemplateManager()
         results = generate_tui_tests(config, template_mgr, tmp_path)
         assert any(r.category.value == "tui_navigation" for r in results)
@@ -153,9 +167,19 @@ class TestAPITestGenerator:
             spec_format="openapi",
             endpoints=[
                 APIEndpointSpec(path="/users", method="GET", summary="List users", tags=["users"]),
-                APIEndpointSpec(path="/users", method="POST", summary="Create user", tags=["users"],
-                                request_body_schema={"type": "object", "properties": {"name": {"type": "string"}}}),
-                APIEndpointSpec(path="/users/{id}", method="DELETE", summary="Delete user", tags=["users"]),
+                APIEndpointSpec(
+                    path="/users",
+                    method="POST",
+                    summary="Create user",
+                    tags=["users"],
+                    request_body_schema={
+                        "type": "object",
+                        "properties": {"name": {"type": "string"}},
+                    },
+                ),
+                APIEndpointSpec(
+                    path="/users/{id}", method="DELETE", summary="Delete user", tags=["users"]
+                ),
             ],
             auth_type="bearer",
         )
@@ -191,12 +215,22 @@ class TestMCPTestGenerator:
             server_args=["-m", "myserver"],
             transport="stdio",
             tools=[
-                MCPTool(name="search", description="Search documents",
-                        input_schema={"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
-                        required_inputs=["query"]),
-                MCPTool(name="summarize", description="Summarize text",
-                        input_schema={"type": "object", "properties": {"text": {"type": "string"}}},
-                        required_inputs=["text"]),
+                MCPTool(
+                    name="search",
+                    description="Search documents",
+                    input_schema={
+                        "type": "object",
+                        "properties": {"query": {"type": "string"}},
+                        "required": ["query"],
+                    },
+                    required_inputs=["query"],
+                ),
+                MCPTool(
+                    name="summarize",
+                    description="Summarize text",
+                    input_schema={"type": "object", "properties": {"text": {"type": "string"}}},
+                    required_inputs=["text"],
+                ),
             ],
         )
 
@@ -223,23 +257,35 @@ class TestMCPTestGenerator:
 class TestOrchestratorDispatch:
     def test_generate_tests_with_explicit_cli_type(self, tmp_path):
         from generator.orchestrator import generate_tests
+
         result = generate_tests(tmp_path, app_type="cli")
         assert result.success
         assert result.total_tests > 0
 
     def test_generate_tests_with_explicit_api_type(self, tmp_path):
         from generator.orchestrator import generate_tests
+
         # Create a minimal OpenAPI spec for the API detector
-        (tmp_path / "openapi.json").write_text(json.dumps({
-            "openapi": "3.0.0",
-            "info": {"title": "Test", "version": "1.0"},
-            "paths": {
-                "/items": {
-                    "get": {"summary": "List items", "responses": {"200": {"description": "OK"}}},
-                    "post": {"summary": "Create item", "responses": {"201": {"description": "Created"}}},
+        (tmp_path / "openapi.json").write_text(
+            json.dumps(
+                {
+                    "openapi": "3.0.0",
+                    "info": {"title": "Test", "version": "1.0"},
+                    "paths": {
+                        "/items": {
+                            "get": {
+                                "summary": "List items",
+                                "responses": {"200": {"description": "OK"}},
+                            },
+                            "post": {
+                                "summary": "Create item",
+                                "responses": {"201": {"description": "Created"}},
+                            },
+                        }
+                    },
                 }
-            }
-        }))
+            )
+        )
         result = generate_tests(tmp_path, app_type="api")
         assert result.success
         assert result.total_tests > 0
@@ -247,10 +293,12 @@ class TestOrchestratorDispatch:
     def test_backward_compat_generate_e2e_tests(self):
         """generate_e2e_tests still exists and is importable."""
         from generator import generate_e2e_tests
+
         assert callable(generate_e2e_tests)
 
     def test_all_app_types_importable(self):
-        from generator import AppType, CLIConfig, TUIConfig, APIConfig, MCPConfig
+        from generator import AppType
+
         assert AppType.CLI.value == "cli"
         assert AppType.TUI.value == "tui"
         assert AppType.API.value == "api"

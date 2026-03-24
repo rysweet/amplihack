@@ -61,6 +61,73 @@ See the documentation for each subcommand:
 
 ---
 
+## launch
+
+Start an interactive session or run autonomously in `--auto` mode.
+
+```
+amplihack launch [flags] [-- <claude-args>]
+amplihack [flags] [-- <claude-args>]
+```
+
+Arguments after `--` are forwarded verbatim to the underlying agent binary (Claude Code, Copilot, Codex, or Amplifier). amplihack flags must appear before `--`.
+
+### Flags
+
+| Flag                  | Default | Description                                                                             |
+| --------------------- | ------- | --------------------------------------------------------------------------------------- |
+| `--auto`, `-a`        | off     | Run in autonomous agentic mode (clarify → plan → execute → evaluate loop).              |
+| `--max-turns INT`     | `10`    | Maximum turns in `--auto` mode before stopping.                                         |
+| `--append PROMPT`     | —       | Inject PROMPT into an already-running `--auto` session without starting a new one.      |
+| `--ui`                | off     | Enable the streaming UI overlay when running `--auto` mode.                             |
+| `--no-reflection`     | off     | Skip the post-session reflection analysis written to `.claude/runtime/reflection/`.     |
+| `--subprocess-safe`   | off     | Skip staging and environment updates. For use by internal subprocess delegates only.    |
+| `--checkout-repo URI` | —       | Clone the GitHub repository at URI and use it as the working directory for the session. |
+| `--docker`            | off     | Run the agent binary inside a Docker container rather than on the host.                 |
+
+### Model selection
+
+Model selection behaviour is unchanged from pre-0.10. Pass `--model` explicitly after `--` to choose a model for the session:
+
+```bash
+amplihack launch -- --model claude-3-5-sonnet-20241022
+```
+
+`AMPLIHACK_DEFAULT_MODEL` is respected only when no `--model` flag is present — identical behaviour to before the proxy removal. The proxy subsystem removal has no effect on how models are selected.
+
+### Passthrough flags
+
+Unknown flags are forwarded to the underlying binary when using a passthrough command (`launch`, `claude`, `copilot`, `codex`, `amplifier`). Use `--` to separate amplihack flags from agent flags explicitly:
+
+```bash
+# Pass --model to Claude Code
+amplihack launch -- --model claude-3-5-sonnet-20241022
+
+# Pass a prompt non-interactively
+amplihack launch -- -p "Explain the auth module"
+```
+
+### Examples
+
+```bash
+# Interactive session
+amplihack launch
+
+# Autonomous mode, up to 20 turns
+amplihack launch --auto --max-turns 20
+
+# Use a specific model
+amplihack launch -- --model claude-opus-4-5
+
+# Clone a repo and start a session in it
+amplihack launch --checkout-repo https://github.com/org/repo
+
+# Append a follow-up prompt to a running auto session
+amplihack launch --append "Now add unit tests for the module you just wrote"
+```
+
+---
+
 ## Exit Codes
 
 | Code | Meaning                                                               |
@@ -122,4 +189,4 @@ AMPLIHACK_ENABLE_BLARIFY=1 amplihack launch
 - [Getting Started](../tutorials/amplihack-tutorial.md)
 - [Recipe CLI Reference](./recipe-cli-reference.md)
 - [Blarify Code Indexing](../howto/enable-blarify.md)
-- [Configuration Guide](../PROXY_CONFIG_GUIDE.md)
+- [Configure Azure OpenAI](../howto/configure-azure-openai.md)

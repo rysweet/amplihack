@@ -22,7 +22,6 @@ from . import copytree_manifest
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
 from .launcher.session_tracker import SessionTracker
-from .proxy import ProxyConfig, ProxyManager
 from .staging_cleanup import cleanup_legacy_skills
 from .utils import is_uvx_deployment
 
@@ -189,8 +188,6 @@ def _launch_command_impl(
 
         # Build command arguments for Docker
         docker_args = ["launch"]
-        if getattr(args, "with_proxy_config", None):
-            docker_args.extend(["--with-proxy-config", args.with_proxy_config])
         if getattr(args, "checkout_repo", None):
             docker_args.extend(["--checkout-repo", args.checkout_repo])
         if claude_args:
@@ -199,46 +196,8 @@ def _launch_command_impl(
 
         return docker_manager.run_command(docker_args)
 
-    # In UVX mode, Claude uses --add-dir for both project directory and plugin directory
-
-    proxy_manager = None
-    system_prompt_path = None
-
-    # Set up proxy if configuration provided
-    if args.with_proxy_config:
-        # For UVX mode, resolve relative paths from original directory
-        if not Path(args.with_proxy_config).is_absolute():
-            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-            config_path = Path(original_cwd) / args.with_proxy_config
-            config_path = config_path.resolve()
-        else:
-            config_path = Path(args.with_proxy_config).resolve()
-
-        if not config_path.exists():
-            print(f"Error: Proxy configuration file not found: {config_path}")
-            return 1
-
-        print(f"Loading proxy configuration from: {config_path}")
-        proxy_config = ProxyConfig(config_path)
-
-        if not proxy_config.validate():
-            print(
-                "Error: Invalid proxy configuration. Check that OPENAI_API_KEY is set in your .env file"
-            )
-            return 1
-
-        proxy_manager = ProxyManager(proxy_config)
-
-        # When using proxy, automatically use Azure persistence prompt
-        default_prompt = Path(__file__).parent / "prompts" / "azure_persistence.md"
-        if default_prompt.exists():
-            system_prompt_path = default_prompt
-            print("Auto-appending Azure persistence prompt for proxy integration")
-
     # Launch Claude with checkout repo if specified
     launcher = ClaudeLauncher(
-        proxy_manager=proxy_manager,
-        append_system_prompt=system_prompt_path,
         checkout_repo=getattr(args, "checkout_repo", None),
         claude_args=claude_args,
         verbose=False,  # Interactive mode does not use --verbose

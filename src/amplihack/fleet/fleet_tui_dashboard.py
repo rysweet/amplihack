@@ -260,6 +260,7 @@ def run_dashboard(
         app = FleetDashboardApp(refresh_interval=interval)
     except ValueError as exc:
         import click
+
         click.echo(f"ERROR: {exc}", err=True)
         click.echo("Run 'fleet setup' to check prerequisites.", err=True)
         raise SystemExit(1)

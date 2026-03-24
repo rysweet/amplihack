@@ -1,15 +1,15 @@
 """Core launcher functionality for Claude Code."""
 
 import atexit
+import functools
 import logging
 import os
-import shlex
+import shutil
 import signal
 import subprocess
 import sys
 from pathlib import Path
 
-from ..proxy.manager import ProxyManager
 from ..tracing.trace_logger import TraceLogger
 from ..utils.claude_cli import get_claude_cli_path
 from ..utils.prerequisites import check_prerequisites
@@ -21,6 +21,7 @@ from .repo_checkout import checkout_repository
 logger = logging.getLogger(__name__)
 
 
+@functools.cache
 def _is_noninteractive() -> bool:
     """Check if running in non-interactive mode.
 
@@ -34,6 +35,9 @@ def _is_noninteractive() -> bool:
     - Skips auto-update and auto-install checks
     - Uses shorter timeouts for network operations
     - Fails fast when claude binary is not found
+
+    Cached via lru_cache: environment does not change during a single run,
+    so repeated calls (prepare_launch, launch, etc.) pay no extra cost.
 
     Returns:
         True if running in non-interactive mode.
@@ -96,7 +100,6 @@ class ClaudeLauncher:
     This class manages the complete Claude Code launch process including:
     - Repository checkout and directory management
     - UVX environment detection and --add-dir integration
-    - Proxy management for Azure integration
     - Performance optimization through intelligent caching
 
     Performance Optimizations:
@@ -116,7 +119,6 @@ class ClaudeLauncher:
 
     def __init__(
         self,
-        proxy_manager: ProxyManager | None = None,
         append_system_prompt: Path | None = None,
         force_staging: bool = False,
         checkout_repo: str | None = None,
@@ -126,14 +128,12 @@ class ClaudeLauncher:
         """Initialize Claude launcher.
 
         Args:
-            proxy_manager: Optional proxy manager for Azure integration.
             append_system_prompt: Optional path to system prompt to append.
             force_staging: If True, force staging approach instead of --add-dir.
             checkout_repo: Optional GitHub repository URI to clone and use as working directory.
             claude_args: Additional arguments to forward to Claude.
             verbose: If True, add --verbose flag to Claude command.
         """
-        self.proxy_manager = proxy_manager
         self.append_system_prompt = append_system_prompt
         self.detector = ClaudeDirectoryDetector()
         self.uvx_manager = UVXManager(force_staging=force_staging)
@@ -212,11 +212,7 @@ class ClaudeLauncher:
         if not self._handle_directory_change(target_dir):
             return False
 
-        # 9. Start proxy if needed
-        if not self._start_proxy_if_needed():
-            return False
-
-        # 10. Auto-configure LSP if supported languages detected
+        # 9. Auto-configure LSP if supported languages detected
         # Skip in non-interactive mode (involves npm installs and network calls)
         if not noninteractive:
             self._configure_lsp_auto(target_dir)
@@ -349,63 +345,6 @@ class ClaudeLauncher:
             print(f"Failed to change directory to {target_dir}: {e}")
             return False
 
-    def _start_proxy_if_needed(self) -> bool:
-        """Start proxy if configured.
-
-        Returns:
-            True if proxy started successfully or not needed, False otherwise.
-        """
-        if self.proxy_manager:
-            noninteractive = _is_noninteractive()
-            timeout_seconds = 10 if noninteractive else 60
-
-            print("Starting proxy and waiting for readiness...")
-
-            # Use a threading timer to enforce timeout on proxy startup
-            import threading
-
-            proxy_started = [False]
-            proxy_error = [None]
-
-            def _start_proxy():
-                try:
-                    proxy_started[0] = self.proxy_manager.start_proxy()
-                except Exception as e:
-                    proxy_error[0] = e
-
-            thread = threading.Thread(target=_start_proxy, daemon=True)
-            thread.start()
-            thread.join(timeout=timeout_seconds)
-
-            if thread.is_alive():
-                print(f"Proxy startup timed out after {timeout_seconds}s")
-                if noninteractive:
-                    print("In non-interactive mode, continuing without proxy")
-                    self.proxy_manager = None
-                    return True
-                return False
-
-            if proxy_error[0]:
-                print(f"Proxy startup error: {proxy_error[0]}")
-                return False
-
-            if not proxy_started[0]:
-                print("Failed to start proxy")
-                return False
-
-            # Verify proxy is actually ready before proceeding
-            if not self.proxy_manager.is_running():
-                print("Proxy is not running after startup")
-                return False
-
-            print(f"Proxy running at: {self.proxy_manager.get_proxy_url()}")
-
-            # Open terminal window tailing proxy logs (skip in non-interactive)
-            if not noninteractive:
-                self._open_log_tail_window()
-
-        return True
-
     def _configure_lsp_auto(self, target_dir: Path) -> None:
         """Auto-configure LSP using Claude Code plugin marketplace.
 
@@ -465,10 +404,7 @@ class ClaudeLauncher:
 
             for lang in lang_names[:3]:
                 binary = binaries_to_install.get(lang)
-                if (
-                    binary
-                    and subprocess.run(["which", binary], capture_output=True).returncode != 0
-                ):
+                if binary and not shutil.which(binary):
                     # Try to install via npm (for most LSP servers)
                     try:
                         subprocess.run(
@@ -540,74 +476,6 @@ class ClaudeLauncher:
         except Exception as e:
             logger.debug(f"LSP auto-configuration skipped: {e}")
 
-    def _open_log_tail_window(self) -> None:
-        """Open a new terminal window tailing proxy logs.
-
-        This method spawns a new terminal window (macOS Terminal.app on Darwin)
-        that tails both stdout and stderr proxy log files. The terminal window
-        remains open even after Claude exits, allowing for post-mortem debugging.
-
-        Platform Support:
-            - macOS (Darwin): Uses osascript to open Terminal.app
-            - Other platforms: Not yet implemented (gracefully skips)
-
-        Error Handling:
-            Errors are logged but do not fail the proxy startup process.
-        """
-        # Only supported on macOS for now
-        if sys.platform != "darwin":
-            return
-
-        try:
-            # Get log directory
-            log_dir = Path("/tmp/amplihack_logs")
-            if not log_dir.exists():
-                print("Log directory does not exist, skipping log tail window")
-                return
-
-            # Find the most recent log files (they were just created)
-            # We use glob pattern to match any timestamp
-            stdout_logs = list(log_dir.glob("proxy-stdout-*.log"))
-            stderr_logs = list(log_dir.glob("proxy-stderr-*.log"))
-
-            if not stdout_logs or not stderr_logs:
-                print("Could not find proxy log files, skipping log tail window")
-                return
-
-            # Sort by modification time and get the most recent
-            stdout_log = sorted(stdout_logs, key=lambda p: p.stat().st_mtime)[-1]
-            stderr_log = sorted(stderr_logs, key=lambda p: p.stat().st_mtime)[-1]
-
-            # Build the tail command that follows both files
-            # Using tail -f to follow files as they grow
-            # Use shlex.quote() to prevent command injection via log file paths
-            tail_cmd = f"tail -f {shlex.quote(str(stdout_log))} {shlex.quote(str(stderr_log))}"
-
-            # AppleScript to open a new Terminal window with the tail command
-            # We use 'do script' to execute the command in a new window
-            applescript = f'''
-            tell application "Terminal"
-                activate
-                do script "{tail_cmd}"
-            end tell
-            '''
-
-            # Execute osascript in the background (non-blocking)
-            subprocess.Popen(
-                ["osascript", "-e", applescript],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-
-            print("Opened terminal window tailing proxy logs")
-            print(f"  stdout: {stdout_log.name}")
-            print(f"  stderr: {stderr_log.name}")
-
-        except Exception as e:
-            # Log error but don't fail proxy startup
-            print(f"Warning: Could not open log tail window: {e}")
-
     def _has_model_arg(self) -> bool:
         """Check if user has already specified --model in claude_args.
 
@@ -618,26 +486,84 @@ class ClaudeLauncher:
             return False
         return "--model" in self.claude_args
 
-    def _get_azure_model(self) -> str:
-        """Extract Azure model name from proxy configuration.
+    def _append_common_args(self, cmd: list[str]) -> None:
+        """Append arguments shared by all Claude command variants.
 
-        Reads from proxy config in priority order:
-        1. BIG_MODEL (primary deployment model)
-        2. AZURE_OPENAI_DEPLOYMENT_NAME (fallback deployment name)
-        3. "gpt-5-codex" (hardcoded fallback)
+        Centralises the five argument groups that every build path needs:
+        --verbose, --append-system-prompt, --add-dir, default model, and
+        forwarded user args.  Keeping them in one place prevents the two
+        build paths (standard CLI vs native binary) from drifting apart.
+
+        Args:
+            cmd: Command list to extend in-place.
+        """
+        if self.verbose:
+            cmd.append("--verbose")
+
+        if self.append_system_prompt and self.append_system_prompt.exists():
+            cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
+
+        if self._target_directory and self._cached_uvx_decision:
+            cmd.extend(["--add-dir", str(self._target_directory)])
+
+        if not self._has_model_arg():
+            default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "opus[1m]")
+            cmd.extend(["--model", default_model])
+
+        if self.claude_args:
+            cmd.extend(self.claude_args)
+
+    def _prepare_environment(self) -> dict[str, str]:
+        """Build the subprocess environment for Claude.
+
+        Extracted from launch() and launch_interactive() which previously
+        contained identical 50-line blocks.  Single source of truth prevents
+        the two launch paths from diverging silently.
 
         Returns:
-            Azure model deployment name.
+            A copy of os.environ augmented with amplihack-specific variables.
         """
-        if not self.proxy_manager or not self.proxy_manager.proxy_config:
-            return "gpt-5-codex"
+        from .memory_config import display_memory_config, get_memory_config
 
-        proxy_config = self.proxy_manager.proxy_config
-        return (
-            proxy_config.get("BIG_MODEL")
-            or proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME")
-            or "gpt-5-codex"
-        )
+        env = os.environ.copy()
+
+        # Agent identity and home directory (Rust CLI parity)
+        env["AMPLIHACK_AGENT_BINARY"] = "claude"
+        env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
+
+        # Smart memory configuration
+        memory_config = get_memory_config(env.get("NODE_OPTIONS"))
+        if memory_config and "node_options" in memory_config:
+            env["NODE_OPTIONS"] = memory_config["node_options"]
+            display_memory_config(memory_config)
+        else:
+            # Fallback to 32 GB — generous heap for large codebases (6 000+ files).
+            env["NODE_OPTIONS"] = "--max-old-space-size=32768"
+
+        if self._target_directory:
+            env.update(self.uvx_manager.get_environment_variables())
+
+        if "CLAUDE_PROJECT_DIR" in os.environ:
+            env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
+
+        # Plugin root for discoverability
+        if os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true":
+            installed_plugin_path = (
+                Path.home() / ".claude" / "plugins" / "cache" / "amplihack" / "amplihack" / "0.9.0"
+            )
+            env["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
+        else:
+            plugin_root = Path.home() / ".amplihack" / ".claude"
+            if plugin_root.exists():
+                env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
+
+        # Ensure user-local npm bin is in PATH (for claude installed via npm)
+        user_npm_bin = str(Path.home() / ".npm-global" / "bin")
+        current_path = env.get("PATH", "")
+        if user_npm_bin not in current_path:
+            env["PATH"] = f"{user_npm_bin}:{current_path}"
+
+        return env
 
     def build_claude_command(self) -> list[str]:
         """Build the Claude command with arguments.
@@ -661,32 +587,7 @@ class ClaudeLauncher:
 
             # Build standard claude command
             cmd = [claude_path, "--dangerously-skip-permissions"]
-
-            # Add --verbose if requested
-            if self.verbose:
-                cmd.append("--verbose")
-
-            # Add system prompt if provided
-            if self.append_system_prompt and self.append_system_prompt.exists():
-                cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
-
-            # Add --add-dir if in UVX mode
-            if self._target_directory and self._cached_uvx_decision:
-                cmd.extend(["--add-dir", str(self._target_directory)])
-
-            # Add Azure model when using proxy
-            if self.proxy_manager:
-                azure_model = self._get_azure_model()
-                cmd.extend(["--model", f"azure/{azure_model}"])
-            # Add default model if not using proxy and user hasn't specified one
-            elif not self._has_model_arg():
-                default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "opus[1m]")
-                cmd.extend(["--model", default_model])
-
-            # Add forwarded arguments
-            if self.claude_args:
-                cmd.extend(self.claude_args)
-
+            self._append_common_args(cmd)
             return cmd
 
         # Use native binary (rustyclawd, etc.)
@@ -708,32 +609,7 @@ class ClaudeLauncher:
 
         # Add standard Claude CLI arguments
         cmd.append("--dangerously-skip-permissions")
-
-        # Add --verbose if requested
-        if self.verbose:
-            cmd.append("--verbose")
-
-        # Add system prompt if provided
-        if self.append_system_prompt and self.append_system_prompt.exists():
-            cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
-
-        # Add --add-dir if in UVX mode
-        if self._target_directory and self._cached_uvx_decision:
-            cmd.extend(["--add-dir", str(self._target_directory)])
-
-        # Add Azure model when using proxy
-        if self.proxy_manager:
-            azure_model = self._get_azure_model()
-            cmd.extend(["--model", f"azure/{azure_model}"])
-        # Add default model if not using proxy and user hasn't specified one
-        elif not self._has_model_arg():
-            default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "opus[1m]")
-            cmd.extend(["--model", default_model])
-
-        # Add forwarded arguments
-        if self.claude_args:
-            cmd.extend(self.claude_args)
-
+        self._append_common_args(cmd)
         return cmd
 
     def _ensure_runtime_directories(self, target_dir: Path) -> bool:
@@ -863,82 +739,13 @@ class ClaudeLauncher:
                 print("\nReceived interrupt signal. Shutting down...")
                 if self.claude_process:
                     self.claude_process.terminate()
-                if self.proxy_manager:
-                    self.proxy_manager.stop_proxy()
                 sys.exit(0)
 
             signal.signal(signal.SIGINT, signal_handler)
             if sys.platform != "win32":
                 signal.signal(signal.SIGTERM, signal_handler)
 
-            # Set environment variables for UVX mode
-            env = os.environ.copy()
-
-            # Set agent identity and home directory for Rust CLI parity
-            env["AMPLIHACK_AGENT_BINARY"] = "claude"
-            env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
-
-            # Smart memory configuration
-            from .memory_config import display_memory_config, get_memory_config
-
-            memory_config = get_memory_config(env.get("NODE_OPTIONS"))
-            if memory_config and "node_options" in memory_config:
-                env["NODE_OPTIONS"] = memory_config["node_options"]
-                # Display configuration on launch
-                display_memory_config(memory_config)
-            else:
-                # Fallback to 32GB if detection fails
-                # Intentional: High-RAM development systems should use generous heap
-                # for large codebases (6000+ files). Matches smart memory system's
-                # cap and ensures blarify indexing completes on typical dev machines.
-                env["NODE_OPTIONS"] = "--max-old-space-size=32768"
-
-            if self._target_directory:
-                env.update(self.uvx_manager.get_environment_variables())
-            # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
-            if "CLAUDE_PROJECT_DIR" in os.environ:
-                env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
-
-            # Export CLAUDE_PLUGIN_ROOT for plugin discoverability
-            # Check if plugin was installed via Claude Code (AMPLIHACK_PLUGIN_INSTALLED set by cli.py)
-            if os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true":
-                # Plugin installed via Claude Code - use installed plugin path
-                installed_plugin_path = (
-                    Path.home()
-                    / ".claude"
-                    / "plugins"
-                    / "cache"
-                    / "amplihack"
-                    / "amplihack"
-                    / "0.9.0"
-                )
-                env["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
-            else:
-                # Directory copy mode - use ~/.amplihack/.claude/
-                plugin_root = Path.home() / ".amplihack" / ".claude"
-                if plugin_root.exists():
-                    env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
-
-            # Ensure user-local npm bin is in PATH (for claude installed via npm)
-            user_npm_bin = str(Path.home() / ".npm-global" / "bin")
-            current_path = env.get("PATH", "")
-            if user_npm_bin not in current_path:
-                env["PATH"] = f"{user_npm_bin}:{current_path}"
-
-            # Include proxy environment variables if proxy is configured
-            if self.proxy_manager and self.proxy_manager.is_running():
-                proxy_env = self.proxy_manager.env_manager.get_proxy_env(
-                    proxy_port=self.proxy_manager.proxy_port,
-                    config=self.proxy_manager.proxy_config.to_env_dict()
-                    if self.proxy_manager.proxy_config
-                    else None,
-                )
-                # Update env with proxy settings, especially ANTHROPIC_BASE_URL
-                if proxy_env.get("ANTHROPIC_BASE_URL"):
-                    env["ANTHROPIC_BASE_URL"] = proxy_env["ANTHROPIC_BASE_URL"]
-                    print(f"✓ Configured Claude to use proxy at {proxy_env['ANTHROPIC_BASE_URL']}")
-                if proxy_env.get("ANTHROPIC_API_KEY"):
-                    env["ANTHROPIC_API_KEY"] = proxy_env["ANTHROPIC_API_KEY"]
+            env = self._prepare_environment()
 
             # Launch Claude
             self.claude_process = subprocess.Popen(cmd, env=env)
@@ -951,10 +758,6 @@ class ClaudeLauncher:
         except Exception as e:
             print(f"Error launching Claude: {e}")
             return 1
-        finally:
-            # Clean up proxy
-            if self.proxy_manager:
-                self.proxy_manager.stop_proxy()
 
     def launch_interactive(self) -> int:
         """Launch Claude in interactive mode with live output.
@@ -985,88 +788,16 @@ class ClaudeLauncher:
                 # Set shutdown flag BEFORE sys.exit to coordinate with hooks
                 # Prevents BrokenPipeError in sessionstop hook during interrupt shutdown
                 os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
-                if self.proxy_manager:
-                    self.proxy_manager.stop_proxy()
                 sys.exit(0)
 
             signal.signal(signal.SIGINT, signal_handler)
             if sys.platform != "win32":
                 signal.signal(signal.SIGTERM, signal_handler)
 
-            # Set environment variables for UVX mode
-            env = os.environ.copy()
-
-            # Set agent identity and home directory for Rust CLI parity
-            env["AMPLIHACK_AGENT_BINARY"] = "claude"
-            env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
-
-            # Smart memory configuration
-            from .memory_config import display_memory_config, get_memory_config
-
-            memory_config = get_memory_config(env.get("NODE_OPTIONS"))
-            if memory_config and "node_options" in memory_config:
-                env["NODE_OPTIONS"] = memory_config["node_options"]
-                # Display configuration on launch
-                display_memory_config(memory_config)
-            else:
-                # Fallback to 32GB if detection fails
-                # Intentional: High-RAM development systems should use generous heap
-                # for large codebases (6000+ files). Matches smart memory system's
-                # cap and ensures blarify indexing completes on typical dev machines.
-                env["NODE_OPTIONS"] = "--max-old-space-size=32768"
-
-            if self._target_directory:
-                env.update(self.uvx_manager.get_environment_variables())
-            # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
-            if "CLAUDE_PROJECT_DIR" in os.environ:
-                env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
-
-            # Export CLAUDE_PLUGIN_ROOT for plugin discoverability
-            # Check if plugin was installed via Claude Code (AMPLIHACK_PLUGIN_INSTALLED set by cli.py)
-            if os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true":
-                # Plugin installed via Claude Code - use installed plugin path
-                installed_plugin_path = (
-                    Path.home()
-                    / ".claude"
-                    / "plugins"
-                    / "cache"
-                    / "amplihack"
-                    / "amplihack"
-                    / "0.9.0"
-                )
-                env["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
-            else:
-                # Directory copy mode - use ~/.amplihack/.claude/
-                plugin_root = Path.home() / ".amplihack" / ".claude"
-                if plugin_root.exists():
-                    env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
-
-            # Ensure user-local npm bin is in PATH (for claude installed via npm)
-            user_npm_bin = str(Path.home() / ".npm-global" / "bin")
-            current_path = env.get("PATH", "")
-            if user_npm_bin not in current_path:
-                env["PATH"] = f"{user_npm_bin}:{current_path}"
-
-            # Include proxy environment variables if proxy is configured
-            if self.proxy_manager and self.proxy_manager.is_running():
-                proxy_env = self.proxy_manager.env_manager.get_proxy_env(
-                    proxy_port=self.proxy_manager.proxy_port,
-                    config=self.proxy_manager.proxy_config.to_env_dict()
-                    if self.proxy_manager.proxy_config
-                    else None,
-                )
-                # Update env with proxy settings, especially ANTHROPIC_BASE_URL
-                if proxy_env.get("ANTHROPIC_BASE_URL"):
-                    env["ANTHROPIC_BASE_URL"] = proxy_env["ANTHROPIC_BASE_URL"]
-                    print(f"✓ Configured Claude to use proxy at {proxy_env['ANTHROPIC_BASE_URL']}")
-                if proxy_env.get("ANTHROPIC_API_KEY"):
-                    env["ANTHROPIC_API_KEY"] = proxy_env["ANTHROPIC_API_KEY"]
+            env = self._prepare_environment()
 
             # Launch Claude with direct I/O (interactive mode)
             print("Starting Claude...")
-            print(
-                f"If Claude appears to hang, check proxy connection at: {self.proxy_manager.get_proxy_url() if self.proxy_manager else 'N/A'}"
-            )
             exit_code = subprocess.call(cmd, env=env)
 
             return exit_code
@@ -1074,10 +805,6 @@ class ClaudeLauncher:
         except Exception as e:
             print(f"Error launching Claude: {e}")
             return 1
-        finally:
-            # Clean up proxy
-            if self.proxy_manager:
-                self.proxy_manager.stop_proxy()
 
     # Neo4j startup methods removed (Week 7 cleanup)
 
