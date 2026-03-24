@@ -81,12 +81,15 @@ def _check_path_traversal(path_str: str) -> None:
         logging.getLogger(__name__).debug("Symlink resolution failed for %s: %s", p, exc)
 
 
-def _validate_path(path_str: str) -> Path:
+def _validate_path(path_str: str | Path) -> Path:
     """Validate the audit root path and return as Path object.
+
+    Accepts both str and Path objects.
 
     Raises PathTraversalError for unsafe paths.
     Raises ValueError if path does not exist or is not a directory.
     """
+    path_str = str(path_str)
     _check_path_traversal(path_str)
 
     p = Path(path_str)
@@ -536,6 +539,11 @@ def _run_all_checkers(
     workflow_cache: dict[Path, str] = {}
     if wf_dir.is_dir() and any(d in active_dims for d in (1, 2, 3, 4, 6)):
         for wf_file in sorted(list(wf_dir.glob("*.yml")) + list(wf_dir.glob("*.yaml"))):
+            # Skip .lock.yml files — gh-aw rendered templates containing LLM
+            # prompts with </system> tags and ${{ secrets.* }} template refs
+            # that cause XPIA and secret-exposure false positives.
+            if ".lock." in wf_file.name:
+                continue
             try:
                 wf_content = wf_file.read_text(errors="replace")
                 rel = str(wf_file.relative_to(root_path)).replace("\\", "/")
@@ -598,7 +606,7 @@ def _build_advisory_messages(
 
 
 def run_audit(
-    root: str,
+    root: str | Path,
     scope: str = "all",
     min_severity: str = "Info",
     generate_sbom: bool = False,
@@ -611,7 +619,7 @@ def run_audit(
     3. ACCEPTED_RISKS_OVERFLOW: check file size before parsing
 
     Args:
-        root: Repository root path as string.
+        root: Repository root path (str or Path).
         scope: Comma-separated scope (e.g., "all", "gha", "python,node").
         min_severity: Minimum severity to include (Critical/High/Medium/Info).
         generate_sbom: If True, emit SBOM write advisory.
@@ -624,6 +632,9 @@ def run_audit(
         InvalidScopeError: Scope is unrecognized.
         AcceptedRisksOverflowError: Accepted-risks file exceeds 64KB.
     """
+    # Coerce Path to str for consistent handling
+    root = str(root)
+
     # ── Invariant 1: PATH_TRAVERSAL check (BEFORE scope validation) ──────────
     _validate_path(root)
 
