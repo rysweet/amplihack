@@ -40,13 +40,9 @@ _ENV_VAR_SIZE_LIMIT = 32 * 1024  # 32 768 bytes — kernel limit guard
 # R8: cap binary stdout at 10 MB to prevent memory exhaustion.
 MAX_BINARY_OUTPUT_BYTES = 10 * 1024 * 1024  # 10 MiB
 
-# R7: allowlist pattern for _sanitize_key — only safe characters allowed.
+# R7: replacement regex for _sanitize_key — only safe characters allowed.
 # Dots and hyphens are explicitly included so recipe/package names round-trip.
-_KEY_ALLOWLIST_RE: re.Pattern[str] = re.compile(r"^[a-zA-Z0-9_.\-]{1,256}$")
-
-# Pre-compiled at module level to avoid regex recompilation on every
-# _sanitize_key() call.  Used as the replacement engine — the allowlist
-# check above rejects bad keys before this runs.
+# Pre-compiled at module level to avoid regex recompilation on every call.
 _KEY_SANITIZE_RE: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9_.\-]")
 
 # Separate sanitizer for progress file names — must match the pattern used by
