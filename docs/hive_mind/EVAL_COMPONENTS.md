@@ -161,7 +161,7 @@ That does not mean the eval stack became a C# system. The deploy script, monitor
 
 The Event Hubs connection string should move through environment variables, not command-line arguments.
 
-The direct compatibility wrappers in `deploy/azure_hive/` read `EH_CONN`, `AMPLIHACK_EH_INPUT_HUB`, and `AMPLIHACK_EH_RESPONSE_HUB` from the environment, then pass them through only when the operator did not already provide explicit flags. The Aspire AppHost follows the same pattern and sets `EH_CONN` as an environment variable on its executable resources.
+The direct compatibility wrappers in `deploy/azure_hive/` read `EH_CONN`, `AMPLIHACK_EH_INPUT_HUB`, and `AMPLIHACK_EH_RESPONSE_HUB` from the environment, then pass them through only when the operator did not already provide explicit flags. The Aspire AppHost follows the same pattern for its local monitor and eval executable resources, where it sets `EH_CONN` as an environment variable instead of passing the connection string on the command line.
 
 That is why the docs prefer `read -rsp ... EH_CONN` plus `export EH_CONN` over `--connection-string ...`. It keeps the secret out of `argv` and therefore out of normal process-list output.
 
