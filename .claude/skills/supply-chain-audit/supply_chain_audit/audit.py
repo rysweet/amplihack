@@ -10,7 +10,6 @@ from .detector import detect_ecosystems
 from .errors import (
     AcceptedRisksOverflowError,
     PathTraversalError,
-    XpiaEscalationError,
 )
 from .external_tools import check_tool_availability as _check_tool_availability
 from .report import AuditReport, SlsaAssessment, build_report
@@ -92,14 +91,23 @@ def _validate_path(path_str: str) -> Path:
     return Path(path_str)
 
 
-def _check_xpia(content: str, filepath: str) -> None:
-    """Raise XpiaEscalationError if prompt injection patterns are detected.
+def _check_xpia(content: str, filepath: str) -> list[str]:
+    """Check for prompt injection patterns and return advisory messages.
 
-    The filepath is included in the error but the injection content is NOT.
+    Returns a list of advisory strings (empty if clean). Does NOT abort the
+    audit — XPIA matches are reported as advisories so the audit can continue
+    and surface all issues rather than crashing on the first match.
     """
+    advisories: list[str] = []
     for pattern in _XPIA_PATTERNS:
         if pattern.search(content):
-            raise XpiaEscalationError(filepath)
+            advisories.append(
+                f"⚠️ XPIA WARNING: Possible prompt injection pattern "
+                f"({pattern.pattern}) detected in '{filepath}'. "
+                f"Review manually or escalate to xpia-defense skill."
+            )
+            break  # One advisory per file is sufficient
+    return advisories
 
 
 def _load_accepted_risks(root: Path) -> list[dict]:
@@ -459,14 +467,15 @@ def _run_all_checkers(
     root_path: Path,
     dim_checkers: dict,
     tool_status: dict[str, str],
-) -> tuple[list[Finding], list[str], dict[Path, str]]:
+) -> tuple[list[Finding], list[str], dict[Path, str], list[str]]:
     """Run XPIA scan and dimension checkers.
 
     Returns:
-        Tuple of (all_findings, skipped_files, workflow_cache).
+        Tuple of (all_findings, skipped_files, workflow_cache, xpia_advisories).
     """
     all_findings: list[Finding] = []
     skipped_files: list[str] = []
+    xpia_advisories: list[str] = []
 
     # XPIA check on workflow files — run once before checker loop.
     # Build workflow_cache here so _build_slsa_assessment can reuse the
@@ -478,10 +487,8 @@ def _run_all_checkers(
             try:
                 wf_content = wf_file.read_text(errors="replace")
                 rel = str(wf_file.relative_to(root_path)).replace("\\", "/")
-                _check_xpia(wf_content, rel)
+                xpia_advisories.extend(_check_xpia(wf_content, rel))
                 workflow_cache[wf_file] = wf_content
-            except XpiaEscalationError:
-                raise
             except (OSError, PermissionError):
                 rel = str(wf_file).replace("\\", "/")
                 skipped_files.append(rel)
@@ -512,7 +519,7 @@ def _run_all_checkers(
                 )
             )
 
-    return all_findings, skipped_files, workflow_cache
+    return all_findings, skipped_files, workflow_cache, xpia_advisories
 
 
 def _build_advisory_messages(
@@ -561,7 +568,6 @@ def run_audit(
         PathTraversalError: Path is unsafe.
         InvalidScopeError: Scope is unrecognized.
         AcceptedRisksOverflowError: Accepted-risks file exceeds 64KB.
-        XpiaEscalationError: Prompt injection detected in scanned content.
     """
     # ── Invariant 1: PATH_TRAVERSAL check (BEFORE scope validation) ──────────
     _validate_path(root)
@@ -626,7 +632,7 @@ def run_audit(
         12: check_docker_build_chain,
     }
 
-    all_findings, skipped_files, workflow_cache = _run_all_checkers(
+    all_findings, skipped_files, workflow_cache, xpia_advisories = _run_all_checkers(
         active_dims,
         root_path,
         dim_checkers,
@@ -654,6 +660,7 @@ def run_audit(
 
     # ── Step 9: Build advisory messages ───────────────────────────────────────
     advisory_messages = _build_advisory_messages(tool_status, skipped_files)
+    advisory_messages.extend(xpia_advisories)
 
     # Build scope list for report
     scope_list = [s.strip() for s in scope.split(",")]
