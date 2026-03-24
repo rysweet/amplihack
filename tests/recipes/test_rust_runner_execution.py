@@ -448,6 +448,12 @@ class TestProgressStreaming:
     )
     @patch("subprocess.Popen")
     def test_progress_mode_writes_progress_file(self, mock_popen, mock_find, tmp_path):
+        """Verify that progress markers in stderr cause progress files to be written.
+
+        Note: run_recipe_via_rust cleans up the progress file on completion,
+        so we intercept _write_progress_file to capture what was written.
+        """
+
         class FakePopen:
             def __init__(self, stdout: str, stderr: str, returncode: int = 0):
                 self.stdout = io.StringIO(stdout)
@@ -462,19 +468,34 @@ class TestProgressStreaming:
             stderr="▶ classify-and-decompose (agent)\n✓ classify-and-decompose\n",
         )
 
-        with patch(
-            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
-            return_value=str(tmp_path),
+        written_payloads: list[dict] = []
+        original_write = _write_progress_file
+
+        def capture_write(*args, **kwargs):
+            path = original_write(*args, **kwargs)
+            if path.exists():
+                written_payloads.append(json.loads(path.read_text(encoding="utf-8")))
+            return path
+
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(tmp_path),
+            ),
+            patch(
+                "amplihack.recipes.rust_runner_execution._write_progress_file",
+                side_effect=capture_write,
+            ),
         ):
             run_recipe_via_rust("smart-orchestrator", progress=True)
 
-        progress_files = list(tmp_path.glob("amplihack-progress-smart_orchestrator-*.json"))
-        assert len(progress_files) == 1
-        payload = json.loads(progress_files[0].read_text(encoding="utf-8"))
-        assert payload["recipe_name"] == "smart-orchestrator"
-        assert payload["current_step"] == 1
-        assert payload["step_name"] == "classify-and-decompose"
-        assert payload["status"] == "completed"
+        assert len(written_payloads) >= 1
+        # The last payload should be the "completed" state
+        last = written_payloads[-1]
+        assert last["recipe_name"] == "smart-orchestrator"
+        assert last["current_step"] == 1
+        assert last["step_name"] == "classify-and-decompose"
+        assert last["status"] == "completed"
 
 
 class TestProgressFiles:
