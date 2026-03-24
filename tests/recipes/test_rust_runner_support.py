@@ -10,6 +10,7 @@ from amplihack.recipes.rust_runner import (
     _normalize_copilot_cli_args,
     _redact_command_for_log,
 )
+from amplihack.recipes.rust_runner_copilot import _build_copilot_wrapper_source
 
 
 class TestRedactCommandForLog:
@@ -152,3 +153,13 @@ class TestNormalizeCopilotCliArgs:
         assert "--allow-path=/repo" in normalized
         assert "--deny-path=/secret" in normalized
         assert normalized[-2:] == ["-p", "check repo"]
+
+
+class TestCopilotCompatWrapperSource:
+    """Tests for generated nested Copilot wrapper source."""
+
+    def test_wrapper_source_reuses_module_normalizer(self):
+        source = _build_copilot_wrapper_source("/usr/bin/copilot")
+
+        assert "module._normalize_copilot_cli_args(args)" in source
+        assert "/usr/bin/copilot" in source

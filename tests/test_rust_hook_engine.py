@@ -44,10 +44,19 @@ class TestRustHookMap:
 class TestGetHookEngine:
     """Tests for get_hook_engine()."""
 
-    def test_default_is_python(self):
+    def test_default_prefers_rust_when_binary_available(self):
         with patch.dict(os.environ, {}, clear=True):
             os.environ.pop("AMPLIHACK_HOOK_ENGINE", None)
-            assert get_hook_engine() == "python"
+            with patch(
+                "amplihack.settings.find_rust_hook_binary", return_value="/tmp/amplihack-hooks"
+            ):
+                assert get_hook_engine() == "rust"
+
+    def test_default_is_python_when_binary_missing(self):
+        with patch.dict(os.environ, {}, clear=True):
+            os.environ.pop("AMPLIHACK_HOOK_ENGINE", None)
+            with patch("amplihack.settings.find_rust_hook_binary", return_value=None):
+                assert get_hook_engine() == "python"
 
     def test_rust_engine(self):
         with patch.dict(os.environ, {"AMPLIHACK_HOOK_ENGINE": "rust"}):
@@ -222,6 +231,24 @@ class TestUpdateHookPathsRustEngine:
             with pytest.raises(FileNotFoundError, match="amplihack-hooks binary not found"):
                 update_hook_paths(settings, "amplihack", hooks, "/some/dir", hook_engine="rust")
 
+    def test_rust_engine_keeps_xpia_on_python_bridge(self, tmp_path):
+        binary = tmp_path / "amplihack-hooks"
+        binary.write_text("#!/bin/sh")
+        binary.chmod(0o755)
+
+        settings = {}
+        hooks = [{"type": "PreToolUse", "file": "pre_tool_use.py", "matcher": "*"}]
+        hooks_dir = str(tmp_path / "xpia-hooks")
+        os.makedirs(hooks_dir, exist_ok=True)
+
+        with patch("amplihack.settings.find_rust_hook_binary", return_value=str(binary)):
+            count = update_hook_paths(settings, "xpia", hooks, hooks_dir, hook_engine="rust")
+
+        assert count == 1
+        hook_cmd = settings["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+        assert hook_cmd.endswith("pre_tool_use.py")
+        assert "amplihack-hooks" not in hook_cmd
+
     def test_python_engine_works_unchanged(self, tmp_path):
         settings = {}
         hooks = [{"type": "PreToolUse", "file": "pre_tool_use.py", "matcher": "*"}]
@@ -276,6 +303,7 @@ class TestStageHooksRustEngine:
         assert "amplihack-hooks" in content
         assert "pre-tool-use" in content
         assert "rust engine" in content
+        assert "/tools/xpia/hooks/pre_tool_use.py" in content
 
     def test_rust_wrappers_error_when_binary_missing(self, tmp_path):
         from amplihack.launcher.copilot import stage_hooks
@@ -289,7 +317,7 @@ class TestStageHooksRustEngine:
                 with pytest.raises(FileNotFoundError, match="amplihack-hooks binary not found"):
                     stage_hooks(pkg, user_dir)
 
-    def test_python_wrappers_unchanged(self, tmp_path):
+    def test_python_wrappers_include_xpia_hook(self, tmp_path):
         from amplihack.launcher.copilot import stage_hooks
 
         pkg = self._setup_package_dir(tmp_path)
@@ -305,6 +333,8 @@ class TestStageHooksRustEngine:
         content = wrapper.read_text()
         assert "python3" in content
         assert "amplihack-hooks" not in content
+        assert "/tools/amplihack/hooks/pre_tool_use.py" in content
+        assert "/tools/xpia/hooks/pre_tool_use.py" in content
 
     def test_multi_script_event_mixes_rust_and_python(self, tmp_path):
         from amplihack.launcher.copilot import stage_hooks
@@ -330,6 +360,28 @@ class TestStageHooksRustEngine:
         assert "user-prompt-submit" in content
         assert "python3" in content  # Python for workflow_classification_reminder
         assert "workflow_classification_reminder.py" in content
+
+    def test_rust_pre_tool_wrapper_mixes_amplihack_and_xpia(self, tmp_path):
+        from amplihack.launcher.copilot import stage_hooks
+
+        binary = tmp_path / "bin" / "amplihack-hooks"
+        binary.parent.mkdir(parents=True)
+        binary.write_text("#!/bin/sh")
+        binary.chmod(0o755)
+
+        pkg = self._setup_package_dir(tmp_path)
+        user_dir = tmp_path / "user_repo"
+        user_dir.mkdir()
+
+        with patch.dict(os.environ, {"AMPLIHACK_HOOK_ENGINE": "rust"}):
+            with patch("amplihack.settings.find_rust_hook_binary", return_value=str(binary)):
+                stage_hooks(pkg, user_dir)
+
+        wrapper = user_dir / ".github" / "hooks" / "pre-tool-use"
+        content = wrapper.read_text()
+        assert "amplihack-hooks" in content
+        assert "pre-tool-use" in content
+        assert "/tools/xpia/hooks/pre_tool_use.py" in content
 
 
 class TestEngineSwitchAndQuoting:
@@ -439,3 +491,51 @@ class TestEngineSwitchAndQuoting:
 
             result = ensure_settings_json()
             assert result is False
+
+    def test_ensure_settings_keeps_xpia_on_python_hooks(self, tmp_path):
+        """XPIA hooks must stay distinct from amplihack hooks under Rust engine."""
+        from amplihack.settings import ensure_settings_json
+
+        binary = tmp_path / "bin" / "amplihack-hooks"
+        binary.parent.mkdir(parents=True)
+        binary.write_text("#!/bin/sh")
+        binary.chmod(0o755)
+
+        with (
+            patch("amplihack.settings.get_hook_engine", return_value="rust"),
+            patch("amplihack.settings.find_rust_hook_binary", return_value=str(binary)),
+            patch("amplihack.settings.CLAUDE_DIR", str(tmp_path)),
+            patch("amplihack.settings.HOME", str(tmp_path)),
+        ):
+            settings_path = tmp_path / "settings.json"
+            settings_path.write_text("{}")
+
+            amplihack_hooks_dir = (
+                tmp_path / ".amplihack" / ".claude" / "tools" / "amplihack" / "hooks"
+            )
+            amplihack_hooks_dir.mkdir(parents=True)
+            xpia_hooks_dir = tmp_path / ".amplihack" / ".claude" / "tools" / "xpia" / "hooks"
+            xpia_hooks_dir.mkdir(parents=True)
+
+            from amplihack import HOOK_CONFIGS
+
+            for hook_info in HOOK_CONFIGS["amplihack"]:
+                (amplihack_hooks_dir / hook_info["file"]).write_text("# stub")
+
+            for hook_info in HOOK_CONFIGS["xpia"]:
+                (xpia_hooks_dir / hook_info["file"]).write_text("# stub")
+
+            result = ensure_settings_json()
+            assert result is True
+
+            settings = json.loads(settings_path.read_text())
+            pre_tool_commands = [
+                hook.get("command", "")
+                for config in settings["hooks"]["PreToolUse"]
+                for hook in config.get("hooks", [])
+            ]
+
+            assert any("amplihack-hooks" in command for command in pre_tool_commands)
+            assert any(
+                "/tools/xpia/hooks/pre_tool_use.py" in command for command in pre_tool_commands
+            )

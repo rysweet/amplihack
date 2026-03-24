@@ -16,6 +16,16 @@ from amplihack.recipes.rust_runner import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _mock_runner_version_check():
+    """Keep recipe-resolution tests focused on targeting, not binary version gating."""
+    with patch(
+        "amplihack.recipes.rust_runner.runner_binary.raise_for_runner_version",
+        return_value=None,
+    ):
+        yield
+
+
 class TestEngineSelection:
     """Tests for run_recipe_by_name — always uses Rust runner."""
 

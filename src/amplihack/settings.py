@@ -261,9 +261,14 @@ def get_hook_engine():
     """Get the configured hook engine.
 
     Returns "rust" or "python" based on AMPLIHACK_HOOK_ENGINE env var.
-    Default is "python" when unset.
+    When the env var is unset, prefer "rust" if ``amplihack-hooks`` is
+    installed; otherwise fall back to "python".
     """
-    engine = os.environ.get("AMPLIHACK_HOOK_ENGINE", "python").lower()
+    configured_engine = os.environ.get("AMPLIHACK_HOOK_ENGINE")
+    if configured_engine is None:
+        return "rust" if find_rust_hook_binary() else "python"
+
+    engine = configured_engine.lower()
     if engine not in ("python", "rust"):
         print(f"  ⚠️  Unknown AMPLIHACK_HOOK_ENGINE={engine!r}, using 'python'", file=sys.stderr)
         return "python"
@@ -317,7 +322,11 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path, ho
         matcher = hook_info.get("matcher")
 
         # Determine the hook command based on engine
-        rust_subcommand = RUST_HOOK_MAP.get(hook_file) if hook_engine == "rust" else None
+        rust_subcommand = (
+            RUST_HOOK_MAP.get(hook_file)
+            if hook_engine == "rust" and hook_system == "amplihack"
+            else None
+        )
 
         if rust_subcommand and rust_binary:
             hook_path = f"{shlex.quote(rust_binary)} {rust_subcommand}"
@@ -365,8 +374,12 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path, ho
                                 hooks_updated += 1
                                 print(f"  🔄 Updated {hook_type} hook path")
                             break
-                        # Also match Rust commands being replaced (engine switch)
-                        if "amplihack-hooks" in cmd:
+                        # Also match Rust commands being replaced when switching
+                        # the amplihack hook system between engines. XPIA hooks
+                        # stay on explicit Python bridge scripts, so they must
+                        # not claim ownership of amplihack's Rust multicall
+                        # commands during cross-system updates.
+                        if hook_system == "amplihack" and "amplihack-hooks" in cmd:
                             rust_subcmd = RUST_HOOK_MAP.get(hook_file)
                             if rust_subcmd and rust_subcmd in cmd:
                                 found = True
@@ -439,7 +452,6 @@ def ensure_settings_json():
 
     # Validate amplihack hook paths before configuration
     hooks_updated = 0
-    has_missing_hooks = False
     amplihack_hooks_abs = os.path.join(HOME, ".amplihack", ".claude", "tools", "amplihack", "hooks")
 
     # Validate amplihack hooks exist
@@ -448,7 +460,6 @@ def ensure_settings_json():
     )
 
     if not all_valid:
-        has_missing_hooks = True
         print("  ⚠️  Some hook files are missing:")
         for missing in missing_hooks:
             print(f"     • {missing}")
@@ -470,16 +481,15 @@ def ensure_settings_json():
         print("  ❌ No valid amplihack hook files found on disk")
         print("  💡 Please reinstall amplihack to restore missing hooks")
         return False
-    else:
-        # Update amplihack hook paths (absolute paths for plugin mode compatibility)
-        # Only configure hooks whose files exist on disk
-        try:
-            hooks_updated += update_hook_paths(
-                settings, "amplihack", valid_amplihack_hooks, amplihack_hooks_abs
-            )
-        except FileNotFoundError as e:
-            print(f"  ❌ {e}", file=sys.stderr)
-            return False
+    # Update amplihack hook paths (absolute paths for plugin mode compatibility)
+    # Only configure hooks whose files exist on disk
+    try:
+        hooks_updated += update_hook_paths(
+            settings, "amplihack", valid_amplihack_hooks, amplihack_hooks_abs
+        )
+    except FileNotFoundError as e:
+        print(f"  ❌ {e}", file=sys.stderr)
+        return False
 
     # Update XPIA hook paths if XPIA hooks directory exists (absolute paths for consistency)
     xpia_hooks_abs = os.path.join(HOME, ".amplihack", ".claude", "tools", "xpia", "hooks")
@@ -490,7 +500,6 @@ def ensure_settings_json():
         xpia_valid, xpia_missing = validate_hook_paths("xpia", HOOK_CONFIGS["xpia"], xpia_hooks_abs)
 
         if not xpia_valid:
-            has_missing_hooks = True
             print("  ⚠️  Some XPIA hook files are missing:")
             for missing in xpia_missing:
                 print(f"     • {missing}")
@@ -499,7 +508,17 @@ def ensure_settings_json():
         # Filter to only existing XPIA hooks and configure them
         valid_xpia_hooks = _filter_existing_hooks(HOOK_CONFIGS["xpia"], xpia_hooks_abs)
         if valid_xpia_hooks:
-            xpia_updated = update_hook_paths(settings, "xpia", valid_xpia_hooks, xpia_hooks_abs)
+            # XPIA hooks stay on their explicit Python bridge scripts even when
+            # the global hook engine is Rust. Rewriting them to the same
+            # amplihack-hooks subcommands used by the core amplihack hook system
+            # would collapse two distinct hook stacks onto identical commands.
+            xpia_updated = update_hook_paths(
+                settings,
+                "xpia",
+                valid_xpia_hooks,
+                xpia_hooks_abs,
+                hook_engine="python",
+            )
             hooks_updated += xpia_updated
 
             if xpia_updated > 0:
