@@ -9,7 +9,7 @@ title: "Layer 7: Service Components"
 # Layer 7: Service Components
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-24T16:58:32.710564+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-19T00:27:30.767480+00:00
 </div>
 
 ## Map
@@ -19,281 +19,132 @@ Category: <strong>Structural</strong> | Generated: 2026-03-24T16:58:32.710564+00
     ```mermaid
     graph TB
         subgraph utility["Utility Packages"]
-            P0["amplihack<br/>1 files<br/>I=0.00"]
-            P1["docker<br/>3 files<br/>I=0.40"]
-            P2["kuzu<br/>5 files<br/>I=0.33"]
-            P3["plugin_manager<br/>2 files<br/>I=0.20"]
-            P4["types<br/>2 files<br/>I=0.10"]
+            P0["kuzu<br/>5 files<br/>I=0.29"]
+            P1["plugin_manager<br/>2 files<br/>I=0.25"]
+            P2["types<br/>2 files<br/>I=0.10"]
         end
-    
+
         subgraph feature["Feature Packages"]
-            P5["claude<br/>1 files<br/>I=0.00"]
-            P6["az-devops-tools<br/>14 files<br/>I=0.00"]
-            P7["tests<br/>2 files<br/>I=0.00"]
-            P8["tests<br/>1 files<br/>I=0.00"]
-            P9["tests<br/>5 files<br/>I=0.00"]
-            P10["tests<br/>2 files<br/>I=0.00"]
-            P11["tests<br/>6 files<br/>I=0.00"]
-            P12["github_pages<br/>5 files<br/>I=0.50"]
-            P13["tests<br/>7 files<br/>I=0.00"]
-            P14["tests<br/>8 files<br/>I=0.00"]
-            P15["tests<br/>8 files<br/>I=0.00"]
-            P16["supply_chain_audit<br/>7 files<br/>I=0.83"]
-            P17["checkers<br/>10 files<br/>I=0.82"]
-            P18["tests<br/>2 files<br/>I=0.00"]
-            P19["e2e<br/>2 files<br/>I=0.00"]
-            P20["integration<br/>3 files<br/>I=0.00"]
-            P21["unit<br/>8 files<br/>I=0.00"]
-            P22["amplihack<br/>22 files<br/>I=0.50"]
-            P23["hooks<br/>42 files<br/>I=0.00"]
-            P24["orchestration<br/>5 files<br/>I=0.75"]
-            P25["remote<br/>15 files<br/>I=0.78"]
-            P26["session<br/>6 files<br/>I=0.71"]
-            P27["platform_bridge<br/>6 files<br/>I=0.83"]
-            P28["pr_triage<br/>9 files<br/>I=0.50"]
-            P29["tests<br/>6 files<br/>I=0.00"]
-            P30["tests<br/>8 files<br/>I=0.00"]
-            P31["test_strategies<br/>7 files<br/>I=0.00"]
-            P32["amplifier_hook_lock_mode<br/>1 files<br/>I=0.00"]
-            P33["tests<br/>2 files<br/>I=0.00"]
-            P34["amplifier_hook_memory<br/>1 files<br/>I=0.00"]
-            P35["amplifier_hook_post_tool_use<br/>1 files<br/>I=0.00"]
-            P36["amplifier_hook_power_steering<br/>1 files<br/>I=0.00"]
-            P37["amplifier_hook_pre_compact<br/>1 files<br/>I=0.00"]
-            P38["amplifier_hook_pre_tool_use<br/>1 files<br/>I=0.00"]
-            P39["amplifier_hook_session_start<br/>1 files<br/>I=0.00"]
-            P40["amplifier_hook_session_stop<br/>1 files<br/>I=0.00"]
-            P41["amplifier_hook_user_prompt<br/>1 files<br/>I=0.00"]
-            P42["tests<br/>6 files<br/>I=0.00"]
-            P43["github_pages<br/>5 files<br/>I=0.50"]
-            P44["tests<br/>7 files<br/>I=0.00"]
-            P45["tests<br/>7 files<br/>I=0.00"]
-            P46["amplihack<br/>21 files<br/>I=0.50"]
-            P47["orchestration<br/>5 files<br/>I=0.75"]
-            P48["remote<br/>15 files<br/>I=0.78"]
-            P49["session<br/>6 files<br/>I=0.71"]
-            P50["platform_bridge<br/>6 files<br/>I=0.83"]
-            P51["tests<br/>8 files<br/>I=0.00"]
-            P52["claude<br/>1 files<br/>I=0.00"]
-            P53["tests<br/>5 files<br/>I=0.00"]
-            P54["tests<br/>6 files<br/>I=0.00"]
-            P55["github_pages<br/>5 files<br/>I=0.50"]
-            P56["tests<br/>7 files<br/>I=0.00"]
-            P57["tests<br/>7 files<br/>I=0.00"]
-            P58["amplihack<br/>20 files<br/>I=0.50"]
-            P59["orchestration<br/>5 files<br/>I=0.75"]
-            P60["remote<br/>15 files<br/>I=0.78"]
-            P61["session<br/>6 files<br/>I=0.71"]
-            P62["experiments<br/>1 files<br/>I=0.00"]
-            P63["hive_mind<br/>19 files<br/>I=0.00"]
-            P64["atlas<br/>7 files<br/>I=0.00"]
-            P65["python<br/>9 files<br/>I=0.00"]
-            P66["amplihack<br/>23 files<br/>I=0.71"]
-            P67["agent<br/>1 files<br/>I=0.00"]
-            P68["goal_seeking<br/>19 files<br/>I=0.84"]
-            P69["hive_mind<br/>20 files<br/>I=0.90"]
-            P70["prompts<br/>1 files<br/>I=0.00"]
-            P71["sdk<br/>1 files<br/>I=0.00"]
-            P72["sdk_adapters<br/>6 files<br/>I=0.50"]
-            P73["sub_agents<br/>6 files<br/>I=0.88"]
-            P74["bundle_generator<br/>17 files<br/>I=0.80"]
-            P75["cli<br/>3 files<br/>I=0.97"]
-            P76["tests<br/>2 files<br/>I=0.00"]
-            P77["adaptive<br/>3 files<br/>I=0.67"]
-            P78["eval<br/>26 files<br/>I=0.92"]
-            P79["self_improve<br/>5 files<br/>I=0.83"]
-            P80["prompts<br/>1 files<br/>I=0.00"]
-            P81["tests<br/>32 files<br/>I=0.00"]
-            P82["goal_agent_generator<br/>9 files<br/>I=0.78"]
-            P83["templates<br/>3 files<br/>I=0.50"]
-            P84["hooks<br/>3 files<br/>I=0.00"]
-            P85["knowledge_builder<br/>3 files<br/>I=0.00"]
-            P86["modules<br/>4 files<br/>I=0.00"]
-            P87["launcher<br/>26 files<br/>I=0.85"]
-            P88["tests<br/>4 files<br/>I=0.00"]
-            P89["memory<br/>22 files<br/>I=0.85"]
-            P90["evaluation<br/>5 files<br/>I=0.71"]
-            P91["indexing<br/>11 files<br/>I=0.75"]
-            P92["tests<br/>2 files<br/>I=0.00"]
-            P93["mode_detector<br/>3 files<br/>I=0.50"]
-            P94["plugin_cli<br/>4 files<br/>I=0.67"]
-            P95["power_steering<br/>2 files<br/>I=0.33"]
-            P96["proxy<br/>30 files<br/>I=0.38"]
-            P97["recipe_cli<br/>5 files<br/>I=0.67"]
-            P98["recipes<br/>10 files<br/>I=0.00"]
-            P99["tests<br/>3 files<br/>I=0.00"]
-            P100["safety<br/>4 files<br/>I=0.60"]
-            P101["security<br/>10 files<br/>I=0.75"]
-            P102["tracing<br/>2 files<br/>I=0.50"]
-            P103["utils<br/>21 files<br/>I=0.61"]
-            P104["uvx<br/>2 files<br/>I=0.67"]
-            P105["vendor<br/>1 files<br/>I=0.00"]
-            P106["blarify<br/>7 files<br/>I=0.50"]
-            P107["agents<br/>4 files<br/>I=0.60"]
-            P108["prompt_templates<br/>17 files<br/>I=0.88"]
-            P109["rotating_provider<br/>5 files<br/>I=0.67"]
-            P110["cli<br/>3 files<br/>I=0.00"]
-            P111["code_hierarchy<br/>2 files<br/>I=0.71"]
-            P112["languages<br/>13 files<br/>I=0.71"]
-            P113["code_references<br/>4 files<br/>I=0.83"]
-            P114["queries<br/>3 files<br/>I=0.50"]
-            P115["utils<br/>2 files<br/>I=0.67"]
-            P116["node<br/>10 files<br/>I=0.58"]
-            P117["relationship<br/>5 files<br/>I=0.41"]
-            P118["integrations<br/>2 files<br/>I=0.00"]
-            P119["project_file_explorer<br/>5 files<br/>I=0.50"]
-            P120["repositories<br/>1 files<br/>I=0.00"]
-            P121["graph_db_manager<br/>6 files<br/>I=0.00"]
-            P122["dtos<br/>10 files<br/>I=0.83"]
-            P123["graph_queries<br/>2 files<br/>I=0.33"]
-            P124["version_control<br/>3 files<br/>I=0.00"]
-            P125["experimental<br/>2 files<br/>I=0.00"]
-            P126["multilspy<br/>9 files<br/>I=0.33"]
-            P127["hive<br/>5 files<br/>I=0.67"]
-            P128["agents<br/>3 files<br/>I=0.00"]
-            P129["domain_agents<br/>8 files<br/>I=0.00"]
-            P130["goal_seeking<br/>21 files<br/>I=0.00"]
-            P131["eval<br/>20 files<br/>I=0.00"]
-            P132["generator<br/>3 files<br/>I=0.00"]
-            P133["hive_mind<br/>29 files<br/>I=0.00"]
-            P134["hooks<br/>8 files<br/>I=0.00"]
-            P135["integration<br/>20 files<br/>I=0.00"]
-            P136["harness<br/>4 files<br/>I=0.30"]
-            P137["knowledge_builder<br/>4 files<br/>I=0.00"]
-            P138["launcher<br/>9 files<br/>I=0.00"]
-            P139["log_streaming<br/>11 files<br/>I=0.00"]
-            P140["framework<br/>6 files<br/>I=0.71"]
-            P141["microservice_project<br/>1 files<br/>I=0.00"]
-            P142["models<br/>3 files<br/>I=0.67"]
-            P143["services<br/>4 files<br/>I=0.80"]
-            P144["utils<br/>3 files<br/>I=0.67"]
-            P145["tools<br/>1 files<br/>I=0.00"]
-            P146["memory<br/>7 files<br/>I=0.00"]
-            P147["meta_delegation<br/>9 files<br/>I=0.00"]
-            P148["e2e<br/>7 files<br/>I=0.00"]
-            P149["integration<br/>3 files<br/>I=0.00"]
-            P150["plugin<br/>8 files<br/>I=0.00"]
-            P151["proxy<br/>17 files<br/>I=0.00"]
-            P152["skills<br/>20 files<br/>I=0.00"]
-            P153["tracing<br/>7 files<br/>I=0.00"]
-            P154["recipes<br/>9 files<br/>I=0.00"]
-            P155["tools<br/>1 files<br/>I=0.00"]
-            P156["version_check<br/>6 files<br/>I=0.00"]
-            P157["workflows<br/>2 files<br/>I=0.00"]
-            P158["workloads<br/>2 files<br/>I=0.00"]
+            P3["goal_seeking<br/>13 files<br/>I=0.93"]
+            P4["hive_mind<br/>13 files<br/>I=0.80"]
+            P5["prompts<br/>1 files<br/>I=0.00"]
+            P6["sdk<br/>1 files<br/>I=0.00"]
+            P7["sdk_adapters<br/>6 files<br/>I=0.67"]
+            P8["sub_agents<br/>6 files<br/>I=0.88"]
+            P9["amplihack<br/>22 files<br/>I=0.47"]
+            P10["bundle_generator<br/>17 files<br/>I=0.89"]
+            P11["adaptive<br/>3 files<br/>I=0.67"]
+            P12["docker<br/>3 files<br/>I=0.50"]
+            P13["eval<br/>23 files<br/>I=0.92"]
+            P14["self_improve<br/>5 files<br/>I=0.83"]
+            P15["prompts<br/>1 files<br/>I=0.00"]
+            P16["tests<br/>32 files<br/>I=0.00"]
+            P17["goal_agent_generator<br/>9 files<br/>I=0.88"]
+            P18["templates<br/>3 files<br/>I=0.50"]
+            P19["hooks<br/>3 files<br/>I=0.00"]
+            P20["knowledge_builder<br/>3 files<br/>I=0.00"]
+            P21["modules<br/>4 files<br/>I=0.00"]
+            P22["launcher<br/>26 files<br/>I=0.88"]
+            P23["tests<br/>4 files<br/>I=0.00"]
+            P24["memory<br/>14 files<br/>I=0.75"]
+            P25["backends<br/>4 files<br/>I=0.56"]
+            P26["evaluation<br/>5 files<br/>I=0.75"]
+            P27["indexing<br/>11 files<br/>I=0.86"]
+            P28["mode_detector<br/>3 files<br/>I=0.67"]
+            P29["plugin_cli<br/>4 files<br/>I=0.80"]
+            P30["power_steering<br/>2 files<br/>I=0.50"]
+            P31["proxy<br/>30 files<br/>I=0.43"]
+            P32["recipes<br/>6 files<br/>I=0.00"]
+            P33["tests<br/>3 files<br/>I=0.00"]
+            P34["safety<br/>4 files<br/>I=0.75"]
+            P35["security<br/>10 files<br/>I=0.75"]
+            P36["tracing<br/>2 files<br/>I=0.50"]
+            P37["utils<br/>21 files<br/>I=0.60"]
+            P38["uvx<br/>2 files<br/>I=0.67"]
+            P39["vendor<br/>1 files<br/>I=0.00"]
+            P40["blarify<br/>7 files<br/>I=0.50"]
+            P41["agents<br/>4 files<br/>I=0.60"]
+            P42["prompt_templates<br/>17 files<br/>I=0.88"]
+            P43["rotating_provider<br/>5 files<br/>I=0.67"]
+            P44["cli<br/>3 files<br/>I=0.00"]
+            P45["code_hierarchy<br/>2 files<br/>I=0.71"]
+            P46["languages<br/>12 files<br/>I=0.69"]
+            P47["code_references<br/>4 files<br/>I=0.83"]
+            P48["queries<br/>3 files<br/>I=0.50"]
+            P49["utils<br/>2 files<br/>I=0.67"]
+            P50["node<br/>10 files<br/>I=0.58"]
+            P51["relationship<br/>5 files<br/>I=0.41"]
+            P52["integrations<br/>2 files<br/>I=0.00"]
+            P53["project_file_explorer<br/>5 files<br/>I=0.50"]
+            P54["repositories<br/>1 files<br/>I=0.00"]
+            P55["graph_db_manager<br/>6 files<br/>I=0.00"]
+            P56["dtos<br/>10 files<br/>I=0.83"]
+            P57["graph_queries<br/>2 files<br/>I=0.33"]
+            P58["version_control<br/>3 files<br/>I=0.00"]
+            P59["experimental<br/>2 files<br/>I=0.00"]
+            P60["multilspy<br/>9 files<br/>I=0.33"]
         end
-    
+
         subgraph leaf["Leaf Packages"]
-            P159["check-broken-links<br/>2 files<br/>I=1.00"]
-            P160["mcp-manager<br/>4 files<br/>I=1.00"]
-            P161["context-management<br/>13 files<br/>I=1.00"]
-            P162["generator<br/>15 files<br/>I=1.00"]
-            P163["lsp-setup<br/>6 files<br/>I=1.00"]
-            P164["tools<br/>4 files<br/>I=1.00"]
-            P165["tools<br/>11 files<br/>I=1.00"]
-            P166["builders<br/>4 files<br/>I=1.00"]
-            P167["power_steering_checker<br/>13 files<br/>I=1.00"]
-            P168["tests<br/>76 files<br/>I=1.00"]
-            P169["memory<br/>5 files<br/>I=1.00"]
-            P170["patterns<br/>6 files<br/>I=1.00"]
-            P171["profile_management<br/>10 files<br/>I=1.00"]
-            P172["reflection<br/>9 files<br/>I=1.00"]
-            P173["tests<br/>10 files<br/>I=1.00"]
-            P174["examples<br/>3 files<br/>I=1.00"]
-            P175["tests<br/>5 files<br/>I=1.00"]
-            P176["tests<br/>7 files<br/>I=1.00"]
-            P177["fix_strategies<br/>8 files<br/>I=1.00"]
-            P178["context-management<br/>13 files<br/>I=1.00"]
-            P179["tools<br/>14 files<br/>I=1.00"]
-            P180["builders<br/>4 files<br/>I=1.00"]
-            P181["memory<br/>5 files<br/>I=1.00"]
-            P182["patterns<br/>6 files<br/>I=1.00"]
-            P183["profile_management<br/>10 files<br/>I=1.00"]
-            P184["reflection<br/>9 files<br/>I=1.00"]
-            P185["tests<br/>10 files<br/>I=1.00"]
-            P186["examples<br/>3 files<br/>I=1.00"]
-            P187["tests<br/>5 files<br/>I=1.00"]
-            P188["tests<br/>7 files<br/>I=1.00"]
-            P189["amplifier-module-orchestrator-amplihack<br/>3 files<br/>I=1.00"]
-            P190["mcp-manager<br/>4 files<br/>I=1.00"]
-            P191["context_management<br/>13 files<br/>I=1.00"]
-            P192["tools<br/>11 files<br/>I=1.00"]
-            P193["builders<br/>4 files<br/>I=1.00"]
-            P194["memory<br/>5 files<br/>I=1.00"]
-            P195["patterns<br/>6 files<br/>I=1.00"]
-            P196["profile_management<br/>10 files<br/>I=1.00"]
-            P197["reflection<br/>9 files<br/>I=1.00"]
-            P198["tests<br/>10 files<br/>I=1.00"]
-            P199["examples<br/>3 files<br/>I=1.00"]
-            P200["tests<br/>5 files<br/>I=1.00"]
-            P201["server<br/>3 files<br/>I=1.00"]
-            P202["fleet<br/>54 files<br/>I=1.00"]
-            P203["tests<br/>9 files<br/>I=1.00"]
-            P204["lsp_detector<br/>2 files<br/>I=1.00"]
-            P205["meta_delegation<br/>9 files<br/>I=1.00"]
-            P206["path_resolver<br/>2 files<br/>I=1.00"]
-            P207["settings_generator<br/>2 files<br/>I=1.00"]
-            P208["testing<br/>3 files<br/>I=1.00"]
-            P209["commands<br/>2 files<br/>I=1.00"]
-            P210["documentation<br/>4 files<br/>I=1.00"]
-            P211["mcp_server<br/>4 files<br/>I=1.00"]
-            P212["tools<br/>2 files<br/>I=1.00"]
-            P213["prebuilt<br/>2 files<br/>I=1.00"]
-            P214["tools<br/>11 files<br/>I=1.00"]
-            P215["utils<br/>2 files<br/>I=1.00"]
-            P216["workflows<br/>6 files<br/>I=1.00"]
-            P217["workloads<br/>1 files<br/>I=1.00"]
-            P218["tests<br/>114 files<br/>I=1.00"]
-            P219["harness<br/>2 files<br/>I=1.00"]
-            P220["uvx<br/>8 files<br/>I=1.00"]
-            P221["mcp_evaluation<br/>4 files<br/>I=1.00"]
-            P222["scenarios<br/>4 files<br/>I=1.00"]
-            P223["handlers<br/>5 files<br/>I=1.00"]
-            P224["cli<br/>7 files<br/>I=1.00"]
-            P225["workflows<br/>8 files<br/>I=1.00"]
+            P61["fleet<br/>54 files<br/>I=1.00"]
+            P62["tests<br/>9 files<br/>I=1.00"]
+            P63["lsp_detector<br/>2 files<br/>I=1.00"]
+            P64["meta_delegation<br/>9 files<br/>I=1.00"]
+            P65["path_resolver<br/>2 files<br/>I=1.00"]
+            P66["recipe_cli<br/>3 files<br/>I=1.00"]
+            P67["settings_generator<br/>2 files<br/>I=1.00"]
+            P68["testing<br/>3 files<br/>I=1.00"]
+            P69["commands<br/>2 files<br/>I=1.00"]
+            P70["documentation<br/>4 files<br/>I=1.00"]
+            P71["mcp_server<br/>4 files<br/>I=1.00"]
+            P72["tools<br/>2 files<br/>I=1.00"]
+            P73["prebuilt<br/>2 files<br/>I=1.00"]
+            P74["tools<br/>11 files<br/>I=1.00"]
+            P75["utils<br/>2 files<br/>I=1.00"]
+            P76["workflows<br/>6 files<br/>I=1.00"]
         end
-    
-        P16 -->|1| P17
-        P17 -->|8| P16
-        P22 -->|1| P0
-        P166 -->|2| P22
-        P166 -->|2| P0
-        P168 -->|2| P23
-        P169 -->|2| P0
-        P170 -->|7| P24
-        P173 -->|24| P25
-        P174 -->|4| P26
-        P175 -->|6| P26
-        P176 -->|7| P27
-        P46 -->|1| P0
-        P180 -->|2| P46
-        P180 -->|2| P0
-        P181 -->|2| P0
-        P182 -->|7| P47
-        P185 -->|24| P48
-        P186 -->|4| P49
-        P187 -->|6| P49
-        P188 -->|7| P50
-        P58 -->|1| P0
-        P193 -->|2| P0
-        P193 -->|2| P58
-        P194 -->|2| P0
-        P195 -->|7| P59
-        P198 -->|24| P60
-        P199 -->|4| P61
-        P200 -->|6| P61
-        P66 -->|21| P87
-        P66 -->|7| P103
-        P66 -->|4| P0
-        P68 -->|4| P69
-        P69 -->|3| P68
-        P73 -->|8| P68
-        P73 -->|1| P72
-        P75 -->|1| P0
-        P75 -->|1| P66
-        P78 -->|2| P79
-        P79 -->|1| P78
-    
+
+        P3 -->|4| P4
+        P8 -->|7| P3
+        P8 -->|1| P7
+        P13 -->|2| P14
+        P14 -->|1| P13
+        P17 -->|2| P18
+        P62 -->|19| P17
+        P62 -->|1| P18
+        P22 -->|4| P27
+        P22 -->|4| P37
+        P22 -->|2| P11
+        P24 -->|2| P25
+        P24 -->|1| P26
+        P25 -->|4| P24
+        P25 -->|3| P0
+        P26 -->|8| P24
+        P26 -->|1| P25
+        P27 -->|3| P0
+        P31 -->|1| P36
+        P36 -->|1| P31
+        P38 -->|2| P37
+        P40 -->|2| P51
+        P40 -->|1| P46
+        P40 -->|1| P47
+        P41 -->|1| P42
+        P41 -->|1| P43
+        P69 -->|1| P41
+        P45 -->|1| P40
+        P45 -->|1| P46
+        P46 -->|2| P51
+        P47 -->|8| P40
+        P47 -->|3| P2
+        P47 -->|2| P46
+        P70 -->|4| P55
+        P70 -->|3| P40
+        P70 -->|3| P50
+        P49 -->|1| P40
+        P50 -->|5| P40
+        P50 -->|5| P51
+        P50 -->|3| P2
+
         click P0 "../service-components/" "View details"
     ```
 
@@ -307,75 +158,75 @@ Category: <strong>Structural</strong> | Generated: 2026-03-24T16:58:32.710564+00
 
     | Package | Files | Ca | Ce | Instability | Class |
     |---------|-------|----|----|-------------|-------|
-    | `tests` | 114 | 0 | 1 | 1.00 | leaf |
-    | `.claude.tools.amplihack.hooks.tests` | 76 | 0 | 1 | 1.00 | leaf |
-    | `src.amplihack.fleet` | 54 | 0 | 2 | 1.00 | leaf |
-    | `.claude.tools.amplihack.hooks` | 42 | 1 | 0 | 0.00 | feature |
-    | `src.amplihack.fleet.tests` | 32 | 0 | 0 | 0.00 | feature |
-    | `src.amplihack.proxy` | 30 | 5 | 3 | 0.38 | feature |
-    | `tests.hive_mind` | 29 | 0 | 0 | 0.00 | feature |
-    | `src.amplihack.eval` | 26 | 1 | 11 | 0.92 | feature |
-    | `src.amplihack.launcher` | 26 | 3 | 17 | 0.85 | feature |
-    | `src.amplihack` | 23 | 10 | 24 | 0.71 | feature |
-    | `.claude.tools.amplihack` | 22 | 1 | 1 | 0.50 | feature |
-    | `src.amplihack.memory` | 22 | 2 | 11 | 0.85 | feature |
-    | `amplifier-bundle.tools.amplihack` | 21 | 1 | 1 | 0.50 | feature |
-    | `src.amplihack.utils` | 21 | 5 | 8 | 0.61 | feature |
-    | `tests.agents.goal_seeking` | 21 | 0 | 0 | 0.00 | feature |
-    | `docs.claude.tools.amplihack` | 20 | 1 | 1 | 0.50 | feature |
-    | `src.amplihack.agents.goal_seeking.hive_mind` | 20 | 1 | 9 | 0.90 | feature |
-    | `tests.eval` | 20 | 0 | 0 | 0.00 | feature |
-    | `tests.integration` | 20 | 0 | 0 | 0.00 | feature |
-    | `tests.skills` | 20 | 0 | 0 | 0.00 | feature |
-    | `experiments.hive_mind` | 19 | 0 | 0 | 0.00 | feature |
-    | `src.amplihack.agents.goal_seeking` | 19 | 3 | 16 | 0.84 | feature |
-    | `src.amplihack.bundle_generator` | 17 | 2 | 8 | 0.80 | feature |
-    | `src.amplihack.vendor.blarify.agents.prompt_templates` | 17 | 2 | 15 | 0.88 | feature |
-    | `tests.proxy` | 17 | 0 | 0 | 0.00 | feature |
-    | `.claude.skills.e2e-outside-in-test-generator.generator` | 15 | 0 | 3 | 1.00 | leaf |
-    | `.claude.tools.amplihack.remote` | 15 | 2 | 7 | 0.78 | feature |
-    | `amplifier-bundle.tools.amplihack.remote` | 15 | 2 | 7 | 0.78 | feature |
-    | `docs.claude.tools.amplihack.remote` | 15 | 2 | 7 | 0.78 | feature |
-    | `.claude.scenarios.az-devops-tools` | 14 | 0 | 0 | 0.00 | feature |
+    | `fleet` | 54 | 0 | 2 | 1.00 | leaf |
+    | `fleet.tests` | 32 | 0 | 0 | 0.00 | feature |
+    | `proxy` | 30 | 4 | 3 | 0.43 | feature |
+    | `launcher` | 26 | 2 | 15 | 0.88 | feature |
+    | `eval` | 23 | 1 | 11 | 0.92 | feature |
+    | `amplihack` | 22 | 8 | 7 | 0.47 | feature |
+    | `utils` | 21 | 4 | 6 | 0.60 | feature |
+    | `bundle_generator` | 17 | 1 | 8 | 0.89 | feature |
+    | `vendor.blarify.agents.prompt_templates` | 17 | 2 | 15 | 0.88 | feature |
+    | `memory` | 14 | 2 | 6 | 0.75 | feature |
+    | `agents.goal_seeking` | 13 | 1 | 13 | 0.93 | feature |
+    | `agents.goal_seeking.hive_mind` | 13 | 1 | 4 | 0.80 | feature |
+    | `vendor.blarify.code_hierarchy.languages` | 12 | 5 | 11 | 0.69 | feature |
+    | `memory.kuzu.indexing` | 11 | 1 | 6 | 0.86 | feature |
+    | `vendor.blarify.tools` | 11 | 0 | 12 | 1.00 | leaf |
+    | `security` | 10 | 1 | 3 | 0.75 | feature |
+    | `vendor.blarify.graph.node` | 10 | 11 | 15 | 0.58 | feature |
+    | `vendor.blarify.repositories.graph_db_manager.dtos` | 10 | 1 | 5 | 0.83 | feature |
+    | `goal_agent_generator` | 9 | 1 | 7 | 0.88 | feature |
+    | `goal_agent_generator.tests` | 9 | 0 | 2 | 1.00 | leaf |
+    | `meta_delegation` | 9 | 0 | 7 | 1.00 | leaf |
+    | `vendor.blarify.vendor.multilspy` | 9 | 2 | 1 | 0.33 | feature |
+    | `vendor.blarify` | 7 | 6 | 6 | 0.50 | feature |
+    | `agents.goal_seeking.sdk_adapters` | 6 | 1 | 2 | 0.67 | feature |
+    | `agents.goal_seeking.sub_agents` | 6 | 1 | 7 | 0.88 | feature |
+    | `recipes` | 6 | 0 | 0 | 0.00 | feature |
+    | `vendor.blarify.repositories.graph_db_manager` | 6 | 2 | 0 | 0.00 | feature |
+    | `workflows` | 6 | 0 | 5 | 1.00 | leaf |
+    | `eval.self_improve` | 5 | 1 | 5 | 0.83 | feature |
+    | `memory.evaluation` | 5 | 2 | 6 | 0.75 | feature |
 
 ## Legend
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| Subgraph | Package classification |
-| Rectangle | Package |
-| `I=` | Instability metric (0=stable, 1=unstable) |
-| Edge label N | Coupling count |
+| Symbol       | Meaning                                   |
+| ------------ | ----------------------------------------- |
+| Subgraph     | Package classification                    |
+| Rectangle    | Package                                   |
+| `I=`         | Instability metric (0=stable, 1=unstable) |
+| Edge label N | Coupling count                            |
 
 </div>
 
 ## Key Findings
 
-- 226 packages analyzed
-- 67 leaf packages (no dependents)
+- 77 packages analyzed
+- 16 leaf packages (no dependents)
 
 ## Detail
 
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-    
-    - **Total Packages**: 226
+
+    - **Total Packages**: 77
     - **By Classification**:
-        - `feature`: 154
-        - `leaf`: 67
-        - `utility`: 5
+        - `feature`: 58
+        - `leaf`: 16
+        - `utility`: 3
     - **Core Packages**: 0
-    - **Leaf Packages**: 67
-    - **Utility Packages**: 5
-    - **Feature Packages**: 154
-    - **Avg Instability**: 0.782
+    - **Leaf Packages**: 16
+    - **Utility Packages**: 3
+    - **Feature Packages**: 58
+    - **Avg Instability**: 0.699
     - **Most Coupled Pair**: 2 items
-        - `.claude.tools.amplihack.remote.tests`
-        - `.claude.tools.amplihack.remote`
-    - **Total Cross Package Edges**: 1663
+        - `goal_agent_generator.tests`
+        - `goal_agent_generator`
+    - **Total Cross Package Edges**: 782
 
 ## Cross-References
 

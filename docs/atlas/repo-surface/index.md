@@ -9,7 +9,7 @@ title: "Layer 1: Repository Surface"
 # Layer 1: Repository Surface
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-24T16:57:39.682651+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-19T00:22:49.724250+00:00
 </div>
 
 ## Map
@@ -18,86 +18,84 @@ Category: <strong>Structural</strong> | Generated: 2026-03-24T16:57:39.682651+00
 
     ```mermaid
     graph TD
-        D0["supply&lt;br/&gt;2 py / 34 total"]
-        D1[".claude&lt;br/&gt;1 py / 5 total"]
-        D2[".claude-plugin&lt;br/&gt;0 py / 2 total"]
-        D3["agents&lt;br/&gt;0 py / 1 total"]
-        D4["bin&lt;br/&gt;0 py / 1 total"]
-        D5["ci&lt;br/&gt;3 py / 3 total"]
-        D6["commands&lt;br/&gt;2 py / 3 total"]
-        D7["config&lt;br/&gt;0 py / 3 total"]
-        D8["context&lt;br/&gt;0 py / 19 total"]
-        D9["docs&lt;br/&gt;0 py / 11 total"]
-        D10["profiles&lt;br/&gt;0 py / 3 total"]
-        D11["scenarios&lt;br/&gt;0 py / 1 total"]
-        D12["templates&lt;br/&gt;0 py / 6 total"]
-        D13["tests&lt;br/&gt;1 py / 2 total"]
-        D14["tools&lt;br/&gt;11 py / 17 total"]
-        D15["workflow&lt;br/&gt;0 py / 12 total"]
-        D16[".devcontainer&lt;br/&gt;0 py / 5 total"]
-        D17[".github&lt;br/&gt;0 py / 3 total"]
-        D18["aw&lt;br/&gt;0 py / 1 total"]
-        D19["commands&lt;br/&gt;0 py / 25 total"]
-        D20["hooks&lt;br/&gt;0 py / 8 total"]
-        D21["scripts&lt;br/&gt;8 py / 9 total"]
-        D22["workflows&lt;br/&gt;0 py / 58 total"]
-        D23["Specs&lt;br/&gt;2 py / 58 total"]
-        D24["Memory&lt;br/&gt;0 py / 15 total"]
-        D25["amplihack-memory-lib&lt;br/&gt;0 py / 6 total"]
-        D26["amplifier-bundle&lt;br/&gt;0 py / 1 total"]
-        D27["agents&lt;br/&gt;0 py / 1 total"]
-        D28["behaviors&lt;br/&gt;0 py / 1 total"]
-        D29["context&lt;br/&gt;0 py / 17 total"]
-        D30["recipes&lt;br/&gt;0 py / 19 total"]
-        D31["tools&lt;br/&gt;14 py / 20 total"]
-        D32["amplifier-module-orchestrator-amplihack&lt;br/&gt;3 py / 4 total"]
-        D33["examples&lt;br/&gt;1 py / 1 total"]
-        D34["tests&lt;br/&gt;1 py / 1 total"]
-        D35["amplihack&lt;br/&gt;1 py / 1 total"]
-        D36["amplihack-logparse&lt;br/&gt;0 py / 4 total"]
-        D37["benches&lt;br/&gt;0 py / 1 total"]
-        D38["examples&lt;br/&gt;0 py / 1 total"]
-        D39["src&lt;br/&gt;0 py / 3 total"]
+        D0["amplihack&lt;br/&gt;22 py / 23 total"]
+        D1["agents&lt;br/&gt;0 py / 1 total"]
+        D2["eval-recipes&lt;br/&gt;0 py / 1 total"]
+        D3["goal_seeking&lt;br/&gt;13 py / 14 total"]
+        D4["recipes&lt;br/&gt;0 py / 1 total"]
+        D5["bundle_generator&lt;br/&gt;17 py / 17 total"]
+        D6["adaptive&lt;br/&gt;3 py / 3 total"]
+        D7["docker&lt;br/&gt;3 py / 3 total"]
+        D8["eval&lt;br/&gt;23 py / 26 total"]
+        D9["self_improve&lt;br/&gt;5 py / 5 total"]
+        D10["examples&lt;br/&gt;2 py / 3 total"]
+        D11["fleet&lt;br/&gt;54 py / 55 total"]
+        D12["prompts&lt;br/&gt;1 py / 3 total"]
+        D13["tests&lt;br/&gt;32 py / 32 total"]
+        D14["goal_agent_generator&lt;br/&gt;9 py / 11 total"]
+        D15["templates&lt;br/&gt;3 py / 3 total"]
+        D16["tests&lt;br/&gt;9 py / 9 total"]
+        D17["hooks&lt;br/&gt;3 py / 3 total"]
+        D18["knowledge_builder&lt;br/&gt;3 py / 3 total"]
+        D19["modules&lt;br/&gt;4 py / 4 total"]
+        D20["launcher&lt;br/&gt;26 py / 26 total"]
+        D21["tests&lt;br/&gt;4 py / 5 total"]
+        D22["lsp_detector&lt;br/&gt;2 py / 2 total"]
+        D23["memory&lt;br/&gt;14 py / 15 total"]
+        D24["backends&lt;br/&gt;4 py / 4 total"]
+        D25["evaluation&lt;br/&gt;5 py / 5 total"]
+        D26["kuzu&lt;br/&gt;5 py / 6 total"]
+        D27["meta_delegation&lt;br/&gt;9 py / 9 total"]
+        D28["mode_detector&lt;br/&gt;3 py / 3 total"]
+        D29["path_resolver&lt;br/&gt;2 py / 2 total"]
+        D30["plugin_cli&lt;br/&gt;4 py / 4 total"]
+        D31["plugin_manager&lt;br/&gt;2 py / 2 total"]
+        D32["power_steering&lt;br/&gt;2 py / 2 total"]
+        D33["prompts&lt;br/&gt;0 py / 1 total"]
+        D34["proxy&lt;br/&gt;30 py / 30 total"]
+        D35["recipe_cli&lt;br/&gt;3 py / 3 total"]
+        D36["recipes&lt;br/&gt;6 py / 6 total"]
+        D37["tests&lt;br/&gt;3 py / 3 total"]
+        D38["safety&lt;br/&gt;4 py / 4 total"]
+        D39["security&lt;br/&gt;10 py / 11 total"]
         D0 --> D1
-        D0 --> D2
+        D1 --> D2
         D1 --> D3
-        D1 --> D4
-        D1 --> D5
-        D1 --> D6
-        D1 --> D7
-        D1 --> D8
-        D1 --> D9
-        D1 --> D10
-        D1 --> D11
-        D1 --> D12
-        D1 --> D13
-        D1 --> D14
-        D1 --> D15
-        D0 --> D16
+        D0 --> D5
+        D0 --> D7
+        D0 --> D8
+        D8 --> D9
+        D0 --> D10
+        D0 --> D11
+        D11 --> D12
+        D11 --> D13
+        D0 --> D14
+        D14 --> D15
+        D14 --> D16
         D0 --> D17
-        D17 --> D18
-        D17 --> D19
-        D17 --> D20
-        D17 --> D21
-        D17 --> D22
+        D0 --> D18
+        D18 --> D19
+        D0 --> D20
+        D20 --> D21
+        D0 --> D22
         D0 --> D23
         D23 --> D24
         D23 --> D25
-        D0 --> D26
-        D26 --> D27
-        D26 --> D28
-        D26 --> D29
-        D26 --> D30
-        D26 --> D31
+        D23 --> D26
+        D0 --> D27
+        D0 --> D28
+        D0 --> D29
+        D0 --> D30
+        D0 --> D31
         D0 --> D32
-        D32 --> D33
-        D32 --> D34
+        D0 --> D33
+        D0 --> D34
         D0 --> D35
         D0 --> D36
         D36 --> D37
-        D36 --> D38
-        D36 --> D39
-    
+        D0 --> D38
+        D0 --> D39
+
         click D0 "../" "Back to Atlas index"
     ```
 
@@ -111,72 +109,72 @@ Category: <strong>Structural</strong> | Generated: 2026-03-24T16:57:39.682651+00
 
     | Directory | Role | Python | Total |
     |-----------|------|--------|-------|
-    | `/home/azureuser/src/supply` | other | 2 | 34 |
-    | `/home/azureuser/src/supply/.claude` | package | 1 | 5 |
-    | `/home/azureuser/src/supply/.claude-plugin` | other | 0 | 2 |
-    | `/home/azureuser/src/supply/.claude/agents` | docs | 0 | 1 |
-    | `/home/azureuser/src/supply/.claude/agents/amplihack/core` | docs | 0 | 7 |
-    | `/home/azureuser/src/supply/.claude/agents/amplihack/specialized` | docs | 0 | 30 |
-    | `/home/azureuser/src/supply/.claude/agents/amplihack/workflows` | docs | 0 | 2 |
-    | `/home/azureuser/src/supply/.claude/agents/eval-recipes` | docs | 0 | 1 |
-    | `/home/azureuser/src/supply/.claude/agents/eval-recipes/amplihack` | config | 0 | 3 |
-    | `/home/azureuser/src/supply/.claude/agents/eval-recipes/claude_code` | config | 0 | 3 |
-    | `/home/azureuser/src/supply/.claude/bin` | other | 0 | 1 |
-    | `/home/azureuser/src/supply/.claude/ci` | other | 3 | 3 |
-    | `/home/azureuser/src/supply/.claude/commands` | other | 2 | 3 |
-    | `/home/azureuser/src/supply/.claude/commands/amplihack` | docs | 0 | 37 |
-    | `/home/azureuser/src/supply/.claude/commands/ddd` | docs | 0 | 8 |
-    | `/home/azureuser/src/supply/.claude/config` | config | 0 | 3 |
-    | `/home/azureuser/src/supply/.claude/context` | docs | 0 | 19 |
-    | `/home/azureuser/src/supply/.claude/data/azure_aks_expert` | docs | 0 | 3 |
-    | `/home/azureuser/src/supply/.claude/data/learnings` | config | 0 | 6 |
-    | `/home/azureuser/src/supply/.claude/data/multi-repo` | config | 0 | 2 |
-    | `/home/azureuser/src/supply/.claude/data/python_asyncio_basics_and_event_loop_fundamentals` | docs | 0 | 5 |
-    | `/home/azureuser/src/supply/.claude/data/test-mapping` | config | 0 | 2 |
-    | `/home/azureuser/src/supply/.claude/docs` | docs | 0 | 11 |
-    | `/home/azureuser/src/supply/.claude/profiles` | config | 0 | 3 |
-    | `/home/azureuser/src/supply/.claude/scenarios` | docs | 0 | 1 |
-    | `/home/azureuser/src/supply/.claude/scenarios/ab-comparison` | other | 2 | 4 |
-    | `/home/azureuser/src/supply/.claude/scenarios/analyze-codebase` | other | 1 | 3 |
-    | `/home/azureuser/src/supply/.claude/scenarios/analyze-codebase/examples` | other | 1 | 1 |
-    | `/home/azureuser/src/supply/.claude/scenarios/analyze-codebase/tests` | tests | 1 | 1 |
-    | `/home/azureuser/src/supply/.claude/scenarios/analyze-trace-logs` | other | 1 | 3 |
-    | `/home/azureuser/src/supply/.claude/scenarios/analyze-trace-logs/examples` | other | 1 | 1 |
-    | `/home/azureuser/src/supply/.claude/scenarios/analyze-trace-logs/tests` | tests | 1 | 1 |
-    | `/home/azureuser/src/supply/.claude/scenarios/az-devops-tools` | package | 14 | 16 |
-    | `/home/azureuser/src/supply/.claude/scenarios/az-devops-tools/tests` | tests | 2 | 2 |
-    | `/home/azureuser/src/supply/.claude/scenarios/check-broken-links` | package | 2 | 3 |
-    | `/home/azureuser/src/supply/.claude/scenarios/check-broken-links/examples` | other | 0 | 1 |
-    | `/home/azureuser/src/supply/.claude/scenarios/check-broken-links/tests` | tests | 1 | 4 |
-    | `/home/azureuser/src/supply/.claude/scenarios/mcp-manager` | package | 4 | 7 |
-    | `/home/azureuser/src/supply/.claude/scenarios/mcp-manager/examples` | other | 1 | 1 |
-    | `/home/azureuser/src/supply/.claude/scenarios/mcp-manager/tests` | tests | 5 | 5 |
-    | `/home/azureuser/src/supply/.claude/scenarios/mcp-manager/tests/fixtures` | other | 0 | 1 |
-    | `/home/azureuser/src/supply/.claude/scenarios/parity-harness` | other | 2 | 4 |
-    | `/home/azureuser/src/supply/.claude/scenarios/templates` | docs | 0 | 2 |
-    | `/home/azureuser/src/supply/.claude/schemas/modular-build` | other | 0 | 2 |
-    | `/home/azureuser/src/supply/.claude/skills/agent-generator-tutor` | docs | 0 | 1 |
-    | `/home/azureuser/src/supply/.claude/skills/amplihack-expert` | docs | 0 | 3 |
-    | `/home/azureuser/src/supply/.claude/skills/amplihack-expert/tests` | tests | 2 | 2 |
-    | `/home/azureuser/src/supply/.claude/skills/anthropologist-analyst` | docs | 0 | 3 |
-    | `/home/azureuser/src/supply/.claude/skills/anthropologist-analyst/tests` | tests | 0 | 1 |
-    | `/home/azureuser/src/supply/.claude/skills/aspire` | docs | 0 | 6 |
+    | `/home/azureuser/src/amplihack/src/amplihack` | package | 22 | 23 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents` | docs | 0 | 1 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/amplihack/core` | docs | 0 | 7 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/amplihack/specialized` | docs | 0 | 30 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/amplihack/workflows` | docs | 0 | 2 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/eval-recipes` | docs | 0 | 1 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/eval-recipes/amplihack` | config | 0 | 3 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/eval-recipes/claude_code` | config | 0 | 3 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking` | package | 13 | 14 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/__pycache__` | other | 0 | 23 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/hive_mind` | package | 13 | 13 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/prompts` | package | 1 | 37 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/prompts/__pycache__` | other | 0 | 2 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/prompts/sdk` | package | 1 | 9 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/prompts/variants` | docs | 0 | 5 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/sdk_adapters` | package | 6 | 6 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/sdk_adapters/__pycache__` | other | 0 | 9 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/sub_agents` | package | 6 | 6 |
+    | `/home/azureuser/src/amplihack/src/amplihack/agents/goal_seeking/sub_agents/__pycache__` | other | 0 | 12 |
+    | `/home/azureuser/src/amplihack/src/amplihack/amplifier-bundle/recipes` | config | 0 | 1 |
+    | `/home/azureuser/src/amplihack/src/amplihack/bundle_generator` | package | 17 | 17 |
+    | `/home/azureuser/src/amplihack/src/amplihack/context/adaptive` | package | 3 | 3 |
+    | `/home/azureuser/src/amplihack/src/amplihack/docker` | package | 3 | 3 |
+    | `/home/azureuser/src/amplihack/src/amplihack/eval` | package | 23 | 26 |
+    | `/home/azureuser/src/amplihack/src/amplihack/eval/self_improve` | package | 5 | 5 |
+    | `/home/azureuser/src/amplihack/src/amplihack/eval/self_improve/results` | other | 0 | 1 |
+    | `/home/azureuser/src/amplihack/src/amplihack/examples` | other | 2 | 3 |
+    | `/home/azureuser/src/amplihack/src/amplihack/fleet` | package | 54 | 55 |
+    | `/home/azureuser/src/amplihack/src/amplihack/fleet/prompts` | package | 1 | 3 |
+    | `/home/azureuser/src/amplihack/src/amplihack/fleet/tests` | tests | 32 | 32 |
+    | `/home/azureuser/src/amplihack/src/amplihack/goal_agent_generator` | package | 9 | 11 |
+    | `/home/azureuser/src/amplihack/src/amplihack/goal_agent_generator/templates` | package | 3 | 3 |
+    | `/home/azureuser/src/amplihack/src/amplihack/goal_agent_generator/tests` | tests | 9 | 9 |
+    | `/home/azureuser/src/amplihack/src/amplihack/hooks` | package | 3 | 3 |
+    | `/home/azureuser/src/amplihack/src/amplihack/knowledge_builder` | package | 3 | 3 |
+    | `/home/azureuser/src/amplihack/src/amplihack/knowledge_builder/modules` | package | 4 | 4 |
+    | `/home/azureuser/src/amplihack/src/amplihack/launcher` | package | 26 | 26 |
+    | `/home/azureuser/src/amplihack/src/amplihack/launcher/tests` | tests | 4 | 5 |
+    | `/home/azureuser/src/amplihack/src/amplihack/lsp_detector` | package | 2 | 2 |
+    | `/home/azureuser/src/amplihack/src/amplihack/memory` | package | 14 | 15 |
+    | `/home/azureuser/src/amplihack/src/amplihack/memory/backends` | package | 4 | 4 |
+    | `/home/azureuser/src/amplihack/src/amplihack/memory/evaluation` | package | 5 | 5 |
+    | `/home/azureuser/src/amplihack/src/amplihack/memory/kuzu` | package | 5 | 6 |
+    | `/home/azureuser/src/amplihack/src/amplihack/memory/kuzu/indexing` | package | 11 | 11 |
+    | `/home/azureuser/src/amplihack/src/amplihack/meta_delegation` | package | 9 | 9 |
+    | `/home/azureuser/src/amplihack/src/amplihack/mode_detector` | package | 3 | 3 |
+    | `/home/azureuser/src/amplihack/src/amplihack/path_resolver` | package | 2 | 2 |
+    | `/home/azureuser/src/amplihack/src/amplihack/plugin_cli` | package | 4 | 4 |
+    | `/home/azureuser/src/amplihack/src/amplihack/plugin_manager` | package | 2 | 2 |
+    | `/home/azureuser/src/amplihack/src/amplihack/power_steering` | package | 2 | 2 |
 
 ## Legend
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| Rectangle | Directory |
-| Arrow | Parent-child relationship |
-| Label | `name` / `py count` / `total count` |
+| Symbol    | Meaning                             |
+| --------- | ----------------------------------- |
+| Rectangle | Directory                           |
+| Arrow     | Parent-child relationship           |
+| Label     | `name` / `py count` / `total count` |
 
 </div>
 
 ## Key Findings
 
-- 1049 directories discovered
+- 158 directories discovered
 - 5 entry points identified
 
 ## Detail

@@ -499,8 +499,7 @@ class TestLaunchCommandCrashSessionDoubleCrash:
         # A DEBUG-level record mentioning the secondary failure must exist
         debug_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
         crash_fail_logged = any(
-            "crash_session" in r.message and "failed" in r.message
-            for r in debug_records
+            "crash_session" in r.message and "failed" in r.message for r in debug_records
         )
         assert crash_fail_logged, (
             f"Expected a DEBUG log mentioning 'crash_session' and 'failed'. "

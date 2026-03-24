@@ -19,7 +19,6 @@ DEVELOPMENT is determined by tool usage (code changes), not keywords.
 INVESTIGATION keywords only apply when there are NO code modifications.
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -30,10 +29,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from power_steering_checker import PowerSteeringChecker
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _user_msg(content: str) -> dict:
     """Create a user message dict for transcripts."""
@@ -142,6 +141,7 @@ def checker():
 # Test Class: Multi-Keyword Priority
 # ===========================================================================
 
+
 class TestMultiKeywordPriority:
     """Tests that verify priority ordering when messages contain keywords
     from multiple session types.
@@ -166,8 +166,7 @@ class TestMultiKeywordPriority:
         ]
         session_type = checker.detect_session_type(transcript)
         assert session_type == "SIMPLE", (
-            f"Expected SIMPLE (cleanup keyword has highest keyword priority), "
-            f"got {session_type}"
+            f"Expected SIMPLE (cleanup keyword has highest keyword priority), got {session_type}"
         )
 
     def test_simple_keyword_beats_development_keywords(self, checker):
@@ -196,8 +195,7 @@ class TestMultiKeywordPriority:
         ]
         session_type = checker.detect_session_type(transcript)
         assert session_type == "SIMPLE", (
-            f"Expected SIMPLE ('cleanup' keyword overrides question indicator), "
-            f"got {session_type}"
+            f"Expected SIMPLE ('cleanup' keyword overrides question indicator), got {session_type}"
         )
 
     # -----------------------------------------------------------------------
@@ -277,8 +275,7 @@ class TestMultiKeywordPriority:
         ]
         session_type = checker.detect_session_type(transcript)
         assert session_type == "INVESTIGATION", (
-            f"Expected INVESTIGATION (keyword present, no code modifications), "
-            f"got {session_type}"
+            f"Expected INVESTIGATION (keyword present, no code modifications), got {session_type}"
         )
 
     def test_investigation_keyword_with_doc_changes_stays_investigation(self, checker):
@@ -304,8 +301,7 @@ class TestMultiKeywordPriority:
         ]
         session_type = checker.detect_session_type(transcript)
         assert session_type == "INVESTIGATION", (
-            f"Expected INVESTIGATION (multiple investigation keywords), "
-            f"got {session_type}"
+            f"Expected INVESTIGATION (multiple investigation keywords), got {session_type}"
         )
 
     # -----------------------------------------------------------------------
@@ -320,8 +316,7 @@ class TestMultiKeywordPriority:
         ]
         session_type = checker.detect_session_type(transcript)
         assert session_type == "DEVELOPMENT", (
-            f"Expected DEVELOPMENT (code modifications without keywords), "
-            f"got {session_type}"
+            f"Expected DEVELOPMENT (code modifications without keywords), got {session_type}"
         )
 
     def test_no_keywords_no_tools_defaults_to_informational(self, checker):
@@ -332,16 +327,14 @@ class TestMultiKeywordPriority:
         ]
         session_type = checker.detect_session_type(transcript)
         assert session_type == "INFORMATIONAL", (
-            f"Expected INFORMATIONAL (no keywords, no tool usage, default), "
-            f"got {session_type}"
+            f"Expected INFORMATIONAL (no keywords, no tool usage, default), got {session_type}"
         )
 
     def test_empty_transcript_is_informational(self, checker):
         """Empty transcript defaults to INFORMATIONAL (fail-open)."""
         session_type = checker.detect_session_type([])
         assert session_type == "INFORMATIONAL", (
-            f"Expected INFORMATIONAL (empty transcript, fail-open default), "
-            f"got {session_type}"
+            f"Expected INFORMATIONAL (empty transcript, fail-open default), got {session_type}"
         )
 
     # -----------------------------------------------------------------------
@@ -421,8 +414,7 @@ class TestMultiKeywordPriority:
         ]
         session_type = checker.detect_session_type(transcript)
         assert session_type == "INVESTIGATION", (
-            f"Expected INVESTIGATION (keywords + Read-only tools), "
-            f"got {session_type}"
+            f"Expected INVESTIGATION (keywords + Read-only tools), got {session_type}"
         )
 
     def test_development_language_without_tools_not_development(self, checker):
@@ -447,6 +439,7 @@ class TestMultiKeywordPriority:
 # ===========================================================================
 # Test Class: Individual Keyword Helper Methods
 # ===========================================================================
+
 
 class TestKeywordHelperMethods:
     """Tests for _has_simple_task_keywords and _has_investigation_keywords
@@ -514,6 +507,7 @@ class TestKeywordHelperMethods:
 # ===========================================================================
 # Test Class: Priority Documentation Verification
 # ===========================================================================
+
 
 class TestPriorityDocumentation:
     """Verify that the documented priority in detect_session_type docstring

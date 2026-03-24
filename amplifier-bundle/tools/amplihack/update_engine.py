@@ -28,7 +28,10 @@ try:
     from .version_checker import get_package_version
 except ImportError:
     # Fallback for standalone execution
-    print("WARNING: relative imports not available - using absolute imports for standalone execution", file=sys.stderr)
+    print(
+        "WARNING: relative imports not available - using absolute imports for standalone execution",
+        file=sys.stderr,
+    )
     from file_classifier import FileCategory, classify_file
     from version_checker import get_package_version
 

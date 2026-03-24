@@ -29,9 +29,7 @@ __all__ = [
 ]
 
 _PROJECT_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
-_REPO_URL_RE = re.compile(
-    r"^(https://github\.com/[\w.-]+/[\w.-]+(?:\.git)?|[\w.-]+/[\w.-]+)$"
-)
+_REPO_URL_RE = re.compile(r"^(https://github\.com/[\w.-]+/[\w.-]+(?:\.git)?|[\w.-]+/[\w.-]+)$")
 
 
 def validate_repo_url(url: str) -> bool:
@@ -53,8 +51,7 @@ class Project:
     def __post_init__(self) -> None:
         if not _PROJECT_NAME_RE.match(self.name):
             raise ValueError(
-                f"Invalid project name {self.name!r}: "
-                "must match ^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
+                f"Invalid project name {self.name!r}: must match ^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
             )
 
     def add_objective(self, number: int, title: str, state: str = "open", url: str = "") -> dict:
@@ -129,8 +126,7 @@ def save_projects(projects: dict[str, Project], path: Path | None = None) -> Non
     for name in projects:
         if not _PROJECT_NAME_RE.match(name):
             raise ValueError(
-                f"Invalid project name {name!r}: "
-                "must match ^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
+                f"Invalid project name {name!r}: must match ^[a-zA-Z0-9][a-zA-Z0-9_-]*$"
             )
 
     doc: dict = {"project": {}}

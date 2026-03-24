@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """Basic tests to verify amplihack modules load correctly."""
 
-import os
 import sys
 from pathlib import Path
 
@@ -21,12 +20,6 @@ def test_imports():
         from amplihack.cli import create_parser, launch_command  # noqa: F401
 
         print("✓ CLI module imported")
-
-        # Test proxy modules
-        from amplihack.proxy import ProxyConfig, ProxyManager  # noqa: F401
-        from amplihack.proxy.env import ProxyEnvironment  # noqa: F401
-
-        print("✓ Proxy modules imported")
 
         # Test launcher modules
         from amplihack.launcher import ClaudeDirectoryDetector, ClaudeLauncher  # noqa: F401
@@ -58,34 +51,6 @@ def test_detector():
         print("✓ No .claude directory found (expected in test environment)")
 
     return True
-
-
-def test_proxy_config():
-    """Test proxy configuration parsing."""
-    import tempfile
-
-    from amplihack.proxy.config import ProxyConfig
-
-    # Create a test .env file
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
-        f.write("ANTHROPIC_API_KEY=test-key-123\n")  # pragma: allowlist secret
-        f.write("OPENAI_API_KEY=test-openai-key\n")  # pragma: allowlist secret
-        f.write("AZURE_ENDPOINT=https://test.azure.com\n")
-        f.write("# Comment line\n")
-        f.write("LOG_LEVEL=debug\n")
-        temp_path = f.name
-
-    try:
-        config = ProxyConfig(Path(temp_path))
-        assert config.get("ANTHROPIC_API_KEY") == "test-key-123"
-        assert config.get("OPENAI_API_KEY") == "test-openai-key"
-        assert config.get("AZURE_ENDPOINT") == "https://test.azure.com"
-        assert config.get("LOG_LEVEL") == "debug"
-        assert config.validate()
-        print("✓ Proxy configuration parsing works")
-        return True
-    finally:
-        os.unlink(temp_path)
 
 
 def test_path_resolver():
@@ -135,11 +100,10 @@ def test_cli_parser():
     assert args.command == "install"
     print("✓ Parser handles 'install' command")
 
-    # Test launch command with options
-    args = parser.parse_args(["launch", "--with-proxy-config", "test.env"])
+    # Test launch command
+    args = parser.parse_args(["launch"])
     assert args.command == "launch"
-    assert args.with_proxy_config == "test.env"
-    print("✓ Parser handles 'launch' command with options")
+    print("✓ Parser handles 'launch' command")
 
     return True
 
@@ -151,7 +115,6 @@ def main():
     tests = [
         test_imports,
         test_detector,
-        test_proxy_config,
         test_path_resolver,
         test_process_manager,
         test_cli_parser,

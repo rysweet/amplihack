@@ -14,7 +14,6 @@ Testing pyramid:
 from __future__ import annotations
 
 import subprocess
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,14 +21,13 @@ import pytest
 from amplihack.fleet._cli_formatters import ScoutResult, format_scout_report
 from amplihack.fleet._session_lifecycle import (
     FleetConfig,
+    run_scout,
     start_fleet_session,
     stop_fleet_session,
-    run_scout,
 )
 from amplihack.fleet.fleet_adopt import AdoptedSession, SessionAdopter
-from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
+from amplihack.fleet.fleet_state import FleetState
 from amplihack.fleet.fleet_tasks import TaskQueue
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -226,7 +224,7 @@ class TestReasonStage:
     @patch("amplihack.fleet.fleet_session_reasoner.gather_context")
     def test_reason_calls_backend(self, mock_gather):
         """reason_about_session calls the LLM backend."""
-        from amplihack.fleet._session_context import SessionContext, SessionDecision
+        from amplihack.fleet._session_context import SessionContext
         from amplihack.fleet.fleet_session_reasoner import SessionReasoner
 
         # Mock gather_context to return a minimal context
@@ -246,8 +244,7 @@ class TestReasonStage:
 
         mock_backend = MagicMock()
         mock_backend.complete.return_value = (
-            '{"action": "wait", "confidence": 0.9, "reasoning": "Agent is idle",'
-            ' "input_text": ""}'
+            '{"action": "wait", "confidence": 0.9, "reasoning": "Agent is idle", "input_text": ""}'
         )
 
         reasoner = SessionReasoner(
@@ -423,12 +420,6 @@ class TestFullPipeline:
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
     def test_pipeline_session_management(self, mock_run, mock_gather, tmp_path, tmp_queue):
         """Pipeline integrates with fleet session management (start/stop/run_scout)."""
-        from amplihack.fleet._session_lifecycle import (
-            FleetConfig,
-            start_fleet_session,
-            stop_fleet_session,
-            run_scout,
-        )
 
         # -- Stage 1 & 2: Discover + Adopt --
         mock_run.return_value = MagicMock(
@@ -443,6 +434,7 @@ class TestFullPipeline:
 
         # -- Create fleet session to coordinate --
         import amplihack.fleet._session_lifecycle as lifecycle_mod
+
         original_dir = lifecycle_mod._SESSIONS_DIR
         lifecycle_mod._SESSIONS_DIR = tmp_path / "sessions"
 
@@ -483,7 +475,9 @@ class TestFullPipeline:
                 backend=mock_backend,
                 dry_run=True,
             )
-            decision = reasoner.reason_about_session(_MOCK_VM, _MOCK_SESSION, task_prompt="Fix auth")
+            decision = reasoner.reason_about_session(
+                _MOCK_VM, _MOCK_SESSION, task_prompt="Fix auth"
+            )
 
             # -- Record scout results in fleet session --
             scout_result = run_scout(

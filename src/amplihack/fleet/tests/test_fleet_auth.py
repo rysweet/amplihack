@@ -410,6 +410,7 @@ class TestVerifyAuthEdgeCases:
     def test_verify_auth_subprocess_error(self, mock_run):
         """SubprocessError during verify should return False."""
         import subprocess
+
         mock_run.side_effect = subprocess.SubprocessError("error")
 
         auth = AuthPropagator()
@@ -426,6 +427,7 @@ class TestSwitchGitHubIdentityEdgeCases:
     def test_switch_identity_timeout(self, mock_run):
         """Timeout during switch should return failure."""
         import subprocess
+
         mock_run.side_effect = subprocess.TimeoutExpired(cmd=["test"], timeout=30)
 
         auth = AuthPropagator()
@@ -439,6 +441,7 @@ class TestSwitchGitHubIdentityEdgeCases:
     def test_list_identities_timeout(self, mock_run):
         """Timeout during list should return empty list."""
         import subprocess
+
         mock_run.side_effect = subprocess.TimeoutExpired(cmd=["test"], timeout=30)
 
         auth = AuthPropagator()

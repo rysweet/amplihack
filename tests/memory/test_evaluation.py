@@ -10,6 +10,7 @@ Tests:
 import pytest
 import pytest_asyncio
 
+from amplihack.memory.models import MemoryType
 from amplihack.memory.sqlite_backend import create_backend
 from src.amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
 from src.amplihack.memory.evaluation import (
@@ -20,7 +21,6 @@ from src.amplihack.memory.evaluation import (
     run_evaluation,
 )
 from src.amplihack.memory.evaluation.quality_evaluator import QueryTestCase
-from amplihack.memory.models import MemoryType
 
 
 @pytest_asyncio.fixture

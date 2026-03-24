@@ -1,10 +1,10 @@
 """End-to-end outside-in test for the lock mode co-pilot."""
+
 import json
 import os
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 PROJECT_ROOT = "/home/azureuser/src/amplihack9"
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "amplifier-bundle/tools/amplihack/
 
 PASS = 0
 FAIL = 0
+
 
 def check(name, condition):
     global PASS, FAIL
@@ -21,6 +22,7 @@ def check(name, condition):
     else:
         FAIL += 1
         print(f"  FAIL: {name}")
+
 
 # ── Test 1: Lock tool lifecycle ──
 print("\n=== Test 1: Lock tool lifecycle ===")
@@ -44,7 +46,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
 
 # ── Test 2: copilot_stop_handler with fleet module ──
 print("\n=== Test 2: copilot_stop_handler get_copilot_continuation ===")
-from copilot_stop_handler import get_copilot_continuation, disable_lock_files
+from copilot_stop_handler import disable_lock_files, get_copilot_continuation
 
 with tempfile.TemporaryDirectory() as tmpdir:
     project_root = Path(tmpdir)
@@ -117,10 +119,18 @@ with tempfile.TemporaryDirectory() as tmpdir:
 print("\n=== Test 5: build_rich_context with 601-entry transcript ===")
 from amplihack.fleet.fleet_copilot import build_rich_context
 
-entries = [json.dumps({"type": "human", "message": {"content": "Fix the authentication bug in login.py"}})]
+entries = [
+    json.dumps({"type": "human", "message": {"content": "Fix the authentication bug in login.py"}})
+]
 for i in range(300):
-    entries.append(json.dumps({"type": "tool_use", "name": "Read", "message": {"content": f"file {i}"}}))
-    entries.append(json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": f"Step {i}"}]}}))
+    entries.append(
+        json.dumps({"type": "tool_use", "name": "Read", "message": {"content": f"file {i}"}})
+    )
+    entries.append(
+        json.dumps(
+            {"type": "assistant", "message": {"content": [{"type": "text", "text": f"Step {i}"}]}}
+        )
+    )
 ctx = build_rich_context("\n".join(entries), recent_message_count=100)
 check("Has ORIGINAL USER REQUEST", "ORIGINAL USER REQUEST" in ctx)
 check("Has first message content", "Fix the authentication bug" in ctx)
@@ -142,7 +152,7 @@ check("Returns latest", result == "Latest")
 check("No old messages", "Old" not in result)
 
 # ── Summary ──
-print(f"\n{'='*50}")
+print(f"\n{'=' * 50}")
 print(f"RESULTS: {PASS} passed, {FAIL} failed")
 if FAIL > 0:
     sys.exit(1)

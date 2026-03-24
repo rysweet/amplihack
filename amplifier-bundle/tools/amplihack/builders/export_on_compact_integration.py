@@ -20,7 +20,10 @@ try:
     from .codex_transcripts_builder import CodexTranscriptsBuilder
 except ImportError:
     # Fallback for testing or standalone usage
-    print("WARNING: relative imports not available - using absolute imports for standalone usage", file=sys.stderr)
+    print(
+        "WARNING: relative imports not available - using absolute imports for standalone usage",
+        file=sys.stderr,
+    )
     from claude_transcript_builder import ClaudeTranscriptBuilder
     from codex_transcripts_builder import CodexTranscriptsBuilder
     from hook_processor import HookProcessor

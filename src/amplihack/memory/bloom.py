@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-from typing import Sequence
+from collections.abc import Sequence
 
 
 class BloomFilter:
@@ -48,9 +48,7 @@ class BloomFilter:
             int(-expected_items * math.log(false_positive_rate) / (math.log(2) ** 2)),
         )
         # Optimal number of hash functions: k = (m/n) * ln2
-        self._num_hashes = max(
-            1, int((self._size / expected_items) * math.log(2))
-        )
+        self._num_hashes = max(1, int((self._size / expected_items) * math.log(2)))
         # Bit array as bytearray
         self._bits = bytearray((self._size + 7) // 8)
         self._count = 0

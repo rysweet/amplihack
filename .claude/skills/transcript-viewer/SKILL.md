@@ -108,7 +108,7 @@ fi
 
 When both `~/.copilot/session-state/` and `~/.claude/projects/` exist with sessions,
 offer the user a choice: "Found sessions for both Claude Code and GitHub Copilot CLI.
-Which would you like to browse? [1] Claude Code  [2] GitHub Copilot CLI"
+Which would you like to browse? [1] Claude Code [2] GitHub Copilot CLI"
 
 The user can always override with an explicit path.
 
@@ -151,12 +151,12 @@ detect_log_format() {
 }
 ```
 
-| Format | Handler |
-|--------|---------|
-| `jsonl` | Pass to `claude-code-log` |
+| Format             | Handler                                    |
+| ------------------ | ------------------------------------------ |
+| `jsonl`            | Pass to `claude-code-log`                  |
 | `copilot-markdown` | Display inline (already readable Markdown) |
-| `markdown` | Display inline |
-| `unknown` | Warn and display raw |
+| `markdown`         | Display inline                             |
+| `unknown`          | Warn and display raw                       |
 
 ## Tool Detection
 
@@ -237,6 +237,7 @@ For **GitHub Copilot CLI** (`TOOL_CONTEXT="copilot"`):
 
 ```markdown
 # Session: 2025-11-23 19:32
+
 **Model**: claude-sonnet-4-6
 **Messages**: 42
 
@@ -394,6 +395,7 @@ find ~/.claude/projects -name "*.jsonl" \
 ```
 
 Create the reference files with `touch -d`:
+
 ```bash
 touch -d "2025-11-01" /tmp/start_date_ref
 touch -d "2025-11-30" /tmp/end_date_ref
@@ -430,6 +432,7 @@ GitHub Copilot CLI **automatically saves** session data to disk at:
 ```
 
 Each session directory contains:
+
 - `events.jsonl` — JSONL session history (similar format to Claude Code logs)
 - `workspace.yaml` — session metadata (working directory, session ID, etc.)
 - `plan.md` — implementation plan for the session
@@ -453,6 +456,7 @@ Copilot `events.jsonl` contains one JSON object per line, similar to Claude Code
 When the user wants to view a Copilot session (by directory detection or explicit path):
 
 1. Locate the `events.jsonl` for the session:
+
    ```bash
    # Current session (most recent)
    LATEST_SESSION=$(ls -dt ~/.copilot/session-state/*/ 2>/dev/null | head -1)
@@ -461,6 +465,7 @@ When the user wants to view a Copilot session (by directory detection or explici
    # Specific session by ID
    EVENTS_FILE="$HOME/.copilot/session-state/<SESSION_ID>/events.jsonl"
    ```
+
 2. Run:
    ```bash
    $CCL "$EVENTS_FILE" --format markdown
@@ -518,18 +523,18 @@ When the user invokes this skill, follow this decision tree:
 
 ## Error Handling
 
-| Situation | Response |
-|-----------|----------|
-| `claude-code-log` not installed | Show install instructions, stop |
-| JSONL file not found | "No session file found at <path>" |
-| Session ID not found | "No session with ID <ID>. Run 'browse all sessions' to list available ones." |
-| No agent output files | "No agent background task output found in current directory." |
-| Empty JSONL file | "Session file is empty — no messages to display." |
-| Date range produces no results | "No sessions found between <start> and <end>." |
-| `claude-code-log` returns non-zero exit | Display stderr and suggest `--help` |
-| `~/.copilot/session-state/` exists but empty | "No Copilot sessions found. Start a session with GitHub Copilot CLI to create logs." |
-| Copilot session dir exists but no events.jsonl | "Session directory found but events.jsonl is missing at <path>" |
-| Unknown file format | Warn user and display raw content |
+| Situation                                      | Response                                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `claude-code-log` not installed                | Show install instructions, stop                                                      |
+| JSONL file not found                           | "No session file found at <path>"                                                    |
+| Session ID not found                           | "No session with ID <ID>. Run 'browse all sessions' to list available ones."         |
+| No agent output files                          | "No agent background task output found in current directory."                        |
+| Empty JSONL file                               | "Session file is empty — no messages to display."                                    |
+| Date range produces no results                 | "No sessions found between <start> and <end>."                                       |
+| `claude-code-log` returns non-zero exit        | Display stderr and suggest `--help`                                                  |
+| `~/.copilot/session-state/` exists but empty   | "No Copilot sessions found. Start a session with GitHub Copilot CLI to create logs." |
+| Copilot session dir exists but no events.jsonl | "Session directory found but events.jsonl is missing at <path>"                      |
+| Unknown file format                            | Warn user and display raw content                                                    |
 
 ## Implementation Notes
 
@@ -561,6 +566,7 @@ Copilot CLI `events.jsonl` files contain one JSON object per line, stored at
 ```
 
 The format is compatible with `claude-code-log`. Additional per-session files:
+
 - `workspace.yaml` — session metadata
 - `plan.md` — implementation plan
 - `checkpoints/` — compaction history (older snapshots)
@@ -585,15 +591,15 @@ Legacy sessions may be stored at `~/.copilot/history-session-state/` with the sa
 
 ## Quick Reference
 
-| User says | Tool | Mode | Command |
-|-----------|------|------|---------|
-| "view current transcript" | Claude Code | Current session | `$CCL <latest.jsonl> --format markdown` |
-| "show session abc123" | Claude Code | Specific session | `$CCL ~/.claude/projects/**/*abc123*.jsonl --format markdown` |
-| "view agent output" | Claude Code | Agent output | `cat .agent-step-*.log` or `$CCL *.jsonl` |
-| "browse all sessions" | Claude Code | All sessions | list + summarize all `~/.claude/projects/**/*.jsonl` |
-| "view transcript as HTML" | Claude Code | Any + HTML | `$CCL <file> --format html > /tmp/view.html` |
-| "last 7 days" (with browse) | Claude Code | Date filter | `find ... -mtime -7` |
-| "view current copilot session" | Copilot | Current session | `$CCL ~/.copilot/session-state/<latest>/events.jsonl --format markdown` |
-| "show copilot session abc123" | Copilot | Specific session | `$CCL ~/.copilot/session-state/abc123/events.jsonl --format markdown` |
-| "browse copilot sessions" | Copilot | All sessions | list dirs in `~/.copilot/session-state/`, show session IDs |
-| "view copilot session as HTML" | Copilot | Any + HTML | `$CCL <events.jsonl> --format html > /tmp/view.html` |
+| User says                      | Tool        | Mode             | Command                                                                 |
+| ------------------------------ | ----------- | ---------------- | ----------------------------------------------------------------------- |
+| "view current transcript"      | Claude Code | Current session  | `$CCL <latest.jsonl> --format markdown`                                 |
+| "show session abc123"          | Claude Code | Specific session | `$CCL ~/.claude/projects/**/*abc123*.jsonl --format markdown`           |
+| "view agent output"            | Claude Code | Agent output     | `cat .agent-step-*.log` or `$CCL *.jsonl`                               |
+| "browse all sessions"          | Claude Code | All sessions     | list + summarize all `~/.claude/projects/**/*.jsonl`                    |
+| "view transcript as HTML"      | Claude Code | Any + HTML       | `$CCL <file> --format html > /tmp/view.html`                            |
+| "last 7 days" (with browse)    | Claude Code | Date filter      | `find ... -mtime -7`                                                    |
+| "view current copilot session" | Copilot     | Current session  | `$CCL ~/.copilot/session-state/<latest>/events.jsonl --format markdown` |
+| "show copilot session abc123"  | Copilot     | Specific session | `$CCL ~/.copilot/session-state/abc123/events.jsonl --format markdown`   |
+| "browse copilot sessions"      | Copilot     | All sessions     | list dirs in `~/.copilot/session-state/`, show session IDs              |
+| "view copilot session as HTML" | Copilot     | Any + HTML       | `$CCL <events.jsonl> --format html > /tmp/view.html`                    |

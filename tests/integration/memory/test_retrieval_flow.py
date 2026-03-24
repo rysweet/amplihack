@@ -23,7 +23,6 @@ try:
         RetrievalPipeline,
         RetrievalQuery,
     )
-    from amplihack.memory.models import MemoryEntry, MemoryType
 except ImportError:
     pytest.skip("Memory system not implemented yet", allow_module_level=True)
 

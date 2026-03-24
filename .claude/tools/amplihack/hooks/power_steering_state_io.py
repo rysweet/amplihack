@@ -31,14 +31,13 @@ if _hooks_dir not in sys.path:
     sys.path.insert(0, _hooks_dir)
 
 from file_lock_utils import acquire_file_lock
-from power_steering_models import PowerSteeringTurnState
 from power_steering_constants import (
     INITIAL_RETRY_DELAY,
     LOCK_TIMEOUT_SECONDS,
     MAX_SAVE_RETRIES,
     MAX_TURN_COUNT,
 )
-
+from power_steering_models import PowerSteeringTurnState
 
 __all__ = [
     "load_state_from_file",

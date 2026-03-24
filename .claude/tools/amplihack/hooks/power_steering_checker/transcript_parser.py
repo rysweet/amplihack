@@ -28,7 +28,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-
 # --- Format detection -----------------------------------------------------------
 
 
@@ -235,9 +234,7 @@ def normalize_copilot_event(obj: dict) -> dict | None:
         # Infer from event type
         if event_type in ("user_message",):
             role = "user"
-        elif event_type in ("assistant_message",):
-            role = "assistant"
-        elif event_type in ("tool_call",):
+        elif event_type in ("assistant_message",) or event_type in ("tool_call",):
             role = "assistant"
         elif event_type in ("tool_result",):
             role = "tool"

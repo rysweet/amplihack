@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 
 import pytest
-
 from amplihack.agents.teaching.generator_teacher import (
     VALIDATORS,
     GeneratorTeacher,

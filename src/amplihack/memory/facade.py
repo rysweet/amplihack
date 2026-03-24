@@ -148,7 +148,7 @@ class Memory:
                     cfg.agent_name,
                 )
 
-    def _build_graph_store(self, cfg: "MemoryConfig") -> "GraphStore":
+    def _build_graph_store(self, cfg: MemoryConfig) -> GraphStore:
         """Construct the appropriate GraphStore for the resolved config."""
         transport = getattr(cfg, "memory_transport", "local") or "local"
         conn_str = getattr(cfg, "memory_connection_string", "") or ""
@@ -267,7 +267,7 @@ class Memory:
     # ------------------------------------------------------------------
 
     @property
-    def graph_store(self) -> "GraphStore | None":
+    def graph_store(self) -> GraphStore | None:
         """Return the underlying GraphStore for direct graph operations."""
         return self._graph_store
 
@@ -315,7 +315,7 @@ class Memory:
     def _get_or_create_learning_agent(self) -> Any:
         """Return (lazily created) LearningAgent wired to this facade's adapter."""
         if self._learning_agent is None:
-            from amplihack.agents.goal_seeking.learning_agent import LearningAgent  # noqa: PLC0415
+            from amplihack.agents.goal_seeking.learning_agent import LearningAgent
 
             self._learning_agent = LearningAgent(
                 agent_name=self._cfg.agent_name or self._agent_name,
@@ -485,10 +485,10 @@ class Memory:
     # Context manager support
     # ------------------------------------------------------------------
 
-    def __enter__(self) -> "Memory":
+    def __enter__(self) -> Memory:
         return self
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(self, *args: object) -> None:
         self.close()
 
 

@@ -1,4 +1,4 @@
-"""Enhanced CLI for amplihack with proxy and launcher support."""
+"""Enhanced CLI for amplihack with launcher support."""
 
 import argparse
 import logging
@@ -20,7 +20,6 @@ from .plugin_cli import (
     plugin_verify_command,
 )
 from .plugin_manager import PluginManager
-from .proxy import ProxyConfig, ProxyManager
 from .staging_cleanup import cleanup_legacy_skills
 from .utils import is_uvx_deployment
 from .utils.claude_cli import get_claude_cli_path
@@ -229,8 +228,6 @@ def _launch_command_impl(
 
         # Build command arguments for Docker
         docker_args = ["launch"]
-        if getattr(args, "with_proxy_config", None):
-            docker_args.extend(["--with-proxy-config", args.with_proxy_config])
         if getattr(args, "checkout_repo", None):
             docker_args.extend(["--checkout-repo", args.checkout_repo])
         if claude_args:
@@ -239,46 +236,8 @@ def _launch_command_impl(
 
         return docker_manager.run_command(docker_args)
 
-    # In UVX mode, Claude uses --add-dir for both project directory and plugin directory
-
-    proxy_manager = None
-    system_prompt_path = None
-
-    # Set up proxy if configuration provided
-    if args.with_proxy_config:
-        # For UVX mode, resolve relative paths from original directory
-        if not Path(args.with_proxy_config).is_absolute():
-            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-            config_path = Path(original_cwd) / args.with_proxy_config
-            config_path = config_path.resolve()
-        else:
-            config_path = Path(args.with_proxy_config).resolve()
-
-        if not config_path.exists():
-            print(f"Error: Proxy configuration file not found: {config_path}")
-            return 1
-
-        print(f"Loading proxy configuration from: {config_path}")
-        proxy_config = ProxyConfig(config_path)
-
-        if not proxy_config.validate():
-            print(
-                "Error: Invalid proxy configuration. Check that OPENAI_API_KEY is set in your .env file"
-            )
-            return 1
-
-        proxy_manager = ProxyManager(proxy_config)
-
-        # When using proxy, automatically use Azure persistence prompt
-        default_prompt = Path(__file__).parent / "prompts" / "azure_persistence.md"
-        if default_prompt.exists():
-            system_prompt_path = default_prompt
-            print("Auto-appending Azure persistence prompt for proxy integration")
-
     # Launch Claude with checkout repo if specified
     launcher = ClaudeLauncher(
-        proxy_manager=proxy_manager,
-        append_system_prompt=system_prompt_path,
         checkout_repo=getattr(args, "checkout_repo", None),
         claude_args=claude_args,
         verbose=False,  # Interactive mode does not use --verbose
@@ -472,16 +431,6 @@ def add_claude_specific_args(parser: argparse.ArgumentParser) -> None:
         parser: ArgumentParser to add arguments to.
     """
     parser.add_argument(
-        "--with-proxy-config",
-        metavar="PATH",
-        help="Path to .env file with proxy configuration (for Azure OpenAI integration with auto persistence prompt)",
-    )
-    parser.add_argument(
-        "--builtin-proxy",
-        action="store_true",
-        help="Use built-in proxy server with OpenAI Responses API support instead of external claude-code-proxy",
-    )
-    parser.add_argument(
         "--checkout-repo",
         metavar="GITHUB_URI",
         help="Clone a GitHub repository and use it as working directory. Supports: owner/repo, https://github.com/owner/repo, git@github.com:owner/repo",
@@ -558,9 +507,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     )
 
     # Launch command (new)
-    launch_parser = subparsers.add_parser(
-        "launch", help="Launch Claude Code with optional proxy configuration"
-    )
+    launch_parser = subparsers.add_parser("launch", help="Launch Claude Code")
     add_claude_specific_args(launch_parser)
     add_auto_mode_args(launch_parser)
     add_common_sdk_args(launch_parser)

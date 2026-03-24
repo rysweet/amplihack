@@ -5,11 +5,10 @@ Verifies that the stop hook auto-approves after MAX_LOCK_ITERATIONS
 to prevent infinite loops when the agent has nothing left to do.
 """
 
-import json
 import os
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -49,58 +48,70 @@ class TestSafetyValve:
 
     def test_lock_blocks_normally_below_threshold(self, locked_hook):
         """Lock mode should block stop when below threshold."""
-        with patch.object(locked_hook, "_select_strategy", return_value=None), \
-             patch.object(locked_hook, "_increment_lock_counter", return_value=1), \
-             patch.object(locked_hook, "_get_current_session_id", return_value="test-session"), \
-             patch.object(locked_hook, "save_metric"):
+        with (
+            patch.object(locked_hook, "_select_strategy", return_value=None),
+            patch.object(locked_hook, "_increment_lock_counter", return_value=1),
+            patch.object(locked_hook, "_get_current_session_id", return_value="test-session"),
+            patch.object(locked_hook, "save_metric"),
+        ):
             result = locked_hook.process({})
             assert result["decision"] == "block"
 
     def test_safety_valve_triggers_at_threshold(self, locked_hook):
         """Safety valve should approve stop at max iterations."""
-        with patch.object(locked_hook, "_select_strategy", return_value=None), \
-             patch.object(locked_hook, "_increment_lock_counter", return_value=50), \
-             patch.object(locked_hook, "_get_current_session_id", return_value="test-session"), \
-             patch.object(locked_hook, "save_metric"):
+        with (
+            patch.object(locked_hook, "_select_strategy", return_value=None),
+            patch.object(locked_hook, "_increment_lock_counter", return_value=50),
+            patch.object(locked_hook, "_get_current_session_id", return_value="test-session"),
+            patch.object(locked_hook, "save_metric"),
+        ):
             result = locked_hook.process({})
             assert result["decision"] == "approve"
 
     def test_safety_valve_removes_lock_file(self, locked_hook):
         """Safety valve should remove the lock file."""
         assert locked_hook.lock_flag.exists()
-        with patch.object(locked_hook, "_select_strategy", return_value=None), \
-             patch.object(locked_hook, "_increment_lock_counter", return_value=50), \
-             patch.object(locked_hook, "_get_current_session_id", return_value="test-session"), \
-             patch.object(locked_hook, "save_metric"):
+        with (
+            patch.object(locked_hook, "_select_strategy", return_value=None),
+            patch.object(locked_hook, "_increment_lock_counter", return_value=50),
+            patch.object(locked_hook, "_get_current_session_id", return_value="test-session"),
+            patch.object(locked_hook, "save_metric"),
+        ):
             locked_hook.process({})
             assert not locked_hook.lock_flag.exists()
 
     def test_safety_valve_respects_custom_threshold(self, locked_hook):
         """Safety valve should respect AMPLIHACK_MAX_LOCK_ITERATIONS env var."""
-        with patch.dict(os.environ, {"AMPLIHACK_MAX_LOCK_ITERATIONS": "5"}), \
-             patch.object(locked_hook, "_select_strategy", return_value=None), \
-             patch.object(locked_hook, "_increment_lock_counter", return_value=5), \
-             patch.object(locked_hook, "_get_current_session_id", return_value="test-session"), \
-             patch.object(locked_hook, "save_metric"):
+        with (
+            patch.dict(os.environ, {"AMPLIHACK_MAX_LOCK_ITERATIONS": "5"}),
+            patch.object(locked_hook, "_select_strategy", return_value=None),
+            patch.object(locked_hook, "_increment_lock_counter", return_value=5),
+            patch.object(locked_hook, "_get_current_session_id", return_value="test-session"),
+            patch.object(locked_hook, "save_metric"),
+        ):
             result = locked_hook.process({})
             assert result["decision"] == "approve"
 
     def test_lock_blocks_below_custom_threshold(self, locked_hook):
         """Lock should still block below custom threshold."""
-        with patch.dict(os.environ, {"AMPLIHACK_MAX_LOCK_ITERATIONS": "5"}), \
-             patch.object(locked_hook, "_select_strategy", return_value=None), \
-             patch.object(locked_hook, "_increment_lock_counter", return_value=4), \
-             patch.object(locked_hook, "_get_current_session_id", return_value="test-session"), \
-             patch.object(locked_hook, "save_metric"):
+        with (
+            patch.dict(os.environ, {"AMPLIHACK_MAX_LOCK_ITERATIONS": "5"}),
+            patch.object(locked_hook, "_select_strategy", return_value=None),
+            patch.object(locked_hook, "_increment_lock_counter", return_value=4),
+            patch.object(locked_hook, "_get_current_session_id", return_value="test-session"),
+            patch.object(locked_hook, "save_metric"),
+        ):
             result = locked_hook.process({})
             assert result["decision"] == "block"
 
     def test_no_lock_file_approves_normally(self, stop_hook):
         """Without lock file, stop should approve (after other checks)."""
-        with patch.object(stop_hook, "_select_strategy", return_value=None), \
-             patch.object(stop_hook, "_handle_neo4j_cleanup"), \
-             patch.object(stop_hook, "_handle_neo4j_learning"), \
-             patch.object(stop_hook, "_should_run_power_steering", return_value=False), \
-             patch.object(stop_hook, "_should_run_reflection", return_value=False):
+        with (
+            patch.object(stop_hook, "_select_strategy", return_value=None),
+            patch.object(stop_hook, "_handle_neo4j_cleanup"),
+            patch.object(stop_hook, "_handle_neo4j_learning"),
+            patch.object(stop_hook, "_should_run_power_steering", return_value=False),
+            patch.object(stop_hook, "_should_run_reflection", return_value=False),
+        ):
             result = stop_hook.process({})
             assert result["decision"] == "approve"

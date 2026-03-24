@@ -15,6 +15,7 @@ Complete API reference for the `power_steering_checker` package.
 ```
 
 **Recent Refactoring (v0.10.0, 2026-03-07)**: Split from a monolithic 5,063-line `power_steering_checker.py` into 12 focused modules (largest: 1,217 lines). The refactoring includes:
+
 - Modular architecture with clear separation of concerns
 - Copilot CLI transcript support (auto-detects both Claude Code and GitHub Copilot CLI formats)
 - CLAUDECODE environment variable properly unset to prevent nested session errors
@@ -52,11 +53,11 @@ Module-level convenience wrapper. Creates a `PowerSteeringChecker` and calls `.c
 
 **Parameters**
 
-| Name | Type | Description |
-|---|---|---|
-| `transcript_lines` | `list[str]` | JSONL lines from the session transcript |
-| `session_id` | `str` | Session identifier (alphanumeric, `_`, `-`, max 128 chars) |
-| `project_root` | `Path \| None` | Project root; auto-detected from `.claude` marker if `None` |
+| Name               | Type           | Description                                                 |
+| ------------------ | -------------- | ----------------------------------------------------------- |
+| `transcript_lines` | `list[str]`    | JSONL lines from the session transcript                     |
+| `session_id`       | `str`          | Session identifier (alphanumeric, `_`, `-`, max 128 chars)  |
+| `project_root`     | `Path \| None` | Project root; auto-detected from `.claude` marker if `None` |
 
 **Returns** `PowerSteeringResult`
 
@@ -89,8 +90,8 @@ Returns `True` if power-steering is currently disabled for the project.
 
 **Parameters**
 
-| Name | Type | Description |
-|---|---|---|
+| Name           | Type           | Description                           |
+| -------------- | -------------- | ------------------------------------- |
 | `project_root` | `Path \| None` | Project root; auto-detected if `None` |
 
 **Returns** `bool`
@@ -137,10 +138,10 @@ Run all applicable considerations and return a decision.
 
 **Parameters**
 
-| Name | Type | Description |
-|---|---|---|
+| Name               | Type        | Description                       |
+| ------------------ | ----------- | --------------------------------- |
 | `transcript_lines` | `list[str]` | Session transcript as JSONL lines |
-| `session_id` | `str` | Session identifier |
+| `session_id`       | `str`       | Session identifier                |
 
 **Returns** `PowerSteeringResult`
 
@@ -176,17 +177,17 @@ class PowerSteeringResult:
     considerations: list = field(default_factory=list)
 ```
 
-| Field | Description |
-|---|---|
-| `decision` | `"approve"` or `"block"` |
-| `reasons` | Human-readable reasons for the decision |
-| `continuation_prompt` | Injected into the hook output when `decision="block"` |
-| `summary` | One-line summary for logging |
-| `analysis` | Full `ConsiderationAnalysis` for detailed inspection |
-| `is_first_stop` | `True` if this is the first block in the session |
-| `evidence_results` | Concrete evidence from Phase 1 checks |
-| `compaction_context` | Compaction diagnostics (`CompactionContext` if available) |
-| `considerations` | List of `CheckerResult` objects for visibility |
+| Field                 | Description                                               |
+| --------------------- | --------------------------------------------------------- |
+| `decision`            | `"approve"` or `"block"`                                  |
+| `reasons`             | Human-readable reasons for the decision                   |
+| `continuation_prompt` | Injected into the hook output when `decision="block"`     |
+| `summary`             | One-line summary for logging                              |
+| `analysis`            | Full `ConsiderationAnalysis` for detailed inspection      |
+| `is_first_stop`       | `True` if this is the first block in the session          |
+| `evidence_results`    | Concrete evidence from Phase 1 checks                     |
+| `compaction_context`  | Compaction diagnostics (`CompactionContext` if available) |
+| `considerations`      | List of `CheckerResult` objects for visibility            |
 
 ---
 
@@ -205,14 +206,14 @@ class CheckerResult:
     executed: bool = True
 ```
 
-| Field | Description |
-|---|---|
-| `consideration_id` | ID matching the entry in `considerations.yaml` |
-| `satisfied` | `True` if the consideration was met |
-| `reason` | Human-readable explanation |
-| `severity` | `"blocker"` blocks the session; `"warning"` is advisory |
-| `recovery_steps` | Ordered steps to resolve a failed check |
-| `executed` | `False` if the check was skipped (not applicable for this session) |
+| Field              | Description                                                        |
+| ------------------ | ------------------------------------------------------------------ |
+| `consideration_id` | ID matching the entry in `considerations.yaml`                     |
+| `satisfied`        | `True` if the consideration was met                                |
+| `reason`           | Human-readable explanation                                         |
+| `severity`         | `"blocker"` blocks the session; `"warning"` is advisory            |
+| `recovery_steps`   | Ordered steps to resolve a failed check                            |
+| `executed`         | `False` if the check was skipped (not applicable for this session) |
 
 **Properties**
 
@@ -272,12 +273,12 @@ class PowerSteeringRedirect:
 
 These module-level booleans reflect whether optional dependencies are available. They are set at import time and do not change during execution.
 
-| Flag | Module | Package Required | Purpose |
-|---|---|---|---|
-| `SDK_AVAILABLE` | `sdk_calls` | `claude_power_steering` | Enables SDK-based analysis |
-| `EVIDENCE_AVAILABLE` | `sdk_calls` | `completion_evidence` | Enables Phase 1 evidence collection |
-| `COMPACTION_AVAILABLE` | `progress_tracking` | `compaction_validator` | Enables compaction event detection |
-| `TURN_STATE_AVAILABLE` | `result_formatting` | `power_steering_state` | Enables turn-aware state tracking |
+| Flag                   | Module              | Package Required        | Purpose                             |
+| ---------------------- | ------------------- | ----------------------- | ----------------------------------- |
+| `SDK_AVAILABLE`        | `sdk_calls`         | `claude_power_steering` | Enables SDK-based analysis          |
+| `EVIDENCE_AVAILABLE`   | `sdk_calls`         | `completion_evidence`   | Enables Phase 1 evidence collection |
+| `COMPACTION_AVAILABLE` | `progress_tracking` | `compaction_validator`  | Enables compaction event detection  |
+| `TURN_STATE_AVAILABLE` | `result_formatting` | `power_steering_state`  | Enables turn-aware state tracking   |
 
 ```python
 from power_steering_checker import SDK_AVAILABLE
@@ -302,8 +303,8 @@ with _timeout(25):
 
 **Parameters**
 
-| Name | Type | Description |
-|---|---|---|
+| Name      | Type  | Description                                      |
+| --------- | ----- | ------------------------------------------------ |
 | `seconds` | `int` | Maximum duration before `TimeoutError` is raised |
 
 **Raises** `TimeoutError` if the block exceeds `seconds`.
@@ -324,12 +325,12 @@ _write_with_retry(Path("/some/file.json"), data='{"key": "val"}')
 
 **Parameters**
 
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `filepath` | `Path` | — | Destination path |
-| `data` | `str` | — | Content to write |
-| `mode` | `str` | `"w"` | `"w"` (overwrite) or `"a"` (append) |
-| `max_retries` | `int` | `3` | Retry attempts with exponential backoff |
+| Name          | Type   | Default | Description                             |
+| ------------- | ------ | ------- | --------------------------------------- |
+| `filepath`    | `Path` | —       | Destination path                        |
+| `data`        | `str`  | —       | Content to write                        |
+| `mode`        | `str`  | `"w"`   | `"w"` (overwrite) or `"a"` (append)     |
+| `max_retries` | `int`  | `3`     | Retry attempts with exponential backoff |
 
 **Raises** `OSError` after all retries exhausted.
 
@@ -363,15 +364,15 @@ All `PSC_*` environment variables are parsed through a `_env_int(name, default)`
 
 ## Error Handling Policy
 
-| Scenario | Log Level | Behavior |
-|---|---|---|
-| Unexpected error in `check()` | `ERROR` + `exc_info=True` | Fail-open: returns `decision="approve"` |
-| Parallel analysis failure | `ERROR` + `exc_info=True` | Fail-open: returns `decision="approve"` |
-| Individual consideration error | `WARNING` + `exc_info=True` | Skip check; continue with others |
-| `is_disabled()` construction error | `WARNING` + `exc_info=True` | Returns `False` (assume not disabled) |
-| OSError on semaphore file | `WARNING` + `exc_info=True` | Continue without semaphore |
-| Invalid session ID | `WARNING` | Skip check; treat as not-already-ran |
-| Oversized transcript line | `WARNING` | Skip line; continue parsing |
+| Scenario                           | Log Level                   | Behavior                                |
+| ---------------------------------- | --------------------------- | --------------------------------------- |
+| Unexpected error in `check()`      | `ERROR` + `exc_info=True`   | Fail-open: returns `decision="approve"` |
+| Parallel analysis failure          | `ERROR` + `exc_info=True`   | Fail-open: returns `decision="approve"` |
+| Individual consideration error     | `WARNING` + `exc_info=True` | Skip check; continue with others        |
+| `is_disabled()` construction error | `WARNING` + `exc_info=True` | Returns `False` (assume not disabled)   |
+| OSError on semaphore file          | `WARNING` + `exc_info=True` | Continue without semaphore              |
+| Invalid session ID                 | `WARNING`                   | Skip check; treat as not-already-ran    |
+| Oversized transcript line          | `WARNING`                   | Skip line; continue parsing             |
 
 ---
 

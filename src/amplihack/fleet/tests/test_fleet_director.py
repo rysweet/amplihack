@@ -3,14 +3,13 @@
 Mocks all external dependencies (azlin, subprocess).
 """
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from amplihack.fleet.fleet_admiral import (
     ActionType,
     DirectorAction,
+)
+from amplihack.fleet.fleet_admiral import (
     FleetAdmiral as FleetDirector,
 )
 from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
@@ -166,10 +165,7 @@ class TestFleetDirectorReason:
         assert any(a.action_type == ActionType.MARK_FAILED for a in actions)
 
     def test_respects_max_agents_per_vm(self):
-        tasks = [
-            FleetTask(prompt=f"Task {i}", priority=TaskPriority.HIGH)
-            for i in range(5)
-        ]
+        tasks = [FleetTask(prompt=f"Task {i}", priority=TaskPriority.HIGH) for i in range(5)]
         queue = TaskQueue()
         for t in tasks:
             queue.add(t)
