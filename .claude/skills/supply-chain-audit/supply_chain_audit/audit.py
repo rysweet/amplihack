@@ -85,10 +85,17 @@ def _validate_path(path_str: str) -> Path:
     """Validate the audit root path and return as Path object.
 
     Raises PathTraversalError for unsafe paths.
+    Raises ValueError if path does not exist or is not a directory.
     """
     _check_path_traversal(path_str)
 
-    return Path(path_str)
+    p = Path(path_str)
+    if not p.exists():
+        raise ValueError(f"Audit path does not exist: '{path_str}'")
+    if not p.is_dir():
+        raise ValueError(f"Audit path is not a directory: '{path_str}'")
+
+    return p
 
 
 def _check_xpia(content: str, filepath: str) -> str | None:
@@ -465,8 +472,14 @@ class AuditResult:
         self.skipped_dimensions: list[int] = skipped_dimensions
         self._slsa_dict = slsa_dict
 
-    def render_report(self) -> str:
-        return self._report.render()
+    def render_report(self, summary_only: bool = False) -> str:
+        """Render the full markdown report.
+
+        Args:
+            summary_only: If True, render only the summary table and dimension
+                status — omit the full findings list. Useful for quick status checks.
+        """
+        return self._report.render(summary_only=summary_only)
 
     def get_handoff(self, skill: str) -> str | None:
         return self._report.get_handoff(skill)
@@ -476,6 +489,29 @@ class AuditResult:
 
     def get_advisory_messages(self) -> list[str]:
         return self._report.get_advisory_messages()
+
+    def available_handoffs(self) -> list[str]:
+        """Return list of skill names that have handoff messages."""
+        return self._report.available_handoffs()
+
+    def to_dict(self) -> dict:
+        """Serialize to a plain dict suitable for JSON output."""
+        from dataclasses import asdict
+
+        return {
+            "findings": [asdict(f) for f in self.findings],
+            "active_dimensions": self.active_dimensions,
+            "skipped_dimensions": self.skipped_dimensions,
+            "slsa": self._slsa_dict,
+            "advisories": self.get_advisory_messages(),
+            "summary": {
+                "total": len(self.findings),
+                "by_severity": {
+                    sev: sum(1 for f in self.findings if f.severity == sev)
+                    for sev in ("Critical", "High", "Medium", "Info")
+                },
+            },
+        }
 
 
 def _run_all_checkers(
