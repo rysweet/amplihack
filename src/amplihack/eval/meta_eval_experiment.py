@@ -23,6 +23,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.llm.client import completion
+
 from .metacognition_grader import MetacognitionGrader
 from .teaching_session import TeachingConfig, TeachingSession
 
@@ -220,7 +222,7 @@ class MetaEvalExperiment:
 
     Example:
         >>> experiment = MetaEvalExperiment(ExperimentConfig(teaching_turns=3))
-        >>> report = experiment.run()
+        >>> report = await experiment.run()
         >>> print(report.overall_score)
     """
 
@@ -249,7 +251,7 @@ class MetaEvalExperiment:
         # Use pre-built quiz, limited by config
         return EVAL_QUIZ[: self.config.quiz_questions]
 
-    def run(self) -> ExperimentReport:
+    async def run(self) -> ExperimentReport:
         """Run the complete experiment.
 
         Returns:
@@ -269,32 +271,37 @@ class MetaEvalExperiment:
                 model=self.config.model,
             )
             session = TeachingSession(knowledge_base=kb, config=teaching_config)
-            teaching_result = session.run()
+            teaching_result = await session.run()
             turns_completed = len(teaching_result.turns)
             logger.info("Teaching session completed: %d turns", turns_completed)
         except Exception as e:
-            logger.error("Teaching session failed: %s", e)
-            return self._error_report(kb, str(e))
+            logger.error("Teaching session failed: %s", type(e).__name__)
+            return self._error_report(kb, type(e).__name__)
 
         # Step 3: Generate quiz
         quiz = self.generate_eval_quiz(kb)
         logger.info("Quiz generated: %d questions", len(quiz))
 
         # Step 4: Quiz the student (use teaching history as context)
-        quiz_results = self._quiz_student(quiz, teaching_result)
+        quiz_results = await self._quiz_student(quiz, teaching_result)
 
-        # Step 5: Grade metacognition
+        # Step 5: Grade metacognition — all items graded concurrently via
+        # batch_grade() which uses asyncio.gather() internally.
         grader = MetacognitionGrader(model=self.config.model)
+        grade_items = [
+            {
+                "question": q["question"],
+                "expected": q["expected_answer"],
+                "actual": result.get("student_answer", ""),
+                "explanation": result.get("self_explanation", ""),
+            }
+            for q, result in zip(quiz, quiz_results, strict=False)
+        ]
+        mc_scores = await grader.batch_grade(grade_items)
+
         metacognition_scores = []
         score_values = []
-
-        for i, (q, result) in enumerate(zip(quiz, quiz_results, strict=False)):
-            mc_score = grader.grade(
-                question=q["question"],
-                expected_answer=q["expected_answer"],
-                student_answer=result.get("student_answer", ""),
-                self_explanation=result.get("self_explanation", ""),
-            )
+        for q, mc_score in zip(quiz, mc_scores, strict=False):
             metacognition_scores.append(
                 {
                     "question": q["question"],
@@ -327,7 +334,7 @@ class MetaEvalExperiment:
         logger.info("Report saved to %s", report_path)
         return report
 
-    def _quiz_student(
+    async def _quiz_student(
         self,
         quiz: list[dict[str, str]],
         teaching_result,
@@ -336,19 +343,21 @@ class MetaEvalExperiment:
 
         The student has no direct access to the knowledge base;
         it can only use what it learned during the teaching session.
-        """
-        import litellm  # type: ignore[import-unresolved]
 
-        # Build teaching context from the session
+        All quiz questions are independent of each other so they are
+        issued concurrently via ``asyncio.gather()``.
+        """
+        import asyncio
+
+        # Build teaching context once; shared across all questions.
         teaching_context = ""
         for turn in teaching_result.turns:
             teaching_context += f"Teacher: {turn.teacher_message}\n"
             teaching_context += f"Student: {turn.student_response}\n\n"
 
-        results = []
-        for q in quiz:
+        async def _ask_one(q: dict[str, str]) -> dict:
             try:
-                response = litellm.completion(
+                text = await completion(
                     model=self.config.model,
                     messages=[
                         {
@@ -373,36 +382,29 @@ class MetaEvalExperiment:
                     temperature=0.3,
                 )
 
-                text = response.choices[0].message.content.strip()
                 try:
                     parsed = json.loads(text)
-                    results.append(
-                        {
-                            "question": q["question"],
-                            "student_answer": parsed.get("answer", text),
-                            "self_explanation": parsed.get("self_explanation", ""),
-                        }
-                    )
-                except json.JSONDecodeError:
-                    results.append(
-                        {
-                            "question": q["question"],
-                            "student_answer": text,
-                            "self_explanation": "",
-                        }
-                    )
-
-            except Exception as e:
-                logger.warning("Quiz question failed: %s", e)
-                results.append(
-                    {
+                    return {
                         "question": q["question"],
-                        "student_answer": "Error: unable to answer due to an internal error",
+                        "student_answer": parsed.get("answer", text),
+                        "self_explanation": parsed.get("self_explanation", ""),
+                    }
+                except json.JSONDecodeError:
+                    return {
+                        "question": q["question"],
+                        "student_answer": text,
                         "self_explanation": "",
                     }
-                )
 
-        return results
+            except Exception as e:
+                logger.warning("Quiz question failed: %s", type(e).__name__)
+                return {
+                    "question": q["question"],
+                    "student_answer": "Error: unable to answer due to an internal error",
+                    "self_explanation": "",
+                }
+
+        return list(await asyncio.gather(*[_ask_one(q) for q in quiz]))
 
     def _generate_summary(self, overall: float, turns: int, questions: int) -> str:
         """Generate human-readable summary."""
@@ -436,6 +438,7 @@ class MetaEvalExperiment:
 def main():
     """CLI entry point for meta-eval experiment."""
     import argparse
+    import asyncio
 
     parser = argparse.ArgumentParser(description="Meta-Eval Teaching Experiment")
     parser.add_argument(
@@ -480,7 +483,7 @@ def main():
     print("=" * 70)
 
     experiment = MetaEvalExperiment(config=config)
-    report = experiment.run()
+    report = asyncio.run(experiment.run())
 
     print(f"\n{report.summary}")
     print(f"\nOverall Score: {report.overall_score:.2%}")

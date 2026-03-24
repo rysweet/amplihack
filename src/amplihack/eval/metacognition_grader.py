@@ -8,7 +8,7 @@ Evaluates student learning across four metacognitive dimensions:
 
 Philosophy:
 - Single responsibility: Grade metacognition only
-- LLM-powered evaluation via litellm
+- LLM-powered evaluation via amplihack.llm.client
 - Structured JSON output for reliable parsing
 - Graceful degradation on errors
 """
@@ -20,7 +20,7 @@ import logging
 import os
 from dataclasses import dataclass
 
-import litellm  # type: ignore[import-unresolved]
+from amplihack.llm.client import completion
 
 logger = logging.getLogger(__name__)
 
@@ -69,11 +69,11 @@ class MetacognitionGrader:
     and what they do not know, beyond just factual correctness.
 
     Args:
-        model: LLM model identifier (litellm format)
+        model: LLM model identifier
 
     Example:
         >>> grader = MetacognitionGrader()
-        >>> score = grader.grade(
+        >>> score = await grader.grade(
         ...     question="What does L1 evaluate?",
         ...     expected_answer="L1 evaluates direct recall.",
         ...     student_answer="L1 tests recall of facts.",
@@ -85,7 +85,7 @@ class MetacognitionGrader:
     def __init__(self, model: str = "") -> None:
         self.model = model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
-    def grade(
+    async def grade(
         self,
         question: str,
         expected_answer: str,
@@ -104,22 +104,30 @@ class MetacognitionGrader:
             MetacognitionScore with 4 dimensions and overall score
         """
         try:
-            return self._grade_with_llm(question, expected_answer, student_answer, self_explanation)
+            return await self._grade_with_llm(
+                question, expected_answer, student_answer, self_explanation
+            )
         except Exception as e:
-            logger.warning("Grading failed: %s", e)
+            logger.warning("Grading failed: %s", type(e).__name__)
             return self._zero_score("Grading failed due to an internal error")
 
-    def batch_grade(self, items: list[dict[str, str]]) -> list[MetacognitionScore]:
-        """Grade multiple question-answer pairs.
+    async def batch_grade(self, items: list[dict[str, str]]) -> list[MetacognitionScore]:
+        """Grade multiple question-answer pairs concurrently.
+
+        Each item is independent, so all LLM grading calls are issued in
+        parallel via ``asyncio.gather()``.  Wall-clock time is bounded by
+        the slowest single item rather than the sum of all items.
 
         Args:
             items: List of dicts with keys:
                 question, expected, actual, explanation
 
         Returns:
-            List of MetacognitionScore objects
+            List of MetacognitionScore objects (same order as ``items``)
         """
-        return [
+        import asyncio
+
+        tasks = [
             self.grade(
                 question=item["question"],
                 expected_answer=item["expected"],
@@ -128,8 +136,9 @@ class MetacognitionGrader:
             )
             for item in items
         ]
+        return list(await asyncio.gather(*tasks))
 
-    def _grade_with_llm(
+    async def _grade_with_llm(
         self,
         question: str,
         expected_answer: str,
@@ -172,7 +181,7 @@ Return ONLY a JSON object with this structure:
 "knowledge_boundaries": {{"score": 0.7, "reasoning": "brief explanation"}},
 "explanation_quality": {{"score": 0.85, "reasoning": "brief explanation"}}}}"""
 
-        response = litellm.completion(
+        response_text = await completion(
             model=self.model,
             messages=[
                 {
@@ -184,7 +193,6 @@ Return ONLY a JSON object with this structure:
             temperature=0.3,
         )
 
-        response_text = response.choices[0].message.content.strip()
         return self._parse_grading_response(response_text)
 
     def _parse_grading_response(self, response_text: str) -> MetacognitionScore:
@@ -203,6 +211,11 @@ Return ONLY a JSON object with this structure:
 
         dimensions = []
         for name in DIMENSION_NAMES:
+            # REQ-SILENT-DEGRADATION: Emit a warning before falling back to a zero
+            # score so that missing LLM dimensions are visible in logs rather than
+            # silently corrupting the grading result (forbidden silent degradation).
+            if name not in data:
+                logger.warning("LLM response missing dimension %r — defaulting to zero score", name)
             dim_data = data.get(name, {"score": 0.0, "reasoning": "Not evaluated"})
             score = float(dim_data.get("score", 0.0))
             # Clamp to valid range
@@ -283,6 +296,7 @@ def grade_metacognition(
     """Grade metacognition from a reasoning trace (convenience function).
 
     Bridges the progressive_test_suite interface to MetacognitionGrader.
+    Stays SYNCHRONOUS — uses asyncio.run() as a bridge.
 
     Args:
         trace: Reasoning trace (dict or string) from agent execution
@@ -293,18 +307,34 @@ def grade_metacognition(
     Returns:
         ReasoningTraceScore with dimension scores
     """
+    import asyncio
+
     if isinstance(trace, str):
         trace_text = trace
     else:
         trace_text = json.dumps(trace)
 
     grader = MetacognitionGrader(model=model)
+
+    # Nested-loop guard — grade_metacognition() cannot be called from async context
     try:
-        result = grader.grade(
-            question=f"[{level}] Reasoning trace evaluation",
-            expected_answer=f"Score: {answer_score:.2f}",
-            student_answer=trace_text[:2000],
-            self_explanation=trace_text[:2000],
+        asyncio.get_running_loop()
+    except RuntimeError:
+        pass  # No loop running, safe to use asyncio.run()
+    else:
+        raise RuntimeError(
+            "grade_metacognition() cannot be called from an async context. "
+            "Use 'await grader.grade(...)' directly instead."
+        )
+
+    try:
+        result = asyncio.run(
+            grader.grade(
+                question=f"[{level}] Reasoning trace evaluation",
+                expected_answer=f"Score: {answer_score:.2f}",
+                student_answer=trace_text[:2000],
+                self_explanation=trace_text[:2000],
+            )
         )
 
         # Map 4 dimensions to trace-based naming
@@ -323,14 +353,14 @@ def grade_metacognition(
             },
         )
     except Exception as e:
-        logger.warning("Metacognition grading failed: %s", e)
+        logger.warning("Metacognition grading failed: %s", type(e).__name__)
         return ReasoningTraceScore(
             effort_calibration=0.0,
             sufficiency_judgment=0.0,
             search_quality=0.0,
             self_correction=0.0,
             overall=0.0,
-            details={"error": str(e)},
+            details={"error": type(e).__name__},
         )
 
 

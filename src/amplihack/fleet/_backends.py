@@ -13,6 +13,8 @@ Public API:
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import os
 from typing import Protocol
 
@@ -45,14 +47,22 @@ class AnthropicBackend:
         self.model = model
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
         self.max_tokens = max_tokens
+        # Client is created once and reused across complete() calls.
+        # anthropic.Anthropic manages an internal connection pool; creating
+        # a new instance on every call discards that pool and pays the
+        # connection-setup cost each time.
+        import anthropic  # type: ignore[import-unresolved]
+
+        self._client = anthropic.Anthropic(api_key=self.api_key)
+        # Immediately clear the plain-text copy — the SDK holds its own reference.
+        # This prevents accidental exposure via repr(), dataclass serialisation, or
+        # generic object-dumping utilities that walk instance __dict__.
+        self.api_key = ""
 
     def complete(self, system_prompt: str, user_prompt: str) -> str:
-        import anthropic
-
-        client = anthropic.Anthropic(api_key=self.api_key)
         # Anthropic API requires streaming when max_tokens is high enough
         # that the request could exceed 10 minutes.
-        with client.messages.stream(
+        with self._client.messages.stream(
             model=self.model,
             max_tokens=self.max_tokens,
             system=system_prompt,
@@ -72,15 +82,21 @@ class CopilotBackend:
         self.model = model
 
     def complete(self, system_prompt: str, user_prompt: str) -> str:
-        import asyncio
-
-        # WARNING: asyncio.run() will crash if called from async context. See PATTERNS.md.
+        # REQ-BRIDGE-1: Guard against nested asyncio.run() which deadlocks.
+        # Raise clearly instead of silently hanging or crashing with a cryptic error.
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            pass  # No loop running — safe to call asyncio.run()
+        else:
+            raise RuntimeError(
+                "CopilotBackend.complete() cannot be called from an async context. "
+                "Use await _async_complete() directly instead."
+            )
         return asyncio.run(self._async_complete(system_prompt, user_prompt))
 
     async def _async_complete(self, system_prompt: str, user_prompt: str) -> str:
-        import asyncio
-
-        from copilot import CopilotClient, PermissionHandler
+        from copilot import CopilotClient, PermissionHandler  # type: ignore[import-unresolved]
 
         client = CopilotClient()
         await client.start()
@@ -89,11 +105,13 @@ class CopilotBackend:
             response_parts: list[str] = []
             done = asyncio.Event()
 
-            session = await client.create_session({
-                "model": self.model,
-                "system_message": {"content": system_prompt},
-                "on_permission_request": PermissionHandler.approve_all,
-            })
+            session = await client.create_session(
+                {
+                    "model": self.model,
+                    "system_message": {"content": system_prompt},
+                    "on_permission_request": PermissionHandler.approve_all,
+                }
+            )
 
             def on_event(event):
                 etype = event.type.value if hasattr(event.type, "value") else str(event.type)
@@ -110,8 +128,9 @@ class CopilotBackend:
             try:
                 await asyncio.wait_for(done.wait(), timeout=SUBPROCESS_TIMEOUT_SECONDS)
             except TimeoutError:
-                import logging as _logging
-                _logging.getLogger(__name__).warning(
+                # Use asyncio.TimeoutError explicitly — avoids platform-alias
+                # ambiguity with the builtin TimeoutError on Python < 3.11.
+                logging.getLogger(__name__).warning(
                     "Copilot session timed out after %ds", SUBPROCESS_TIMEOUT_SECONDS
                 )
 
@@ -134,22 +153,29 @@ class LiteLLMBackend:
         self.max_tokens = max_tokens
 
     def complete(self, system_prompt: str, user_prompt: str) -> str:
-        import litellm
+        from amplihack.llm.client import completion
 
-        response = litellm.completion(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            max_tokens=self.max_tokens,
+        # Nested-loop guard (REQ-BRIDGE-1)
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            pass  # No loop running — safe to use asyncio.run()
+        else:
+            raise RuntimeError(
+                "LiteLLMBackend.complete() cannot be called from an async context. "
+                "Use the async completion() function directly instead."
+            )
+
+        return asyncio.run(
+            completion(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                max_tokens=self.max_tokens,
+            )
         )
-        choices = getattr(response, "choices", [])
-        if choices:
-            msg = getattr(choices[0], "message", None)
-            content = getattr(msg, "content", None) if msg else None
-            return str(content) if content else ""
-        return ""
 
 
 def auto_detect_backend() -> LLMBackend:

@@ -8,6 +8,7 @@ testing phase can access the knowledge.
 Philosophy: Subprocess isolation for clean state management.
 """
 
+import asyncio
 import json
 import os
 import sys
@@ -50,9 +51,18 @@ def teaching_phase(knowledge_base: list[str], agent_name: str, max_turns: int = 
         for kb_item in knowledge_base:
             agent.learn_from_content(kb_item)
 
-        # Then run a simplified teaching dialogue
-        # The teacher extracts key concepts and stores teaching summaries
-        import litellm  # type: ignore[import-unresolved]
+        # Nested-loop guard — teaching_phase() cannot be called from async context
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            pass  # Safe — no loop running
+        else:
+            raise RuntimeError(
+                "teaching_phase() cannot be called from an async context. "
+                "It uses asyncio.run() internally."
+            )
+
+        from amplihack.llm.client import completion
 
         kb_text = "\n\n".join(knowledge_base)
 
@@ -66,16 +76,19 @@ Knowledge base:
 
 Return a structured lesson plan with numbered key facts."""
 
-        response = litellm.completion(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are an expert teacher creating a lesson plan."},
-                {"role": "user", "content": teacher_prompt},
-            ],
-            temperature=0.3,
+        lesson = asyncio.run(
+            completion(
+                model=model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert teacher creating a lesson plan.",
+                    },
+                    {"role": "user", "content": teacher_prompt},
+                ],
+                temperature=0.3,
+            )
         )
-
-        lesson = response.choices[0].message.content.strip()
 
         # Store the lesson as additional knowledge
         agent.learn_from_content(f"Teaching Summary:\n{lesson}")
@@ -90,7 +103,12 @@ Return a structured lesson plan with numbered key facts."""
         }
 
     except Exception as e:
-        return {"status": "error", "turns": 0, "error": str(e)}
+        # REQ-DATA-2: log only the exception type — str(e) may contain knowledge-base
+        # content or partial LLM prompts that must not be written to stdout.
+        import logging
+
+        logging.getLogger(__name__).warning("teaching_phase failed: %s", type(e).__name__)
+        return {"status": "error", "turns": 0, "error": type(e).__name__}
     finally:
         agent.close()
 
@@ -106,7 +124,13 @@ def main():
 
     input_data = json.load(sys.stdin)
 
-    knowledge_base = input_data.get("knowledge_base", [])
+    # REQ-DATA-2: knowledge_base is a required field — silent default to [] would
+    # run a lesson against an empty corpus and return {"status": "success"}, producing
+    # structurally valid but semantically corrupt output (forbidden silent degradation).
+    if "knowledge_base" not in input_data or not input_data["knowledge_base"]:
+        print(json.dumps({"status": "error", "error": "missing required field: knowledge_base"}))
+        sys.exit(1)
+    knowledge_base = input_data["knowledge_base"]
     max_turns = input_data.get("max_turns", 4)
 
     result = teaching_phase(knowledge_base, args.agent_name, max_turns)
