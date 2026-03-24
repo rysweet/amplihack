@@ -178,6 +178,8 @@ nav:
       - Data Flow: atlas/data-flow/index.md
       - Service Components: atlas/service-components/index.md
       - User Journeys: atlas/user-journeys/index.md
+      - Health Dashboard: atlas/health.md
+      - Glossary: atlas/glossary.md
       - Inventory:
           - Services: atlas/inventory/services.md
           - Environment Variables: atlas/inventory/env-vars.md

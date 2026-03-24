@@ -70,7 +70,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:55.503214+00
 === "High-Fidelity (Graphviz)"
 
     <div class="atlas-diagram-container">
-    <img src="user-journeys-dot.svg" alt="User Journeys - Graphviz">
+    <img src="user-journeys-overview-dot.svg" alt="User Journeys - Graphviz">
     </div>
 
 === "Data Table"
