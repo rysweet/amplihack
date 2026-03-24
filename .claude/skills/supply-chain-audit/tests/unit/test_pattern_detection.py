@@ -8,6 +8,8 @@ from supply_chain_audit.checkers import (
     check_action_sha_pinning,  # Dim 1
     check_cargo_supply_chain,  # Dim 9
     check_container_image_pinning,  # Dim 5
+    check_credential_hygiene,  # Dim 6
+    check_docker_build_chain,  # Dim 12
     check_go_module_integrity,  # Dim 11
     check_node_integrity,  # Dim 10
     check_nuget_lock,  # Dim 7
@@ -505,3 +507,97 @@ class TestDim7NuGetLock:
         findings = check_nuget_lock(tmp_path)
         high_or_critical = [f for f in findings if f.severity in ("High", "Critical")]
         assert high_or_critical == []
+
+
+# ─── Dimension 6: Credential Hygiene ────────────────────────────────────────
+
+
+class TestDim6CredentialHygiene:
+    def test_workflow_with_hardcoded_aws_keys_is_high(self, tmp_path):
+        """Hardcoded AWS static access keys should produce a High finding."""
+        wf = tmp_path / ".github" / "workflows" / "deploy.yml"
+        wf.parent.mkdir(parents=True)
+        wf.write_text(
+            "name: Deploy\non: [push]\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - uses: aws-actions/configure-aws-credentials@v4\n"
+            "        with:\n"
+            "          aws-access-key-id: ${{ secrets.AWS_KEY }}\n"
+            "          aws-secret-access-key: ${{ secrets.AWS_SECRET }}\n"
+        )
+        findings = check_credential_hygiene(tmp_path)
+        assert any(f.severity == "High" for f in findings)
+        assert any("AWS" in f.current_value for f in findings)
+
+    def test_workflow_using_oidc_is_clean(self, tmp_path):
+        """Workflow using OIDC (role-to-assume) without static keys is clean."""
+        wf = tmp_path / ".github" / "workflows" / "deploy.yml"
+        wf.parent.mkdir(parents=True)
+        wf.write_text(
+            "name: Deploy\non: [push]\npermissions:\n  id-token: write\n"
+            "jobs:\n  deploy:\n    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - uses: aws-actions/configure-aws-credentials@v4\n"
+            "        with:\n"
+            "          role-to-assume: arn:aws:iam::123456789:role/deploy\n"
+        )
+        findings = check_credential_hygiene(tmp_path)
+        high_or_critical = [f for f in findings if f.severity in ("High", "Critical")]
+        assert high_or_critical == []
+
+    def test_workflow_with_azure_static_creds_is_high(self, tmp_path):
+        """Azure static creds (service principal JSON) should be flagged."""
+        wf = tmp_path / ".github" / "workflows" / "deploy.yml"
+        wf.parent.mkdir(parents=True)
+        wf.write_text(
+            "name: Deploy\non: [push]\njobs:\n  deploy:\n    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - uses: azure/login@v2\n"
+            "        with:\n"
+            "          creds: ${{ secrets.AZURE_CREDENTIALS }}\n"
+        )
+        findings = check_credential_hygiene(tmp_path)
+        assert any(f.severity == "High" for f in findings)
+
+
+# ─── Dimension 12: Docker Build Chain ───────────────────────────────────────
+
+
+class TestDim12DockerBuildChain:
+    def test_multi_stage_no_user_in_final_stage_is_high(self, tmp_path):
+        """Multi-stage Dockerfile with no USER in final stage → High finding."""
+        (tmp_path / "Dockerfile").write_text(
+            "FROM golang:1.22-alpine AS builder\n"
+            "WORKDIR /app\n"
+            "RUN go build -o /app/main .\n"
+            "FROM alpine:3.19\n"
+            "COPY --from=builder /app/main /main\n"
+            'ENTRYPOINT ["/main"]\n'
+        )
+        findings = check_docker_build_chain(tmp_path)
+        assert any(f.severity == "High" for f in findings)
+        assert any("USER" in f.rationale or "root" in f.rationale for f in findings)
+
+    def test_dockerfile_with_user_in_final_stage_is_clean(self, tmp_path):
+        """Dockerfile with USER in final stage → clean."""
+        (tmp_path / "Dockerfile").write_text(
+            "FROM golang:1.22-alpine AS builder\n"
+            "WORKDIR /app\n"
+            "RUN go build -o /app/main .\n"
+            "FROM alpine:3.19\n"
+            "RUN addgroup -S appgroup && adduser -S appuser -G appgroup\n"
+            "USER appuser\n"
+            "COPY --from=builder /app/main /main\n"
+            'ENTRYPOINT ["/main"]\n'
+        )
+        findings = check_docker_build_chain(tmp_path)
+        high_or_critical = [f for f in findings if f.severity in ("High", "Critical")]
+        assert high_or_critical == []
+
+    def test_single_stage_no_user_is_high(self, tmp_path):
+        """Single-stage Dockerfile with no USER → High finding."""
+        (tmp_path / "Dockerfile").write_text(
+            'FROM python:3.12-slim\nWORKDIR /app\nCOPY . .\nCMD ["python", "app.py"]\n'
+        )
+        findings = check_docker_build_chain(tmp_path)
+        assert any(f.severity == "High" for f in findings)

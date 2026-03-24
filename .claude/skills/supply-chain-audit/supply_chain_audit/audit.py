@@ -75,8 +75,11 @@ def _check_path_traversal(path_str: str) -> None:
 
     except PathTraversalError:
         raise
-    except (OSError, ValueError):
-        pass
+    except (OSError, ValueError) as exc:
+        # Log but don't block — broken symlinks are common in repos
+        import logging
+
+        logging.getLogger(__name__).debug("Symlink resolution failed for %s: %s", p, exc)
 
 
 def _validate_path(path_str: str) -> Path:
@@ -451,6 +454,87 @@ class AuditResult:
         return self._report.get_advisory_messages()
 
 
+def _run_all_checkers(
+    active_dims: list[int],
+    root_path: Path,
+    dim_checkers: dict,
+    tool_status: dict[str, str],
+) -> tuple[list[Finding], list[str], dict[Path, str]]:
+    """Run XPIA scan and dimension checkers.
+
+    Returns:
+        Tuple of (all_findings, skipped_files, workflow_cache).
+    """
+    all_findings: list[Finding] = []
+    skipped_files: list[str] = []
+
+    # XPIA check on workflow files — run once before checker loop.
+    # Build workflow_cache here so _build_slsa_assessment can reuse the
+    # already-read contents without a second filesystem round-trip.
+    wf_dir = root_path / ".github" / "workflows"
+    workflow_cache: dict[Path, str] = {}
+    if wf_dir.is_dir() and any(d in active_dims for d in (1, 2, 3, 4, 6)):
+        for wf_file in list(wf_dir.glob("*.yml")) + list(wf_dir.glob("*.yaml")):
+            try:
+                wf_content = wf_file.read_text(errors="replace")
+                rel = str(wf_file.relative_to(root_path)).replace("\\", "/")
+                _check_xpia(wf_content, rel)
+                workflow_cache[wf_file] = wf_content
+            except XpiaEscalationError:
+                raise
+            except (OSError, PermissionError):
+                rel = str(wf_file).replace("\\", "/")
+                skipped_files.append(rel)
+
+    for dim in active_dims:
+        checker = dim_checkers.get(dim)
+        if checker is None:
+            continue
+
+        try:
+            dim_findings = checker(root_path)
+            all_findings.extend(dim_findings)
+        except subprocess.TimeoutExpired as e:
+            tool = str(e.cmd[0]) if isinstance(e.cmd, (list, tuple)) else str(e.cmd)
+            tool_status[tool] = f"TOOL_TIMEOUT ({e.timeout}s)"
+        except (OSError, PermissionError) as e:
+            all_findings.append(
+                Finding(
+                    id=f"INFO-{dim:03d}",
+                    dimension=dim,
+                    severity="Info",
+                    file=".",
+                    line=0,
+                    current_value=str(e),
+                    expected_value="Checker ran successfully",
+                    rationale=f"OSError prevented checker from running: {e}",
+                    offline_detectable=False,
+                )
+            )
+
+    return all_findings, skipped_files, workflow_cache
+
+
+def _build_advisory_messages(
+    tool_status: dict[str, str],
+    skipped_files: list[str],
+) -> list[str]:
+    """Build advisory messages for degraded tools and skipped files."""
+    advisory_messages: list[str] = []
+    degraded_tools = [
+        t for t, s in tool_status.items() if "unavailable" in s or "TOOL_TIMEOUT" in s
+    ]
+    for tool in degraded_tools:
+        advisory_messages.append(
+            f"Tool '{tool}' not available — running in degraded mode. "
+            "Some checks that require this tool were skipped."
+        )
+    if skipped_files:
+        for sf in skipped_files:
+            advisory_messages.append(f"File not readable (skipped): {sf}")
+    return advisory_messages
+
+
 def run_audit(
     root: str,
     scope: str = "all",
@@ -506,7 +590,7 @@ def run_audit(
     ecosystem_scope = detect_ecosystems(root_path, scope=scope)
     active_dims = ecosystem_scope.active_dimensions
     skipped_dims = ecosystem_scope.skipped_dimensions
-    skip_reasons = ecosystem_scope._skip_reasons
+    skip_reasons = ecosystem_scope.skip_reasons
 
     # ── Step 2: Check tool availability ───────────────────────────────────────
     tool_status = _check_tool_availability()
@@ -542,53 +626,12 @@ def run_audit(
         12: check_docker_build_chain,
     }
 
-    all_findings: list[Finding] = []
-    skipped_files: list[str] = []
-
-    # XPIA check on workflow files — run once before checker loop.
-    # Build workflow_cache here so _build_slsa_assessment can reuse the
-    # already-read contents without a second filesystem round-trip.
-    wf_dir = root_path / ".github" / "workflows"
-    workflow_cache: dict[Path, str] = {}
-    if wf_dir.is_dir() and any(d in active_dims for d in (1, 2, 3, 4, 6)):
-        for wf_file in list(wf_dir.glob("*.yml")) + list(wf_dir.glob("*.yaml")):
-            try:
-                wf_content = wf_file.read_text(errors="replace")
-                rel = str(wf_file.relative_to(root_path)).replace("\\", "/")
-                _check_xpia(wf_content, rel)
-                workflow_cache[wf_file] = wf_content
-            except XpiaEscalationError:
-                raise
-            except (OSError, PermissionError):
-                rel = str(wf_file).replace("\\", "/")
-                skipped_files.append(rel)
-
-    for dim in active_dims:
-        checker = dim_checkers.get(dim)
-        if checker is None:
-            continue
-
-        try:
-            dim_findings = checker(root_path)
-            # Mark tool_timeout degraded findings
-            all_findings.extend(dim_findings)
-        except subprocess.TimeoutExpired as e:
-            tool = str(e.cmd[0]) if isinstance(e.cmd, (list, tuple)) else str(e.cmd)
-            tool_status[tool] = f"TOOL_TIMEOUT ({e.timeout}s)"
-        except (OSError, PermissionError) as e:
-            all_findings.append(
-                Finding(
-                    id="INFO-001",
-                    dimension=dim,
-                    severity="Info",
-                    file=".",
-                    line=0,
-                    current_value=str(e),
-                    expected_value="Checker ran successfully",
-                    rationale=f"OSError prevented checker from running: {e}",
-                    offline_detectable=False,
-                )
-            )
+    all_findings, skipped_files, workflow_cache = _run_all_checkers(
+        active_dims,
+        root_path,
+        dim_checkers,
+        tool_status,
+    )
 
     # ── Step 4: Assign stable per-report IDs ──────────────────────────────────
     all_findings = _assign_ids_global(all_findings)
@@ -610,18 +653,7 @@ def run_audit(
     handoffs = _build_handoffs(filtered_findings, active_dims)
 
     # ── Step 9: Build advisory messages ───────────────────────────────────────
-    advisory_messages = []
-    degraded_tools = [
-        t for t, s in tool_status.items() if "unavailable" in s or "TOOL_TIMEOUT" in s
-    ]
-    for tool in degraded_tools:
-        advisory_messages.append(
-            f"Tool '{tool}' not available — running in degraded mode. "
-            "Some checks that require this tool were skipped."
-        )
-    if skipped_files:
-        for sf in skipped_files:
-            advisory_messages.append(f"File not readable (skipped): {sf}")
+    advisory_messages = _build_advisory_messages(tool_status, skipped_files)
 
     # Build scope list for report
     scope_list = [s.strip() for s in scope.split(",")]
