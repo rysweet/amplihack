@@ -15,12 +15,20 @@ _ENV_DEFAULTS = (
 )
 
 
+def _flag_is_present(argv: Sequence[str], flag: str) -> bool:
+    flag_prefix = f"{flag}="
+    return any(
+        token == flag or token.startswith(flag_prefix)
+        for token in argv[1:]
+        if token.startswith("--")
+    )
+
+
 def _inject_env_defaults(argv: Sequence[str], env: Mapping[str, str] | None = None) -> list[str]:
     env_values = env or os.environ
     updated = list(argv)
-    present = set(updated[1:])
     for flag, env_key in _ENV_DEFAULTS:
-        if flag in present:
+        if _flag_is_present(updated, flag):
             continue
         value = str(env_values.get(env_key, "")).strip()
         if value:

@@ -5,7 +5,7 @@
 
 ## Direct Dependencies (pyproject.toml)
 
-The project declares 57 direct dependencies in `pyproject.toml` (v0.6.99). Python >=3.11 required.
+The project declares 37 direct dependencies in `pyproject.toml` (v0.6.99). Python >=3.11 required.
 
 ### Core Framework
 
