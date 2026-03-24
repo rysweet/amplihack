@@ -1,48 +1,37 @@
 sequenceDiagram
     participant User
     participant CLI as cli.py
-    participant cli
-    User->>CLI: launch
-    CLI->>cli: launch()
-    cli->>cli: return_value: _launch_command_impl
-    cli->>cli: file_io: _sync_home_runtime_directory
-    participant dep_check
-    cli->>dep_check: return_value: check_sdk_dep
-    cli-->>CLI: result
+    participant Launch as launcher/core.py
+    User->>CLI: amplihack launch
+    CLI->>Launch: launch()
+    Launch->>Launch: common_startup()
+    Launch-->>CLI: subprocess result
     CLI-->>User: exit code
 
-    participant ci_workflow
-    User->>CLI: iterate-fixes
-    CLI->>ci_workflow: iterate-fixes()
-    participant ci_status
-    ci_workflow->>ci_status: subprocess: get_current_branch
-    ci_workflow->>ci_workflow: return_value: analyze_diagnostics
-    ci_workflow->>ci_workflow: subprocess: run_command
-    ci_workflow-->>CLI: result
+    participant Auto as launcher/auto_mode.py
+    User->>CLI: amplihack --auto
+    CLI->>Auto: run_auto_mode()
+    Auto->>Auto: coordinate iterations
+    Auto-->>CLI: completion verdict
     CLI-->>User: exit code
 
-    User->>CLI: iterate-fixes
-    CLI->>ci_workflow: iterate-fixes()
-    ci_workflow->>ci_status: subprocess: get_current_branch
-    ci_workflow->>ci_workflow: return_value: analyze_diagnostics
-    ci_workflow->>ci_workflow: subprocess: run_command
-    ci_workflow-->>CLI: result
+    participant Install as install.py
+    User->>CLI: amplihack install
+    CLI->>Install: install()
+    Install->>Install: stage runtime assets
+    Install-->>CLI: install result
     CLI-->>User: exit code
 
-    User->>CLI: iterate-fixes
-    CLI->>ci_workflow: iterate-fixes()
-    ci_workflow->>ci_status: subprocess: get_current_branch
-    ci_workflow->>ci_workflow: return_value: analyze_diagnostics
-    ci_workflow->>ci_workflow: subprocess: run_command
-    ci_workflow-->>CLI: result
+    participant Recipe as recipes/rust_runner.py
+    User->>CLI: amplihack recipe run
+    CLI->>Recipe: recipe()
+    Recipe->>Recipe: run_recipe()
+    Recipe-->>CLI: step results
     CLI-->>User: exit code
 
-    User->>CLI: show
-    CLI->>cli: show()
-    cli->>cli: return_value: get_config_path
-    participant config_manager
-    cli->>config_manager: file_io: read_config
-    participant mcp_operations
-    cli->>mcp_operations: return_value: MCPServer.from_dict
-    cli-->>CLI: result
+    participant Memory as memory/database.py
+    User->>CLI: amplihack memory tree|clean|export|import
+    CLI->>Memory: memory subcommands
+    Memory->>Memory: sqlite inspect/cleanup or transfer bridge
+    Memory-->>CLI: memory result
     CLI-->>User: exit code

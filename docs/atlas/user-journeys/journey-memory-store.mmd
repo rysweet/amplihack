@@ -4,8 +4,10 @@ sequenceDiagram
     participant Mgr as MemoryManager
     participant DB as MemoryDatabase
     participant SQLite as SQLite file
-    participant Kuzu as Kuzu graph DB
-    participant CLI as amplihack memory tree
+    participant TreeCLI as amplihack memory tree
+    participant CleanCLI as amplihack memory clean
+    participant TransferCLI as amplihack memory export/import
+    participant Archive as JSON/Kuzu archive
 
     Agent->>Coord: store_memory(session_id, content, type)
     Coord->>Mgr: create_entry(MemoryEntry)
@@ -15,7 +17,7 @@ sequenceDiagram
     DB-->>Mgr: stored entry
     Mgr-->>Coord: success
 
-    Note over Agent,Kuzu: Parallel: code graph indexing
+    Note over Agent,SQLite: Stored session memory is SQLite-backed
 
     Agent->>Coord: retrieve_memories(query)
     Coord->>Mgr: search(MemoryQuery)
@@ -25,12 +27,26 @@ sequenceDiagram
     DB-->>Mgr: list[MemoryEntry]
     Mgr-->>Coord: results
 
-    Note over CLI,Kuzu: User inspects memory
+    Note over TreeCLI,Archive: User can inspect, clean, or transfer memory
 
     actor User
-    User->>CLI: amplihack memory tree --session abc
-    CLI->>DB: retrieve(session_id=abc)
+    User->>TreeCLI: amplihack memory tree --backend sqlite --session abc
+    TreeCLI->>DB: retrieve(session_id=abc)
     DB->>SQLite: SELECT ...
     SQLite-->>DB: rows
-    DB-->>CLI: entries
-    CLI-->>User: tree visualization
+    DB-->>TreeCLI: entries
+    TreeCLI-->>User: tree visualization
+
+    User->>CleanCLI: amplihack memory clean --backend sqlite --pattern test_*
+    CleanCLI->>DB: list_sessions()
+    DB->>SQLite: SELECT sessions
+    SQLite-->>DB: matching rows
+    CleanCLI->>DB: delete_session(match)
+    DB->>SQLite: DELETE FROM sessions
+    SQLite-->>DB: deleted rows
+    CleanCLI-->>User: cleanup summary
+
+    User->>TransferCLI: amplihack memory export/import
+    TransferCLI->>Archive: read/write portable memory bundle
+    Archive-->>TransferCLI: JSON or Kuzu payload
+    TransferCLI-->>User: transfer result

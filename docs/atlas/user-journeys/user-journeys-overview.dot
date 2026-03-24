@@ -7,7 +7,7 @@ digraph user_journeys_overview {
     { rank=same; user; }
     { rank=same; cli; }
     { rank=same; launcher; auto; install_mod; recipe; memory; }
-    { rank=same; claude_bin; sqlite; kuzu; fs; }
+    { rank=same; claude_bin; sqlite; archive; fs; }
 
     // User
     user [label="User", shape=ellipse, fillcolor="#74b9ff"];
@@ -25,7 +25,7 @@ digraph user_journeys_overview {
     // Outcomes
     claude_bin [label="claude binary\n(subprocess)", fillcolor="#b2f2bb"];
     sqlite [label="SQLite\nmemory.db", shape=cylinder, fillcolor="#ffd8a8"];
-    kuzu [label="Kuzu\ngraph DB", shape=cylinder, fillcolor="#ffe0cc"];
+    archive [label="JSON/Kuzu\ntransfer", shape=cylinder, fillcolor="#ffe0cc"];
     fs [label="~/.amplihack/.claude/\n(filesystem)", shape=cylinder, fillcolor="#d0bfff"];
 
     // Journey 1: Launch Claude
@@ -49,8 +49,8 @@ digraph user_journeys_overview {
     recipe -> claude_bin [label="agent steps"];
 
     // Journey 5: Memory
-    user -> cli [label="amplihack memory tree"];
+    user -> cli [label="amplihack memory tree|clean|export|import"];
     cli -> memory [label="J5: Memory"];
-    memory -> sqlite;
-    memory -> kuzu;
+    memory -> sqlite [label="tree|clean"];
+    memory -> archive [label="export|import"];
 }

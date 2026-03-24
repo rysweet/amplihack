@@ -61,16 +61,17 @@ Agent stores a memory entry, later retrieved by user via CLI.
 ![Journey: Memory Store](journey-memory-store-mermaid.svg)
 
 **Path (store)**: Agent -> MemoryCoordinator -> MemoryManager -> MemoryDatabase -> SQLite INSERT
-**Path (retrieve)**: CLI `memory tree` -> MemoryDatabase -> SQLite SELECT -> tree visualization
+**Path (inspect)**: CLI `memory tree --backend sqlite` -> MemoryDatabase -> SQLite SELECT -> tree visualization
+**Path (clean)**: CLI `memory clean --pattern ... --backend sqlite` -> MemoryDatabase -> list sessions -> delete matching SQLite-backed sessions
 **Path (transfer)**: CLI `memory export` / `memory import` -> agent-local hierarchical store -> portable JSON/Kuzu transfer
 
-**Key modules**: `memory/coordinator.py`, `memory/manager.py`, `memory/database.py`, `memory/models.py`, `memory/cli_visualize.py`, `cli.py`
+**Key modules**: `memory/coordinator.py`, `memory/manager.py`, `memory/database.py`, `memory/models.py`, `memory/cli_visualize.py`, `memory/cli_clean.py`, `cli.py`
 
 ### Current CLI surface note
 
 - The supported top-level memory journey is now explicitly `memory tree`,
-  `memory export`, and `memory import`.
-- `memory clean` is removed from the top-level CLI.
-- `memory tree --backend ...` is no longer part of the supported user journey;
-  backend-specific import/export behavior remains behind the dedicated memory
-  transfer commands and lower-level tooling.
+  `memory clean`, `memory export`, and `memory import`.
+- `memory tree` and `memory clean` both expose `--backend`, but the supported
+  top-level backend is currently SQLite only.
+- Kuzu remains part of the memory portability journey via `memory export` /
+  `memory import`, not the top-level `memory tree` inspection path.

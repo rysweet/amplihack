@@ -9,7 +9,7 @@ title: "Layer 8: User Journeys"
 # Layer 8: User Journeys
 
 <div class="atlas-metadata">
-Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:55.503214+00:00
+Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:34.397599+00:00
 </div>
 
 ## Map
@@ -20,57 +20,46 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:55.503214+00
     sequenceDiagram
         participant User
         participant CLI as cli.py
-        participant cli
-        User->>CLI: launch
-        CLI->>cli: launch()
-        cli->>cli: return_value: _launch_command_impl
-        cli->>cli: file_io: _sync_home_runtime_directory
-        participant dep_check
-        cli->>dep_check: return_value: check_sdk_dep
-        cli-->>CLI: result
+        participant Launch as launcher/core.py
+        User->>CLI: amplihack launch
+        CLI->>Launch: launch()
+        Launch->>Launch: common_startup()
+        Launch-->>CLI: subprocess result
         CLI-->>User: exit code
-    
-        participant ci_workflow
-        User->>CLI: iterate-fixes
-        CLI->>ci_workflow: iterate-fixes()
-        participant ci_status
-        ci_workflow->>ci_status: subprocess: get_current_branch
-        ci_workflow->>ci_workflow: return_value: analyze_diagnostics
-        ci_workflow->>ci_workflow: subprocess: run_command
-        ci_workflow-->>CLI: result
+
+        participant Auto as launcher/auto_mode.py
+        User->>CLI: amplihack --auto
+        CLI->>Auto: run_auto_mode()
+        Auto->>Auto: coordinate iterations
+        Auto-->>CLI: completion verdict
         CLI-->>User: exit code
-    
-        User->>CLI: iterate-fixes
-        CLI->>ci_workflow: iterate-fixes()
-        ci_workflow->>ci_status: subprocess: get_current_branch
-        ci_workflow->>ci_workflow: return_value: analyze_diagnostics
-        ci_workflow->>ci_workflow: subprocess: run_command
-        ci_workflow-->>CLI: result
+
+        participant Install as install.py
+        User->>CLI: amplihack install
+        CLI->>Install: install()
+        Install->>Install: stage runtime assets
+        Install-->>CLI: install result
         CLI-->>User: exit code
-    
-        User->>CLI: iterate-fixes
-        CLI->>ci_workflow: iterate-fixes()
-        ci_workflow->>ci_status: subprocess: get_current_branch
-        ci_workflow->>ci_workflow: return_value: analyze_diagnostics
-        ci_workflow->>ci_workflow: subprocess: run_command
-        ci_workflow-->>CLI: result
+
+        participant Recipe as recipes/rust_runner.py
+        User->>CLI: amplihack recipe run
+        CLI->>Recipe: recipe()
+        Recipe->>Recipe: run_recipe()
+        Recipe-->>CLI: step results
         CLI-->>User: exit code
-    
-        User->>CLI: show
-        CLI->>cli: show()
-        cli->>cli: return_value: get_config_path
-        participant config_manager
-        cli->>config_manager: file_io: read_config
-        participant mcp_operations
-        cli->>mcp_operations: return_value: MCPServer.from_dict
-        cli-->>CLI: result
+
+        participant Memory as memory/database.py
+        User->>CLI: amplihack memory tree|clean|export|import
+        CLI->>Memory: memory subcommands
+        Memory->>Memory: sqlite inspect/cleanup or transfer bridge
+        Memory-->>CLI: memory result
         CLI-->>User: exit code
     ```
 
 === "High-Fidelity (Graphviz)"
 
     <div class="atlas-diagram-container">
-    <img src="user-journeys-dot.svg" alt="User Journeys - Graphviz">
+    <img src="user-journeys-overview-dot.svg" alt="User Journeys - Graphviz">
     </div>
 
 === "Data Table"
@@ -112,35 +101,35 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:55.503214+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| Actor | User |
-| Participant | Module/component |
-| Solid arrow | Synchronous call |
-| Dashed arrow | Response/return |
+| Symbol       | Meaning          |
+| ------------ | ---------------- |
+| Actor        | User             |
+| Participant  | Module/component |
+| Solid arrow  | Synchronous call |
+| Dashed arrow | Response/return  |
 
 </div>
 
 ## Key Findings
 
-- 478 user journeys traced
-- 28932 functions unreachable from any entry point
+- 479 user journeys traced
+- 28301 functions unreachable from any entry point
 
 ## Detail
 
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-    
-    - **Total Journeys**: 478
-    - **Cli Journeys**: 171
+
+    - **Total Journeys**: 479
+    - **Cli Journeys**: 172
     - **Http Journeys**: 33
     - **Hook Journeys**: 274
     - **Out Of Scope Journeys**: 274
     - **Avg Trace Depth**: 1.0
-    - **Total Functions In Graph**: 29281
-    - **Total Functions Reached**: 400
-    - **Unreachable Function Count**: 28932
+    - **Total Functions In Graph**: 28653
+    - **Total Functions Reached**: 404
+    - **Unreachable Function Count**: 28301
 
 ## Cross-References
 
