@@ -77,6 +77,11 @@ class EcosystemScope:
         self.skipped_dimensions: list[int] = sorted(skipped_dimensions)
         self._skip_reasons = skip_reasons
 
+    @property
+    def skip_reasons(self) -> dict:
+        """Public accessor for skip reasons dict."""
+        return dict(self._skip_reasons)
+
     def get_skip_reason(self, dim: int) -> str:
         """Return human-readable reason why this dimension was skipped."""
         return self._skip_reasons.get(dim, DIM_SKIP_REASONS.get(dim, "No matching files found"))
@@ -116,7 +121,11 @@ def detect_ecosystems(root: Path, scope: str = "all") -> EcosystemScope:
                         # Already added 6 above; this confirms it
                         break
                 except (OSError, PermissionError):
-                    pass
+                    import logging
+
+                    logging.getLogger(__name__).debug(
+                        "Cannot read workflow file %s — skipping dim 6 detection", wf_file
+                    )
 
     # ── Dims 5 + 12: Container files ──────────────────────────────────────────
     has_docker = (

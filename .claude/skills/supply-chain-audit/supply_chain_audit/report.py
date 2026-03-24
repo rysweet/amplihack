@@ -120,16 +120,124 @@ class AuditReport:
                 "Prefer uploading as a workflow artifact instead of committing."
             )
 
-    def render(self) -> str:
-        """Render the full markdown report."""
-        today = date.today().isoformat()
-        scope_str = ", ".join(self.scope)
-
+    def _render_summary_table(self) -> list[str]:
+        """Render the summary section including dimension status."""
         # Count by severity
         counts = dict.fromkeys(_SEVERITY_ORDER, 0)
         for f in self.findings:
             counts[f.severity] = counts.get(f.severity, 0) + 1
         total = sum(counts.values())
+
+        lines = [
+            "### Summary",
+            "",
+            "| Severity | Count |",
+            "|----------|-------|",
+        ]
+        for sev in _SEVERITY_ORDER:
+            lines.append(f"| {sev} | {counts[sev]} |")
+        lines.append(f"| **Total** | **{total}** |")
+        lines.append("")
+
+        # Overall posture
+        if counts["Critical"] == 0 and counts["High"] == 0:
+            if total == 0:
+                lines.append("**Supply Chain Posture: Passing ✅** — No findings detected.")
+            else:
+                lines.append("**Supply Chain Posture: Passing ✅** — No Critical or High findings.")
+        else:
+            lines.append(
+                f"**Supply Chain Posture: ⚠ Action Required** — {counts['Critical']} Critical, {counts['High']} High findings."
+            )
+        lines.append("")
+
+        # Dimension status table
+        lines += [
+            "#### Dimension Status",
+            "",
+            "| Dim | Name | Status | Reason |",
+            "|-----|------|--------|--------|",
+        ]
+        dim_names = {
+            1: "Action SHA Pinning",
+            2: "Workflow Permissions",
+            3: "Secret Exposure",
+            4: "Cache Poisoning",
+            5: "Container Image Pinning",
+            6: "Credential Hygiene",
+            7: "NuGet Lock",
+            8: "Python Integrity",
+            9: "Cargo Supply Chain",
+            10: "Node Integrity",
+            11: "Go Module Integrity",
+            12: "Docker Build Chain",
+        }
+        for dim in range(1, 13):
+            name = dim_names.get(dim, f"Dimension {dim}")
+            if dim in self.active_dims:
+                dim_findings = [f for f in self.findings if f.dimension == dim]
+                if dim_findings:
+                    status = f"⚠ {len(dim_findings)} finding(s)"
+                else:
+                    status = "✅ Checked"
+                reason = ""
+            else:
+                status = "⏭ Skipped"
+                reason = self._skip_reasons.get(dim, "")
+            lines.append(f"| {dim} | {name} | {status} | {reason} |")
+        lines.append("")
+
+        return lines
+
+    def _render_findings_section(self) -> list[str]:
+        """Render the findings list section."""
+        lines = ["### Findings", ""]
+
+        if not self.findings:
+            lines.append("_No findings detected for audited dimensions._")
+            lines.append("")
+        else:
+            # Sort: Critical first, then High, Medium, Info; within severity by dim/file/line
+            severity_rank = {s: i for i, s in enumerate(_SEVERITY_ORDER)}
+            sorted_findings = sorted(
+                self.findings,
+                key=lambda f: (severity_rank.get(f.severity, 99), f.dimension, f.file, f.line),
+            )
+            for f in sorted_findings:
+                lines.append(f"#### {f.id} — Dim {f.dimension} — {f.severity}")
+                lines.append("")
+                lines.append(f"**Severity**: {f.severity}")
+                lines.append(f"**File**: `{f.file}:{f.line}`")
+                current_display = "<REDACTED>" if f.contains_secret else f.current_value
+                lines.append(f"**Current**: `{current_display}`")
+                lines.append(f"**Expected**: `{f.expected_value}`")
+                lines.append(f"**Why**: {f.rationale}")
+                if f.accepted_risk:
+                    lines.append("_[ACCEPTED RISK — review date applies]_")
+                if f.fix_url:
+                    lines.append(f"**Fix**: {f.fix_url}")
+                if f.tool_required:
+                    lines.append(f"**Tool required**: {f.tool_required}")
+                lines.append("")
+
+        return lines
+
+    def _render_slsa_section(self) -> list[str]:
+        """Render the SLSA readiness section."""
+        lines = ["### SLSA Readiness", ""]
+        if self.slsa:
+            lines.append(self.slsa.render())
+        else:
+            lines.append(
+                "_SLSA assessment requires GHA scope. Run with --scope gha or --scope all._"
+            )
+        lines.append("")
+        return lines
+
+    def render(self) -> str:
+        """Render the full markdown report."""
+        today = date.today().isoformat()
+        scope_str = ", ".join(self.scope)
 
         # Build tool availability string
         if self.tool_status:
@@ -166,108 +274,18 @@ class AuditReport:
 
         lines.append("")
 
-        # ── Summary section ──────────────────────────────────────────────────
-        lines += [
-            "### Summary",
-            "",
-            "| Severity | Count |",
-            "|----------|-------|",
-        ]
-        for sev in _SEVERITY_ORDER:
-            lines.append(f"| {sev} | {counts[sev]} |")
-        lines.append(f"| **Total** | **{total}** |")
-        lines.append("")
-
-        # Overall posture
-        if counts["Critical"] == 0 and counts["High"] == 0:
-            if total == 0:
-                lines.append("**Supply Chain Posture: Passing ✅** — No findings detected.")
-            else:
-                lines.append("**Supply Chain Posture: Passing ✅** — No Critical or High findings.")
-        else:
-            lines.append(
-                f"**Supply Chain Posture: ⚠ Action Required** — {counts['Critical']} Critical, {counts['High']} High findings."
-            )
-        lines.append("")
-
-        # ── Dimension status table ────────────────────────────────────────────
-        lines += [
-            "#### Dimension Status",
-            "",
-            "| Dim | Name | Status | Reason |",
-            "|-----|------|--------|--------|",
-        ]
-        dim_names = {
-            1: "Action SHA Pinning",
-            2: "Workflow Permissions",
-            3: "Secret Exposure",
-            4: "Cache Poisoning",
-            5: "Container Image Pinning",
-            6: "Credential Hygiene",
-            7: "NuGet Lock",
-            8: "Python Integrity",
-            9: "Cargo Supply Chain",
-            10: "Node Integrity",
-            11: "Go Module Integrity",
-            12: "Docker Build Chain",
-        }
-        for dim in range(1, 13):
-            name = dim_names.get(dim, f"Dimension {dim}")
-            if dim in self.active_dims:
-                dim_findings = [f for f in self.findings if f.dimension == dim]
-                if dim_findings:
-                    status = f"⚠ {len(dim_findings)} finding(s)"
-                else:
-                    status = "✅ Checked"
-                reason = ""
-            else:
-                status = "⏭ Skipped"
-                reason = self._skip_reasons.get(dim, "")
-            lines.append(f"| {dim} | {name} | {status} | {reason} |")
-        lines.append("")
-
-        # ── Findings section ──────────────────────────────────────────────────
-        lines += ["### Findings", ""]
-
-        if not self.findings:
-            lines.append("_No findings detected for audited dimensions._")
-            lines.append("")
-        else:
-            # Sort: Critical first, then High, Medium, Info; within severity by dim/file/line
-            severity_rank = {s: i for i, s in enumerate(_SEVERITY_ORDER)}
-            sorted_findings = sorted(
-                self.findings,
-                key=lambda f: (severity_rank.get(f.severity, 99), f.dimension, f.file, f.line),
-            )
-            for f in sorted_findings:
-                lines.append(f"#### {f.id} — Dim {f.dimension} — {f.severity}")
-                lines.append("")
-                lines.append(f"**Severity**: {f.severity}")
-                lines.append(f"**File**: `{f.file}:{f.line}`")
-                current_display = "<REDACTED>" if f.contains_secret else f.current_value
-                lines.append(f"**Current**: `{current_display}`")
-                lines.append(f"**Expected**: `{f.expected_value}`")
-                lines.append(f"**Why**: {f.rationale}")
-                if f.accepted_risk:
-                    lines.append("_[ACCEPTED RISK — review date applies]_")
-                if f.fix_url:
-                    lines.append(f"**Fix**: {f.fix_url}")
-                if f.tool_required:
-                    lines.append(f"**Tool required**: {f.tool_required}")
-                lines.append("")
-
-        # ── SLSA Readiness section ─────────────────────────────────────────────
-        lines += ["### SLSA Readiness", ""]
-        if self.slsa:
-            lines.append(self.slsa.render())
-        else:
-            lines.append(
-                "_SLSA assessment requires GHA scope. Run with --scope gha or --scope all._"
-            )
-        lines.append("")
+        # Delegate to section renderers
+        lines += self._render_summary_table()
+        lines += self._render_findings_section()
+        lines += self._render_slsa_section()
 
         # ── Recommended Next Steps section ────────────────────────────────────
         lines += ["### Recommended Next Steps", ""]
+
+        # Count by severity for next steps
+        counts = dict.fromkeys(_SEVERITY_ORDER, 0)
+        for f in self.findings:
+            counts[f.severity] = counts.get(f.severity, 0) + 1
 
         if counts["Critical"] > 0 or counts["High"] > 0:
             lines.append("**Priority 1 — Fix Critical and High findings immediately:**")

@@ -9,15 +9,9 @@ import re
 from pathlib import Path
 
 from ..schema import Finding
+from ._utils import _assign_ids, _relative_path
 
-# FROM <image>:<tag> patterns
-_FROM_PATTERN = re.compile(
-    r"^FROM\s+(?P<image>[^\s:@]+)(?::(?P<tag>[^\s@]+))?(?:@(?P<digest>sha256:[a-f0-9]+))?"
-    r"(?:\s+AS\s+(?P<alias>\w+))?\s*$",
-    re.IGNORECASE | re.MULTILINE,
-)
 _SHA_DIGEST_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
-_USER_INSTRUCTION_PATTERN = re.compile(r"^USER\s+\S+", re.IGNORECASE | re.MULTILINE)
 
 
 def _find_dockerfiles(root: Path) -> list[Path]:
@@ -32,46 +26,6 @@ def _find_dockerfiles(root: Path) -> list[Path]:
         if p not in files:
             files.append(p)
     return sorted(set(files))
-
-
-def _relative_path(root: Path, path: Path) -> str:
-    try:
-        rel = path.relative_to(root)
-        return str(rel).replace("\\", "/")
-    except ValueError:
-        return str(path).replace("\\", "/")
-
-
-def _assign_ids(findings: list[Finding]) -> list[Finding]:
-    """Re-assign IDs in deterministic order."""
-    severity_rank = {"Critical": 0, "High": 1, "Medium": 2, "Info": 3}
-    sorted_findings = sorted(
-        findings, key=lambda f: (severity_rank.get(f.severity, 4), f.file, f.line)
-    )
-    counters = {"Critical": 0, "High": 0, "Medium": 0, "Info": 0}
-    result = []
-    for f in sorted_findings:
-        counters[f.severity] += 1
-        seq = str(counters[f.severity]).zfill(3)
-        new_id = f"{f.severity.upper()}-{seq}"
-        result.append(
-            Finding(
-                id=new_id,
-                dimension=f.dimension,
-                severity=f.severity,
-                file=f.file,
-                line=f.line,
-                current_value=f.current_value,
-                expected_value=f.expected_value,
-                rationale=f.rationale,
-                offline_detectable=f.offline_detectable,
-                tool_required=f.tool_required,
-                contains_secret=f.contains_secret,
-                fix_url=f.fix_url,
-                accepted_risk=f.accepted_risk,
-            )
-        )
-    return result
 
 
 # ─── Dimension 5: Container Image Pinning ─────────────────────────────────────

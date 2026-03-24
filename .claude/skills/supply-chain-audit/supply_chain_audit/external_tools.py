@@ -154,9 +154,11 @@ class ToolClient:
         cmd = [self.tool_name] + list(args)
 
         # Safety: ensure all arguments are plain strings (no shell interpolation).
-        assert all(isinstance(a, str) for a in cmd), (
-            "All arguments must be plain strings — no shell metacharacters allowed"
-        )
+        if not all(isinstance(a, str) for a in cmd):
+            raise TypeError(
+                "All arguments must be plain strings — no Path objects, "
+                "no f-strings with embedded commands"
+            )
 
         backoff = self._initial_backoff
         for attempt in range(self._max_retries + 1):
@@ -184,7 +186,10 @@ class ToolClient:
                 self._cb.record_failure()
                 return None
 
-            except Exception:
+            except subprocess.SubprocessError as exc:
+                import logging
+
+                logging.getLogger(__name__).debug("Tool execution failed: %s", exc)
                 self._cb.record_failure()
                 return None
 

@@ -37,8 +37,8 @@ The skill auto-detects ecosystems from signal files:
 | `package.json`                            | Node.js / npm lock files                              |
 | `go.mod`                                  | Go module integrity                                   |
 | `Dockerfile*`                             | Container base image pinning                          |
-| `.github/dependabot.yml`, `renovate.json` | Automation bot configuration                          |
-| `.github/CODEOWNERS`                      | Branch protection and governance                      |
+| `.github/dependabot.yml`, `renovate.json` | Automation bot configuration _(planned)_              |
+| `.github/CODEOWNERS`                      | Branch protection and governance _(planned)_          |
 
 Only ecosystems with signal files present are audited — no false positives for
 absent technologies.
