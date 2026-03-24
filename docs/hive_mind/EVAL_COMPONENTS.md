@@ -12,6 +12,15 @@ Use it when you understand the command names already but need to know which repo
 
 Azure Event Hubs carries the distributed learn and question traffic. Azure Container Apps runs the agent fleet. Aspire is an optional local dashboard and orchestration shell around the existing Python and bash entrypoints.
 
+## The Five-Minute Walkthrough
+
+If you need to explain the stack quickly to another engineer, use this mental model:
+
+1. For local runtime changes, start in `amplihack` and run the thin wrappers in `src/amplihack/eval/`. Those wrappers are convenience shims over `amplihack_eval`, not a second eval framework.
+2. For authoritative local eval runs, switch to `amplihack-agent-eval` and use `amplihack-eval run` or `amplihack-eval compare`. That repo owns question generation, grading, and packaged reports.
+3. For distributed Azure evals, the eval repo still owns the run shape and final report, but it calls the Azure deployment assets from `amplihack`. Event Hubs carries the traffic, and the agents themselves run in Azure Container Apps.
+4. For Aspire, stay in `amplihack` and run the AppHost in `deploy/azure_hive/aspire/`. Aspire is the local orchestration shell around the existing deploy, monitor, and eval scripts. It is not a replacement for the Python eval harness.
+
 ## Plain-English Component Diagram
 
 ```text
@@ -79,6 +88,17 @@ For a local wrapper run such as `python -m amplihack.eval.long_horizon_memory`:
 
 The important detail is that the local wrapper is not a second eval framework. It is a convenience layer over the standalone eval package.
 
+## How The Authoritative Local CLI Fits
+
+For `amplihack-eval run` or `amplihack-eval compare`:
+
+1. you run the CLI in `amplihack-agent-eval`
+2. the eval repo chooses the dataset, question slice, seed, and output location
+3. the adapter talks to the runtime under test
+4. grading and packaged report output stay in `amplihack-agent-eval`
+
+That is why the thin wrappers in `amplihack` are useful for runtime iteration, while the eval repo remains the source of truth for the full local CLI surface.
+
 ## How A Distributed Azure Run Works
 
 For `./run_distributed_eval.sh` or `python -m amplihack_eval.azure.eval_distributed`:
@@ -130,6 +150,20 @@ Aspire does not replace:
 - the Azure deployment script
 
 It orchestrates those pieces. That is why the AppHost is small and the heavy logic still lives in Python and bash.
+
+## Why The Aspire AppHost Is In C#
+
+The AppHost is in C# because Aspire's application model is a .NET host built around the `DistributedApplication` builder API.
+
+That does not mean the eval stack became a C# system. The deploy script, monitor, and eval runners are still the existing Python and bash entrypoints. The C# layer is only the orchestration shell that names those resources, wires environment variables, and publishes OTEL telemetry into the Aspire dashboard.
+
+## How Secrets Reach The Distributed Runner
+
+The Event Hubs connection string should move through environment variables, not command-line arguments.
+
+The direct compatibility wrappers in `deploy/azure_hive/` read `EH_CONN`, `AMPLIHACK_EH_INPUT_HUB`, and `AMPLIHACK_EH_RESPONSE_HUB` from the environment, then pass them through only when the operator did not already provide explicit flags. The Aspire AppHost follows the same pattern and sets `EH_CONN` as an environment variable on its executable resources.
+
+That is why the docs prefer `read -rsp ... EH_CONN` plus `export EH_CONN` over `--connection-string ...`. It keeps the secret out of `argv` and therefore out of normal process-list output.
 
 ## What To Change When Something Breaks
 
