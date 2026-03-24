@@ -13,6 +13,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -264,6 +265,11 @@ def _build_rust_env() -> dict[str, str]:
 
 def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> RecipeResult:
     """Run the Rust binary and parse its JSON output into a ``RecipeResult``."""
+    print(
+        f"[recipe-runner] Launching recipe '{name}' (pid {os.getpid()})...",
+        file=sys.stderr,
+        flush=True,
+    )
     return execute_rust_command(cmd, name=name, progress=progress, env_builder=_build_rust_env)
 
 
@@ -290,6 +296,19 @@ def _cleanup_context_spill_dir(tmp_dir: Path) -> None:
 # Public entry point ---------------------------------------------------------
 
 
+def _cleanup_progress_file(recipe_name: str) -> None:
+    """Remove the progress file for a completed recipe run (best-effort)."""
+    try:
+        stem = (
+            Path(recipe_name).stem if ("/" in recipe_name or os.sep in recipe_name) else recipe_name
+        )
+        safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", stem)[:64]
+        path = Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{os.getpid()}.json"
+        path.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
 def run_recipe_via_rust(
     name: str,
     user_context: dict[str, Any] | None = None,
@@ -300,6 +319,7 @@ def run_recipe_via_rust(
     progress: bool = False,
 ) -> RecipeResult:
     """Execute a recipe using the Rust binary."""
+    print(f"[recipe-runner] Preparing recipe '{name}'...", file=sys.stderr, flush=True)
     binary = _find_rust_binary()
     effective_recipe_dirs = _resolve_effective_recipe_dirs(recipe_dirs, working_dir=working_dir)
     resolved_name = _resolve_recipe_target(
@@ -330,3 +350,4 @@ def run_recipe_via_rust(
         return _execute_rust_command(cmd, name=name, progress=progress)
     finally:
         _cleanup_context_spill_dir(tmp_dir)
+        _cleanup_progress_file(name)
