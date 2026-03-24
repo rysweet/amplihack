@@ -1131,7 +1131,9 @@ steps:
       COMMITS_AHEAD=$(git rev-list --count @{u}..HEAD)
       if [ "$COMMITS_AHEAD" -ne 0 ]; then
         # REL-001: No stderr suppression on rebase — surface conflict diagnostics
-        git pull --rebase && git push
+        # Split into separate statements so set -e catches rebase failures
+        git pull --rebase
+        git push
       else
         echo "WARNING: Nothing to push - branch is up to date with remote"
       fi
