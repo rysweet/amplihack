@@ -216,11 +216,11 @@ class AuditReport:
                     "<REDACTED>" if f.contains_secret else _sanitize_for_display(f.expected_value)
                 )
                 lines.append(f"**Expected**: `{expected_display}`")
-                lines.append(f"**Why**: {f.rationale}")
+                lines.append(f"**Why**: {_sanitize_for_display(f.rationale)}")
                 if f.accepted_risk:
                     lines.append("_[ACCEPTED RISK — review date applies]_")
                 if f.fix_url:
-                    lines.append(f"**Fix**: {f.fix_url}")
+                    lines.append(f"**Fix**: {_sanitize_for_display(f.fix_url)}")
                 if f.tool_required:
                     lines.append(f"**Tool required**: {f.tool_required}")
                 lines.append("")
