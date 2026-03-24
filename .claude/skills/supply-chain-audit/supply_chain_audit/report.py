@@ -3,7 +3,7 @@
 
 from datetime import date
 
-from .schema import Finding
+from .schema import Finding, _sanitize_for_display
 
 _SEVERITY_ORDER = ["Critical", "High", "Medium", "Info"]
 
@@ -208,9 +208,14 @@ class AuditReport:
                 lines.append("")
                 lines.append(f"**Severity**: {f.severity}")
                 lines.append(f"**File**: `{f.file}:{f.line}`")
-                current_display = "<REDACTED>" if f.contains_secret else f.current_value
+                current_display = (
+                    "<REDACTED>" if f.contains_secret else _sanitize_for_display(f.current_value)
+                )
                 lines.append(f"**Current**: `{current_display}`")
-                lines.append(f"**Expected**: `{f.expected_value}`")
+                expected_display = (
+                    "<REDACTED>" if f.contains_secret else _sanitize_for_display(f.expected_value)
+                )
+                lines.append(f"**Expected**: `{expected_display}`")
                 lines.append(f"**Why**: {f.rationale}")
                 if f.accepted_risk:
                     lines.append("_[ACCEPTED RISK — review date applies]_")

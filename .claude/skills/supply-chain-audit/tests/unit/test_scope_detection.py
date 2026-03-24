@@ -104,9 +104,17 @@ class TestEcosystemDetection:
         (tmp_path / "Cargo.toml").write_text("[package]\nname = 'app'\n")
         wf = tmp_path / ".github" / "workflows"
         wf.mkdir(parents=True)
-        (wf / "ci.yml").write_text("name: CI\n")
+        (wf / "ci.yml").write_text("name: CI\nenv:\n  TOKEN: ${{ secrets.GH_TOKEN }}\n")
         scope = detect_ecosystems(tmp_path)
         assert set(range(1, 13)) == set(scope.active_dimensions)
+
+    def test_workflow_without_secrets_does_not_trigger_dim6(self, tmp_path):
+        """Workflow without ${{ secrets.* }} should not trigger Dim 6."""
+        wf = tmp_path / ".github" / "workflows"
+        wf.mkdir(parents=True)
+        (wf / "ci.yml").write_text("name: CI\non: [push]\n")
+        scope = detect_ecosystems(tmp_path)
+        assert 6 not in scope.active_dimensions
 
 
 class TestScopeFiltering:

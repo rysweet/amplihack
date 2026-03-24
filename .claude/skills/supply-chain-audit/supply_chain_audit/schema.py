@@ -4,6 +4,32 @@
 import re
 from dataclasses import dataclass
 
+# ── XPIA sanitization (defense-in-depth) ──────────────────────────────────────
+# Even though checkers should extract structured data, this catches any raw
+# content that accidentally flows into display fields. Patterns here mirror
+# the XPIA detection list in audit.py.
+_XPIA_SANITIZE_PATTERNS = [
+    re.compile(r"</?\s*(?:system|user|assistant|human)\s*>", re.IGNORECASE),
+    re.compile(r"ignore\s+(previous\s+)?instructions", re.IGNORECASE),
+    re.compile(r"you\s+are\s+now\s+(?:dan|an?\s+ai|a\s+different)", re.IGNORECASE),
+    re.compile(r"new\s+instructions\s*:", re.IGNORECASE),
+    re.compile(r"disregard\s+(?:previous|all|your)", re.IGNORECASE),
+    re.compile(r"jailbreak", re.IGNORECASE),
+]
+
+
+def _sanitize_for_display(text: str) -> str:
+    """Strip XPIA patterns from text before rendering in reports.
+
+    Defense-in-depth: prevents prompt injection content from flowing into
+    report text even if a checker accidentally uses raw file content.
+    """
+    result = text
+    for pattern in _XPIA_SANITIZE_PATTERNS:
+        result = pattern.sub("[XPIA-REDACTED]", result)
+    return result
+
+
 VALID_SEVERITIES = {"Critical", "High", "Medium", "Info"}
 VALID_TOOLS = frozenset(
     {
@@ -143,10 +169,13 @@ class Finding:
             )
 
     def render(self) -> str:
-        """Render finding as markdown, redacting secret values."""
-        current = "<REDACTED>" if self.contains_secret else self.current_value
-        # Only redact expected_value if it also would expose a secret
-        expected = self.expected_value
+        """Render finding as markdown, redacting secret values and sanitizing XPIA."""
+        current = (
+            "<REDACTED>" if self.contains_secret else _sanitize_for_display(self.current_value)
+        )
+        expected = (
+            "<REDACTED>" if self.contains_secret else _sanitize_for_display(self.expected_value)
+        )
 
         lines = [
             f"**Finding {self.id}** (Dim {self.dimension}) — **{self.severity}**",

@@ -216,6 +216,9 @@ class ToolClient:
         if not self.is_available():
             return ""
 
+        if self._cb.is_open:
+            return ""
+
         effective_timeout = timeout if timeout is not None else self._timeout
         cmd = [self.tool_name] + list(args)
 
@@ -227,11 +230,15 @@ class ToolClient:
                 shell=False,
             )
             if result.returncode == 0:
+                self._cb.record_success()
                 return result.stdout.decode("utf-8", errors="replace")
+            self._cb.record_failure()
             return ""
         except subprocess.TimeoutExpired:
+            self._cb.record_failure()
             raise ToolTimeoutError(self.tool_name, effective_timeout)
         except (OSError, FileNotFoundError):
+            self._cb.record_failure()
             return ""
 
 

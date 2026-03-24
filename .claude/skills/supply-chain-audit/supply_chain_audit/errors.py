@@ -65,7 +65,13 @@ class AcceptedRisksOverflowError(SupplyChainAuditError):
 
 
 class XpiaEscalationError(SupplyChainAuditError):
-    """XPIA_ESCALATION: prompt injection attempt detected in scanned content."""
+    """XPIA_ESCALATION: prompt injection attempt detected in scanned content.
+
+    .. deprecated::
+        No longer raised by ``run_audit()``. Retained for backward compatibility
+        so downstream code that catches this exception type does not break.
+        XPIA detections now produce advisory messages instead of exceptions.
+    """
 
     error_code = "XPIA_ESCALATION"
 
