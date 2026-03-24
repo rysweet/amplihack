@@ -257,4 +257,37 @@ steps:
     expect:
       stdout_contains: ["SCOPED_AUDIT_PASS"]
 
+  # --- Auto-install feature ---
+  - name: "check_missing_tools returns list"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: 'cd /home/azureuser/src/amplihack/worktrees/feat/issue--review-github-issue-3440-gh-issue-view-3440-and-th && PYTHONPATH=.claude/skills/supply-chain-audit python3 -c "from supply_chain_audit import check_missing_tools; m = check_missing_tools(); assert isinstance(m, list); print(''MISSING_COUNT: ''+str(len(m))); [print(t[''name'']+'': ''+t[''description'']) for t in m]; print(''CHECK_MISSING_PASS'')"'
+    expect:
+      stdout_contains: ["CHECK_MISSING_PASS"]
+
+  - name: "install_tool returns tuple for unknown tool"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: 'cd /home/azureuser/src/amplihack/worktrees/feat/issue--review-github-issue-3440-gh-issue-view-3440-and-th && PYTHONPATH=.claude/skills/supply-chain-audit python3 -c "from supply_chain_audit import install_tool; ok, msg = install_tool(''nonexistent-xyz''); assert ok is False; assert ''No install'' in msg; print(''UNKNOWN_TOOL_PASS'')"'
+    expect:
+      stdout_contains: ["UNKNOWN_TOOL_PASS"]
+
+  - name: "install_tool detects already-installed gh"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: 'cd /home/azureuser/src/amplihack/worktrees/feat/issue--review-github-issue-3440-gh-issue-view-3440-and-th && PYTHONPATH=.claude/skills/supply-chain-audit python3 -c "from supply_chain_audit import install_tool; ok, msg = install_tool(''gh''); assert ok is True; assert ''already installed'' in msg; print(''GH_ALREADY_PASS'')"'
+    expect:
+      stdout_contains: ["GH_ALREADY_PASS"]
+
+  - name: "check_missing_tools entries have required keys"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: 'cd /home/azureuser/src/amplihack/worktrees/feat/issue--review-github-issue-3440-gh-issue-view-3440-and-th && PYTHONPATH=.claude/skills/supply-chain-audit python3 -c "from supply_chain_audit import check_missing_tools; m = check_missing_tools(); [print(t[''name''], len(t[''install_options''])) for t in m]; assert all(''name'' in t and ''description'' in t and ''install_options'' in t for t in m); print(''KEYS_PASS'')"'
+    expect:
+      stdout_contains: ["KEYS_PASS"]
+
 # Run: gadugi-test run -f tests/gadugi/supply-chain-audit-skill.yaml
