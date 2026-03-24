@@ -1,0 +1,109 @@
+# Outside-in test: Rust runner env propagation + Investigation routing (#3496)
+# Verifies that PYTHONPATH and CLAUDE_PROJECT_DIR are forwarded through the
+# Rust runner, that CLAUDE_PROJECT_DIR is seeded from working_dir when absent,
+# and that single-workstream Investigation tasks route to investigation-workflow.
+
+scenario:
+  name: "Issue 3496 - Env Propagation and Investigation Routing"
+  description: |
+    PR #3512 fixes three root causes behind workflow failures in nested sessions:
+    1. PYTHONPATH was dropped at the Python→Rust runner boundary, causing nested
+       steps to import installed amplihack from UV cache instead of repo source.
+    2. CLAUDE_PROJECT_DIR was neither forwarded nor seeded, so workflow lock files
+       were keyed off temp cwds instead of the actual repo root.
+    3. Single-workstream Investigation tasks were routed through default-workflow
+       (which requires a git repo) instead of investigation-workflow.
+  type: cli
+  level: 2
+
+  tags: [regression, issue-3496, env-propagation, routing, investigation, pr-3512]
+
+  prerequisites:
+    - "src/amplihack/recipes/rust_runner_execution.py exists"
+    - "src/amplihack/recipes/rust_runner.py exists"
+    - "amplifier-bundle/recipes/smart-orchestrator.yaml exists"
+    - "Python 3.10+ with yaml importable"
+
+  environment:
+    variables:
+      PYTHONPATH: "src"
+
+  steps:
+    # --- Phase 1: PYTHONPATH in env allowlist ---
+
+    - action: grep
+      target: "src/amplihack/recipes/rust_runner_execution.py"
+      pattern: '"PYTHONPATH"'
+      description: "rust_runner_execution.py must include PYTHONPATH in env allowlist"
+
+    # --- Phase 2: CLAUDE_PROJECT_DIR in env allowlist ---
+
+    - action: grep
+      target: "src/amplihack/recipes/rust_runner_execution.py"
+      pattern: '"CLAUDE_PROJECT_DIR"'
+      description: "rust_runner_execution.py must include CLAUDE_PROJECT_DIR in env allowlist"
+
+    # --- Phase 3: CLAUDE_PROJECT_DIR seeding from working_dir ---
+
+    - action: grep
+      target: "src/amplihack/recipes/rust_runner.py"
+      pattern: "_project_dir_context"
+      description: "rust_runner.py must define _project_dir_context helper"
+
+    - action: grep
+      target: "src/amplihack/recipes/rust_runner.py"
+      pattern: "CLAUDE_PROJECT_DIR"
+      description: "rust_runner.py must reference CLAUDE_PROJECT_DIR for seeding"
+
+    - action: grep
+      target: "src/amplihack/recipes/rust_runner.py"
+      pattern: "working_dir"
+      description: "rust_runner.py must use working_dir to seed project dir"
+
+    # --- Phase 4: Investigation routing in smart-orchestrator ---
+
+    # Single-workstream Investigation must route to investigation-workflow
+    - action: grep
+      target: "amplifier-bundle/recipes/smart-orchestrator.yaml"
+      pattern: "investigation-workflow"
+      description: "smart-orchestrator must reference investigation-workflow for Investigation tasks"
+
+    # The routing must be task-type-aware (not all-default-workflow)
+    - action: grep
+      target: "amplifier-bundle/recipes/smart-orchestrator.yaml"
+      pattern: "task_type.*[Ii]nvestigation"
+      description: "Routing must check task_type for Investigation classification"
+
+    # Blocked fallback must also route Investigation correctly
+    - action: grep
+      target: "amplifier-bundle/recipes/smart-orchestrator.yaml"
+      pattern: "execute-single-fallback-blocked"
+      description: "Blocked fallback routing step must exist"
+
+    # --- Phase 5: No regression — Development still routes to default-workflow ---
+
+    - action: grep
+      target: "amplifier-bundle/recipes/smart-orchestrator.yaml"
+      pattern: "default-workflow"
+      description: "Development tasks must still route to default-workflow"
+
+  cleanup:
+    - action: capture_output
+      save_as: "issue-3496-env-routing-output.txt"
+      description: "Save full test output for debugging"
+
+# Expected Behavior:
+# - PYTHONPATH is in the env allowlist so nested steps import repo source
+# - CLAUDE_PROJECT_DIR is in the env allowlist so it survives the boundary
+# - _project_dir_context() seeds CLAUDE_PROJECT_DIR from working_dir when absent
+# - Investigation tasks route to investigation-workflow (not default-workflow)
+# - Development tasks still route to default-workflow (no regression)
+# - Blocked fallback path also respects task-type routing
+#
+# Root Cause (fixed):
+# The Rust runner env allowlist in rust_runner_execution.py excluded PYTHONPATH
+# and CLAUDE_PROJECT_DIR. Smart-orchestrator routed ALL single-workstream tasks
+# through default-workflow regardless of task type.
+#
+# Run Command:
+# gadugi-test run tests/gadugi/issue-3496-env-propagation-routing.yaml --verbose

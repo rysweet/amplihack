@@ -216,6 +216,52 @@ class TestRunRecipeViaRust:
         assert env["PYTHONPATH"] == "/repo/src"
         assert env["CLAUDE_PROJECT_DIR"] == "/repo/worktree"
 
+    @patch.dict(
+        "os.environ",
+        {"PATH": "/usr/bin", "CLAUDE_PROJECT_DIR": "/already/set"},
+        clear=True,
+    )
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.run")
+    def test_preserves_existing_claude_project_dir(self, mock_run, mock_find):
+        """When CLAUDE_PROJECT_DIR is already set, _project_dir_context is a no-op."""
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=self._make_rust_output(),
+            stderr="",
+        )
+
+        run_recipe_via_rust("test-recipe", working_dir="/different/dir")
+
+        env = mock_run.call_args.kwargs["env"]
+        assert env["CLAUDE_PROJECT_DIR"] == "/already/set"
+
+    @patch.dict(
+        "os.environ",
+        {"PATH": "/usr/bin", "CLAUDE_PROJECT_DIR": ""},
+        clear=True,
+    )
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.run")
+    def test_preserves_empty_string_claude_project_dir(self, mock_run, mock_find):
+        """Empty string CLAUDE_PROJECT_DIR must be preserved, not overwritten."""
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=self._make_rust_output(),
+            stderr="",
+        )
+
+        run_recipe_via_rust("test-recipe", working_dir="/some/dir")
+
+        env = mock_run.call_args.kwargs["env"]
+        assert env["CLAUDE_PROJECT_DIR"] == ""
+
     @patch(
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )

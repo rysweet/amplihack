@@ -72,7 +72,7 @@ def _sanitize_key(key: str) -> str:
 def _project_dir_context(project_dir: str) -> Generator[None, None, None]:
     """Temporarily seed ``CLAUDE_PROJECT_DIR`` when the caller did not set one."""
     original = os.environ.get("CLAUDE_PROJECT_DIR")
-    if original:
+    if original is not None:
         yield
         return
 
