@@ -84,7 +84,7 @@ Detailed setup:
 
 Install the prerequisites above first, then choose an option below.
 
-**Option 1: Zero-Install** (try before you commit)
+**Option 1: Quick Start** (requires uv and Python)
 
 ```bash
 # Launch with Claude Code
