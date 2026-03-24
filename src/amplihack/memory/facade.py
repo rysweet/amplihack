@@ -19,9 +19,10 @@ Topology modes:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 from .config import MemoryConfig
 from .graph_store import GraphStore
@@ -142,13 +143,13 @@ class Memory:
         # NetworkGraphStore makes search_query route through the correct store.
         if _use_network and hasattr(self._graph_store, "recall_fn"):
             if self._adapter is not None and hasattr(self._adapter, "search"):
-                self._graph_store.recall_fn = self._adapter.search
+                self._graph_store.recall_fn = self._adapter.search  # type: ignore[union-attr, reportAttributeAccessIssue]
                 logger.info(
                     "Memory[%s]: wired NetworkGraphStore.recall_fn → CognitiveAdapter.search",
                     cfg.agent_name,
                 )
 
-    def _build_graph_store(self, cfg: "MemoryConfig") -> "GraphStore":
+    def _build_graph_store(self, cfg: MemoryConfig) -> GraphStore:
         """Construct the appropriate GraphStore for the resolved config."""
         transport = getattr(cfg, "memory_transport", "local") or "local"
         conn_str = getattr(cfg, "memory_connection_string", "") or ""
@@ -164,7 +165,7 @@ class Memory:
 
                 db_path = _Path(cfg.storage_path) / "graph_store" if cfg.storage_path else None
                 buffer_bytes = cfg.kuzu_buffer_pool_mb * 1024 * 1024
-                local_base: GraphStore = KuzuGraphStore(
+                local_base: GraphStore = KuzuGraphStore(  # type: ignore[assignment, reportAssignmentType]
                     db_path=db_path,
                     buffer_pool_size=buffer_bytes,
                 )
@@ -191,7 +192,7 @@ class Memory:
                 kuzu_buffer_pool_mb=cfg.kuzu_buffer_pool_mb,
             )
             store.add_agent(cfg.agent_name)
-            return store
+            return store  # type: ignore[return-value, reportReturnType]
 
         # cognitive (default) — requires Kuzu; raises ImportError if unavailable
         from pathlib import Path as _Path
@@ -200,7 +201,7 @@ class Memory:
 
         db_path = _Path(cfg.storage_path) / "graph_store" if cfg.storage_path else None
         buffer_bytes = cfg.kuzu_buffer_pool_mb * 1024 * 1024
-        local: GraphStore = KuzuGraphStore(
+        local: GraphStore = KuzuGraphStore(  # type: ignore[assignment, reportAssignmentType]
             db_path=db_path,
             buffer_pool_size=buffer_bytes,
         )
@@ -234,7 +235,9 @@ class Memory:
 
     def _build_hierarchical(self, cfg: MemoryConfig) -> Any:
         """Create a HierarchicalMemory instance."""
-        from amplihack.agents.goal_seeking.hierarchical_memory import HierarchicalMemory
+        from amplihack.agents.goal_seeking.hierarchical_memory import (
+            HierarchicalMemory,  # type: ignore[attr-defined, reportAttributeAccessIssue]
+        )
 
         db_path = Path(cfg.storage_path) if cfg.storage_path else None
         return HierarchicalMemory(agent_name=cfg.agent_name, db_path=db_path)
@@ -267,7 +270,7 @@ class Memory:
     # ------------------------------------------------------------------
 
     @property
-    def graph_store(self) -> "GraphStore | None":
+    def graph_store(self) -> GraphStore | None:
         """Return the underlying GraphStore for direct graph operations."""
         return self._graph_store
 
@@ -310,12 +313,12 @@ class Memory:
             return {"facts_extracted": 0, "facts_stored": 0, "content_summary": ""}
 
         agent = self._get_or_create_learning_agent()
-        return agent.learn_from_content(content)
+        return asyncio.run(agent.learn_from_content(content))
 
     def _get_or_create_learning_agent(self) -> Any:
         """Return (lazily created) LearningAgent wired to this facade's adapter."""
         if self._learning_agent is None:
-            from amplihack.agents.goal_seeking.learning_agent import LearningAgent  # noqa: PLC0415
+            from amplihack.agents.goal_seeking.learning_agent import LearningAgent
 
             self._learning_agent = LearningAgent(
                 agent_name=self._cfg.agent_name or self._agent_name,
@@ -365,7 +368,7 @@ class Memory:
             or no events are pending.
         """
         if self._graph_store is not None and hasattr(self._graph_store, "receive_events"):
-            return self._graph_store.receive_events()
+            return self._graph_store.receive_events()  # type: ignore[union-attr, reportAttributeAccessIssue]
         return []
 
     def receive_query_events(self) -> list[Any]:
@@ -379,7 +382,7 @@ class Memory:
             is active or no query events are pending.
         """
         if self._graph_store is not None and hasattr(self._graph_store, "receive_query_events"):
-            return self._graph_store.receive_query_events()
+            return self._graph_store.receive_query_events()  # type: ignore[union-attr, reportAttributeAccessIssue]
         return []
 
     def send_query_response(
@@ -398,7 +401,7 @@ class Memory:
             results: Recalled fact strings from this agent's cognitive memory.
         """
         if self._graph_store is not None and hasattr(self._graph_store, "send_query_response"):
-            self._graph_store.send_query_response(query_id, question, results)
+            self._graph_store.send_query_response(query_id, question, results)  # type: ignore[union-attr, reportAttributeAccessIssue]
 
     def close(self) -> None:
         """Release all resources."""
@@ -485,10 +488,10 @@ class Memory:
     # Context manager support
     # ------------------------------------------------------------------
 
-    def __enter__(self) -> "Memory":
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(self, *args: object) -> None:
         self.close()
 
 

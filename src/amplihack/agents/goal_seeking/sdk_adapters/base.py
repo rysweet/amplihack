@@ -9,6 +9,7 @@ Philosophy:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from abc import ABC, abstractmethod
@@ -344,7 +345,7 @@ class GoalSeekingAgent(ABC):
         # Use LearningAgent for proper LLM-based fact extraction
         la = self._get_learning_agent()
         if la:
-            return la.learn_from_content(content)
+            return asyncio.run(la.learn_from_content(content))
 
         # Fallback: raw storage if LearningAgent unavailable
         if self.memory:
@@ -487,8 +488,8 @@ class GoalSeekingAgent(ABC):
             la = self._get_learning_agent()
             if la:
                 if answer_mode == "agentic":
-                    return la.answer_question_agentic(question)
-                result = la.answer_question(question)
+                    return asyncio.run(la.answer_question_agentic(question))
+                result = asyncio.run(la.answer_question(question))
                 if isinstance(result, tuple):
                     return result[0]
                 return result

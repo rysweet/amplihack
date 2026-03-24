@@ -19,11 +19,6 @@ digraph runtime_topology {
     npm_proc [label="npm / node\nsubprocess"];
     recipe_rust [label="Recipe Runner\n(Rust binary)\namplihack-recipe-runner"];
 
-    // Servers
-    node [shape=hexagon, style="filled", fillcolor="#fff9c4"];
-    flask_proxy [label="Flask Proxy Server\nresponses_api_proxy.py\nPort: configurable"];
-    litellm_proxy [label="LiteLLM Proxy\n(optional external)"];
-
     // Fleet
     node [shape=tab, style="filled", fillcolor="#e1bee7"];
     fleet_tui [label="Fleet TUI\nRich dashboard"];
@@ -57,13 +52,6 @@ digraph runtime_topology {
     launcher -> npm_proc [label="subprocess.run"];
     launcher -> recipe_rust [label="subprocess.run"];
 
-    // Server connections
-    cli -> flask_proxy [label="starts"];
-    flask_proxy -> litellm_proxy [label="HTTP forward"];
-    flask_proxy -> anthropic [label="HTTPS"];
-    flask_proxy -> github [label="HTTPS"];
-    flask_proxy -> azure [label="HTTPS"];
-
     // Fleet
     cli -> fleet_tui [label="starts"];
     fleet_tui -> tmux [label="manages"];
@@ -75,6 +63,4 @@ digraph runtime_topology {
 
     // Data stores
     launcher -> kuzu [label="embedded"];
-    flask_proxy -> neo4j [style=dashed, label="optional"];
-    flask_proxy -> falkordb [style=dashed, label="optional"];
 }

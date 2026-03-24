@@ -100,57 +100,7 @@ All credential types sanitized:
 - [x] Invalid binary path error
 - [x] Invalid trace file path error
 
-### 3. LiteLLM Callbacks Module (`amplihack.proxy.litellm_callbacks`)
-
-**Total Tests**: 31 (19.9% of test suite)
-
-#### Functionality Coverage
-
-| Functionality      | Test Count | Coverage % | Critical Path |
-| ------------------ | ---------- | ---------- | ------------- |
-| Registration       | 6          | 100%       | Yes           |
-| Lifecycle events   | 4          | 100%       | **CRITICAL**  |
-| Data logging       | 3          | 100%       | Yes           |
-| Token sanitization | 3          | 100%       | **CRITICAL**  |
-| Performance        | 3          | 100%       | **CRITICAL**  |
-| Error handling     | 4          | 100%       | Yes           |
-| Streaming          | 2          | 100%       | Yes           |
-| Integration        | 2          | 100%       | Yes           |
-| Configuration      | 2          | 100%       | Yes           |
-
-#### Callback Events Coverage
-
-- [x] on_llm_start
-- [x] on_llm_end
-- [x] on_llm_error
-- [x] on_llm_stream
-
-#### Data Logged Coverage
-
-- [x] Request metadata (model, messages, params)
-- [x] Response metadata (usage, tokens)
-- [x] Timing information
-- [x] Error information
-- [x] Streaming chunks
-
-#### Performance Test Coverage
-
-1. **Callback overhead** - Target: < 5ms
-   - Test: `test_callback_overhead_under_5_milliseconds`
-   - Validates: 10 calls average time
-   - Status: RED (not implemented)
-
-2. **No overhead when disabled**
-   - Test: `test_callback_no_overhead_when_disabled`
-   - Validates: Callbacks not registered
-   - Status: RED (not implemented)
-
-3. **Async logging performance**
-   - Test: `test_callback_async_logging_performance`
-   - Validates: < 10ms even with large data
-   - Status: RED (not implemented)
-
-### 4. Integration Tests (`test_integration.py`)
+### 3. Integration Tests (`test_integration.py`)
 
 **Total Tests**: 19 (12.2% of test suite)
 
@@ -159,7 +109,6 @@ All credential types sanitized:
 | Integration                | Test Count | Status |
 | -------------------------- | ---------- | ------ |
 | Launcher + Binary Manager  | 5          | RED    |
-| LiteLLM + Callbacks        | 3          | RED    |
 | Configuration propagation  | 2          | RED    |
 | Error handling integration | 2          | RED    |
 | Performance integration    | 1          | RED    |
@@ -174,15 +123,11 @@ All credential types sanitized:
    - Test: `test_launcher_detects_and_uses_native_binary`
    - Validates: End-to-end detection and execution
 
-2. **Launcher → LiteLLM → Callbacks → TraceLogger**
-   - Test: `test_data_flows_from_launcher_to_trace_file`
-   - Validates: Complete data flow
-
-3. **Environment → All Components**
+2. **Environment → All Components**
    - Test: `test_env_configuration_propagates_to_all_components`
    - Validates: Configuration consistency
 
-### 5. Prerequisites Integration Tests (`test_prerequisites_integration.py`)
+### 4. Prerequisites Integration Tests (`test_prerequisites_integration.py`)
 
 **Total Tests**: 18 (11.5% of test suite)
 
@@ -198,7 +143,7 @@ All credential types sanitized:
 - [x] Fallback behavior
 - [x] check_all integration
 
-### 6. E2E Tests (`test_e2e.py`)
+### 5. E2E Tests (`test_e2e.py`)
 
 **Total Tests**: 16 (10.3% of test suite)
 
@@ -251,12 +196,11 @@ All credential types sanitized:
 
 | Module            | Tests | Percentage | Priority |
 | ----------------- | ----- | ---------- | -------- |
-| TraceLogger       | 40    | 25.6%      | HIGH     |
-| BinaryManager     | 32    | 20.5%      | HIGH     |
-| LiteLLM Callbacks | 31    | 19.9%      | HIGH     |
-| Integration       | 19    | 12.2%      | MEDIUM   |
-| Prerequisites     | 18    | 11.5%      | MEDIUM   |
-| E2E               | 16    | 10.3%      | MEDIUM   |
+| TraceLogger       | 40    | 32%        | HIGH     |
+| BinaryManager     | 32    | 26%        | HIGH     |
+| Integration       | 19    | 15%        | MEDIUM   |
+| Prerequisites     | 18    | 14%        | MEDIUM   |
+| E2E               | 16    | 13%        | MEDIUM   |
 
 ### By Requirement Category
 
@@ -297,7 +241,6 @@ These 75 tests MUST pass for MVP:
 
 4. **Error Handling** (8 tests)
    - Trace errors don't break launcher (2)
-   - Callback errors don't break LiteLLM (2)
    - Permission errors (2)
    - File errors (2)
 
@@ -315,7 +258,6 @@ All identified requirements have test coverage:
 - ✅ Performance requirements
 - ✅ Binary detection
 - ✅ Command building
-- ✅ LiteLLM integration
 - ✅ Error handling
 - ✅ Configuration
 - ✅ Security
@@ -327,7 +269,7 @@ All identified requirements have test coverage:
 
 ```bash
 # Unit tests only (~5 seconds)
-pytest tests/tracing/test_trace_logger.py tests/tracing/test_binary_manager.py tests/tracing/test_litellm_callbacks.py
+pytest tests/tracing/test_trace_logger.py tests/tracing/test_binary_manager.py
 ```
 
 ### Full Suite

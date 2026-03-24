@@ -34,7 +34,6 @@ allowed_patterns:
   - ".github.copilot.env"
   - "build_hooks.py"
   - "conftest.py"
-  - "litellm_standalone_config.yaml"
   - "marketplace.json"
   - "mkdocs.yml"
   - "poetry.lock"

@@ -31,19 +31,10 @@ digraph service_components {
         l_summary [label="work_summary.py"];
     }
 
-    subgraph cluster_proxy {
-        label="proxy/";
+    subgraph cluster_llm {
+        label="llm/";
         style=filled; fillcolor="#fff3bf";
-        p_config [label="config.py\nProxyConfig"];
-        p_manager [label="manager.py\nProxyManager"];
-        p_server [label="server.py"];
-        p_integrated [label="integrated_proxy.py"];
-        p_azure [label="azure_unified_handler.py"];
-        p_resp [label="responses_api_proxy.py"];
-        p_stream [label="streaming.py"];
-        p_convert [label="conversion.py"];
-        p_monitor [label="monitoring.py"];
-        p_gh [label="github_auth.py"];
+        llm_init [label="__init__.py\namplihack.llm"];
     }
 
     subgraph cluster_memory {
@@ -181,7 +172,7 @@ digraph service_components {
     cli -> f_cli;
     cli -> o_docker;
 
-    l_core -> p_manager;
+    l_core -> llm_init;
     l_core -> l_binary;
     l_core -> u_prereqs;
     l_core -> l_nesting;
@@ -192,14 +183,6 @@ digraph service_components {
     l_auto -> l_state;
     l_auto -> l_complete;
     l_coord -> l_append;
-
-    p_manager -> p_config;
-    p_manager -> p_server;
-    p_server -> p_integrated;
-    p_integrated -> p_azure;
-    p_integrated -> p_resp;
-    p_integrated -> p_stream;
-    p_integrated -> p_convert;
 
     m_db -> m_models;
     m_mgr -> m_db;

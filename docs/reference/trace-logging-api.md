@@ -13,13 +13,6 @@ Native binary trace logging uses a modular architecture with four main component
                         │
                         ▼
 ┌─────────────────────────────────────────────────────────┐
-│              LiteLLM Callback Manager                    │
-│  • litellm.success_callback = trace_logger.log_success  │
-│  • litellm.failure_callback = trace_logger.log_failure  │
-└───────────────────────┬─────────────────────────────────┘
-                        │
-                        ▼
-┌─────────────────────────────────────────────────────────┐
 │                    TraceLogger                           │
 │  • Checks AMPLIHACK_TRACE_LOGGING                       │
 │  • Creates session-scoped JSONL files                   │
@@ -58,7 +51,7 @@ class TraceLogger:
     Session-scoped trace logger for Claude API calls.
 
     Automatically creates JSONL trace files when AMPLIHACK_TRACE_LOGGING=true.
-    Uses LiteLLM callbacks to capture request/response pairs.
+    Captures request/response pairs for debugging.
     """
 
     def __init__(self, session_id: Optional[str] = None):
@@ -325,53 +318,6 @@ SANITIZED_ENV_VARS = [
     'PASSWORD',
     'TOKEN',
 ]
-```
-
----
-
-### LiteLLM Integration
-
-**Location**: `src/trace/litellm_callbacks.py`
-
-**Purpose**: Hook into LiteLLM for automatic trace logging.
-
-#### Functions
-
-```python
-def setup_trace_callbacks(logger: TraceLogger) -> None:
-    """
-    Configure LiteLLM to use trace logger.
-
-    Args:
-        logger: TraceLogger instance
-
-    Example:
-        from trace.trace_logger import TraceLogger
-        from trace.litellm_callbacks import setup_trace_callbacks
-
-        logger = TraceLogger()
-        setup_trace_callbacks(logger)
-
-        # Now all LiteLLM calls are automatically traced
-        import litellm
-        response = litellm.completion(
-            model="claude-sonnet-4-5-20250929",
-            messages=[{"role": "user", "content": "Hello"}]
-        )
-        # Request and response automatically logged
-    """
-    import litellm
-
-    def on_success(response, **kwargs):
-        if logger.is_enabled():
-            logger.log_response(response)
-
-    def on_failure(exception, **kwargs):
-        if logger.is_enabled():
-            logger.log_error(exception, kwargs)
-
-    litellm.success_callback = [on_success]
-    litellm.failure_callback = [on_failure]
 ```
 
 ---
@@ -678,13 +624,10 @@ def test_end_to_end_trace_logging():
 
     # Initialize components
     logger = TraceLogger()
-    setup_trace_callbacks(logger)
 
-    # Make API call
-    response = litellm.completion(
-        model="claude-sonnet-4-5-20250929",
-        messages=[{"role": "user", "content": "Test"}]
-    )
+    # Log a request/response pair
+    logger.log_request({"model": "claude-sonnet-4-5-20250929", "messages": [{"role": "user", "content": "Test"}]})
+    logger.log_response({"id": "msg_123", "content": [{"type": "text", "text": "Hello"}], "usage": {"total_tokens": 20}})
 
     # Verify trace file
     assert logger.trace_file_path.exists()

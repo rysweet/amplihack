@@ -293,7 +293,7 @@ class TestMultiAgentSpawningIntegration:
 
     def test_create_without_spawning(self, tmp_path):
         """MultiAgentLearningAgent works without spawning."""
-        # This imports LearningAgent which needs litellm
+        # This imports LearningAgent
         from amplihack.agents.goal_seeking.sub_agents.multi_agent import (
             MultiAgentLearningAgent,
         )

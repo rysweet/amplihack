@@ -2,7 +2,7 @@
 
 Philosophy:
 - Single responsibility per module
-- Standard library + litellm + amplihack-memory-lib + kuzu
+- Standard library + amplihack.llm + amplihack-memory-lib + kuzu
 - Self-contained and regeneratable
 - LLM-powered reasoning for answer synthesis
 - Hierarchical memory with Graph RAG for richer knowledge retrieval

@@ -14,9 +14,8 @@
 |-------|------|--------|---------|-------------|
 | Runtime Context | `.claude/runtime/hook_context.json` | JSON | `context/adaptive/strategies.py` | Hook-injected context for Claude discovery |
 | Launcher Context | `.claude/runtime/launcher_context.json` | JSON | `context/adaptive/detector.py`, `hooks/launcher_detector.py` | Launcher environment context |
-| Proxy Logs | `.claude/runtime/proxy/amplihack_proxy.log` | Text | `proxy/file_logging.py` | Proxy request/response logging |
 | Session Logs | `.claude/runtime/logs/<session_id>/` | Mixed | `session.py`, hooks | Per-session decision records and logs |
-| Trace Log | `~/.amplihack/trace.jsonl` | JSONL | `tracing/trace_logger.py`, `proxy/litellm_callbacks.py` | LLM call traces for observability |
+| Trace Log | `~/.amplihack/trace.jsonl` | JSONL | `tracing/trace_logger.py` | LLM call traces for observability |
 | Discoveries | `~/.amplihack/.claude/context/DISCOVERIES.md` | Markdown | `memory.discoveries` | Cross-session learning store |
 | Patterns | `~/.amplihack/.claude/context/PATTERNS.md` | Markdown | Agents, context | Proven patterns and solutions |
 | User Preferences | `~/.amplihack/.claude/context/USER_PREFERENCES.md` | Markdown | All agents | Persisted user preference settings |
@@ -33,6 +32,5 @@
 |-------|------|--------|-------------|
 | Project Config | `pyproject.toml` | TOML | Package metadata, dependencies, tool configuration |
 | Claude MD | `CLAUDE.md` | Markdown | Claude Code project instructions |
-| Proxy .env | `<path>.env` | Dotenv | Proxy server API keys and endpoints |
 | Docker Compose | `docker-compose*.yml` | YAML | Docker container definitions (when Docker mode enabled) |
 | UVX Settings | `uvx_settings_template.json` | JSON | Template for UVX environment settings |

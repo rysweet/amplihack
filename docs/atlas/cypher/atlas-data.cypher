@@ -2,8 +2,6 @@
 
 // --- Services ---
 CREATE (s:Service {name: 'amplihack-cli', language: 'Python', port: 0, path: 'src/amplihack/cli.py'});
-CREATE (s:Service {name: 'proxy-server', language: 'Python', port: 0, path: 'src/amplihack/proxy/server.py'});
-CREATE (s:Service {name: 'responses-api-proxy', language: 'Python', port: 0, path: 'src/amplihack/proxy/responses_api_proxy.py'});
 CREATE (s:Service {name: 'recipe-runner', language: 'Python', port: 0, path: 'src/amplihack/recipe_cli/recipe_command.py'});
 CREATE (s:Service {name: 'fleet-cli', language: 'Python', port: 0, path: 'src/amplihack/fleet/_cli_commands.py'});
 CREATE (s:Service {name: 'auto-mode', language: 'Python', port: 0, path: 'src/amplihack/launcher/auto_mode.py'});
@@ -15,6 +13,7 @@ CREATE (s:Service {name: 'amplifier-launcher', language: 'Python', port: 0, path
 CREATE (s:Service {name: 'memory-system', language: 'Python', port: 0, path: 'src/amplihack/memory/'});
 CREATE (s:Service {name: 'blarify', language: 'Python', port: 0, path: 'src/amplihack/vendor/blarify/'});
 CREATE (s:Service {name: 'trace-logger', language: 'Python', port: 0, path: 'src/amplihack/tracing/trace_logger.py'});
+
 
 // --- Routes (CLI Commands) ---
 CREATE (r:Route {method: 'CLI', path: 'amplihack launch', handler: 'cli.launch_command', auth: 'none'});
@@ -35,8 +34,6 @@ CREATE (r:Route {method: 'HOOK', path: 'hook/session_start', handler: 'hooks.ses
 CREATE (r:Route {method: 'HOOK', path: 'hook/stop', handler: 'hooks.manager.execute_stop_hook', auth: 'none'});
 CREATE (r:Route {method: 'HOOK', path: 'hook/pre_tool_use', handler: 'hooks.pre_tool_use', auth: 'none'});
 CREATE (r:Route {method: 'HOOK', path: 'hook/post_tool_use', handler: 'hooks.post_tool_use', auth: 'none'});
-CREATE (r:Route {method: 'HTTP', path: '/v1/messages', handler: 'proxy.server.messages_endpoint', auth: 'api_key'});
-CREATE (r:Route {method: 'HTTP', path: '/v1/responses', handler: 'proxy.responses_api_proxy', auth: 'api_key'});
 
 // --- Environment Variables ---
 CREATE (e:EnvVar {name: 'AMPLIHACK_HOME', required: false, default_value: '~/.amplihack'});
@@ -52,9 +49,6 @@ CREATE (e:EnvVar {name: 'AMPLIHACK_HOOK_ENGINE', required: false, default_value:
 CREATE (e:EnvVar {name: 'AMPLIHACK_DEFAULT_MODEL', required: false, default_value: 'opus[1m]'});
 CREATE (e:EnvVar {name: 'AMPLIHACK_NONINTERACTIVE', required: false, default_value: ''});
 CREATE (e:EnvVar {name: 'ANTHROPIC_API_KEY', required: false, default_value: ''});
-CREATE (e:EnvVar {name: 'AZURE_OPENAI_API_KEY', required: false, default_value: ''});
-CREATE (e:EnvVar {name: 'AZURE_OPENAI_ENDPOINT', required: false, default_value: ''});
-CREATE (e:EnvVar {name: 'PREFERRED_PROVIDER', required: false, default_value: 'openai'});
 
 // --- Data Stores ---
 CREATE (d:DataStore {name: 'kuzu-memory-db', type: 'graph-embedded', version: '>=0.11.0'});
@@ -67,7 +61,6 @@ CREATE (d:DataStore {name: 'discoveries-md', type: 'filesystem-markdown', versio
 
 // --- Packages (top-level internal) ---
 CREATE (p:Package {name: 'amplihack', version: '0.6.81', service: 'amplihack-cli'});
-CREATE (p:Package {name: 'amplihack.proxy', version: '0.6.81', service: 'proxy-server'});
 CREATE (p:Package {name: 'amplihack.launcher', version: '0.6.81', service: 'claude-launcher'});
 CREATE (p:Package {name: 'amplihack.fleet', version: '0.6.81', service: 'fleet-cli'});
 CREATE (p:Package {name: 'amplihack.recipe_cli', version: '0.6.81', service: 'recipe-runner'});
@@ -82,9 +75,6 @@ CREATE (p:Package {name: 'amplihack.uvx', version: '0.6.81', service: 'amplihack
 CREATE (p:Package {name: 'amplihack.meta_delegation', version: '0.6.81', service: 'amplihack-cli'});
 
 // --- Packages (external) ---
-CREATE (p:Package {name: 'flask', version: '>=2.0.0', service: 'proxy-server'});
-CREATE (p:Package {name: 'fastapi', version: '>=0.68.0', service: 'responses-api-proxy'});
-CREATE (p:Package {name: 'litellm', version: '>=1.0.0', service: 'proxy-server'});
 CREATE (p:Package {name: 'kuzu', version: '>=0.11.0', service: 'memory-system'});
 CREATE (p:Package {name: 'rich', version: '>=13.0.0', service: 'amplihack-cli'});
 CREATE (p:Package {name: 'aiohttp', version: '>=3.8.0', service: 'amplihack-cli'});

@@ -169,7 +169,6 @@ To avoid similar issues in other commands:
 ## Additional Resources
 
 - [Copilot CLI Integration](../COPILOT_CLI_INTEGRATION_SUMMARY.md) - Complete integration guide
-- [GitHub Copilot Documentation](../github-copilot-litellm-integration.md) - Using Copilot with amplihack
 - [Platform Bridge](../platform-bridge/README.md) - Multi-platform support patterns
 
 ---

@@ -7,7 +7,7 @@
 Prevent token exposure in logs, errors, and debug output with automatic sanitization.
 
 ```python
-from amplihack.proxy.security import TokenSanitizer
+from amplihack.utils.token_sanitizer import TokenSanitizer
 
 sanitizer = TokenSanitizer()
 
@@ -47,7 +47,7 @@ TokenSanitizer detects and redacts these token types:
 When API calls fail, error messages often contain authentication tokens:
 
 ```python
-from amplihack.proxy.security import TokenSanitizer
+from amplihack.utils.token_sanitizer import TokenSanitizer
 
 sanitizer = TokenSanitizer()
 
@@ -71,7 +71,7 @@ API call failed: Authentication failed with [REDACTED-GITHUB-TOKEN]
 When debugging configuration, sanitize before printing:
 
 ```python
-from amplihack.proxy.security import TokenSanitizer
+from amplihack.utils.token_sanitizer import TokenSanitizer
 
 config = {
     "github_token": "gho_1234567890abcdefghij",
@@ -90,7 +90,7 @@ print(safe_config)
 Process existing log files to remove tokens:
 
 ```python
-from amplihack.proxy.security import TokenSanitizer
+from amplihack.utils.token_sanitizer import TokenSanitizer
 from pathlib import Path
 
 sanitizer = TokenSanitizer()
@@ -107,7 +107,7 @@ log_file.write_text(sanitized)
 Conditionally sanitize only when tokens are detected:
 
 ```python
-from amplihack.proxy.security import TokenSanitizer
+from amplihack.utils.token_sanitizer import TokenSanitizer
 
 sanitizer = TokenSanitizer()
 message = "Debug info: connection established"
@@ -127,7 +127,7 @@ Sanitize errors before returning to clients:
 ```python
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from amplihack.proxy.security import TokenSanitizer
+from amplihack.utils.token_sanitizer import TokenSanitizer
 
 app = FastAPI()
 sanitizer = TokenSanitizer()
@@ -149,7 +149,7 @@ Create a logging wrapper that auto-sanitizes:
 
 ```python
 import logging
-from amplihack.proxy.security import TokenSanitizer
+from amplihack.utils.token_sanitizer import TokenSanitizer
 
 class SanitizingLogger:
     def __init__(self, name: str):
@@ -174,7 +174,7 @@ logger.debug(f"Token: {github_token}")  # Automatically sanitized
 Sanitize all HTTP traffic logs:
 
 ```python
-from amplihack.proxy.security import TokenSanitizer
+from amplihack.utils.token_sanitizer import TokenSanitizer
 import httpx
 
 sanitizer = TokenSanitizer()

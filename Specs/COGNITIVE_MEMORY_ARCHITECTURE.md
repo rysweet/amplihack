@@ -286,8 +286,9 @@ ATTENDED_TO(FROM SensoryMemory TO EpisodicMemory, attention_reason)
 ## 8. Dependencies
 
 - `kuzu>=0.11.0` - Embedded graph database
-- `litellm>=1.0.0` - LLM provider abstraction (for consolidation, classification)
 - Python ≥3.11
+
+> **Note**: The `litellm` dependency was previously used for LLM provider abstraction but was removed due to a PyPI supply chain attack. LLM calls for consolidation and classification now use direct API integrations.
 
 ## 9. References
 

@@ -9,7 +9,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..proxy.manager import ProxyManager
 from ..tracing.trace_logger import TraceLogger
 from ..utils.claude_cli import get_claude_cli_path
 from ..utils.prerequisites import check_prerequisites
@@ -116,7 +115,6 @@ class ClaudeLauncher:
 
     def __init__(
         self,
-        proxy_manager: ProxyManager | None = None,
         append_system_prompt: Path | None = None,
         force_staging: bool = False,
         checkout_repo: str | None = None,
@@ -126,14 +124,12 @@ class ClaudeLauncher:
         """Initialize Claude launcher.
 
         Args:
-            proxy_manager: Optional proxy manager for Azure integration.
             append_system_prompt: Optional path to system prompt to append.
             force_staging: If True, force staging approach instead of --add-dir.
             checkout_repo: Optional GitHub repository URI to clone and use as working directory.
             claude_args: Additional arguments to forward to Claude.
             verbose: If True, add --verbose flag to Claude command.
         """
-        self.proxy_manager = proxy_manager
         self.append_system_prompt = append_system_prompt
         self.detector = ClaudeDirectoryDetector()
         self.uvx_manager = UVXManager(force_staging=force_staging)
@@ -212,11 +208,7 @@ class ClaudeLauncher:
         if not self._handle_directory_change(target_dir):
             return False
 
-        # 9. Start proxy if needed
-        if not self._start_proxy_if_needed():
-            return False
-
-        # 10. Auto-configure LSP if supported languages detected
+        # 9. Auto-configure LSP if supported languages detected
         # Skip in non-interactive mode (involves npm installs and network calls)
         if not noninteractive:
             self._configure_lsp_auto(target_dir)
@@ -348,63 +340,6 @@ class ClaudeLauncher:
         except OSError as e:
             print(f"Failed to change directory to {target_dir}: {e}")
             return False
-
-    def _start_proxy_if_needed(self) -> bool:
-        """Start proxy if configured.
-
-        Returns:
-            True if proxy started successfully or not needed, False otherwise.
-        """
-        if self.proxy_manager:
-            noninteractive = _is_noninteractive()
-            timeout_seconds = 10 if noninteractive else 60
-
-            print("Starting proxy and waiting for readiness...")
-
-            # Use a threading timer to enforce timeout on proxy startup
-            import threading
-
-            proxy_started = [False]
-            proxy_error = [None]
-
-            def _start_proxy():
-                try:
-                    proxy_started[0] = self.proxy_manager.start_proxy()
-                except Exception as e:
-                    proxy_error[0] = e
-
-            thread = threading.Thread(target=_start_proxy, daemon=True)
-            thread.start()
-            thread.join(timeout=timeout_seconds)
-
-            if thread.is_alive():
-                print(f"Proxy startup timed out after {timeout_seconds}s")
-                if noninteractive:
-                    print("In non-interactive mode, continuing without proxy")
-                    self.proxy_manager = None
-                    return True
-                return False
-
-            if proxy_error[0]:
-                print(f"Proxy startup error: {proxy_error[0]}")
-                return False
-
-            if not proxy_started[0]:
-                print("Failed to start proxy")
-                return False
-
-            # Verify proxy is actually ready before proceeding
-            if not self.proxy_manager.is_running():
-                print("Proxy is not running after startup")
-                return False
-
-            print(f"Proxy running at: {self.proxy_manager.get_proxy_url()}")
-
-            # Open terminal window tailing proxy logs (skip in non-interactive)
-            if not noninteractive:
-                self._open_log_tail_window()
-
-        return True
 
     def _configure_lsp_auto(self, target_dir: Path) -> None:
         """Auto-configure LSP using Claude Code plugin marketplace.

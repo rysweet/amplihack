@@ -9,7 +9,7 @@ Philosophy:
 import shutil
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -83,56 +83,40 @@ class TestAgenticLoop:
         assert "Goal:" in perception
         assert "Observation:" in perception
 
-    @patch("amplihack.agents.goal_seeking.agentic_loop.litellm.completion")
-    def test_reason_calls_llm(self, mock_completion, loop):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.agentic_loop.completion", new_callable=AsyncMock)
+    async def test_reason_calls_llm(self, mock_completion, loop):
         """Test reason phase calls LLM."""
-        # Mock LLM response
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content='{"reasoning": "Test reasoning", "action": "greet", "params": {"name": "Alice"}}'
-                )
-            )
-        ]
-        mock_completion.return_value = mock_response
+        mock_completion.return_value = '{"reasoning": "Test reasoning", "action": "greet", "params": {"name": "Alice"}}'
 
         perception = "Goal: Greet user\nObservation: User Alice present"
-        result = loop.reason(perception)
+        result = await loop.reason(perception)
 
         assert mock_completion.called
         assert result["reasoning"] == "Test reasoning"
         assert result["action"] == "greet"
         assert result["params"] == {"name": "Alice"}
 
-    @patch("amplihack.agents.goal_seeking.agentic_loop.litellm.completion")
-    def test_reason_handles_llm_failure(self, mock_completion, loop):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.agentic_loop.completion", new_callable=AsyncMock)
+    async def test_reason_handles_llm_failure(self, mock_completion, loop):
         """Test reason phase handles LLM failure gracefully."""
-        # Mock LLM failure
         mock_completion.side_effect = Exception("API error")
 
         perception = "Goal: Test\nObservation: Test"
-        result = loop.reason(perception)
+        result = await loop.reason(perception)
 
         assert result["action"] == "error"
         assert "error" in result["params"]["error"].lower()
 
-    @patch("amplihack.agents.goal_seeking.agentic_loop.litellm.completion")
-    def test_reason_parses_json_from_markdown(self, mock_completion, loop):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.agentic_loop.completion", new_callable=AsyncMock)
+    async def test_reason_parses_json_from_markdown(self, mock_completion, loop):
         """Test reason phase can parse JSON from markdown code blocks."""
-        # Mock LLM response with markdown
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content='```json\n{"reasoning": "Test", "action": "add", "params": {"a": 1, "b": 2}}\n```'
-                )
-            )
-        ]
-        mock_completion.return_value = mock_response
+        mock_completion.return_value = '```json\n{"reasoning": "Test", "action": "add", "params": {"a": 1, "b": 2}}\n```'
 
         perception = "Goal: Test"
-        result = loop.reason(perception)
+        result = await loop.reason(perception)
 
         assert result["action"] == "add"
         assert result["params"]["a"] == 1
@@ -191,21 +175,13 @@ class TestAgenticLoop:
         # Should still store learning with lower confidence
         assert "Action: test" in learning
 
-    @patch("amplihack.agents.goal_seeking.agentic_loop.litellm.completion")
-    def test_run_iteration_executes_all_phases(self, mock_completion, loop):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.agentic_loop.completion", new_callable=AsyncMock)
+    async def test_run_iteration_executes_all_phases(self, mock_completion, loop):
         """Test run_iteration executes all four phases."""
-        # Mock LLM response
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content='{"reasoning": "Greet user", "action": "greet", "params": {"name": "Alice"}}'
-                )
-            )
-        ]
-        mock_completion.return_value = mock_response
+        mock_completion.return_value = '{"reasoning": "Greet user", "action": "greet", "params": {"name": "Alice"}}'
 
-        state = loop.run_iteration(goal="Greet user", observation="User Alice present")
+        state = await loop.run_iteration(goal="Greet user", observation="User Alice present")
 
         assert state.perception is not None
         assert state.reasoning == "Greet user"
@@ -214,62 +190,41 @@ class TestAgenticLoop:
         assert state.learning is not None
         assert state.iteration == 1
 
-    @patch("amplihack.agents.goal_seeking.agentic_loop.litellm.completion")
-    def test_run_iteration_increments_count(self, mock_completion, loop):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.agentic_loop.completion", new_callable=AsyncMock)
+    async def test_run_iteration_increments_count(self, mock_completion, loop):
         """Test run_iteration increments iteration count."""
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content='{"reasoning": "Test", "action": "greet", "params": {"name": "Test"}}'
-                )
-            )
-        ]
-        mock_completion.return_value = mock_response
+        mock_completion.return_value = '{"reasoning": "Test", "action": "greet", "params": {"name": "Test"}}'
 
-        state1 = loop.run_iteration("Goal", "Observation")
-        state2 = loop.run_iteration("Goal", "Observation")
+        state1 = await loop.run_iteration("Goal", "Observation")
+        state2 = await loop.run_iteration("Goal", "Observation")
 
         assert state1.iteration == 1
         assert state2.iteration == 2
 
-    @patch("amplihack.agents.goal_seeking.agentic_loop.litellm.completion")
-    def test_run_until_goal_stops_when_achieved(self, mock_completion, loop):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.agentic_loop.completion", new_callable=AsyncMock)
+    async def test_run_until_goal_stops_when_achieved(self, mock_completion, loop):
         """Test run_until_goal stops when goal is achieved."""
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content='{"reasoning": "Test", "action": "greet", "params": {"name": "Test"}}'
-                )
-            )
-        ]
-        mock_completion.return_value = mock_response
+        mock_completion.return_value = '{"reasoning": "Test", "action": "greet", "params": {"name": "Test"}}'
 
         def check_goal(state):
             return state.iteration >= 2
 
-        states = loop.run_until_goal(
+        states = await loop.run_until_goal(
             goal="Test goal", initial_observation="Test", is_goal_achieved=check_goal
         )
 
         assert len(states) == 2
 
-    @patch("amplihack.agents.goal_seeking.agentic_loop.litellm.completion")
-    def test_run_until_goal_respects_max_iterations(self, mock_completion, loop):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.agentic_loop.completion", new_callable=AsyncMock)
+    async def test_run_until_goal_respects_max_iterations(self, mock_completion, loop):
         """Test run_until_goal respects max iterations."""
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content='{"reasoning": "Test", "action": "greet", "params": {"name": "Test"}}'
-                )
-            )
-        ]
-        mock_completion.return_value = mock_response
+        mock_completion.return_value = '{"reasoning": "Test", "action": "greet", "params": {"name": "Test"}}'
 
         loop.max_iterations = 3
 
-        states = loop.run_until_goal(goal="Test goal", initial_observation="Test")
+        states = await loop.run_until_goal(goal="Test goal", initial_observation="Test")
 
         assert len(states) <= 3

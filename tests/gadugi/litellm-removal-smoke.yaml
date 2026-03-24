@@ -1,0 +1,158 @@
+# Outside-in test: litellm removal smoke test (PR #3531 / #3518)
+# Verifies that litellm and the proxy subsystem are fully removed, that the
+# replacement amplihack.llm module exists, and that TokenSanitizer is available
+# from its new home in amplihack.utils.token_sanitizer.
+
+name: "LiteLLM Removal - Smoke Test"
+description: >
+  PR #3518 removed the litellm PyPI supply chain attack dependency and
+  PR #3531 completes the removal. Validates: no litellm imports remain,
+  no amplihack.proxy imports remain, amplihack.llm module exists,
+  CLI proxy arguments removed, health_check clean, proxy dir gone,
+  and TokenSanitizer available at new location.
+version: "1.0.0"
+config:
+  timeout: 30000
+  retries: 0
+  parallel: false
+
+environment:
+  requires: []
+
+agents:
+  - name: "cli-agent"
+    type: "cli"
+    config:
+      workingDirectory: "."
+      defaultTimeout: 10000
+      executionMode: "spawn"
+      captureOutput: true
+      ioConfig:
+        encoding: "utf8"
+        handleInteractivePrompts: false
+      logConfig:
+        logCommands: true
+        logOutput: true
+        logLevel: "info"
+
+steps:
+  # --- Phase 1: No litellm imports in Python source ---
+  - name: "No litellm imports in src/amplihack/"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: 'python3 -c "import subprocess, sys; r = subprocess.run([''grep'', ''-r'', ''import litellm'', ''src/amplihack/''], capture_output=True, text=True); sys.exit(1) if r.stdout.strip() else print(''PASS: no litellm imports found'')"'
+    timeout: 10000
+
+  - name: "Verify no litellm import marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PASS: no litellm imports found"
+    timeout: 5000
+
+  # --- Phase 2: No amplihack.proxy imports in Python source ---
+  - name: "No amplihack.proxy imports in src/amplihack/"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: 'python3 -c "import subprocess, sys; r = subprocess.run([''grep'', ''-r'', ''from amplihack.proxy'', ''src/amplihack/''], capture_output=True, text=True); sys.exit(1) if r.stdout.strip() else print(''PASS: no amplihack.proxy imports found'')"'
+    timeout: 10000
+
+  - name: "Verify no proxy import marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PASS: no amplihack.proxy imports found"
+    timeout: 5000
+
+  # --- Phase 3: amplihack.llm module exists and is importable ---
+  - name: "Import amplihack.llm.completion"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: 'PYTHONPATH=src python3 -c "from amplihack.llm import completion; print(''PASS: amplihack.llm.completion importable'')"'
+    timeout: 10000
+
+  - name: "Verify llm import marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PASS: amplihack.llm.completion importable"
+    timeout: 5000
+
+  # --- Phase 4: CLI no longer has --with-proxy-config or --builtin-proxy ---
+  - name: "No --builtin-proxy in CLI source"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: 'python3 -c "import subprocess, sys; r = subprocess.run([''grep'', ''-r'', ''builtin-proxy'', ''src/amplihack/cli.py''], capture_output=True, text=True); sys.exit(1) if r.stdout.strip() else print(''PASS: no --builtin-proxy in cli.py'')"'
+    timeout: 10000
+
+  - name: "Verify no builtin-proxy marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PASS: no --builtin-proxy in cli.py"
+    timeout: 5000
+
+  # --- Phase 5: health_check._CRITICAL_DEPS does not contain litellm ---
+  - name: "health_check _CRITICAL_DEPS excludes litellm"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: 'PYTHONPATH=src python3 -c "from amplihack.health_check import _CRITICAL_DEPS; assert ''litellm'' not in _CRITICAL_DEPS, f''litellm still in _CRITICAL_DEPS: {_CRITICAL_DEPS}''; print(''PASS: litellm not in _CRITICAL_DEPS'')"'
+    timeout: 10000
+
+  - name: "Verify critical deps marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PASS: litellm not in _CRITICAL_DEPS"
+    timeout: 5000
+
+  # --- Phase 6: proxy directory does not exist ---
+  - name: "src/amplihack/proxy/ directory does not exist"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: 'python3 -c "from pathlib import Path; assert not Path(''src/amplihack/proxy'').exists(), ''proxy dir still exists''; print(''PASS: src/amplihack/proxy/ does not exist'')"'
+    timeout: 10000
+
+  - name: "Verify proxy dir absent marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PASS: src/amplihack/proxy/ does not exist"
+    timeout: 5000
+
+  # --- Phase 7: TokenSanitizer available from amplihack.utils.token_sanitizer ---
+  - name: "Import TokenSanitizer from utils"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: 'PYTHONPATH=src python3 -c "from amplihack.utils.token_sanitizer import TokenSanitizer; print(''PASS: TokenSanitizer importable from amplihack.utils.token_sanitizer'')"'
+    timeout: 10000
+
+  - name: "Verify TokenSanitizer marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PASS: TokenSanitizer importable"
+    timeout: 5000
+
+cleanup:
+  - name: "Capture CLI output"
+    agent: "cli-agent"
+    action: "capture_output"
+
+metadata:
+  tags:
+    - "security"
+    - "litellm"
+    - "proxy-removal"
+    - "supply-chain"
+    - "regression"
+    - "pr-3518"
+    - "pr-3531"
+  priority: "high"

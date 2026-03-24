@@ -8,11 +8,17 @@ testing phase can access the knowledge.
 Philosophy: Subprocess isolation for clean state management.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import sys
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from amplihack.agents.goal_seeking import LearningAgent
 
 
 def teaching_phase(knowledge_base: list[str], agent_name: str, max_turns: int = 4) -> dict:
@@ -46,18 +52,31 @@ def teaching_phase(knowledge_base: list[str], agent_name: str, max_turns: int = 
     )
 
     try:
-        # First, learn all articles directly (teacher preparation)
-        for kb_item in knowledge_base:
-            agent.learn_from_content(kb_item)
+        import asyncio
 
-        # Then run a simplified teaching dialogue
-        # The teacher extracts key concepts and stores teaching summaries
-        import litellm  # type: ignore[import-unresolved]
+        result = asyncio.run(_async_teaching_phase(agent, knowledge_base, model))
+        return result
 
-        kb_text = "\n\n".join(knowledge_base)
+    except Exception as e:
+        return {"status": "error", "turns": 0, "error": str(e)}
+    finally:
+        agent.close()
 
-        # Teacher generates a structured lesson
-        teacher_prompt = f"""You are a teacher preparing a lesson from this knowledge base.
+
+async def _async_teaching_phase(
+    agent: LearningAgent, knowledge_base: list[str], model: str
+) -> dict:
+    """Async helper that runs all async LearningAgent + LLM calls in one event loop."""
+    # First, learn all articles directly (teacher preparation)
+    for kb_item in knowledge_base:
+        await agent.learn_from_content(kb_item)
+
+    # Then run a simplified teaching dialogue
+    # The teacher extracts key concepts and stores teaching summaries
+    kb_text = "\n\n".join(knowledge_base)
+
+    # Teacher generates a structured lesson
+    teacher_prompt = f"""You are a teacher preparing a lesson from this knowledge base.
 Create a structured lesson that covers ALL key facts, organized by topic.
 For each topic, list the specific facts a student must learn.
 
@@ -66,33 +85,34 @@ Knowledge base:
 
 Return a structured lesson plan with numbered key facts."""
 
-        response = litellm.completion(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are an expert teacher creating a lesson plan."},
-                {"role": "user", "content": teacher_prompt},
-            ],
-            temperature=0.3,
-        )
+    lesson = await _generate_lesson(model, teacher_prompt)
 
-        lesson = response.choices[0].message.content.strip()
+    # Store the lesson as additional knowledge
+    await agent.learn_from_content(f"Teaching Summary:\n{lesson}")
 
-        # Store the lesson as additional knowledge
-        agent.learn_from_content(f"Teaching Summary:\n{lesson}")
+    stats = agent.get_memory_stats()
 
-        stats = agent.get_memory_stats()
+    return {
+        "status": "success",
+        "turns": 1,
+        "lesson_length": len(lesson),
+        "total_facts": stats.get("total_experiences", 0),
+    }
 
-        return {
-            "status": "success",
-            "turns": 1,
-            "lesson_length": len(lesson),
-            "total_facts": stats.get("total_experiences", 0),
-        }
 
-    except Exception as e:
-        return {"status": "error", "turns": 0, "error": str(e)}
-    finally:
-        agent.close()
+async def _generate_lesson(model: str, teacher_prompt: str) -> str:
+    """Generate a lesson plan via the LLM adapter."""
+    from amplihack.llm import completion
+
+    response_text = await completion(
+        [
+            {"role": "system", "content": "You are an expert teacher creating a lesson plan."},
+            {"role": "user", "content": teacher_prompt},
+        ],
+        model=model,
+        temperature=0.3,
+    )
+    return response_text.strip()
 
 
 def main():
