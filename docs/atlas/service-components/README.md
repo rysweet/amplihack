@@ -1,46 +1,41 @@
 # Layer 7: Service Component Architecture
 
-Internal packages/modules within the amplihack monolith, their public interfaces, and dependency arrows.
+Internal packages/modules within the amplihack monolith, with a focused refresh for the Copilot parity control-plane slice.
 
 ## Scope
 
-All major packages under `src/amplihack/` treated as pseudo-services with internal module structure and inter-package dependencies.
+This refresh focuses on the modules changed by PR #3500:
 
-## Mermaid Diagram
+- `src/amplihack/__init__.py` as the root entrypoint and Rust-first command gate
+- `src/amplihack/recipes/*` as the recipe-runner control plane
+- `src/amplihack/launcher/copilot.py` as the staged Copilot launcher surface
 
-![Service Components (Mermaid)](service-components-mermaid.svg)
+## Recent Impact Notes
 
-## DOT Diagram
-
-![Service Components (DOT)](service-components-dot.svg)
+- `amplihack.__init__.py` now treats `install`, `mode`, `recipe`, and `update` as Rust-first commands when an installed Rust CLI is available, then falls back to the Python CLI for everything else.
+- The recipe runner is no longer a single monolith. `rust_runner.py` now delegates subprocess execution and progress-file writes to `rust_runner_execution.py`, keeps version checks in `rust_runner_binary.py`, and preserves nested Copilot compatibility in `rust_runner_copilot.py`.
+- The Copilot launcher remains the staging surface for `.github/hooks/*`, but the nested recipe path now depends on the smaller recipe-runner support modules instead of duplicating execution logic.
 
 ## Package Summary
 
-| Package                 | Module Count | Public Interface                                 | Role                                    |
-| ----------------------- | ------------ | ------------------------------------------------ | --------------------------------------- |
-| `cli.py`                | 2            | `main()`, `create_parser()`                      | CLI entry, argument parsing             |
-| `launcher/`             | 17           | `ClaudeLauncher`, `AutoMode`, SDK launchers      | Binary management, session lifecycle    |
-| `llm/`                  | 1            | `amplihack.llm`                                  | LLM abstraction layer                   |
-| `memory/`               | 15+          | `MemoryDatabase`, `MemoryManager`, `MemoryEntry` | Persistent agent memory (SQLite + Kuzu) |
-| `recipes/`              | 6            | `Step`, `Recipe`, `rust_runner`                  | YAML recipe parsing and execution       |
-| `security/`             | 7            | `XPIADefender`, `xpia_hook`                      | Cross-prompt injection defense          |
-| `safety/`               | 3            | `GitConflictDetector`, `SafeCopyStrategy`        | Data loss prevention in auto mode       |
-| `fleet/`                | 20+          | `fleet_cli` (Click), `FleetAdmiral`              | Multi-VM agent orchestration            |
-| `goal_agent_generator/` | 7            | `cli`, `prompt_analyzer`, `agent_assembler`      | Goal-seeking agent generation           |
-| `install.py` + settings | 5            | `copytree_manifest`, `ensure_settings_json`      | Installation and staging                |
-| `plugin_manager/`       | 2            | `PluginManager`, plugin CLI commands             | Plugin install/link/verify              |
-| `utils/`                | 12           | `prerequisites`, `claude_cli`, `uvx_detection`   | Shared utilities                        |
-| `docker/`               | 3            | `DockerManager`                                  | Docker container execution              |
-| `hooks/`                | 2            | `execute_stop_hook`                              | Hook lifecycle management               |
-| `workflows/`            | 4            | `classifier`, `session_start`                    | Workflow classification                 |
-| `tracing/`              | 1            | `TraceLogger`                                    | Execution tracing                       |
-| `bundle_generator/`     | 12           | Bundle packaging for distribution                | Amplifier bundle generation             |
+| Package                                    | Public / Control-Plane Surface                                          | Current Role                                                                                                      |
+| ------------------------------------------ | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `amplihack/__init__.py`                    | `main()`, `RUST_FIRST_COMMANDS`, `_delegate_to_rust_cli_if_supported()` | Root entrypoint that routes selected commands to the installed Rust CLI before falling back to Python CLI parsing |
+| `launcher/copilot.py`                      | `stage_hooks()` and generated `.github/hooks/pre-tool-use` wrapper      | Stages the Copilot-native control plane and aggregates amplihack + XPIA permission decisions                      |
+| `recipes/rust_runner.py`                   | `run_recipe_via_rust()`                                                 | Builds the Rust-runner invocation and parses structured JSON results                                              |
+| `recipes/rust_runner_binary.py`            | `find_rust_binary()`, `raise_for_runner_version()`                      | Rust runner discovery and strict version gating                                                                   |
+| `recipes/rust_runner_execution.py`         | `_run_rust_process()`, progress file helpers                            | Owns subprocess execution, stderr progress streaming, and deterministic progress-file writes                      |
+| `recipes/rust_runner_copilot.py`           | nested Copilot wrapper generation                                       | Normalizes nested Copilot prompt and permission flags without widening explicit permissions                       |
+| `recipes/rust_runner_recipe_resolution.py` | recipe lookup helpers                                                   | Resolves bundled vs repo-local recipes without overloading `rust_runner.py`                                       |
 
-## Key Dependency Patterns
+## Diagrams
 
-1. **CLI is the fan-out point**: `cli.py` imports from launcher, install, plugin, memory, recipes, goal_agent_generator, fleet, and docker.
-2. **Launcher depends on llm and utils**: `core.py` pulls in amplihack.llm, prerequisites, claude_cli, UVXManager, and tracing.
-3. **Memory is self-contained**: The memory subsystem (database, backends, kuzu) has no dependencies on other amplihack packages.
-4. **Recipes are isolated**: The recipe system depends only on its own models and the agent_resolver for finding agent prompt files.
-5. **Security and safety are leaf nodes**: Neither package depends on other amplihack packages beyond standard library.
-6. **Fleet is the largest subsystem**: 20+ modules with its own Click-based CLI, TUI dashboard, and multi-VM coordination.
+### Mermaid Diagram
+
+![Service Components (Mermaid)](service-components-mermaid.svg)
+
+### DOT Diagram
+
+![Service Components (DOT)](service-components-dot.svg)
+
+**Source files:** [service-components.mmd](service-components.mmd) | [service-components.dot](service-components.dot)

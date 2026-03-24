@@ -1,210 +1,32 @@
-digraph service_components {
+digraph service_components_pr3500 {
     rankdir=TB;
-    node [fontname="Helvetica", fontsize=9, shape=box];
-    edge [fontname="Helvetica", fontsize=8];
-    compound=true;
+    node [fontname="Helvetica", fontsize=10, shape=box, style="rounded"];
+    edge [fontname="Helvetica", fontsize=9];
 
-    subgraph cluster_cli {
-        label="CLI Layer";
-        style=filled; fillcolor="#dfe6e9";
-        cli [label="cli.py\ncreate_parser() / main()"];
-        cli_ext [label="cli_extensions.py"];
-    }
-
-    subgraph cluster_launcher {
-        label="launcher/";
-        style=filled; fillcolor="#b2f2bb";
-        l_core [label="core.py\nClaudeLauncher"];
-        l_auto [label="auto_mode.py\nAutoMode"];
-        l_coord [label="auto_mode_coordinator.py"];
-        l_state [label="auto_mode_state.py"];
-        l_copilot [label="copilot.py"];
-        l_codex [label="codex.py"];
-        l_amplifier [label="amplifier.py"];
-        l_session [label="session_tracker.py"];
-        l_nesting [label="nesting_detector.py"];
-        l_binary [label="claude_binary_manager.py"];
-        l_repo [label="repo_checkout.py"];
-        l_fork [label="fork_manager.py"];
-        l_append [label="append_handler.py"];
-        l_complete [label="completion_verifier.py"];
-        l_summary [label="work_summary.py"];
-    }
-
-    subgraph cluster_llm {
-        label="llm/";
-        style=filled; fillcolor="#fff3bf";
-        llm_init [label="__init__.py\namplihack.llm"];
-    }
-
-    subgraph cluster_memory {
-        label="memory/";
-        style=filled; fillcolor="#ffd8a8";
-        m_db [label="database.py\nMemoryDatabase (SQLite)"];
-        m_models [label="models.py\nMemoryEntry, MemoryType"];
-        m_mgr [label="manager.py\nMemoryManager"];
-        m_coord [label="coordinator.py"];
-        m_retrieval [label="retrieval_pipeline.py"];
-        m_viz [label="cli_visualize.py"];
-        m_clean [label="cli_cleanup.py"];
-
-        subgraph cluster_kuzu {
-            label="kuzu/";
-            style=filled; fillcolor="#ffe8cc";
-            k_conn [label="connector.py"];
-            k_code [label="code_graph.py"];
-            k_query [label="query_code_graph.py"];
-            k_orch [label="indexing/orchestrator.py"];
-            k_scip [label="indexing/scip_indexer_runner.py"];
-            k_import [label="indexing/scip_importer.py"];
-            k_bg [label="indexing/background_indexer.py"];
-        }
-
-        subgraph cluster_backends {
-            label="backends/";
-            style=filled; fillcolor="#ffe0cc";
-            b_base [label="base.py"];
-            b_sqlite [label="sqlite_backend.py"];
-            b_kuzu [label="kuzu_backend.py"];
-        }
-    }
+    root [label="src/amplihack/__init__.py\nmain() + Rust-first delegation", style="filled", fillcolor="#d0bfff"];
+    cli [label="src/amplihack/cli.py\nPython CLI fallback", style="filled", fillcolor="#dfe6e9"];
+    rust_cli [label="Installed Rust CLI\n(external binary)", style="filled", fillcolor="#ffe8cc"];
+    launcher [label="launcher/copilot.py\nstaged .github hook surface", style="filled", fillcolor="#b2f2bb"];
 
     subgraph cluster_recipes {
         label="recipes/";
-        style=filled; fillcolor="#e9ecef";
-        r_models [label="models.py\nStep, Recipe, StepResult"];
-        r_parser [label="parser.py"];
-        r_discovery [label="discovery.py"];
-        r_runner [label="rust_runner.py"];
-        r_resolver [label="agent_resolver.py"];
+        style=filled;
+        fillcolor="#e9ecef";
+        runner [label="rust_runner.py\nJSON orchestration"];
+        execution [label="rust_runner_execution.py\nsubprocess + progress files"];
+        binary [label="rust_runner_binary.py\nbinary discovery + version gating"];
+        copilot [label="rust_runner_copilot.py\nnested Copilot normalization"];
+        resolution [label="rust_runner_recipe_resolution.py\nrecipe lookup"];
+        models [label="models.py\nRecipeResult / StepResult"];
     }
 
-    subgraph cluster_security {
-        label="security/";
-        style=filled; fillcolor="#ffc9c9";
-        s_defender [label="xpia_defender.py\nXPIADefender"];
-        s_patterns [label="xpia_patterns.py"];
-        s_hooks [label="xpia_hooks.py"];
-        s_health [label="xpia_health.py"];
-        s_config [label="config.py"];
-    }
-
-    subgraph cluster_safety {
-        label="safety/";
-        style=filled; fillcolor="#ffdeeb";
-        sf_git [label="git_conflict_detector.py"];
-        sf_copy [label="safe_copy_strategy.py"];
-        sf_prompt [label="prompt_transformer.py"];
-    }
-
-    subgraph cluster_install {
-        label="install & settings";
-        style=filled; fillcolor="#d0bfff";
-        i_install [label="install.py\ncopytree_manifest"];
-        i_uninstall [label="uninstall.py"];
-        i_settings [label="settings.py"];
-        i_staging [label="staging_cleanup.py"];
-        i_staging_safe [label="staging_safety.py"];
-    }
-
-    subgraph cluster_plugin {
-        label="plugin system";
-        style=filled; fillcolor="#c5f6fa";
-        pl_mgr [label="plugin_manager.py"];
-        pl_cli [label="plugin_cli.py"];
-    }
-
-    subgraph cluster_fleet {
-        label="fleet/";
-        style=filled; fillcolor="#c3fae8";
-        f_cli [label="fleet_cli.py (Click)"];
-        f_admiral [label="fleet_admiral.py"];
-        f_tui [label="fleet_tui.py"];
-        f_tasks [label="fleet_tasks.py"];
-        f_state [label="fleet_state.py"];
-        f_health [label="fleet_health.py"];
-    }
-
-    subgraph cluster_utils {
-        label="utils/";
-        style=filled; fillcolor="#dee2e6";
-        u_prereqs [label="prerequisites.py"];
-        u_claude [label="claude_cli.py"];
-        u_uvx [label="uvx_detection.py"];
-        u_staging [label="uvx_staging.py"];
-        u_paths [label="paths.py"];
-    }
-
-    subgraph cluster_goal {
-        label="goal_agent_generator/";
-        style=filled; fillcolor="#fff9db";
-        g_cli [label="cli.py"];
-        g_analyzer [label="prompt_analyzer.py"];
-        g_assembler [label="agent_assembler.py"];
-        g_synth [label="skill_synthesizer.py"];
-        g_packager [label="packager.py"];
-    }
-
-    subgraph cluster_other {
-        label="Other Modules";
-        style=filled; fillcolor="#f8f9fa";
-        o_docker [label="docker/\nDockerManager"];
-        o_hooks [label="hooks/\nmanager.py"];
-        o_workflows [label="workflows/\nclassifier.py"];
-        o_tracing [label="tracing/\ntrace_logger.py"];
-        o_context [label="context/adaptive/"];
-        o_mode [label="mode_detector/"];
-        o_bundle [label="bundle_generator/"];
-        o_power [label="power_steering/"];
-    }
-
-    // Key dependency edges
-    cli -> l_core;
-    cli -> l_auto;
-    cli -> l_copilot;
-    cli -> l_codex;
-    cli -> l_amplifier;
-    cli -> i_install;
-    cli -> pl_cli;
-    cli -> m_viz;
-    cli -> r_runner;
-    cli -> g_cli;
-    cli -> f_cli;
-    cli -> o_docker;
-
-    l_core -> llm_init;
-    l_core -> l_binary;
-    l_core -> u_prereqs;
-    l_core -> l_nesting;
-    l_core -> l_session;
-    l_core -> o_tracing;
-
-    l_auto -> l_coord;
-    l_auto -> l_state;
-    l_auto -> l_complete;
-    l_coord -> l_append;
-
-    m_db -> m_models;
-    m_mgr -> m_db;
-    m_coord -> m_mgr;
-    m_coord -> m_retrieval;
-    k_conn -> k_code;
-    k_orch -> k_scip;
-    k_orch -> k_import;
-    b_sqlite -> b_base;
-    b_kuzu -> b_base;
-
-    r_runner -> r_models;
-    r_runner -> r_parser;
-    r_runner -> r_resolver;
-
-    s_defender -> s_patterns;
-    s_hooks -> s_defender;
-
-    i_install -> i_staging_safe;
-    i_install -> i_settings;
-
-    f_cli -> f_admiral;
-    f_admiral -> f_tasks;
-    f_admiral -> f_state;
+    root -> rust_cli [label="install / mode / recipe / update"];
+    root -> cli [label="fallback"];
+    cli -> runner;
+    launcher -> runner [label="nested Copilot recipe path"];
+    runner -> execution;
+    runner -> binary;
+    runner -> copilot;
+    runner -> resolution;
+    runner -> models;
 }

@@ -3,103 +3,30 @@ Mode: static-approximation
 # Layer 2: AST+LSP Symbol Bindings
 
 **Slug:** `ast-lsp-bindings` | **Display Order:** 2
-**Last rebuilt:** 2026-03-25 | **Built from ref:** 2c4fac5ae | **Package version:** 0.6.99 | **Trigger:** merge-ready skill tests
+**Last rebuilt:** 2026-03-24 | **Package version:** 0.6.99
 
-No LSP server was available for this analysis. All symbol bindings were derived via static grep/read of `__all__` exports and `from amplihack.X import Y` statements.
+No LSP server was available for this refresh. The bindings below were rebuilt from direct source inspection of the PR #3500 impact slice.
 
-## Public API Boundaries (**all** exports)
+## Refreshed Binding Surface
 
-Modules with explicit `__all__` declarations (38 files found):
-
-| Module                                  | Key Exports                                                                                                                                                                                                                                                                     |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `amplihack` (root)                      | `main`, `install`, `uninstall`, `ensure_dirs`, `copytree_manifest`                                                                                                                                                                                                              |
-| `settings`                              | `ensure_settings_json`, `update_hook_paths`                                                                                                                                                                                                                                     |
-| `launcher`                              | `ClaudeLauncher`, `ClaudeDirectoryDetector`, `PrerequisiteChecker`, `AutoStager`, `ClaudeBinaryManager`                                                                                                                                                                         |
-| `security`                              | `scan`, `SecurityScanner`                                                                                                                                                                                                                                                       |
-| `safety`                                | `StagingGuard`                                                                                                                                                                                                                                                                  |
-| `docker`                                | `DockerDetector`, `DockerManager`                                                                                                                                                                                                                                               |
-| `uvx`                                   | `UVXManager`                                                                                                                                                                                                                                                                    |
-| `utils`                                 | `slugify`, `claude_cli`, `prerequisites`, `defensive`                                                                                                                                                                                                                           |
-| `recipes`                               | `RecipeParser`, `run_recipe_via_rust`, `discover_recipes`                                                                                                                                                                                                                       |
-| `recipes.rust_runner`                   | `run_recipe_via_rust`, `ensure_rust_recipe_runner`, `find_rust_binary`, `is_rust_runner_available`, `check_runner_version`, `get_runner_version`, `_build_rust_env`, `_normalize_copilot_cli_args`, `_redact_command_for_log`, `_resolve_recipe_target`, `_project_dir_context` |
-| `recipes.rust_runner_execution`         | `build_rust_env`, `execute_rust_command`, `_ALLOWED_RUST_ENV_VARS` (includes `CLAUDE_PROJECT_DIR`, `PYTHONPATH`)                                                                                                                                                                |
-| `recipes.rust_runner_copilot`           | `_create_copilot_compat_wrapper_dir`, `_normalize_copilot_cli_args`                                                                                                                                                                                                             |
-| `recipes.rust_runner_recipe_resolution` | `_default_package_recipe_dirs`, `_normalize_recipe_dirs`, `_resolve_recipe_target`                                                                                                                                                                                              |
-| `recipes.discovery`                     | `discover_recipes`, `list_recipes`, `find_recipe`, `RecipeInfo`, `_AMPLIHACK_HOME_BUNDLE_DIR` (module-level, used by `rust_runner`)                                                                                                                                             |
-| `recipe_cli`                            | `create_recipe_subparser`, `handle_recipe_command`                                                                                                                                                                                                                              |
-| `fleet`                                 | `FleetObserver`, `FleetCLI`, `SessionContext`                                                                                                                                                                                                                                   |
-| `knowledge_builder`                     | `KnowledgeBuilder`, `KnowledgeGraph`                                                                                                                                                                                                                                            |
-| `bundle_generator`                      | `BundleBuilder`, `BundlePackager`                                                                                                                                                                                                                                               |
-| `workflows`                             | `WorkflowEngine`                                                                                                                                                                                                                                                                |
-| `settings_generator`                    | `SettingsGenerator`                                                                                                                                                                                                                                                             |
-| `power_steering`                        | `prompt_re_enable_if_disabled`                                                                                                                                                                                                                                                  |
-| `lsp_detector`                          | `LSPDetector`                                                                                                                                                                                                                                                                   |
-| `memory.discoveries`                    | `store_discovery`, `get_recent_discoveries`                                                                                                                                                                                                                                     |
-| `eval`                                  | `teaching_eval`, `grader`, `progressive_test_suite`                                                                                                                                                                                                                             |
-| `hooks.launcher_detector`               | `LauncherDetector`, `LauncherInfo`                                                                                                                                                                                                                                              |
-| `context.adaptive`                      | `LauncherDetector`, `HookStrategy`, `ClaudeStrategy`, `CopilotStrategy`                                                                                                                                                                                                         |
-| `vendor.blarify.prebuilt`               | `GraphBuilder`                                                                                                                                                                                                                                                                  |
-
-## Cross-Package Imports
-
-Key import relationships between top-level subpackages:
-
-| Source                                                 | Imports From                                                                                                                                                                                                                                                                               |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `cli.py`                                               | `launcher`, `fleet`, `recipes`, `bundle_generator`, `plugin_manager`, `eval`, `settings`, `uvx`, `docker`, `security`                                                                                                                                                                      |
-| `agents.goal_seeking.input_source`                     | `agents.goal_seeking.partition_routing`                                                                                                                                                                                                                                                    |
-| `agents.goal_seeking.hive_mind.distributed_hive_graph` | `agents.goal_seeking.partition_routing`                                                                                                                                                                                                                                                    |
-| `recipe_cli/recipe_command`                            | `recipes`                                                                                                                                                                                                                                                                                  |
-| `.claude.tools.amplihack.hooks.dev_intent_router`      | Routing prompt injection, workflow-active semaphores, and `get_recipe_progress()` for reading recipe progress temp files                                                                                                                                                                   |
-| `launcher/auto_mode`                                   | `launcher` (internal: `completion_signals`, `fork_manager`, `json_logger`, `session_capture`, `work_summary`)                                                                                                                                                                              |
-| `fleet/fleet_copilot`                                  | `fleet` (internal: `_constants`, `_validation`, `_backends`, `_transcript`, `fleet_session_reasoner`, `prompts`)                                                                                                                                                                           |
-| `eval/*`                                               | `agents.domain_agents`, `knowledge_builder`                                                                                                                                                                                                                                                |
-| `knowledge_builder/orchestrator`                       | `knowledge_builder.kb_types`, `knowledge_builder.modules.*`                                                                                                                                                                                                                                |
-| `recipes/rust_runner`                                  | `recipes.discovery` (`_AMPLIHACK_HOME_BUNDLE_DIR`, `_PACKAGE_BUNDLE_DIR`, `_REPO_ROOT_BUNDLE_DIR`), `recipes.models`, `recipes.rust_runner_binary`, `recipes.rust_runner_copilot`, `recipes.rust_runner_execution`, `recipes.rust_runner_recipe_resolution`, stdlib `contextlib`, `signal` |
-| `recipes/discovery`                                    | stdlib `os` (module-level `os.environ.get` for `AMPLIHACK_HOME`)                                                                                                                                                                                                                           |
-| `vendor/blarify/*`                                     | Self-contained (only intra-vendor imports)                                                                                                                                                                                                                                                 |
+| Source                                          | Binds To                                                             | Why It Matters                                                                                                 |
+| ----------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `.claude/tools/xpia/hooks/pre_tool_use.py`      | `amplihack.security.rust_xpia.is_available`, `validate_bash_command` | Canonical XPIA pre-tool hook now routes through the Rust-backed fail-closed bridge                             |
+| `.claude/tools/xpia/hooks/pre_tool_use_rust.py` | `.claude/tools/xpia/hooks/pre_tool_use.py`                           | Compatibility shim keeps historical entrypoints aligned with the canonical hook                                |
+| `src/amplihack/__init__.py`                     | `auto_update._find_rust_cli()`                                       | Root entrypoint now delegates `install`, `mode`, `recipe`, and `update` to the installed Rust CLI when present |
+| `src/amplihack/recipes/rust_runner.py`          | `rust_runner_execution._run_rust_process()`                          | Live recipe execution now uses the shared progress-aware subprocess path                                       |
+| `src/amplihack/recipes/rust_runner.py`          | `rust_runner_binary.*`                                               | Strict runner discovery and version gating remain centralized instead of being duplicated                      |
+| `src/amplihack/recipes/rust_runner.py`          | `rust_runner_copilot.*`                                              | Nested Copilot normalization remains a dedicated compatibility module                                          |
 
 ## Recent Impact Notes
 
-- `_project_dir_context` context manager added to `recipes/rust_runner` to
-  temporarily seed `CLAUDE_PROJECT_DIR` during recipe execution, ensuring
-  nested agent sessions inherit the correct project directory.
-- `recipes/rust_runner_execution._ALLOWED_RUST_ENV_VARS` now includes
-  `CLAUDE_PROJECT_DIR` and `PYTHONPATH`, enabling Investigation workflow
-  routing through the Rust runner environment.
-- `recipes/rust_runner` imports refactored into submodules:
-  `rust_runner_binary`, `rust_runner_copilot`, `rust_runner_execution`,
-  `rust_runner_recipe_resolution`.
-- `agents.goal_seeking.partition_routing` is now the shared binding point for
-  deterministic non-numeric agent routing used by both the Azure Event Hubs
-  input source and the distributed hive graph transport.
-- `deploy/azure_hive/tests/test_partition_routing.py` now serves as the
-  user-visible regression surface for those bindings, including the warning path
-  when partition-count discovery falls back to the default.
-
-- `tests/skills/test_gadugi_scenarios_merge_ready.py` adds 31 pytest-driven
-  validation tests for the new merge-ready skill gadugi scenario, covering
-  YAML structure, skill structure, merge criteria, guardrails, and PR template.
-
-## Dead Code Candidates
-
-Files that are exported but not imported by any other package module:
-
-| File                        | Reason                                                                      |
-| --------------------------- | --------------------------------------------------------------------------- |
-| `examples/usage_example.py` | Demo file, imports `launcher` but never imported                            |
-| `rust_trial.py`             | Experimental, has its own entry point in pyproject.toml                     |
-| `copilot_auto_install.py`   | Standalone utility, no cross-package importers found                        |
-| `staging_cleanup.py`        | Standalone utility                                                          |
-| `memory_auto_install.py`    | Standalone utility                                                          |
-| `agent_query.py`            | Dual-SDK query abstraction (Claude + Copilot), used by PM Architect scripts |
+- The canonical XPIA hook now imports the repo source tree only when the cwd resolves to a real amplihack root (`src/amplihack/__init__.py` present), avoiding accidental binding to unrelated Python repositories.
+- `pre_tool_use_rust.py` no longer owns separate logic; it delegates to `pre_tool_use.py`, which reduces symbol drift between the two entrypoints.
+- `rust_runner.py` no longer owns a private progress-writer path for live execution. The shared execution helper in `rust_runner_execution.py` is now the authoritative symbol binding for progress-file writes.
 
 ## Diagrams
 
 ### Mermaid Diagram
-
-> **Note:** SVGs were not regenerated (mmdc/dot not available). Refer to source files for the current truth.
 
 ![AST+LSP Symbol Bindings - Mermaid](ast-lsp-bindings-mermaid.svg)
 

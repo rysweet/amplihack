@@ -1,36 +1,17 @@
 graph LR
-    F0["models<br/>refs: 59"]
-    F1["constants<br/>refs: 55"]
-    F2["retrieval_constants<br/>refs: 38"]
-    F3["models<br/>refs: 38"]
-    F4["types<br/>refs: 36"]
-    F5["errors<br/>refs: 29"]
-    F6["errors<br/>refs: 29"]
-    F7["errors<br/>refs: 29"]
-    F8["models<br/>refs: 29"]
-    F9["models<br/>refs: 28"]
-    F10["exceptions<br/>refs: 28"]
-    F11["models<br/>refs: 26"]
-    F12["file_utils<br/>refs: 24"]
-    F13["file_utils<br/>refs: 24"]
-    F14["file_utils<br/>refs: 24"]
-    F15["base<br/>refs: 23"]
-    F16["common<br/>refs: 22"]
-    F17["utils<br/>refs: 22"]
-    F18["xpia_defense_interface<br/>refs: 22"]
-    F19["event_bus<br/>refs: 20"]
-    F20["uvx_launcher<br/>refs: 19"]
-    F21["uvx_models<br/>refs: 18"]
-    F22["considerations<br/>refs: 17"]
-    F23["orchestrator<br/>refs: 17"]
-    F24["orchestrator<br/>refs: 17"]
-    F25["orchestrator<br/>refs: 17"]
-    F26["__init__<br/>refs: 17"]
-    F27["exceptions<br/>refs: 17"]
-    F28["output_validator<br/>refs: 17"]
-    F29["models<br/>refs: 16"]
-    F23 --> F5
-    F24 --> F6
-    F25 --> F7
+    xpia_hook[".claude/tools/xpia/hooks/pre_tool_use.py<br/>canonical hook"]
+    xpia_compat["pre_tool_use_rust.py<br/>compat shim"]
+    rust_xpia["security/rust_xpia.py<br/>is_available() + validate_bash_command()"]
+    root_init["src/amplihack/__init__.py<br/>RUST_FIRST_COMMANDS + main()"]
+    auto_update["src/amplihack/auto_update.py<br/>_find_rust_cli()"]
+    runner["recipes/rust_runner.py<br/>run_recipe_via_rust()"]
+    execution["recipes/rust_runner_execution.py<br/>_run_rust_process()"]
+    binary["recipes/rust_runner_binary.py<br/>version gating"]
+    copilot["recipes/rust_runner_copilot.py<br/>nested Copilot wrapper"]
 
-    click F0 "../ast-lsp-bindings/" "View AST bindings"
+    xpia_hook --> rust_xpia
+    xpia_compat --> xpia_hook
+    root_init --> auto_update
+    runner --> execution
+    runner --> binary
+    runner --> copilot
