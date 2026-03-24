@@ -67,7 +67,9 @@ class TestHandleRun:
     @patch("amplihack.recipe_cli.recipe_command.format_recipe_result", return_value="ok")
     @patch("amplihack.recipe_cli.recipe_command.run_recipe_via_rust")
     @patch("amplihack.recipe_cli.recipe_command.load_recipe_definition")
-    def test_verbose_run_forwards_progress(self, mock_load_recipe, mock_run_recipe, _mock_format):
+    def test_verbose_run_keeps_cli_stderr_but_disables_runner_progress(
+        self, mock_load_recipe, mock_run_recipe, _mock_format
+    ):
         mock_load_recipe.return_value = (
             _make_recipe(context={"max_cycles": "6"}),
             Path("/tmp/quality-audit-cycle.yaml"),
@@ -81,7 +83,8 @@ class TestHandleRun:
         )
 
         assert exit_code == 0
-        assert mock_run_recipe.call_args.kwargs["progress"] is True
+        assert mock_run_recipe.call_args.kwargs["progress"] is False
+        assert mock_run_recipe.call_args.kwargs["emit_startup_banner"] is False
         assert mock_run_recipe.call_args.kwargs["user_context"]["max_cycles"] == "3"
 
 

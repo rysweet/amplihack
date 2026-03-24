@@ -635,14 +635,16 @@ def _stream_process_output_with_progress(
     return "".join(stdout_chunks), "".join(stderr_chunks), returncode
 
 
-def _execute_rust_command(cmd: list[str], *, name: str, progress: bool) -> RecipeResult:
+def _execute_rust_command(
+    cmd: list[str], *, name: str, progress: bool, emit_startup_banner: bool
+) -> RecipeResult:
     """Run the Rust binary and parse its JSON output into a ``RecipeResult``."""
-    # Startup banner — always emitted so users know the runner is active.
-    print(
-        f"[amplihack] recipe-runner --- executing: {name}",
-        file=sys.stderr,
-        flush=True,
-    )
+    if emit_startup_banner:
+        print(
+            f"[amplihack] recipe-runner --- executing: {name}",
+            file=sys.stderr,
+            flush=True,
+        )
 
     env = _build_rust_env()
     if "AMPLIHACK_AGENT_BINARY" not in env:
@@ -797,6 +799,7 @@ def run_recipe_via_rust(
     working_dir: str = ".",
     auto_stage: bool = True,
     progress: bool = False,
+    emit_startup_banner: bool = True,
 ) -> RecipeResult:
     """Execute a recipe using the Rust binary.
 
@@ -811,12 +814,12 @@ def run_recipe_via_rust(
     binary = _find_rust_binary()
     resolved_working_dir = str(Path(working_dir).resolve())
 
-    # Startup banner — visible to the user before any output from the binary.
-    print(
-        f"[amplihack] recipe-runner --- starting: {name}",
-        file=sys.stderr,
-        flush=True,
-    )
+    if emit_startup_banner:
+        print(
+            f"[amplihack] recipe-runner --- starting: {name}",
+            file=sys.stderr,
+            flush=True,
+        )
 
     # When no explicit recipe_dirs are provided, inject the package bundle
     # directory so the Rust binary can find the same recipes as Python
@@ -859,7 +862,12 @@ def run_recipe_via_rust(
                 _redact_command_for_log(cmd),
             )
         with _project_dir_context(resolved_working_dir):
-            return _execute_rust_command(cmd, name=name, progress=progress)
+            return _execute_rust_command(
+                cmd,
+                name=name,
+                progress=progress,
+                emit_startup_banner=emit_startup_banner,
+            )
     finally:
         # Clean up spill directory whether execution succeeded or failed.
         if tmp_dir.exists():

@@ -76,7 +76,8 @@ def _execute_recipe(
         user_context=merged_context,
         dry_run=dry_run,
         working_dir=working_dir or ".",
-        progress=verbose,
+        progress=False,
+        emit_startup_banner=False,
     )
 
 
