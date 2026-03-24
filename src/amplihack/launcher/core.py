@@ -3,7 +3,6 @@
 import atexit
 import logging
 import os
-import shlex
 import signal
 import subprocess
 import sys
@@ -95,7 +94,7 @@ class ClaudeLauncher:
     This class manages the complete Claude Code launch process including:
     - Repository checkout and directory management
     - UVX environment detection and --add-dir integration
-    - Proxy management for Azure integration
+    - Environment configuration for Azure integration
     - Performance optimization through intelligent caching
 
     Performance Optimizations:
@@ -475,74 +474,6 @@ class ClaudeLauncher:
         except Exception as e:
             logger.debug(f"LSP auto-configuration skipped: {e}")
 
-    def _open_log_tail_window(self) -> None:
-        """Open a new terminal window tailing proxy logs.
-
-        This method spawns a new terminal window (macOS Terminal.app on Darwin)
-        that tails both stdout and stderr proxy log files. The terminal window
-        remains open even after Claude exits, allowing for post-mortem debugging.
-
-        Platform Support:
-            - macOS (Darwin): Uses osascript to open Terminal.app
-            - Other platforms: Not yet implemented (gracefully skips)
-
-        Error Handling:
-            Errors are logged but do not fail the proxy startup process.
-        """
-        # Only supported on macOS for now
-        if sys.platform != "darwin":
-            return
-
-        try:
-            # Get log directory
-            log_dir = Path("/tmp/amplihack_logs")
-            if not log_dir.exists():
-                print("Log directory does not exist, skipping log tail window")
-                return
-
-            # Find the most recent log files (they were just created)
-            # We use glob pattern to match any timestamp
-            stdout_logs = list(log_dir.glob("proxy-stdout-*.log"))
-            stderr_logs = list(log_dir.glob("proxy-stderr-*.log"))
-
-            if not stdout_logs or not stderr_logs:
-                print("Could not find proxy log files, skipping log tail window")
-                return
-
-            # Sort by modification time and get the most recent
-            stdout_log = sorted(stdout_logs, key=lambda p: p.stat().st_mtime)[-1]
-            stderr_log = sorted(stderr_logs, key=lambda p: p.stat().st_mtime)[-1]
-
-            # Build the tail command that follows both files
-            # Using tail -f to follow files as they grow
-            # Use shlex.quote() to prevent command injection via log file paths
-            tail_cmd = f"tail -f {shlex.quote(str(stdout_log))} {shlex.quote(str(stderr_log))}"
-
-            # AppleScript to open a new Terminal window with the tail command
-            # We use 'do script' to execute the command in a new window
-            applescript = f'''
-            tell application "Terminal"
-                activate
-                do script "{tail_cmd}"
-            end tell
-            '''
-
-            # Execute osascript in the background (non-blocking)
-            subprocess.Popen(
-                ["osascript", "-e", applescript],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-
-            print("Opened terminal window tailing proxy logs")
-            print(f"  stdout: {stdout_log.name}")
-            print(f"  stderr: {stderr_log.name}")
-
-        except Exception as e:
-            # Log error but don't fail proxy startup
-            print(f"Warning: Could not open log tail window: {e}")
-
     def _has_model_arg(self) -> bool:
         """Check if user has already specified --model in claude_args.
 
@@ -552,27 +483,6 @@ class ClaudeLauncher:
         if not self.claude_args:
             return False
         return "--model" in self.claude_args
-
-    def _get_azure_model(self) -> str:
-        """Extract Azure model name from proxy configuration.
-
-        Reads from proxy config in priority order:
-        1. BIG_MODEL (primary deployment model)
-        2. AZURE_OPENAI_DEPLOYMENT_NAME (fallback deployment name)
-        3. "gpt-5-codex" (hardcoded fallback)
-
-        Returns:
-            Azure model deployment name.
-        """
-        if not self.proxy_manager or not self.proxy_manager.proxy_config:
-            return "gpt-5-codex"
-
-        proxy_config = self.proxy_manager.proxy_config
-        return (
-            proxy_config.get("BIG_MODEL")
-            or proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME")
-            or "gpt-5-codex"
-        )
 
     def build_claude_command(self) -> list[str]:
         """Build the Claude command with arguments.
@@ -609,12 +519,8 @@ class ClaudeLauncher:
             if self._target_directory and self._cached_uvx_decision:
                 cmd.extend(["--add-dir", str(self._target_directory)])
 
-            # Add Azure model when using proxy
-            if self.proxy_manager:
-                azure_model = self._get_azure_model()
-                cmd.extend(["--model", f"azure/{azure_model}"])
-            # Add default model if not using proxy and user hasn't specified one
-            elif not self._has_model_arg():
+            # Add default model if user hasn't specified one
+            if not self._has_model_arg():
                 default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "opus[1m]")
                 cmd.extend(["--model", default_model])
 
@@ -656,12 +562,8 @@ class ClaudeLauncher:
         if self._target_directory and self._cached_uvx_decision:
             cmd.extend(["--add-dir", str(self._target_directory)])
 
-        # Add Azure model when using proxy
-        if self.proxy_manager:
-            azure_model = self._get_azure_model()
-            cmd.extend(["--model", f"azure/{azure_model}"])
-        # Add default model if not using proxy and user hasn't specified one
-        elif not self._has_model_arg():
+        # Add default model if user hasn't specified one
+        if not self._has_model_arg():
             default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "opus[1m]")
             cmd.extend(["--model", default_model])
 
@@ -798,8 +700,6 @@ class ClaudeLauncher:
                 print("\nReceived interrupt signal. Shutting down...")
                 if self.claude_process:
                     self.claude_process.terminate()
-                if self.proxy_manager:
-                    self.proxy_manager.stop_proxy()
                 sys.exit(0)
 
             signal.signal(signal.SIGINT, signal_handler)
@@ -860,21 +760,6 @@ class ClaudeLauncher:
             if user_npm_bin not in current_path:
                 env["PATH"] = f"{user_npm_bin}:{current_path}"
 
-            # Include proxy environment variables if proxy is configured
-            if self.proxy_manager and self.proxy_manager.is_running():
-                proxy_env = self.proxy_manager.env_manager.get_proxy_env(
-                    proxy_port=self.proxy_manager.proxy_port,
-                    config=self.proxy_manager.proxy_config.to_env_dict()
-                    if self.proxy_manager.proxy_config
-                    else None,
-                )
-                # Update env with proxy settings, especially ANTHROPIC_BASE_URL
-                if proxy_env.get("ANTHROPIC_BASE_URL"):
-                    env["ANTHROPIC_BASE_URL"] = proxy_env["ANTHROPIC_BASE_URL"]
-                    print(f"✓ Configured Claude to use proxy at {proxy_env['ANTHROPIC_BASE_URL']}")
-                if proxy_env.get("ANTHROPIC_API_KEY"):
-                    env["ANTHROPIC_API_KEY"] = proxy_env["ANTHROPIC_API_KEY"]
-
             # Launch Claude
             self.claude_process = subprocess.Popen(cmd, env=env)
 
@@ -886,10 +771,6 @@ class ClaudeLauncher:
         except Exception as e:
             print(f"Error launching Claude: {e}")
             return 1
-        finally:
-            # Clean up proxy
-            if self.proxy_manager:
-                self.proxy_manager.stop_proxy()
 
     def launch_interactive(self) -> int:
         """Launch Claude in interactive mode with live output.
@@ -920,8 +801,6 @@ class ClaudeLauncher:
                 # Set shutdown flag BEFORE sys.exit to coordinate with hooks
                 # Prevents BrokenPipeError in sessionstop hook during interrupt shutdown
                 os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
-                if self.proxy_manager:
-                    self.proxy_manager.stop_proxy()
                 sys.exit(0)
 
             signal.signal(signal.SIGINT, signal_handler)
@@ -982,26 +861,8 @@ class ClaudeLauncher:
             if user_npm_bin not in current_path:
                 env["PATH"] = f"{user_npm_bin}:{current_path}"
 
-            # Include proxy environment variables if proxy is configured
-            if self.proxy_manager and self.proxy_manager.is_running():
-                proxy_env = self.proxy_manager.env_manager.get_proxy_env(
-                    proxy_port=self.proxy_manager.proxy_port,
-                    config=self.proxy_manager.proxy_config.to_env_dict()
-                    if self.proxy_manager.proxy_config
-                    else None,
-                )
-                # Update env with proxy settings, especially ANTHROPIC_BASE_URL
-                if proxy_env.get("ANTHROPIC_BASE_URL"):
-                    env["ANTHROPIC_BASE_URL"] = proxy_env["ANTHROPIC_BASE_URL"]
-                    print(f"✓ Configured Claude to use proxy at {proxy_env['ANTHROPIC_BASE_URL']}")
-                if proxy_env.get("ANTHROPIC_API_KEY"):
-                    env["ANTHROPIC_API_KEY"] = proxy_env["ANTHROPIC_API_KEY"]
-
             # Launch Claude with direct I/O (interactive mode)
             print("Starting Claude...")
-            print(
-                f"If Claude appears to hang, check proxy connection at: {self.proxy_manager.get_proxy_url() if self.proxy_manager else 'N/A'}"
-            )
             exit_code = subprocess.call(cmd, env=env)
 
             return exit_code
@@ -1009,10 +870,6 @@ class ClaudeLauncher:
         except Exception as e:
             print(f"Error launching Claude: {e}")
             return 1
-        finally:
-            # Clean up proxy
-            if self.proxy_manager:
-                self.proxy_manager.stop_proxy()
 
     # Neo4j startup methods removed (Week 7 cleanup)
 
