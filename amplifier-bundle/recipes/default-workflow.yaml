@@ -1095,39 +1095,46 @@ steps:
   - id: "step-15-commit-push"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} && \
-      echo "=== Step 15: Commit and Push ===" && \
-      echo "" && \
-      echo "--- Staging Changes ---" && \
-      git add -A && \
-      echo "" && \
-      echo "--- Creating Commit ---" && \
+      cd {{worktree_setup.worktree_path}}
+      set -euo pipefail
+      echo "=== Step 15: Commit and Push ==="
+      echo ""
+      echo "--- Staging Changes ---"
+      git add -A
+      echo ""
+      echo "--- Creating Commit ---"
       # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
       TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
-      ) && \
-      COMMIT_TITLE=$(printf 'feat: %.72s' "$(printf '%s' "$TASK_DESC" | tr '\n\r' ' ' | head -1)") && \
-      COMMIT_MSG=$(printf '%s\n\nImplements issue #%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated\n\nCloses #%s' "$COMMIT_TITLE" {{issue_number}} {{issue_number}}) && \
-      if [ -n "$(git diff --cached --name-only)" ]; then \
-        git commit -m "$COMMIT_MSG" ; \
-      else \
-        echo "ERROR: Nothing staged to commit. The implementation step may have written files" >&2 ; \
-        echo "outside the worktree ({{worktree_setup.worktree_path}}), or no code changes were produced." >&2 ; \
-        echo "This is a hollow-success condition — the workflow completed structurally but" >&2 ; \
-        echo "produced no git artifacts. Check that agents created files in the worktree," >&2 ; \
-        echo "not in AMPLIHACK_HOME or other locations." >&2 ; \
-        git --no-pager status >&2 ; \
-        exit 1 ; \
-      fi && \
-      echo "" && \
-      echo "--- Pushing to Remote ---" && \
-      if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
-        git pull --rebase 2>/dev/null && git push ; \
-      else \
-        echo "WARNING: Nothing to push - branch is up to date with remote" ; \
-      fi && \
-      echo "" && \
+      )
+      COMMIT_TITLE=$(printf 'feat: %.72s' "$(printf '%s' "$TASK_DESC" | tr '\n\r' ' ' | head -1)")
+      COMMIT_MSG=$(printf '%s\n\nImplements issue #%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated\n\nCloses #%s' "$COMMIT_TITLE" {{issue_number}} {{issue_number}})
+      if [ -n "$(git diff --cached --name-only)" ]; then
+        git commit -m "$COMMIT_MSG"
+      else
+        echo "ERROR: Nothing staged to commit. The implementation step may have written files" >&2
+        echo "outside the worktree ({{worktree_setup.worktree_path}}), or no code changes were produced." >&2
+        echo "This is a hollow-success condition — the workflow completed structurally but" >&2
+        echo "produced no git artifacts. Check that agents created files in the worktree," >&2
+        echo "not in AMPLIHACK_HOME or other locations." >&2
+        git --no-pager status >&2
+        exit 1
+      fi
+      echo ""
+      echo "--- Pushing to Remote ---"
+      # REL-002: Detect missing upstream tracking branch before rev-list
+      if ! git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
+        echo "WARNING: No upstream tracking branch configured — skipping push" >&2
+        exit 0
+      fi
+      if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then
+        # REL-001: No stderr suppression on rebase — surface conflict diagnostics
+        git pull --rebase && git push
+      else
+        echo "WARNING: Nothing to push - branch is up to date with remote"
+      fi
+      echo ""
       echo "=== Commit and Push Complete ==="
     output: "commit_result"
 
@@ -1139,6 +1146,7 @@ steps:
     type: "bash"
     command: |
       cd {{worktree_setup.worktree_path}}
+      set -euo pipefail
       echo "=== Step 16: Creating Draft PR ===" >&2
 
       # FIX (#3324): Idempotency guard — detect pre-existing PRs before creating one
@@ -1157,6 +1165,9 @@ steps:
 
       # Check 1: Is there already a PR on the exact current branch?
       # timeout 60: prevents hanging indefinitely if GitHub API is unresponsive
+      # REL-003: 2>/dev/null || echo '' is intentional resilience — gh pr list stderr
+      # is noisy (auth warnings, API rate limits) and failure here should not block
+      # the workflow; an empty result simply means "no existing PR found".
       EXISTING_PR=$(timeout 60 gh pr list --head "$CURRENT_BRANCH" --json url --jq '.[0].url // ""' 2>/dev/null || echo '')
 
       # Check 2: If not, look for a PR on any branch matching the issue number pattern

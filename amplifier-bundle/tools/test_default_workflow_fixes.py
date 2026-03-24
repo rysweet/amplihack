@@ -845,6 +845,208 @@ class TestYAMLBugRegression(unittest.TestCase):
 
 
 # ===========================================================================
+# TEST-001: Step 15/16 error path tests
+# ===========================================================================
+
+# --- Step 15 bash snippets ---
+
+# Extracted staging-area check from step-15-commit-push.
+# Mirrors the if/else logic that detects hollow-success (nothing staged).
+_STEP15_STAGING_CHECK = textwrap.dedent("""\
+    set -euo pipefail
+    cd {repo_path}
+    git add -A
+    if [ -n "$(git diff --cached --name-only)" ]; then
+      echo "COMMIT_OK"
+    else
+      echo "ERROR: Nothing staged to commit." >&2
+      echo "This is a hollow-success condition" >&2
+      exit 1
+    fi
+""")
+
+# --- Step 16 bash snippets ---
+
+# Extracted issue_number validation from step-16-create-draft-pr.
+_STEP16_ISSUE_VALIDATION = textwrap.dedent("""\
+    set -euo pipefail
+    ISSUE_NUM="{issue_number}"
+    if ! [[ "$ISSUE_NUM" =~ ^[0-9]+$ ]]; then
+        echo "ERROR: issue_number is not numeric: $ISSUE_NUM" >&2
+        exit 1
+    fi
+    echo "VALID"
+""")
+
+# Extracted commits-ahead check from step-16-create-draft-pr.
+_STEP16_COMMITS_AHEAD_CHECK = textwrap.dedent("""\
+    set -euo pipefail
+    cd {repo_path}
+    COMMITS_AHEAD=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "0")
+    if [ "$COMMITS_AHEAD" -eq 0 ]; then
+        echo "ERROR: 0 commits ahead of main." >&2
+        echo "This is a hollow-success condition: the workflow ran but produced no commits." >&2
+        exit 1
+    fi
+    echo "PUSH_OK"
+""")
+
+
+class TestStep15CommitPush(unittest.TestCase):
+    """
+    Tests for step-15-commit-push error paths (TEST-001).
+
+    Regression contract:
+      - Empty staging area (nothing to commit) must exit 1 with 'hollow-success'
+      - Non-empty staging area proceeds to commit
+    """
+
+    def setUp(self):
+        self.repo_dir = tempfile.mkdtemp(prefix="test_step15_")
+        _init_repo_with_commit(self.repo_dir)
+
+    def tearDown(self):
+        shutil.rmtree(self.repo_dir, ignore_errors=True)
+
+    def test_empty_staging_area_exits_1_with_hollow_success(self):
+        """Empty staging area → must exit 1 with 'hollow-success' in message."""
+        script = _STEP15_STAGING_CHECK.format(repo_path=self.repo_dir)
+        result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1, f"Expected exit 1 but got {result.returncode}")
+        self.assertIn("hollow-success", result.stderr)
+
+    def test_staging_area_with_changes_succeeds(self):
+        """When new files exist, git add -A stages them and the check passes."""
+        new_file = os.path.join(self.repo_dir, "new_file.txt")
+        Path(new_file).write_text("test content\n")
+        script = _STEP15_STAGING_CHECK.format(repo_path=self.repo_dir)
+        result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+        self.assertEqual(
+            result.returncode, 0, f"Expected exit 0 but got {result.returncode}: {result.stderr}"
+        )
+        self.assertIn("COMMIT_OK", result.stdout)
+
+    def test_git_diff_cached_detects_staged_modifications(self):
+        """Modified tracked file must be detected as staged after git add -A."""
+        readme = os.path.join(self.repo_dir, "README.md")
+        Path(readme).write_text("modified content\n")
+        script = _STEP15_STAGING_CHECK.format(repo_path=self.repo_dir)
+        result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("COMMIT_OK", result.stdout)
+
+
+class TestStep16CreateDraftPR(unittest.TestCase):
+    """
+    Tests for step-16-create-draft-pr error paths (TEST-001).
+
+    Regression contract:
+      - Non-numeric issue_number must exit 1
+      - Zero commits ahead of upstream must exit 1 with 'hollow-success'
+      - Valid numeric issue_number passes validation
+    """
+
+    def test_non_numeric_issue_number_exits_1(self):
+        """Non-numeric issue_number must exit 1 with 'not numeric' message."""
+        for bad_value in ["abc", "12.34", "issue-42", "", " "]:
+            with self.subTest(issue_number=bad_value):
+                script = _STEP16_ISSUE_VALIDATION.format(issue_number=bad_value)
+                result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+                self.assertNotEqual(
+                    result.returncode, 0, f"Expected non-zero exit for '{bad_value}'"
+                )
+
+    def test_numeric_issue_number_succeeds(self):
+        """Valid numeric issue_number must pass validation."""
+        for good_value in ["1", "42", "999999"]:
+            with self.subTest(issue_number=good_value):
+                script = _STEP16_ISSUE_VALIDATION.format(issue_number=good_value)
+                result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0)
+                self.assertIn("VALID", result.stdout)
+
+    def test_zero_commits_ahead_exits_1_with_hollow_success(self):
+        """Zero commits ahead of upstream → must exit 1 with 'hollow-success'."""
+        origin_dir = tempfile.mkdtemp(prefix="test_step16_origin_")
+        repo_dir = tempfile.mkdtemp(prefix="test_step16_")
+        try:
+            subprocess.run(
+                ["git", "init", "--bare", origin_dir],
+                check=True,
+                capture_output=True,
+            )
+            _git("init", cwd=repo_dir)
+            _git("config", "user.email", "test@example.com", cwd=repo_dir)
+            _git("config", "user.name", "Test", cwd=repo_dir)
+            _git("remote", "add", "origin", origin_dir, cwd=repo_dir)
+            Path(os.path.join(repo_dir, "README.md")).write_text("init\n")
+            _git("add", "README.md", cwd=repo_dir)
+            _git("commit", "-m", "Initial commit", cwd=repo_dir)
+            _git("push", "-u", "origin", "HEAD:main", cwd=repo_dir)
+            _git(
+                "branch",
+                "--set-upstream-to=origin/main",
+                "main",
+                cwd=repo_dir,
+                check=False,
+            )
+
+            script = _STEP16_COMMITS_AHEAD_CHECK.format(repo_path=repo_dir)
+            result = subprocess.run(
+                ["bash", "-c", script],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("hollow-success", result.stderr)
+        finally:
+            shutil.rmtree(repo_dir, ignore_errors=True)
+            shutil.rmtree(origin_dir, ignore_errors=True)
+
+    def test_commits_ahead_succeeds(self):
+        """When commits exist ahead of origin/main, the check passes."""
+        origin_dir = tempfile.mkdtemp(prefix="test_step16_origin_")
+        repo_dir = tempfile.mkdtemp(prefix="test_step16_")
+        try:
+            subprocess.run(
+                ["git", "init", "--bare", origin_dir],
+                check=True,
+                capture_output=True,
+            )
+            _git("init", cwd=repo_dir)
+            _git("config", "user.email", "test@example.com", cwd=repo_dir)
+            _git("config", "user.name", "Test", cwd=repo_dir)
+            _git("remote", "add", "origin", origin_dir, cwd=repo_dir)
+            Path(os.path.join(repo_dir, "README.md")).write_text("init\n")
+            _git("add", "README.md", cwd=repo_dir)
+            _git("commit", "-m", "Initial commit", cwd=repo_dir)
+            _git("push", "-u", "origin", "HEAD:main", cwd=repo_dir)
+            _git(
+                "branch",
+                "--set-upstream-to=origin/main",
+                "main",
+                cwd=repo_dir,
+                check=False,
+            )
+            # Add a commit ahead of origin/main
+            Path(os.path.join(repo_dir, "extra.txt")).write_text("extra\n")
+            _git("add", "extra.txt", cwd=repo_dir)
+            _git("commit", "-m", "Extra commit", cwd=repo_dir)
+
+            script = _STEP16_COMMITS_AHEAD_CHECK.format(repo_path=repo_dir)
+            result = subprocess.run(
+                ["bash", "-c", script],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("PUSH_OK", result.stdout)
+        finally:
+            shutil.rmtree(repo_dir, ignore_errors=True)
+            shutil.rmtree(origin_dir, ignore_errors=True)
+
+
+# ===========================================================================
 # Entry point
 # ===========================================================================
 
