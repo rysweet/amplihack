@@ -239,8 +239,13 @@ class AuditReport:
         lines.append("")
         return lines
 
-    def render(self) -> str:
-        """Render the full markdown report."""
+    def render(self, summary_only: bool = False) -> str:
+        """Render the markdown report.
+
+        Args:
+            summary_only: If True, omit the full findings list — render only
+                the header, summary table, dimension status, and advisories.
+        """
         today = date.today().isoformat()
         scope_str = ", ".join(self.scope)
 
@@ -281,7 +286,8 @@ class AuditReport:
 
         # Delegate to section renderers
         lines += self._render_summary_table()
-        lines += self._render_findings_section()
+        if not summary_only:
+            lines += self._render_findings_section()
         lines += self._render_slsa_section()
 
         # ── Recommended Next Steps section ────────────────────────────────────
@@ -331,6 +337,10 @@ class AuditReport:
     def get_handoff(self, skill: str) -> str | None:
         """Get pre-built inter-skill handoff message, or None if not applicable."""
         return self._handoffs.get(skill)
+
+    def available_handoffs(self) -> list[str]:
+        """Return list of skill names that have handoff messages."""
+        return sorted(self._handoffs.keys())
 
     def get_advisory_messages(self) -> list[str]:
         """Return list of advisory messages (SBOM warnings, tool notes)."""
