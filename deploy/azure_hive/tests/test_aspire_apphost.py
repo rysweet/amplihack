@@ -56,6 +56,11 @@ class TestAspireAppHost:
         assert "AMPLIHACK_ASPIRE_ENABLE_LONG_HORIZON_EVAL" in content
         assert "AMPLIHACK_ASPIRE_ENABLE_SECURITY_EVAL" in content
 
+    def test_apphost_passes_event_hubs_secret_via_environment_not_argv(self):
+        content = _APPHOST.read_text()
+        assert 'WithEnvironment("EH_CONN", eventHubConnectionString)' in content
+        assert '"--connection-string"' not in content
+
     def test_apphost_long_horizon_defaults_to_no_answer_timeout(self):
         content = _APPHOST.read_text()
         assert (

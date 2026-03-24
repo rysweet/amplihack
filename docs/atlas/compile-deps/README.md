@@ -1,11 +1,11 @@
 # Layer 3: Compile-time Dependencies
 
 **Slug:** `compile-deps` | **Display Order:** 3
-**Package version:** 0.6.96
+**Package version:** 0.6.99
 
 ## Direct Dependencies (pyproject.toml)
 
-The project declares 57 direct dependencies in `pyproject.toml` (v0.6.96). Python >=3.11 required.
+The project declares 37 direct dependencies in `pyproject.toml` (v0.6.99). Python >=3.11 required.
 
 ### Core Framework
 
@@ -56,7 +56,7 @@ The project declares 57 direct dependencies in `pyproject.toml` (v0.6.96). Pytho
 | Dependency           | Source                                                                                             |
 | -------------------- | -------------------------------------------------------------------------------------------------- |
 | amplihack-memory-lib | `git+https://github.com/rysweet/amplihack-memory-lib.git@v0.2.0`                                   |
-| amplihack-agent-eval | `git+https://github.com/rysweet/amplihack-agent-eval.git@5b8a8b2fef172ab87b326c6c1c848c0874fe874f` |
+| amplihack-agent-eval | `git+https://github.com/rysweet/amplihack-agent-eval.git@d7a28a552bed6e8daa752e465475024b281913f6` |
 
 ### Azure / Cloud
 

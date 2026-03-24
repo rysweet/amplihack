@@ -737,7 +737,7 @@ provides amplihack-specific adapter implementations.
 ### Installation
 
 ```bash
-pip install "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@5b8a8b2fef172ab87b326c6c1c848c0874fe874f"
+pip install "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@d7a28a552bed6e8daa752e465475024b281913f6"
 ```
 
 ### Package Relationship
@@ -769,7 +769,7 @@ amplihack_eval/                       src/amplihack/eval/
    ```toml
    [project]
    dependencies = [
-       "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@5b8a8b2fef172ab87b326c6c1c848c0874fe874f",
+       "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@d7a28a552bed6e8daa752e465475024b281913f6",
    ]
    ```
 
