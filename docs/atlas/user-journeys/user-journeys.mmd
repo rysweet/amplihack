@@ -37,9 +37,12 @@ sequenceDiagram
     ci_workflow-->>CLI: result
     CLI-->>User: exit code
 
-    User->>CLI: recipe
-    CLI->>cli: recipe()
-    participant rust_runner
-    cli->>rust_runner: return_value: _binary_search_paths
+    User->>CLI: show
+    CLI->>cli: show()
+    cli->>cli: return_value: get_config_path
+    participant config_manager
+    cli->>config_manager: file_io: read_config
+    participant mcp_operations
+    cli->>mcp_operations: return_value: MCPServer.from_dict
     cli-->>CLI: result
     CLI-->>User: exit code
