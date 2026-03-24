@@ -9,7 +9,7 @@ title: "Layer 5: API Contracts"
 # Layer 5: API Contracts
 
 <div class="atlas-metadata">
-Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:06.367483+00:00
+Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:15.755512+00:00
 </div>
 
 ## Map
@@ -305,64 +305,62 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:06.367483+00
         ROOT --> C141
         C142["import"]
         ROOT --> C142
-        C143["clean"]
+        C143["new"]
         ROOT --> C143
-        C144["new"]
+        C144["recipe"]
         ROOT --> C144
-        C145["recipe"]
+        C145["run"]
         ROOT --> C145
-        C146["run"]
+        C146["list"]
         ROOT --> C146
-        C147["list"]
+        C147["validate"]
         ROOT --> C147
-        C148["validate"]
+        C148["show"]
         ROOT --> C148
-        C149["show"]
+        C149["mode"]
         ROOT --> C149
-        C150["mode"]
+        C150["detect"]
         ROOT --> C150
-        C151["detect"]
+        C151["to-plugin"]
         ROOT --> C151
-        C152["to-plugin"]
+        C152["to-local"]
         ROOT --> C152
-        C153["to-local"]
+        C153["fleet"]
         ROOT --> C153
-        C154["fleet"]
+        C154["create"]
         ROOT --> C154
-        C155["create"]
+        C155["add-agent"]
         ROOT --> C155
-        C156["add-agent"]
+        C156["start"]
         ROOT --> C156
-        C157["start"]
+        C157["status"]
         ROOT --> C157
-        C158["status"]
+        C158["stop"]
         ROOT --> C158
-        C159["stop"]
+        C159["stats"]
         ROOT --> C159
-        C160["stats"]
+        C160["files"]
         ROOT --> C160
-        C161["files"]
+        C161["functions"]
         ROOT --> C161
-        C162["functions"]
+        C162["classes"]
         ROOT --> C162
-        C163["classes"]
+        C163["search"]
         ROOT --> C163
-        C164["search"]
+        C164["callers"]
         ROOT --> C164
-        C165["callers"]
+        C165["callees"]
         ROOT --> C165
-        C166["callees"]
+        C166["plugin"]
         ROOT --> C166
-        C167["plugin"]
+        C167["install"]
         ROOT --> C167
-        C168["install"]
+        C168["uninstall"]
         ROOT --> C168
-        C169["uninstall"]
+        C169["verify"]
         ROOT --> C169
-        C170["verify"]
+        C170["create"]
         ROOT --> C170
-        C171["create"]
-        ROOT --> C171
     
         click ROOT "../" "Back to Atlas"
     ```
@@ -433,7 +431,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:06.367483+00
 
 ## Key Findings
 
-- 172 CLI commands
+- 171 CLI commands
 - 33 HTTP routes
 - 19 recipes defined
 
@@ -443,14 +441,14 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:06.367483+00
 
     **Summary metrics:**
     
-    - **Cli Command Count**: 172
-    - **Cli Argument Count**: 1057
+    - **Cli Command Count**: 171
+    - **Cli Argument Count**: 1052
     - **Click Typer Command Count**: 33
     - **Rust Clap Command Count**: 1
     - **Http Route Count**: 33
     - **Hook Event Count**: 274
     - **Recipe Count**: 19
-    - **Skill Count**: 402
+    - **Skill Count**: 419
     - **Agent Count**: 41
 
 ## Cross-References

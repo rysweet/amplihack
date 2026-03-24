@@ -9,7 +9,7 @@ title: "Layer 3: Compile-time Dependencies"
 # Layer 3: Compile-time Dependencies
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:57.864118+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-24T16:58:06.690847+00:00
 </div>
 
 ## Map
@@ -19,26 +19,26 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:57.864118+00
     ```mermaid
     graph LR
         subgraph ext["External Dependencies"]
-            E0["pytest<br/>imports: 594"]
+            E0["pytest<br/>imports: 608"]
             E1["rich<br/>imports: 29"]
             E2["requests<br/>imports: 27"]
-            E3["litellm<br/>imports: 24"]
-            E4["tree-sitter<br/>imports: 16"]
-            E5["claude-agent-sdk<br/>imports: 14"]
-            E6["kuzu<br/>imports: 13"]
-            E7["typing-extensions<br/>imports: 13"]
-            E8["fastapi<br/>imports: 12"]
-            E9["aiohttp<br/>imports: 11"]
-            E10["amplifier-core<br/>imports: 9"]
-            E11["psutil<br/>imports: 8"]
-            E12["python-dotenv<br/>imports: 7"]
-            E13["uvicorn<br/>imports: 4"]
-            E14["langchain-openai<br/>imports: 3"]
-            E15["tomli<br/>imports: 3"]
-            E16["langchain-anthropic<br/>imports: 2"]
-            E17["langchain-google-genai<br/>imports: 2"]
-            E18["flask<br/>imports: 1"]
-            E19["json-repair<br/>imports: 1"]
+            E3["tree-sitter<br/>imports: 16"]
+            E4["claude-agent-sdk<br/>imports: 14"]
+            E5["kuzu<br/>imports: 13"]
+            E6["typing-extensions<br/>imports: 13"]
+            E7["fastapi<br/>imports: 12"]
+            E8["aiohttp<br/>imports: 11"]
+            E9["amplifier-core<br/>imports: 9"]
+            E10["psutil<br/>imports: 8"]
+            E11["python-dotenv<br/>imports: 7"]
+            E12["uvicorn<br/>imports: 4"]
+            E13["langchain-openai<br/>imports: 3"]
+            E14["tomli<br/>imports: 3"]
+            E15["langchain-anthropic<br/>imports: 2"]
+            E16["langchain-google-genai<br/>imports: 2"]
+            E17["flask<br/>imports: 1"]
+            E18["json-repair<br/>imports: 1"]
+            E19["tree-sitter-python<br/>imports: 1"]
         end
     
         subgraph int["Internal Packages"]
@@ -87,10 +87,9 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:57.864118+00
 
     | Package | Version | Group | Import Count |
     |---------|---------|-------|-------------|
-    | pytest | >=7.0.0 | dev | 594 |
+    | pytest | >=7.0.0 | dev | 608 |
     | rich | >=13.0.0 | dev | 29 |
     | requests | >=2.32.4 | core | 27 |
-    | litellm | >=1.0.0 | core | 24 |
     | tree-sitter | >=0.23.2 | core | 16 |
     | claude-agent-sdk | >=0.1.0 | core | 14 |
     | kuzu | >=0.11.0 | core | 13 |
@@ -117,6 +116,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:57.864118+00
     | tree-sitter-ruby | >=0.23.0 | core | 1 |
     | falkordb | >=1.0.10 | core | 1 |
     | neo4j | >=5.25.0 | core | 1 |
+    | docker | >=7.1.0 | core | 1 |
 
 ## Legend
 
@@ -141,12 +141,12 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:57.864118+00
 
     **Summary metrics:**
     
-    - **External Dep Count**: 67
-    - **Internal Packages**: 2303
-    - **Internal Edges**: 1498
+    - **External Dep Count**: 69
+    - **Internal Packages**: 2355
+    - **Internal Edges**: 1540
     - **Circular Dependency Count**: 12
     - **Unused Dep Count**: 8
-    - **Undeclared Dep Count**: 175
+    - **Undeclared Dep Count**: 177
 
 ## Cross-References
 

@@ -9,7 +9,7 @@ title: "Layer 8: User Journeys"
 # Layer 8: User Journeys
 
 <div class="atlas-metadata">
-Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:34.397599+00:00
+Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:55.503214+00:00
 </div>
 
 ## Map
@@ -56,10 +56,13 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:34.397599+00
         ci_workflow-->>CLI: result
         CLI-->>User: exit code
     
-        User->>CLI: recipe
-        CLI->>cli: recipe()
-        participant rust_runner
-        cli->>rust_runner: return_value: _binary_search_paths
+        User->>CLI: show
+        CLI->>cli: show()
+        cli->>cli: return_value: get_config_path
+        participant config_manager
+        cli->>config_manager: file_io: read_config
+        participant mcp_operations
+        cli->>mcp_operations: return_value: MCPServer.from_dict
         cli-->>CLI: result
         CLI-->>User: exit code
     ```
@@ -120,8 +123,8 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:34.397599+00
 
 ## Key Findings
 
-- 479 user journeys traced
-- 28301 functions unreachable from any entry point
+- 478 user journeys traced
+- 28932 functions unreachable from any entry point
 
 ## Detail
 
@@ -129,15 +132,15 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-23T16:47:34.397599+00
 
     **Summary metrics:**
     
-    - **Total Journeys**: 479
-    - **Cli Journeys**: 172
+    - **Total Journeys**: 478
+    - **Cli Journeys**: 171
     - **Http Journeys**: 33
     - **Hook Journeys**: 274
     - **Out Of Scope Journeys**: 274
     - **Avg Trace Depth**: 1.0
-    - **Total Functions In Graph**: 28653
-    - **Total Functions Reached**: 404
-    - **Unreachable Function Count**: 28301
+    - **Total Functions In Graph**: 29281
+    - **Total Functions Reached**: 400
+    - **Unreachable Function Count**: 28932
 
 ## Cross-References
 
