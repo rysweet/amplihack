@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 from ..schema import Finding
-from ._utils import _assign_ids, _relative_path
+from ._utils import _relative_path
 
 
 def check_nuget_lock(root: Path) -> list[Finding]:
@@ -145,5 +145,4 @@ def check_nuget_lock(root: Path) -> list[Finding]:
                 )
             break  # Only process the first NuGet.Config found
 
-    findings = _assign_ids(findings)
     return findings

@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 
 from ..schema import Finding
-from ._utils import _assign_ids, _load_workflows, _relative_path
+from ._utils import _load_workflows, _relative_path
 
 # Full SHA pattern: exactly 40 hex characters
 _SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
@@ -129,8 +129,6 @@ def check_action_sha_pinning(root: Path) -> list[Finding]:
                 )
             )
 
-    # Re-assign IDs in a stable order (sort by severity, file, line)
-    findings = _assign_ids(findings)
     return findings
 
 
@@ -279,8 +277,6 @@ def check_workflow_permissions(root: Path) -> list[Finding]:
                     )
                 )
 
-    # Re-assign IDs stably
-    findings = _assign_ids(findings)
     return findings
 
 
@@ -370,7 +366,6 @@ def check_secret_exposure(root: Path) -> list[Finding]:
                     )
                 )
 
-    findings = _assign_ids(findings)
     return findings
 
 
@@ -434,5 +429,4 @@ def check_cache_poisoning(root: Path) -> list[Finding]:
                     # Exiting cache step block
                     in_cache_step = False
 
-    findings = _assign_ids(findings)
     return findings

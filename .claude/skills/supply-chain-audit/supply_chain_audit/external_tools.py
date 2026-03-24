@@ -174,7 +174,6 @@ class ToolClient:
                     return result.stdout.decode("utf-8", errors="replace")
 
                 # Non-zero exit — transient failure, eligible for retry
-                self._cb.record_failure()
                 # fall through to backoff+retry logic below
 
             except subprocess.TimeoutExpired:
@@ -198,6 +197,8 @@ class ToolClient:
                 time.sleep(backoff)
                 backoff *= 2
 
+        # All retries exhausted — record one failure for the circuit breaker
+        self._cb.record_failure()
         return None
 
     def run_or_raise(

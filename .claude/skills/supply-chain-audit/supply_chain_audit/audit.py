@@ -26,7 +26,7 @@ _XPIA_PATTERNS = [
     re.compile(r"new\s+instructions\s*:", re.IGNORECASE),
     re.compile(r"disregard\s+(?:previous|all|your)", re.IGNORECASE),
     re.compile(r"jailbreak", re.IGNORECASE),
-    re.compile(r"\bSYSTEM\s*:", re.IGNORECASE),  # bare SYSTEM: directive prefix
+    re.compile(r"(?<![a-zA-Z-])SYSTEM\s*:", re.IGNORECASE),  # bare SYSTEM: directive prefix
 ]
 
 # Severity ordering for min_severity filtering
@@ -474,7 +474,7 @@ def _run_all_checkers(
     wf_dir = root_path / ".github" / "workflows"
     workflow_cache: dict[Path, str] = {}
     if wf_dir.is_dir() and any(d in active_dims for d in (1, 2, 3, 4, 6)):
-        for wf_file in list(wf_dir.glob("*.yml")) + list(wf_dir.glob("*.yaml")):
+        for wf_file in sorted(list(wf_dir.glob("*.yml")) + list(wf_dir.glob("*.yaml"))):
             try:
                 wf_content = wf_file.read_text(errors="replace")
                 rel = str(wf_file.relative_to(root_path)).replace("\\", "/")

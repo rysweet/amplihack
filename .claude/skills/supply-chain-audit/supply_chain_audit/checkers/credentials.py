@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 from ..schema import Finding
-from ._utils import _assign_ids, _load_workflows, _relative_path
+from ._utils import _load_workflows, _relative_path
 
 _AWS_KEY_ID = re.compile(r"aws-access-key-id\s*:", re.IGNORECASE)
 _AWS_SECRET_KEY = re.compile(r"aws-secret-access-key\s*:", re.IGNORECASE)
@@ -97,5 +97,4 @@ def check_credential_hygiene(root: Path) -> list[Finding]:
                     )
                 )
 
-    findings = _assign_ids(findings)
     return findings

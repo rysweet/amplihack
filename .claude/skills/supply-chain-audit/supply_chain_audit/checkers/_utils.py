@@ -14,7 +14,7 @@ def _assign_ids(findings: list[Finding]) -> list[Finding]:
     counters = {"Critical": 0, "High": 0, "Medium": 0, "Info": 0}
     result = []
     for f in sorted_findings:
-        counters[f.severity] += 1
+        counters[f.severity] = counters.get(f.severity, 0) + 1
         seq = str(counters[f.severity]).zfill(3)
         new_id = f"{f.severity.upper()}-{seq}"
         result.append(

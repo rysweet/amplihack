@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 from ..schema import Finding
-from ._utils import _assign_ids, _load_workflows, _relative_path
+from ._utils import _load_workflows, _relative_path
 
 # Match npx followed by a full token (package name possibly including @version)
 # Group 1: the full token (may contain @version)
@@ -154,5 +154,4 @@ def check_node_integrity(root: Path) -> list[Finding]:
                     )
                     break  # One finding per workflow
 
-    findings = _assign_ids(findings)
     return findings

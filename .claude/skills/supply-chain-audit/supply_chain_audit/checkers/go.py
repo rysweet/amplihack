@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 from ..schema import Finding
-from ._utils import _assign_ids, _load_workflows, _relative_path
+from ._utils import _load_workflows, _relative_path
 
 
 def check_go_module_integrity(root: Path) -> list[Finding]:
@@ -151,5 +151,4 @@ def check_go_module_integrity(root: Path) -> list[Finding]:
                     )
                 )
 
-    findings = _assign_ids(findings)
     return findings
