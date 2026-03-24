@@ -25,7 +25,7 @@ _XPIA_PATTERNS = [
     re.compile(r"new\s+instructions\s*:", re.IGNORECASE),
     re.compile(r"disregard\s+(?:previous|all|your)", re.IGNORECASE),
     re.compile(r"jailbreak", re.IGNORECASE),
-    re.compile(r"(?<![a-zA-Z-])SYSTEM\s*:", re.IGNORECASE),  # bare SYSTEM: directive prefix
+    re.compile(r"(?<![a-zA-Z0-9_-])SYSTEM\s*:", re.IGNORECASE),  # bare SYSTEM: directive prefix
 ]
 
 # Severity ordering for min_severity filtering
@@ -289,17 +289,21 @@ def _build_slsa_assessment(
     root: Path,
     findings: list[Finding],
     workflow_cache: dict[Path, str] | None = None,
-) -> SlsaAssessment:
+) -> tuple[SlsaAssessment, list[str]]:
     """Build SLSA assessment from workflow files and audit findings.
 
     Args:
         workflow_cache: Pre-loaded {path: content} map from XPIA scan.
                         When provided, avoids re-reading workflow files.
+
+    Returns:
+        Tuple of (SlsaAssessment, list of warning strings for unreadable files).
     """
     wf_dir = root / ".github" / "workflows"
     build_is_scripted = False
     runs_on_hosted_ci = False
     provenance_generated = False
+    warnings: list[str] = []
 
     hosted_runners = {
         "ubuntu-latest",
@@ -332,10 +336,15 @@ def _build_slsa_assessment(
                 if "slsa-framework/slsa-github-generator" in wf_content:
                     provenance_generated = True
 
-            except (OSError, PermissionError):
-                pass
-
-    # action_refs_sha_pinned: True if no High/Critical findings in Dim 1
+            except (OSError, PermissionError) as exc:
+                try:
+                    rel = str(wf_file.relative_to(root)).replace("\\", "/")
+                except ValueError:
+                    rel = str(wf_file).replace("\\", "/")
+                warnings.append(
+                    f"⚠️ SLSA: Cannot read '{rel}' ({exc.__class__.__name__}). "
+                    f"SLSA assessment may be incomplete."
+                )
     action_refs_sha_pinned = not any(
         f.dimension == 1 and f.severity in ("Critical", "High") for f in findings
     )
@@ -345,7 +354,7 @@ def _build_slsa_assessment(
         runs_on_hosted_ci=runs_on_hosted_ci,
         provenance_generated=provenance_generated,
         action_refs_sha_pinned=action_refs_sha_pinned,
-    )
+    ), warnings
 
 
 def _build_handoffs(
@@ -662,8 +671,9 @@ def run_audit(
     slsa = None
     slsa_dict = None
     if any(d in active_dims for d in (1, 2, 3, 4)):
-        slsa = _build_slsa_assessment(root_path, filtered_findings, workflow_cache)
+        slsa, slsa_warnings = _build_slsa_assessment(root_path, filtered_findings, workflow_cache)
         slsa_dict = slsa.to_dict()
+        xpia_advisories.extend(slsa_warnings)
 
     # ── Step 8: Build inter-skill handoffs ────────────────────────────────────
     handoffs = _build_handoffs(filtered_findings, active_dims)

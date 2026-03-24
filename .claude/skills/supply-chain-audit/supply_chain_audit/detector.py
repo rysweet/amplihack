@@ -111,14 +111,12 @@ def detect_ecosystems(root: Path, scope: str = "all") -> EcosystemScope:
         yml_files = list(wf_dir.glob("*.yml")) + list(wf_dir.glob("*.yaml"))
         if yml_files:
             detected.update([1, 2, 3, 4])
-            # Dim 6: triggered by any workflow (credentials could be anywhere);
-            # specifically triggered when ${{ secrets.* }} appears in workflow content
-            detected.add(6)
+            # Dim 6: only triggered when ${{ secrets.* }} appears in workflow content
             for wf_file in yml_files:
                 try:
                     wf_content = wf_file.read_text(errors="replace")
                     if "${{ secrets." in wf_content:
-                        # Already added 6 above; this confirms it
+                        detected.add(6)
                         break
                 except (OSError, PermissionError):
                     import logging

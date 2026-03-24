@@ -6,6 +6,7 @@ All tests FAIL until supply_chain_audit.checkers.* are implemented.
 
 from supply_chain_audit.checkers import (
     check_action_sha_pinning,  # Dim 1
+    check_cache_poisoning,  # Dim 4
     check_cargo_supply_chain,  # Dim 9
     check_container_image_pinning,  # Dim 5
     check_credential_hygiene,  # Dim 6
@@ -207,6 +208,43 @@ class TestDim3SecretExposure:
         )
         findings = check_secret_exposure(tmp_path)
         assert any(f.severity == "High" for f in findings)
+
+
+# ─── Dimension 4: Cache Poisoning ───────────────────────────────────────────
+
+
+class TestDim4CachePoisoning:
+    def test_cache_key_without_hashfiles_is_medium(self, tmp_path):
+        wf = tmp_path / ".github" / "workflows" / "ci.yml"
+        wf.parent.mkdir(parents=True)
+        wf.write_text(
+            "name: CI\non: [push]\njobs:\n  build:\n    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - uses: actions/cache@v3\n"
+            "        with:\n"
+            "          key: ${{ runner.os }}-pip\n"
+            "          path: ~/.cache/pip\n"
+        )
+        findings = check_cache_poisoning(tmp_path)
+        assert any(f.dimension == 4 and f.severity == "Medium" for f in findings)
+
+    def test_cache_key_with_hashfiles_is_clean(self, tmp_path):
+        wf = tmp_path / ".github" / "workflows" / "ci.yml"
+        wf.parent.mkdir(parents=True)
+        wf.write_text(
+            "name: CI\non: [push]\njobs:\n  build:\n    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - uses: actions/cache@v3\n"
+            "        with:\n"
+            "          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}\n"
+            "          path: ~/.cache/pip\n"
+        )
+        findings = check_cache_poisoning(tmp_path)
+        assert not any(f.dimension == 4 and f.severity == "Medium" for f in findings)
+
+    def test_no_workflows_returns_empty(self, tmp_path):
+        findings = check_cache_poisoning(tmp_path)
+        assert findings == []
 
 
 # ─── Dimension 5: Container Image Pinning ───────────────────────────────────
