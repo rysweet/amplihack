@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from supply_chain_audit.errors import ToolTimeoutError
 from supply_chain_audit.external_tools import (
+    _INSTALL_COMMANDS,
     TOOL_TIMEOUTS,
     CosignClient,
     CraneClient,
@@ -17,8 +18,11 @@ from supply_chain_audit.external_tools import (
     GrypeClient,
     SyftClient,
     _CircuitBreaker,
+    check_missing_tools,
     check_tool_availability,
     get_tool_clients,
+    install_all_missing,
+    install_tool,
 )
 
 # ── TOOL_TIMEOUTS constants ────────────────────────────────────────────────────
@@ -500,3 +504,172 @@ class TestCheckToolAvailability:
             assert timeout_val in msg, (
                 f"Timeout {timeout_val} not found in unavailable status for {name!r}: {msg!r}"
             )
+
+
+# ── Install commands registry ──────────────────────────────────────────────────
+
+
+class TestInstallCommandsRegistry:
+    """_INSTALL_COMMANDS has an entry for every tool."""
+
+    def test_all_five_tools_have_install_info(self):
+        for name in ["gh", "crane", "syft", "grype", "cosign"]:
+            assert name in _INSTALL_COMMANDS, f"Missing install info for {name}"
+
+    def test_all_entries_have_description(self):
+        for name, info in _INSTALL_COMMANDS.items():
+            assert "description" in info, f"Missing description for {name}"
+            assert len(info["description"]) > 10
+
+
+# ── check_missing_tools ───────────────────────────────────────────────────────
+
+
+class TestCheckMissingTools:
+    """check_missing_tools returns structured info about unavailable tools."""
+
+    def test_returns_empty_when_all_available(self):
+        with patch("shutil.which", return_value="/usr/bin/fake"):
+            missing = check_missing_tools()
+        assert missing == []
+
+    def test_returns_all_when_none_available(self):
+        with patch("shutil.which", return_value=None):
+            missing = check_missing_tools()
+        names = {t["name"] for t in missing}
+        assert names == {"gh", "crane", "syft", "grype", "cosign"}
+
+    def test_each_entry_has_required_keys(self):
+        with patch("shutil.which", return_value=None):
+            missing = check_missing_tools()
+        for t in missing:
+            assert "name" in t
+            assert "description" in t
+            assert "install_options" in t
+            assert isinstance(t["install_options"], list)
+
+    def test_partial_missing(self):
+        """Only missing tools are returned."""
+
+        def fake_which(name):
+            return "/usr/bin/gh" if name == "gh" else None
+
+        with patch("shutil.which", side_effect=fake_which):
+            missing = check_missing_tools()
+        names = {t["name"] for t in missing}
+        assert "gh" not in names
+        assert len(names) == 4
+
+
+# ── install_tool ──────────────────────────────────────────────────────────────
+
+
+class TestInstallTool:
+    """install_tool attempts platform-appropriate installation."""
+
+    def test_already_installed_returns_true(self):
+        with patch("shutil.which", return_value="/usr/bin/crane"):
+            success, msg = install_tool("crane")
+        assert success is True
+        assert "already installed" in msg
+
+    def test_unknown_tool_returns_false(self):
+        success, msg = install_tool("nonexistent-tool-xyz")
+        assert success is False
+        assert "No install instructions" in msg
+
+    def test_successful_go_install(self):
+        call_count = {"n": 0}
+
+        def which_side_effect(name):
+            if name == "crane":
+                # First call: not found; second call (after install): found
+                call_count["n"] += 1
+                if call_count["n"] <= 1:
+                    return None
+                return "/home/user/go/bin/crane"
+            if name == "go":
+                return "/usr/local/go/bin/go"
+            return None
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+
+        with (
+            patch("shutil.which", side_effect=which_side_effect),
+            patch("subprocess.run", return_value=mock_result) as mock_run,
+            patch("platform.system", return_value="Linux"),
+        ):
+            success, msg = install_tool("crane")
+
+        assert success is True
+        assert "go install" in msg
+        mock_run.assert_called_once()
+
+    def test_failed_install_reports_error(self):
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_result.stderr = b"permission denied"
+
+        def which_side_effect(name):
+            if name == "crane":
+                return None
+            if name == "go":
+                return "/usr/local/go/bin/go"
+            return None
+
+        with (
+            patch("shutil.which", side_effect=which_side_effect),
+            patch("subprocess.run", return_value=mock_result),
+            patch("platform.system", return_value="Linux"),
+        ):
+            success, msg = install_tool("crane")
+
+        assert success is False
+        assert "failed" in msg.lower() or "not found" in msg.lower()
+
+    def test_timeout_is_handled(self):
+        def which_side_effect(name):
+            if name == "syft":
+                return
+            return
+
+        with (
+            patch("shutil.which", side_effect=which_side_effect),
+            patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 120)),
+            patch("platform.system", return_value="Linux"),
+        ):
+            success, msg = install_tool("syft")
+
+        assert success is False
+        assert "timed out" in msg.lower() or "failed" in msg.lower()
+
+
+# ── install_all_missing ───────────────────────────────────────────────────────
+
+
+class TestInstallAllMissing:
+    """install_all_missing tries to install all missing tools."""
+
+    def test_returns_empty_when_all_available(self):
+        with patch("shutil.which", return_value="/usr/bin/fake"):
+            results = install_all_missing()
+        assert results == {}
+
+    def test_returns_results_for_each_missing(self):
+        def which_side_effect(name):
+            if name == "gh":
+                return "/usr/bin/gh"
+            return None
+
+        with (
+            patch(
+                "supply_chain_audit.external_tools.install_tool", return_value=(False, "no method")
+            ),
+            patch("shutil.which", side_effect=which_side_effect),
+        ):
+            results = install_all_missing()
+
+        # gh is available, so only 4 tools should be attempted
+        assert "gh" not in results
+        assert len(results) == 4

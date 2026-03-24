@@ -422,3 +422,156 @@ def check_tool_availability() -> dict[str, str]:
         else:
             status[name] = f"unavailable (not found in PATH; timeout would be {timeout}s)"
     return status
+
+
+# ── Install instructions per tool ─────────────────────────────────────────────
+
+_INSTALL_COMMANDS: dict[str, dict[str, list[str]]] = {
+    "gh": {
+        "linux_apt": ["sudo", "apt", "install", "-y", "gh"],
+        "linux_dnf": ["sudo", "dnf", "install", "-y", "gh"],
+        "macos": ["brew", "install", "gh"],
+        "description": "GitHub CLI — used for resolving action tag→SHA via the API",
+    },
+    "crane": {
+        "go_install": ["go", "install", "github.com/google/go-containerregistry/cmd/crane@latest"],
+        "description": "Container image manifest inspection — used for digest resolution",
+    },
+    "syft": {
+        "script": [
+            "sh",
+            "-c",
+            "curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin",
+        ],
+        "description": "SBOM generation (SPDX/CycloneDX) — used for software bill of materials",
+    },
+    "grype": {
+        "script": [
+            "sh",
+            "-c",
+            "curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin",
+        ],
+        "description": "Vulnerability scanner — used for CVE detection against SBOMs",
+    },
+    "cosign": {
+        "go_install": ["go", "install", "github.com/sigstore/cosign/v2/cmd/cosign@latest"],
+        "description": "Image signing/attestation verification — used for SLSA provenance checks",
+    },
+}
+
+
+def check_missing_tools() -> list[dict[str, str]]:
+    """Return info about missing tools with install instructions.
+
+    Each entry has: name, description, install_commands (newline-separated).
+    Returns empty list if all tools are available.
+    """
+    missing = []
+    clients = get_tool_clients()
+    for name, client in clients.items():
+        if not client.is_available():
+            info = _INSTALL_COMMANDS.get(name, {})
+            commands = []
+            for key, cmd in info.items():
+                if key == "description":
+                    continue
+                commands.append(f"{key}: {' '.join(cmd)}")
+            missing.append(
+                {
+                    "name": name,
+                    "description": info.get("description", ""),
+                    "install_options": commands,
+                }
+            )
+    return missing
+
+
+def install_tool(tool_name: str) -> tuple[bool, str]:
+    """Attempt to install a single tool. Returns (success, message).
+
+    Tries platform-appropriate install methods in order.
+    This runs subprocess commands — intended to be called by an agent
+    after user confirmation.
+    """
+    import os
+    import platform
+
+    info = _INSTALL_COMMANDS.get(tool_name)
+    if not info:
+        return False, f"No install instructions for '{tool_name}'"
+
+    # Already available
+    if shutil.which(tool_name):
+        return True, f"'{tool_name}' is already installed"
+
+    system = platform.system().lower()
+    tried: list[str] = []
+
+    # Determine install order based on platform
+    install_methods: list[tuple[str, list[str]]] = []
+
+    if tool_name == "gh":
+        if system == "darwin" and shutil.which("brew"):
+            install_methods.append(("brew", info["macos"]))
+        elif system == "linux":
+            if shutil.which("apt"):
+                install_methods.append(("apt", info["linux_apt"]))
+            elif shutil.which("dnf"):
+                install_methods.append(("dnf", info["linux_dnf"]))
+    elif "go_install" in info and shutil.which("go"):
+        install_methods.append(("go install", info["go_install"]))
+    elif "script" in info:
+        install_methods.append(("install script", info["script"]))
+
+    # Also try install scripts as fallback for go tools
+    if "script" in info and not any(m[0] == "install script" for m in install_methods):
+        install_methods.append(("install script", info["script"]))
+
+    for method_name, cmd in install_methods:
+        tried.append(method_name)
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                timeout=120,
+                shell=False,
+            )
+            if result.returncode == 0:
+                # Verify it's now in PATH
+                # For go install, check GOPATH/bin
+                if method_name == "go install":
+                    gopath = os.environ.get("GOPATH", os.path.expanduser("~/go"))
+                    gobin = os.path.join(gopath, "bin")
+                    if gobin not in os.environ.get("PATH", ""):
+                        os.environ["PATH"] = gobin + os.pathsep + os.environ.get("PATH", "")
+
+                if shutil.which(tool_name):
+                    return True, f"Installed '{tool_name}' via {method_name}"
+                return (
+                    False,
+                    f"Install via {method_name} appeared to succeed but '{tool_name}' not found in PATH",
+                )
+            tried_output = result.stderr.decode("utf-8", errors="replace")[:200]
+            tried.append(f"  ({method_name} failed: {tried_output.strip()})")
+        except subprocess.TimeoutExpired:
+            tried.append(f"  ({method_name} timed out)")
+        except (OSError, FileNotFoundError) as e:
+            tried.append(f"  ({method_name} error: {e})")
+
+    if not install_methods:
+        return (
+            False,
+            f"No suitable install method found for '{tool_name}' on {system}. Tried: {', '.join(tried) or 'none'}",
+        )
+
+    return False, f"All install methods failed for '{tool_name}'. Tried: {'; '.join(tried)}"
+
+
+def install_all_missing() -> dict[str, tuple[bool, str]]:
+    """Attempt to install all missing tools. Returns {name: (success, message)}."""
+    results: dict[str, tuple[bool, str]] = {}
+    missing = check_missing_tools()
+    for tool_info in missing:
+        name = tool_info["name"]
+        results[name] = install_tool(name)
+    return results
