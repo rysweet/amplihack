@@ -65,3 +65,25 @@ def test_wrapper_does_not_override_explicit_flags():
             "explicit-response",
         ]
         assert module._inject_env_defaults(argv, env) == argv
+
+
+def test_wrapper_respects_equals_style_flags():
+    env = {
+        "EH_CONN": "Endpoint=sb://example/",
+        "AMPLIHACK_EH_INPUT_HUB": "hive-events-test",
+        "AMPLIHACK_EH_RESPONSE_HUB": "eval-responses-test",
+    }
+
+    for filename, module_name in [
+        ("eval_distributed.py", "eval_distributed_wrapper_equals"),
+        ("eval_distributed_security.py", "eval_distributed_security_wrapper_equals"),
+        ("eval_retrieval_smoke.py", "eval_retrieval_smoke_wrapper_equals"),
+    ]:
+        module = _load_wrapper(filename, module_name)
+        argv = [
+            filename,
+            "--connection-string=explicit-conn",
+            "--input-hub=explicit-input",
+            "--response-hub=explicit-response",
+        ]
+        assert module._inject_env_defaults(argv, env) == argv
