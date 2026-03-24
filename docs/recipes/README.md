@@ -219,7 +219,7 @@ steps:
 | `recipe`     | string      | No       | Sub-recipe name to invoke (when `type: recipe`)                                |
 | `context`    | dict        | No       | Extra context key/value pairs merged into the sub-recipe (when `type: recipe`) |
 | `output`     | string      | No       | Context key to store step result under                                         |
-| `condition`  | string      | No       | Python expression; step skips when false                                       |
+| `condition`  | string      | No       | Safe expression; step skips when false (evaluated via `simpleeval`, not bare `eval()`) |
 | `parse_json` | bool        | No       | Parse stdout as JSON and store as dict in context                              |
 | `mode`       | string      | No       | Agent mode hint (e.g. `ANALYZE`, `DESIGN`)                                     |
 | `timeout`    | int or None | No       | Timeout in seconds for bash steps (default: None = no timeout)                 |
