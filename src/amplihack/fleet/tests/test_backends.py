@@ -1,4 +1,4 @@
-"""Tests for fleet _backends -- AnthropicBackend, CopilotBackend, LiteLLMBackend, auto_detect_backend.
+"""Tests for fleet _backends -- AnthropicBackend, CopilotBackend, auto_detect_backend.
 
 Tests the LLM backend abstraction layer. All SDK calls are mocked
 so tests run without API keys or network access.
@@ -16,7 +16,6 @@ import pytest
 from amplihack.fleet._backends import (
     AnthropicBackend,
     CopilotBackend,
-    LiteLLMBackend,
     auto_detect_backend,
 )
 
@@ -115,61 +114,6 @@ class TestCopilotBackend:
         result = backend.complete("system prompt", "user prompt")
         assert result == "copilot response"
         mock_asyncio_run.assert_called_once()
-
-
-# ---------------------------------------------------------------------------
-# LiteLLMBackend
-# ---------------------------------------------------------------------------
-
-
-class TestLiteLLMBackend:
-    """Tests for LiteLLMBackend."""
-
-    def test_init_default_model(self):
-        """Default model is gpt-4o."""
-        backend = LiteLLMBackend()
-        assert backend.model == "gpt-4o"
-
-    def test_init_custom_model(self):
-        """Custom model is stored."""
-        backend = LiteLLMBackend(model="ollama/llama3")
-        assert backend.model == "ollama/llama3"
-
-    def test_complete_calls_litellm(self):
-        """complete() calls litellm.completion and extracts text."""
-        mock_litellm = MagicMock()
-
-        mock_message = MagicMock()
-        mock_message.content = "litellm response"
-
-        mock_choice = MagicMock()
-        mock_choice.message = mock_message
-
-        mock_response = MagicMock()
-        mock_response.choices = [mock_choice]
-
-        mock_litellm.completion.return_value = mock_response
-
-        backend = LiteLLMBackend(model="gpt-4o")
-        with patch.dict("sys.modules", {"litellm": mock_litellm}):
-            result = backend.complete("system", "user")
-
-        assert result == "litellm response"
-
-    def test_complete_empty_choices(self):
-        """complete() returns empty string when no choices returned."""
-        mock_litellm = MagicMock()
-
-        mock_response = MagicMock()
-        mock_response.choices = []
-
-        mock_litellm.completion.return_value = mock_response
-
-        backend = LiteLLMBackend()
-        with patch.dict("sys.modules", {"litellm": mock_litellm}):
-            result = backend.complete("system", "user")
-
-        assert result == ""
 
 
 # ---------------------------------------------------------------------------

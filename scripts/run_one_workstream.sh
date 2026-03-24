@@ -13,7 +13,7 @@ echo ""
 cat > recipe_context.json << 'CTX'
 {
   "task_description": "Implement LLM-powered agentic loop for goal-seeking agents",
-  "requirements": "Add PERCEIVE→REASON→ACT→LEARN cycle with litellm, Kuzu memory, action framework. Must pass Wikipedia test L1≥80%, L2≥60%, L3≥40%",
+  "requirements": "Add PERCEIVE→REASON→ACT→LEARN cycle with Kuzu memory, action framework. Must pass Wikipedia test L1≥80%, L2≥60%, L3≥40%",
   "repo_path": ".",
   "branch_prefix": "feat"
 }
@@ -29,6 +29,6 @@ echo ""
 python3 -m amplihack.cli recipe run \
   amplifier-bundle/recipes/default-workflow.yaml \
   -c task_description="Implement LLM-powered agentic loop" \
-  -c requirements="PERCEIVE→REASON→ACT→LEARN with litellm + Kuzu" \
+  -c requirements="PERCEIVE→REASON→ACT→LEARN with Kuzu" \
   -c repo_path="." \
   --verbose

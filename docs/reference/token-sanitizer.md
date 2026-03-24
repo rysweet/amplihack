@@ -1,6 +1,6 @@
 # Token Sanitizer Reference
 
-The token sanitizer (`amplihack.proxy.token_sanitizer`) replaces API keys and secrets in request and response bodies before they are logged, stored in memory, or forwarded to external services.
+The token sanitizer (`amplihack.utils.token_sanitizer`) replaces API keys and secrets in request and response bodies before they are logged, stored in memory, or forwarded to external services.
 
 ## Contents
 
@@ -17,13 +17,13 @@ The token sanitizer (`amplihack.proxy.token_sanitizer`) replaces API keys and se
 
 The sanitizer detects and replaces the following token types:
 
-| Token Type | Pattern | Redacted Form |
-|-----------|---------|--------------|
-| OpenAI project key | `sk-proj-…` | `sk-proj-***` |
-| OpenAI standard key | `sk-…` | `sk-***` |
-| Azure subscription ID | UUID format in Azure paths | `[REDACTED:azure-subscription-id]` |
-| GitHub PAT | `ghp_…` or `github_pat_…` | `ghp_***` / `github_pat_***` |
-| Generic bearer token | `Bearer <token>` in headers | `[REDACTED:bearer-token]` |
+| Token Type            | Pattern                     | Redacted Form                      |
+| --------------------- | --------------------------- | ---------------------------------- |
+| OpenAI project key    | `sk-proj-…`                 | `sk-proj-***`                      |
+| OpenAI standard key   | `sk-…`                      | `sk-***`                           |
+| Azure subscription ID | UUID format in Azure paths  | `[REDACTED:azure-subscription-id]` |
+| GitHub PAT            | `ghp_…` or `github_pat_…`   | `ghp_***` / `github_pat_***`       |
+| Generic bearer token  | `Bearer <token>` in headers | `[REDACTED:bearer-token]`          |
 
 ---
 
@@ -46,12 +46,12 @@ The redacted form matters: downstream systems use the prefix to decide which key
 ## Usage
 
 ```python
-from amplihack.proxy.token_sanitizer import sanitize
+from amplihack.utils.token_sanitizer import sanitize
 
-raw_body = '{"api_key": "sk-proj-xxxxxxxxxxxxxxxxxxxxxxxx"}'
+raw_body = '{"api_key": "sk-proj-xxxxxxxxxxxxxxxxxxxxxxxx"}'  # pragma: allowlist secret
 clean_body = sanitize(raw_body)
 print(clean_body)
-# {"api_key": "sk-proj-***"}
+# {"api_key": "sk-proj-***"}  # pragma: allowlist secret
 ```
 
 The function is idempotent — the replacement strings (e.g. `sk-***`) contain only three asterisks after the prefix, which is shorter than the `{6,}` minimum required by any pattern. A second call produces the same output.
@@ -72,8 +72,8 @@ Scans `text` for known secret patterns and replaces each match with its redacted
 
 **Parameters**
 
-| Name | Type | Description |
-|------|------|-------------|
+| Name   | Type  | Description                                            |
+| ------ | ----- | ------------------------------------------------------ |
 | `text` | `str` | Input text, typically a JSON request or response body. |
 
 **Returns** `str` — A copy of `text` with all recognised secrets replaced using the `***` format (e.g. `sk-***`, `sk-proj-***`).
@@ -92,7 +92,7 @@ Recursively sanitizes a dictionary. Returns a new dict with secrets replaced.
 - `None` input returns an empty dict.
 
 ```python
-from amplihack.proxy.token_sanitizer import sanitize_dict
+from amplihack.utils.token_sanitizer import sanitize_dict
 
 raw = {"Authorization": "Bearer sk-ant-abc123", "Content-Type": "application/json"}
 clean = sanitize_dict(raw)

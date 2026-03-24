@@ -253,7 +253,7 @@ def synthesize_answer(
     """Synthesize answer using LLM from retrieved context.
 
     Args:
-        llm_synthesizer: LLM synthesizer function (uses litellm)
+        llm_synthesizer: LLM synthesizer function
         question: Question to answer
         context: Retrieved context from memory
         question_level: Question complexity (L1-L4)

@@ -41,7 +41,6 @@ from pathlib import Path
 
 _CRITICAL_DEPS: tuple[str, ...] = (
     "kuzu",
-    "litellm",
     "rich",
     "anthropic",
 )

@@ -38,7 +38,7 @@ secret:
     - ".env.security-template"
     - ".github.copilot.env"
     - "proxy_config_*.env.example"
-    - "amplihack_litellm_proxy.env" # Historical - removed in commit 34f3a6e, now in .gitignore
+
 
     # Test files with mock credentials
     - "tests/**/*.py"

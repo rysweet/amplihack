@@ -68,7 +68,7 @@ graph TD
 
     subgraph loop["AgenticLoop (agentic_loop.py)"]
         AL_perceive["perceive(obs, goal)\n→ memory.search()"]
-        AL_reason["reason(perception)\n→ LLM [litellm]"]
+        AL_reason["reason(perception)\n→ LLM"]
         AL_act["act(decision)\n→ action_executor.execute()"]
         AL_learn["learn(perception, reasoning, action, outcome)\n→ memory.store_fact()"]
         AL_run_iter["run_iteration(goal, obs)"]

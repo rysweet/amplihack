@@ -19,8 +19,8 @@
 | `AMPLIHACK_MEMORY_ENABLED` | launcher/agent_memory.py | Optional | `"true"` | Set to `"false"` to disable memory system |
 | `AMPLIHACK_ENABLE_BLARIFY` | launcher/core.py | Optional | `""` | Set to `"1"` to enable Blarify code indexing |
 | `AMPLIHACK_DEFAULT_MODEL` | launcher/core.py | Optional | `"opus[1m]"` | Default Claude model for sessions |
-| `AMPLIHACK_TRACE_LOGGING` | tracing/trace_logger.py, proxy/litellm_callbacks.py | Optional | `""` | Set to `"true"` to enable JSONL trace logging |
-| `AMPLIHACK_TRACE_FILE` | tracing/trace_logger.py, proxy/litellm_callbacks.py | Optional | `~/.amplihack/trace.jsonl` | Path for trace log output |
+| `AMPLIHACK_TRACE_LOGGING` | tracing/trace_logger.py | Optional | `""` | Set to `"true"` to enable JSONL trace logging |
+| `AMPLIHACK_TRACE_FILE` | tracing/trace_logger.py | Optional | `~/.amplihack/trace.jsonl` | Path for trace log output |
 | `AMPLIHACK_PROJECT_ROOT` | uvx/manager.py | Optional | - | Framework path set during UVX execution |
 | `AMPLIHACK_IS_STAGED` | launcher/auto_stager.py, auto_mode.py | Optional | `""` | Set to `"1"` when runtime is staged |
 | `AMPLIHACK_STAGED_DIR` | launcher/auto_mode.py | Optional | - | Path to staged runtime directory |
@@ -30,12 +30,6 @@
 | `AMPLIHACK_RUST_TRIAL_HOME` | rust_trial.py | Optional | - | Root directory for Rust trial binary |
 | `AMPLIHACK_RUST_TRIAL_BINARY` | rust_trial.py | Optional | - | Explicit path to Rust trial binary |
 | `AMPLIHACK_IN_UVX` | uvx/manager.py | Optional | - | Indicates running in UVX environment |
-| `AMPLIHACK_TOOL_ONE_PER_RESPONSE` | proxy/streaming.py | Optional | `"true"` | Limit to one tool call per response |
-| `AMPLIHACK_TOOL_RETRY_ATTEMPTS` | proxy/streaming.py | Optional | `"3"` | Number of tool call retry attempts |
-| `AMPLIHACK_TOOL_TIMEOUT` | proxy/streaming.py | Optional | `"30"` | Tool call timeout in seconds |
-| `AMPLIHACK_TOOL_FALLBACK` | proxy/streaming.py | Optional | `"true"` | Enable tool call fallback behavior |
-| `AMPLIHACK_TOOL_STREAM_BUFFER` | proxy/streaming.py | Optional | `"1024"` | Streaming buffer size for tool calls |
-| `AMPLIHACK_USE_LITELLM` | proxy/streaming.py | Optional | `"true"` | Enable LiteLLM router for proxy |
 | `AMPLIHACK_CONTEXT_<KEY>` | recipe_cli/recipe_command.py | Optional | - | Recipe context injection (dynamic keys) |
 | `AMPLIHACK_TASK_DESCRIPTION` | recipe_cli/recipe_command.py | Optional | - | Task description for recipe context |
 | `AMPLIHACK_REPO_PATH` | recipe_cli/recipe_command.py | Optional | `"."` | Repository path for recipe context |
@@ -44,27 +38,7 @@
 
 | Variable | Used In | Required | Default | Description |
 |----------|---------|----------|---------|-------------|
-| `ANTHROPIC_API_KEY` | proxy/passthrough.py, fleet/_backends.py, proxy/env.py | Optional | - | Anthropic API key for direct Claude access |
-| `ANTHROPIC_BASE_URL` | proxy/env.py | Optional | - | Override Anthropic API base URL (set by proxy) |
-| `AZURE_OPENAI_API_KEY` | proxy/passthrough.py | Optional | - | Azure OpenAI API key |
-| `AZURE_OPENAI_ENDPOINT` | proxy/passthrough.py | Optional | - | Azure OpenAI endpoint URL |
-| `AZURE_OPENAI_API_VERSION` | proxy/passthrough.py | Optional | `"2024-02-01"` | Azure OpenAI API version |
-| `AZURE_OPENAI_KEY` | proxy/streaming.py | Optional | - | Alternative Azure OpenAI key variable |
-| `OPENAI_API_KEY` | proxy/streaming.py | Optional | - | OpenAI API key (fallback for Azure) |
-| `OPENAI_BASE_URL` | proxy/streaming.py | Optional | - | Override OpenAI base URL |
-| `PREFERRED_PROVIDER` | proxy/models.py | Optional | `"openai"` | Preferred LLM provider (openai/azure/anthropic) |
-| `BIG_MODEL` | proxy/models.py | Optional | `"gpt-4.1"` | Large model name for proxy routing |
-| `SMALL_MODEL` | proxy/models.py | Optional | `"gpt-4.1-mini"` | Small model name for proxy routing |
-| `MIN_TOKENS_LIMIT` | proxy/responses_api_proxy.py | Optional | `"4096"` | Minimum token limit for responses |
-| `MAX_TOKENS_LIMIT` | proxy/responses_api_proxy.py | Optional | `"512000"` | Maximum token limit for responses |
-| `PASSTHROUGH_MODE` | proxy/passthrough.py | Optional | `"false"` | Enable passthrough proxy mode |
-| `PASSTHROUGH_FALLBACK_ENABLED` | proxy/passthrough.py | Optional | `"true"` | Enable fallback on passthrough failure |
-| `PASSTHROUGH_MAX_RETRIES` | proxy/passthrough.py | Optional | `"3"` | Max retries for passthrough proxy |
-| `PASSTHROUGH_RETRY_DELAY` | proxy/passthrough.py | Optional | `"1.0"` | Retry delay in seconds |
-| `PASSTHROUGH_FALLBACK_AFTER_FAILURES` | proxy/passthrough.py | Optional | `"2"` | Failures before triggering fallback |
-| `AZURE_CLAUDE_SONNET_DEPLOYMENT` | proxy/passthrough.py | Optional | `"gpt-4"` | Azure deployment for Sonnet model mapping |
-| `AZURE_CLAUDE_HAIKU_DEPLOYMENT` | proxy/passthrough.py | Optional | `"gpt-4o-mini"` | Azure deployment for Haiku model mapping |
-| `AZURE_CLAUDE_OPUS_DEPLOYMENT` | proxy/passthrough.py | Optional | `"gpt-4"` | Azure deployment for Opus model mapping |
+| `ANTHROPIC_API_KEY` | fleet/_backends.py | Optional | - | Anthropic API key for direct Claude access |
 | `CLAUDE_BINARY_PATH` | launcher/claude_binary_manager.py | Optional | - | Explicit path to Claude binary |
 | `CLAUDE_PROJECT_DIR` | fleet/_cli_commands.py, launcher/core.py, fleet/_transcript.py, recipes/rust_runner.py | Optional | `"."` | Claude Code project directory. Forwarded through Rust runner env bridge; auto-seeded from `working_dir` when absent (#3496) |
 | `PYTHONPATH` | recipes/rust_runner_execution.py | Optional | - | Forwarded through Rust runner env bridge to ensure nested workflow steps import repo source (#3496) |

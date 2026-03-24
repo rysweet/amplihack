@@ -1,21 +1,15 @@
 """Tests for the meta-eval teaching experiment runner."""
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from amplihack.eval.meta_eval_experiment import (
     ExperimentConfig,
     ExperimentReport,
     MetaEvalExperiment,
 )
-
-
-def _mock_llm_response(text: str) -> MagicMock:
-    """Create a mock litellm response."""
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = text
-    return mock_response
 
 
 class TestExperimentConfig:
@@ -97,15 +91,14 @@ class TestMetaEvalExperiment:
             assert "question" in q
             assert "expected_answer" in q
 
-    @patch("litellm.completion")
-    def test_run_experiment_produces_report(self, mock_completion, tmp_path):
+    @pytest.mark.asyncio
+    @patch("amplihack.eval.meta_eval_experiment.completion", new_callable=AsyncMock)
+    async def test_run_experiment_produces_report(self, mock_completion, tmp_path):
         """Full experiment produces a structured report."""
         # Mock all LLM calls
-        teacher_msg = _mock_llm_response("L1 tests recall of direct facts from single sources.")
-        student_msg = _mock_llm_response(
-            '{"response": "L1 is recall.", "self_explanation": "Direct facts."}'
-        )
-        grader_msg = _mock_llm_response(
+        teacher_msg = "L1 tests recall of direct facts from single sources."
+        student_msg = '{"response": "L1 is recall.", "self_explanation": "Direct facts."}'
+        grader_msg = (
             '{"factual_accuracy": {"score": 0.9, "reasoning": "Good"}, '
             '"self_awareness": {"score": 0.8, "reasoning": "Good"}, '
             '"knowledge_boundaries": {"score": 0.7, "reasoning": "Good"}, '
@@ -129,21 +122,20 @@ class TestMetaEvalExperiment:
             output_dir=str(tmp_path),
         )
         experiment = MetaEvalExperiment(config=config)
-        report = experiment.run()
+        report = await experiment.run()
 
         assert isinstance(report, ExperimentReport)
         assert report.teaching_turns_completed == 2
         assert report.knowledge_base_size > 0
         assert 0.0 <= report.overall_score <= 1.0
 
-    @patch("litellm.completion")
-    def test_run_experiment_saves_report(self, mock_completion, tmp_path):
+    @pytest.mark.asyncio
+    @patch("amplihack.eval.meta_eval_experiment.completion", new_callable=AsyncMock)
+    async def test_run_experiment_saves_report(self, mock_completion, tmp_path):
         """Experiment saves JSON report to output directory."""
-        teacher_msg = _mock_llm_response("Teaching content.")
-        student_msg = _mock_llm_response(
-            '{"response": "Got it.", "self_explanation": "Makes sense."}'
-        )
-        grader_msg = _mock_llm_response(
+        teacher_msg = "Teaching content."
+        student_msg = '{"response": "Got it.", "self_explanation": "Makes sense."}'
+        grader_msg = (
             '{"factual_accuracy": {"score": 0.5, "reasoning": "OK"}, '
             '"self_awareness": {"score": 0.5, "reasoning": "OK"}, '
             '"knowledge_boundaries": {"score": 0.5, "reasoning": "OK"}, '
@@ -164,7 +156,7 @@ class TestMetaEvalExperiment:
             output_dir=str(tmp_path),
         )
         experiment = MetaEvalExperiment(config=config)
-        experiment.run()
+        await experiment.run()
 
         report_file = tmp_path / "meta_eval_report.json"
         assert report_file.exists()
@@ -174,8 +166,9 @@ class TestMetaEvalExperiment:
         assert "overall_score" in saved
         assert "knowledge_base_size" in saved
 
-    @patch("litellm.completion")
-    def test_experiment_handles_llm_errors(self, mock_completion, tmp_path):
+    @pytest.mark.asyncio
+    @patch("amplihack.eval.meta_eval_experiment.completion", new_callable=AsyncMock)
+    async def test_experiment_handles_llm_errors(self, mock_completion, tmp_path):
         """Experiment handles LLM failures gracefully."""
         mock_completion.side_effect = Exception("API Error")
 
@@ -185,7 +178,7 @@ class TestMetaEvalExperiment:
             output_dir=str(tmp_path),
         )
         experiment = MetaEvalExperiment(config=config)
-        report = experiment.run()
+        report = await experiment.run()
 
         # Should still produce a report, just with zero scores
         assert isinstance(report, ExperimentReport)

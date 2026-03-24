@@ -1,6 +1,6 @@
 """Tests for the TeachingSession multi-turn framework."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -10,14 +10,6 @@ from amplihack.eval.teaching_session import (
     TeachingSession,
     Turn,
 )
-
-
-def _mock_llm_response(text: str) -> MagicMock:
-    """Create a mock litellm response."""
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = text
-    return mock_response
 
 
 class TestTeachingConfig:
@@ -81,10 +73,11 @@ class TestTeachingSession:
         with pytest.raises(ValueError, match="knowledge_base cannot be empty"):
             TeachingSession(knowledge_base=[], config=TeachingConfig())
 
-    @patch("litellm.completion")
-    def test_generate_teacher_message(self, mock_completion):
+    @pytest.mark.asyncio
+    @patch("amplihack.eval.teaching_session.completion", new_callable=AsyncMock)
+    async def test_generate_teacher_message(self, mock_completion):
         """Teacher generates a teaching message from knowledge base."""
-        mock_completion.return_value = _mock_llm_response(
+        mock_completion.return_value = (
             "Let me teach you about L1 evaluation. "
             "L1 tests recall of direct facts from a single source."
         )
@@ -94,14 +87,15 @@ class TestTeachingSession:
             config=TeachingConfig(max_turns=3),
         )
 
-        message = session._generate_teacher_message(turn_number=1, history=[])
+        message = await session._generate_teacher_message(turn_number=1, history=[])
         assert message  # Non-empty
         assert isinstance(message, str)
 
-    @patch("litellm.completion")
-    def test_generate_student_response(self, mock_completion):
+    @pytest.mark.asyncio
+    @patch("amplihack.eval.teaching_session.completion", new_callable=AsyncMock)
+    async def test_generate_student_response(self, mock_completion):
         """Student generates a response with self-explanation."""
-        mock_completion.return_value = _mock_llm_response(
+        mock_completion.return_value = (
             '{"response": "L1 tests recall.", '
             '"self_explanation": "I understand this because the teacher said recall means direct facts."}'
         )
@@ -111,7 +105,7 @@ class TestTeachingSession:
             config=TeachingConfig(max_turns=3),
         )
 
-        response, explanation = session._generate_student_response(
+        response, explanation = await session._generate_student_response(
             teacher_message="L1 tests recall of direct facts.",
             history=[],
         )
@@ -119,14 +113,13 @@ class TestTeachingSession:
         assert isinstance(response, str)
         assert isinstance(explanation, str)
 
-    @patch("litellm.completion")
-    def test_run_session_produces_turns(self, mock_completion):
+    @pytest.mark.asyncio
+    @patch("amplihack.eval.teaching_session.completion", new_callable=AsyncMock)
+    async def test_run_session_produces_turns(self, mock_completion):
         """Full session produces correct number of turns."""
         # Alternate teacher and student responses
-        teacher_response = _mock_llm_response(
-            "L1 tests recall of direct facts from a single source."
-        )
-        student_response = _mock_llm_response(
+        teacher_response = "L1 tests recall of direct facts from a single source."
+        student_response = (
             '{"response": "I understand, L1 is about direct fact recall.", '
             '"self_explanation": "The teacher explained that L1 focuses on recall."}'
         )
@@ -145,23 +138,24 @@ class TestTeachingSession:
             config=TeachingConfig(max_turns=3),
         )
 
-        result = session.run()
+        result = await session.run()
         assert isinstance(result, TeachingResult)
         assert len(result.turns) == 3
         assert all(isinstance(t, Turn) for t in result.turns)
 
-    @patch("litellm.completion")
-    def test_session_accumulates_history(self, mock_completion):
+    @pytest.mark.asyncio
+    @patch("amplihack.eval.teaching_session.completion", new_callable=AsyncMock)
+    async def test_session_accumulates_history(self, mock_completion):
         """Each turn builds on previous conversation."""
         call_count = 0
 
-        def track_calls(*args, **kwargs):
+        async def track_calls(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count % 2 == 1:  # Teacher calls
-                return _mock_llm_response(f"Teaching point {call_count}")
+                return f"Teaching point {call_count}"
             # Student calls
-            return _mock_llm_response(
+            return (
                 f'{{"response": "Got it {call_count}", '
                 f'"self_explanation": "I learned this in turn {call_count}"}}'
             )
@@ -173,18 +167,19 @@ class TestTeachingSession:
             config=TeachingConfig(max_turns=2),
         )
 
-        result = session.run()
+        result = await session.run()
         assert len(result.turns) == 2
         # Verify turns are numbered correctly
         assert result.turns[0].turn_number == 1
         assert result.turns[1].turn_number == 2
 
-    @patch("litellm.completion")
-    def test_session_extracts_knowledge_transferred(self, mock_completion):
+    @pytest.mark.asyncio
+    @patch("amplihack.eval.teaching_session.completion", new_callable=AsyncMock)
+    async def test_session_extracts_knowledge_transferred(self, mock_completion):
         """Session identifies what knowledge was transferred."""
         mock_completion.side_effect = [
-            _mock_llm_response("L1 tests direct recall from single sources."),
-            _mock_llm_response(
+            "L1 tests direct recall from single sources.",
+            (
                 '{"response": "L1 is about recalling facts directly.", '
                 '"self_explanation": "Direct recall means retrieving exact facts."}'
             ),
@@ -195,5 +190,5 @@ class TestTeachingSession:
             config=TeachingConfig(max_turns=1),
         )
 
-        result = session.run()
+        result = await session.run()
         assert isinstance(result.knowledge_transferred, list)

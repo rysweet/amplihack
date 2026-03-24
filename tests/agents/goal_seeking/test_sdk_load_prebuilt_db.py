@@ -211,7 +211,6 @@ class TestSDKLoadPrebuiltDB:
 class TestAnswerQuestionWithPrebuiltDB:
     """Test that answer_question() works end-to-end with pre-built DB.
 
-    These tests require LLM calls, so we mock litellm to avoid external deps.
     The key assertion is that the LearningAgent's memory search returns facts,
     which proves the agent_name mismatch is fixed.
     """
@@ -231,9 +230,9 @@ class TestAnswerQuestionWithPrebuiltDB:
     def test_answer_question_retrieves_facts(self, prebuilt_db):
         """answer_question() must retrieve facts from pre-built DB before calling LLM.
 
-        We mock litellm.completion to verify that facts are actually retrieved
-        and passed to the LLM as context. Before the fix, no facts would be
-        retrieved because of the agent_name mismatch.
+        Verify that facts are actually retrieved and available as context.
+        Before the fix, no facts would be retrieved because of the agent_name
+        mismatch.
         """
         from amplihack.agents.goal_seeking.sdk_adapters.claude_sdk import (
             ClaudeGoalSeekingAgent,

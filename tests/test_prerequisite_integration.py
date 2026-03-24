@@ -67,20 +67,6 @@ class TestLauncherIntegration:
             # Should not have changed directory if prerequisites failed
             assert Path.cwd() == original_cwd
 
-    def test_prerequisite_check_happens_before_proxy_start(self):
-        """Test that prerequisites are checked before starting proxy."""
-        from amplihack.proxy.manager import ProxyManager
-
-        proxy_manager = Mock(spec=ProxyManager)
-        launcher = ClaudeLauncher(proxy_manager=proxy_manager)
-
-        with patch("shutil.which", return_value=None):
-            launcher.prepare_launch()
-
-            # Proxy should not have been started if prerequisites failed
-            # (will depend on implementation order)
-            assert isinstance(proxy_manager, Mock)
-
 
 class TestClaudeTraceIntegration:
     """Tests for prerequisite checking integrated with claude-trace."""

@@ -1,8 +1,8 @@
-"""Tests for provider-agnostic LiteLLM grading helpers."""
+"""Tests for provider-agnostic LLM grading helpers."""
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -15,26 +15,16 @@ def test_extract_json_handles_markdown_fence():
     assert result == {"score": 0.8, "reasoning": "ok"}
 
 
-def test_call_grader_json_uses_litellm():
-    """The shared helper delegates provider routing to LiteLLM."""
-    with patch("amplihack.eval.llm_grader.litellm.completion") as mock_completion:
-        response = MagicMock()
-        response.choices = [
-            MagicMock(message=MagicMock(content='{"score": 0.9, "reasoning": "good"}'))
-        ]
-        mock_completion.return_value = response
-
-        result = call_grader_json("grade this", model="claude-opus-4-6", max_tokens=200)
+@pytest.mark.asyncio
+async def test_call_grader_json_uses_completion():
+    """The shared helper delegates to amplihack.llm.completion."""
+    with patch(
+        "amplihack.eval.llm_grader.completion",
+        new_callable=AsyncMock,
+        return_value='{"score": 0.9, "reasoning": "good"}',
+    ) as mock_completion:
+        result = await call_grader_json("grade this", model="claude-opus-4-6", max_tokens=200)
 
         assert result["score"] == 0.9
         assert result["reasoning"] == "good"
-        assert mock_completion.call_args.kwargs["model"] == "claude-opus-4-6"
-        assert mock_completion.call_args.kwargs["max_tokens"] == 200
-
-
-def test_call_grader_json_requires_github_api_key(monkeypatch):
-    """GitHub Models grading raises a clear error without credentials."""
-    monkeypatch.delenv("GITHUB_API_KEY", raising=False)
-
-    with pytest.raises(OSError, match="GITHUB_API_KEY"):
-        call_grader_json("grade this", model="github/gpt-4.1")
+        mock_completion.assert_called_once()

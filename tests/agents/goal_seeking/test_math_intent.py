@@ -9,7 +9,7 @@ Covers:
 - SUMMARY conditional filter: meta_memory-only filtering of summary facts
 
 Philosophy:
-- Mock all LLM calls (litellm.completion) so tests run without API keys
+- Mock all LLM calls so tests run without API keys
 - Test logic and control flow, not the LLM itself
 - Verify edge cases: missing numbers, invalid expressions, empty inputs
 """
@@ -18,18 +18,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from amplihack.agents.goal_seeking import LearningAgent
 
 
-def _make_llm_response(content: str) -> MagicMock:
-    """Build a mock litellm.completion() return value."""
-    resp = MagicMock()
-    resp.choices = [MagicMock(message=MagicMock(content=content))]
-    return resp
+def _make_llm_response(content: str) -> str:
+    """Build a mock LLM completion return value (now returns string directly)."""
+    return content
 
 
 class TestComputeMathResult:
@@ -41,8 +39,9 @@ class TestComputeMathResult:
         yield
         self.agent.close()
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_percentage_computation(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_percentage_computation(self, mock_completion: AsyncMock):
         """Percentage: (2.3 - 2.0) / 2.0 * 100 = 15."""
         mock_completion.return_value = _make_llm_response(
             json.dumps(
@@ -57,7 +56,7 @@ class TestComputeMathResult:
         facts = [{"outcome": "Budget was 2.0M, now 2.3M"}]
         intent = {"needs_math": True, "math_type": "percentage"}
 
-        result = self.agent._compute_math_result(
+        result = await self.agent._compute_math_result(
             "By what percentage did the budget increase?", facts, intent
         )
 
@@ -66,8 +65,9 @@ class TestComputeMathResult:
         assert "15" in result
         assert "percentage increase" in result
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_delta_computation(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_delta_computation(self, mock_completion: AsyncMock):
         """Delta: 26 - 18 = 8."""
         mock_completion.return_value = _make_llm_response(
             json.dumps(
@@ -82,7 +82,7 @@ class TestComputeMathResult:
         facts = [{"outcome": "Day 7: 18 medals, Day 9: 26 medals"}]
         intent = {"needs_math": True, "math_type": "delta"}
 
-        result = self.agent._compute_math_result(
+        result = await self.agent._compute_math_result(
             "How many medals were won between Day 7 and Day 9?", facts, intent
         )
 
@@ -90,8 +90,9 @@ class TestComputeMathResult:
         assert "COMPUTED" in result
         assert "8" in result
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_missing_numbers_returns_none(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_missing_numbers_returns_none(self, mock_completion: AsyncMock):
         """When LLM cannot find numbers, expression is empty -> returns None."""
         mock_completion.return_value = _make_llm_response(
             json.dumps(
@@ -106,12 +107,13 @@ class TestComputeMathResult:
         facts = [{"outcome": "No numeric data here"}]
         intent = {"needs_math": True, "math_type": "percentage"}
 
-        result = self.agent._compute_math_result("What percentage increased?", facts, intent)
+        result = await self.agent._compute_math_result("What percentage increased?", facts, intent)
 
         assert result is None
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_invalid_expression_returns_none(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_invalid_expression_returns_none(self, mock_completion: AsyncMock):
         """When calculate() rejects expression, returns None."""
         mock_completion.return_value = _make_llm_response(
             json.dumps(
@@ -126,24 +128,26 @@ class TestComputeMathResult:
         facts = [{"outcome": "Value is 10"}]
         intent = {"needs_math": True, "math_type": "delta"}
 
-        result = self.agent._compute_math_result("What is the difference?", facts, intent)
+        result = await self.agent._compute_math_result("What is the difference?", facts, intent)
 
         assert result is None
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_llm_error_returns_none(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_llm_error_returns_none(self, mock_completion: AsyncMock):
         """When LLM call raises an exception, returns None gracefully."""
         mock_completion.side_effect = Exception("API timeout")
 
         facts = [{"outcome": "Budget was 100"}]
         intent = {"needs_math": True, "math_type": "delta"}
 
-        result = self.agent._compute_math_result("What is the change?", facts, intent)
+        result = await self.agent._compute_math_result("What is the change?", facts, intent)
 
         assert result is None
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_json_in_markdown_block(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_json_in_markdown_block(self, mock_completion: AsyncMock):
         """LLM returns JSON inside ```json ... ``` - should still parse."""
         inner = json.dumps(
             {
@@ -157,13 +161,14 @@ class TestComputeMathResult:
         facts = [{"outcome": "X=50, Y=30"}]
         intent = {"needs_math": True, "math_type": "delta"}
 
-        result = self.agent._compute_math_result("Difference?", facts, intent)
+        result = await self.agent._compute_math_result("Difference?", facts, intent)
 
         assert result is not None
         assert "20" in result
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_division_by_zero_returns_none(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_division_by_zero_returns_none(self, mock_completion: AsyncMock):
         """Division by zero in expression returns None (calculate returns error)."""
         mock_completion.return_value = _make_llm_response(
             json.dumps(
@@ -178,12 +183,13 @@ class TestComputeMathResult:
         facts = [{"outcome": "A=10, B=0"}]
         intent = {"needs_math": True, "math_type": "ratio"}
 
-        result = self.agent._compute_math_result("What is the ratio?", facts, intent)
+        result = await self.agent._compute_math_result("What is the ratio?", facts, intent)
 
         assert result is None
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_whole_number_formatting(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_whole_number_formatting(self, mock_completion: AsyncMock):
         """Whole-number results should be formatted as integers, not floats."""
         mock_completion.return_value = _make_llm_response(
             json.dumps(
@@ -198,7 +204,7 @@ class TestComputeMathResult:
         facts = [{"outcome": "A=100, B=75"}]
         intent = {"needs_math": True, "math_type": "delta"}
 
-        result = self.agent._compute_math_result("Delta?", facts, intent)
+        result = await self.agent._compute_math_result("Delta?", facts, intent)
 
         assert result is not None
         # Should contain "25" not "25.0"
@@ -313,8 +319,9 @@ class TestCategoryInstructions:
                 "(it needs category-specific instructions)"
             )
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_math_computation_injects_precomputed(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_math_computation_injects_precomputed(self, mock_completion: AsyncMock):
         """mathematical_computation prompt includes pre-computed result injection."""
         mock_completion.return_value = _make_llm_response("The increase is 15%.")
 
@@ -327,7 +334,7 @@ class TestCategoryInstructions:
             "computed_math": "COMPUTED: (2.3 - 2.0) / 2.0 * 100 = 15 (percentage increase)",
         }
 
-        self.agent._synthesize_with_llm(
+        await self.agent._synthesize_with_llm(
             "By what percentage did the budget increase?",
             context,
             "L2",
@@ -344,8 +351,9 @@ class TestCategoryInstructions:
         assert "PRE-COMPUTED RESULT" in prompt_text
         assert "do NOT re-calculate" in prompt_text
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_meta_memory_instructions(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_meta_memory_instructions(self, mock_completion: AsyncMock):
         """meta_memory intent triggers counting/enumeration instructions."""
         mock_completion.return_value = _make_llm_response("There are 5 projects being tracked.")
 
@@ -358,7 +366,7 @@ class TestCategoryInstructions:
             "summary_context": "- Project Atlas\n- Project Beacon",
         }
 
-        self.agent._synthesize_with_llm(
+        await self.agent._synthesize_with_llm(
             "How many projects are tracked?",
             context,
             "L1",
@@ -373,8 +381,9 @@ class TestCategoryInstructions:
         assert "Knowledge Overview" in prompt_text
         assert "UNION" in prompt_text
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_temporal_comparison_instructions(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_temporal_comparison_instructions(self, mock_completion: AsyncMock):
         """temporal_comparison intent triggers temporal instructions."""
         mock_completion.return_value = _make_llm_response("Norway improved from 18 to 26 medals.")
 
@@ -386,7 +395,7 @@ class TestCategoryInstructions:
             "math_type": "delta",
         }
 
-        self.agent._synthesize_with_llm(
+        await self.agent._synthesize_with_llm(
             "How did Norway's medals change?",
             context,
             "L3",
@@ -399,8 +408,9 @@ class TestCategoryInstructions:
         prompt_text = " ".join(m.get("content", "") for m in messages if isinstance(m, dict))
         assert "TEMPORAL" in prompt_text
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_temporal_code_result_is_authoritative(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_temporal_code_result_is_authoritative(self, mock_completion: AsyncMock):
         """Temporal code results should be surfaced as authoritative guidance."""
         mock_completion.return_value = _make_llm_response("The deadline changed 2 times.")
 
@@ -422,7 +432,7 @@ class TestCategoryInstructions:
             },
         }
 
-        self.agent._synthesize_with_llm(
+        await self.agent._synthesize_with_llm(
             "How many times did the Atlas deadline change?",
             context,
             "L3",
@@ -436,8 +446,9 @@ class TestCategoryInstructions:
         assert "AUTHORITATIVE TEMPORAL RESOLUTION" in prompt_text
         assert "Resolved change count: 2" in prompt_text
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_simple_intent_skips_category_instructions(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_simple_intent_skips_category_instructions(self, mock_completion: AsyncMock):
         """simple_recall intent does NOT inject category-specific instructions."""
         mock_completion.return_value = _make_llm_response("Paris is the capital of France.")
 
@@ -449,7 +460,7 @@ class TestCategoryInstructions:
             "math_type": "none",
         }
 
-        self.agent._synthesize_with_llm(
+        await self.agent._synthesize_with_llm(
             "What is the capital of France?",
             context,
             "L1",
@@ -475,8 +486,9 @@ class TestDetectIntent:
         yield
         self.agent.close()
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_returns_math_type_field(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_returns_math_type_field(self, mock_completion: AsyncMock):
         """_detect_intent returns dict containing math_type key."""
         mock_completion.return_value = _make_llm_response(
             json.dumps(
@@ -490,13 +502,14 @@ class TestDetectIntent:
             )
         )
 
-        result = self.agent._detect_intent("By what percentage did the budget increase?")
+        result = await self.agent._detect_intent("By what percentage did the budget increase?")
 
         assert "math_type" in result
         assert result["math_type"] == "percentage"
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_returns_all_required_fields(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_returns_all_required_fields(self, mock_completion: AsyncMock):
         """_detect_intent result has intent, needs_math, needs_temporal, math_type, reasoning."""
         mock_completion.return_value = _make_llm_response(
             json.dumps(
@@ -510,7 +523,7 @@ class TestDetectIntent:
             )
         )
 
-        result = self.agent._detect_intent(
+        result = await self.agent._detect_intent(
             "How many medals did Norway win between Day 7 and Day 9?"
         )
 
@@ -520,20 +533,22 @@ class TestDetectIntent:
         assert result["math_type"] == "delta"
         assert "reasoning" in result
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_default_on_llm_failure(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_default_on_llm_failure(self, mock_completion: AsyncMock):
         """On LLM failure, returns simple_recall with math_type=none."""
         mock_completion.side_effect = Exception("API error")
 
-        result = self.agent._detect_intent("What is the capital of France?")
+        result = await self.agent._detect_intent("What is the capital of France?")
 
         assert result["intent"] == "simple_recall"
         assert result["needs_math"] is False
         assert result["needs_temporal"] is False
         assert result["math_type"] == "none"
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_parses_markdown_json_response(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_parses_markdown_json_response(self, mock_completion: AsyncMock):
         """Handles LLM returning JSON wrapped in markdown code block."""
         inner = json.dumps(
             {
@@ -546,13 +561,14 @@ class TestDetectIntent:
         )
         mock_completion.return_value = _make_llm_response(f"```json\n{inner}\n```")
 
-        result = self.agent._detect_intent("How many projects are tracked?")
+        result = await self.agent._detect_intent("How many projects are tracked?")
 
         assert result["intent"] == "meta_memory"
         assert result["math_type"] == "none"
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_math_type_defaults_to_none(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_math_type_defaults_to_none(self, mock_completion: AsyncMock):
         """When LLM omits math_type, it defaults to 'none'."""
         mock_completion.return_value = _make_llm_response(
             json.dumps(
@@ -565,12 +581,13 @@ class TestDetectIntent:
             )
         )
 
-        result = self.agent._detect_intent("What is Python?")
+        result = await self.agent._detect_intent("What is Python?")
 
         assert result["math_type"] == "none"
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_needs_math_is_bool(self, mock_completion: MagicMock):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_needs_math_is_bool(self, mock_completion: AsyncMock):
         """needs_math field is coerced to bool."""
         mock_completion.return_value = _make_llm_response(
             json.dumps(
@@ -584,7 +601,7 @@ class TestDetectIntent:
             )
         )
 
-        result = self.agent._detect_intent("What is the ratio of X to Y?")
+        result = await self.agent._detect_intent("What is the ratio of X to Y?")
 
         assert result["needs_math"] is True
         assert result["needs_temporal"] is False

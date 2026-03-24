@@ -31,26 +31,12 @@ Following the testing pyramid principle (60% unit, 30% integration, 10% E2E):
    - Caching (2 tests)
    - **Total: 32 unit tests**
 
-3. **test_litellm_callbacks.py** - LiteLLM callbacks
-   - Callback registration/unregistration (6 tests)
-   - TraceCallback class (2 tests)
-   - Lifecycle events (4 tests)
-   - Data logging (3 tests)
-   - Token sanitization (3 tests)
-   - Performance (3 tests)
-   - Error handling (4 tests)
-   - Streaming support (2 tests)
-   - Integration (2 tests)
-   - Configuration (2 tests)
-   - **Total: 31 unit tests**
-
-**Unit Tests Total: 103 tests (~60%)**
+**Unit Tests Total: 72 tests (~60%)**
 
 ### Integration Tests (30%)
 
 4. **test_integration.py** - Component integration
    - Launcher integration (5 tests)
-   - LiteLLM integration (3 tests)
    - Configuration integration (2 tests)
    - Error handling integration (2 tests)
    - Performance integration (1 test)
@@ -148,8 +134,6 @@ pytest tests/tracing/
 # Unit tests only
 pytest tests/tracing/test_trace_logger.py
 pytest tests/tracing/test_binary_manager.py
-pytest tests/tracing/test_litellm_callbacks.py
-
 # Integration tests only
 pytest tests/tracing/test_integration.py
 pytest tests/tracing/test_prerequisites_integration.py
@@ -174,7 +158,7 @@ pytest tests/tracing/ -m e2e
 ### Run with coverage
 
 ```bash
-pytest tests/tracing/ --cov=amplihack.tracing --cov=amplihack.launcher.claude_binary_manager --cov=amplihack.proxy.litellm_callbacks --cov-report=html
+pytest tests/tracing/ --cov=amplihack.tracing --cov=amplihack.launcher.claude_binary_manager --cov-report=html
 ```
 
 ## Test Status: FAILING (Expected)
@@ -187,7 +171,6 @@ and will pass once the implementation is complete.
 ```
 ModuleNotFoundError: No module named 'amplihack.tracing'
 ModuleNotFoundError: No module named 'amplihack.launcher.claude_binary_manager'
-AttributeError: module 'amplihack.proxy' has no attribute 'litellm_callbacks'
 ```
 
 ## Implementation Order
@@ -206,13 +189,7 @@ Based on test dependencies, implement in this order:
    - Trace flag injection
    - Version/support detection
 
-3. **LiteLLM Callbacks** (`src/amplihack/proxy/litellm_callbacks.py`)
-   - Callback registration
-   - TraceLogger integration
-   - Lifecycle event handlers
-   - Error handling
-
-4. **Launcher Integration** (`src/amplihack/launcher/core.py`)
+3. **Launcher Integration** (`src/amplihack/launcher/core.py`)
    - Binary manager integration
    - Trace initialization
    - Callback registration
