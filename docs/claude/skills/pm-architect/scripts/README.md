@@ -1,31 +1,14 @@
 # PM Architect Utility Scripts
 
-These scripts implement complex logic for PM Architect operations. They are called by the active agent (Claude Code or GitHub Copilot CLI) when using the pm-architect skill, or by GitHub Actions workflows.
+These scripts implement complex logic for PM Architect operations. They are called by Claude when using the pm-architect skill or by GitHub Actions workflows.
 
 ## Agent SDK Scripts (AI-Powered)
 
-These scripts use the `agent_query` module to auto-detect and route to the appropriate agent SDK (Claude Agent SDK or GitHub Copilot SDK).
-
-### agent_query.py
-
-Shared dual-SDK query abstraction used by all AI-powered scripts below.
-
-**Auto-detection priority:**
-
-1. `AMPLIHACK_AGENT_BINARY` env var (`copilot` or `claude`) — set by the CLI launcher
-2. `LauncherDetector` — reads `.claude/runtime/launcher_context.json`
-3. Fallback to whichever SDK is importable
-
-**Fail-open:** Returns empty string if neither SDK is available.
-
-**Environment Variables:**
-
-- `AMPLIHACK_AGENT_BINARY` — `copilot` or `claude` (auto-set by launcher)
-- `PM_ARCHITECT_QUERY_TIMEOUT` — Query timeout in seconds (default: 120)
+These scripts use the Claude Agent SDK for intelligent analysis and generation.
 
 ### generate_daily_status.py
 
-Generate comprehensive daily status reports using the detected agent SDK.
+Generate comprehensive daily status reports using Claude Agent SDK.
 
 **Usage:**
 
@@ -35,8 +18,7 @@ python generate_daily_status.py [--project-root PATH] [--output FILE]
 
 **Environment Variables:**
 
-- `AMPLIHACK_AGENT_BINARY` - Which SDK to use (auto-detected)
-- `ANTHROPIC_API_KEY` - Required when using Claude SDK
+- `ANTHROPIC_API_KEY` - Required for Claude SDK
 
 **Returns:** Markdown status report with project health, workstream status, blockers, and recommendations.
 
@@ -51,7 +33,7 @@ python generate_daily_status.py --output status.md
 
 ### generate_roadmap_review.py
 
-Generate strategic weekly roadmap reviews using the detected agent SDK.
+Generate strategic weekly roadmap reviews using Claude Agent SDK.
 
 **Usage:**
 
@@ -61,8 +43,7 @@ python generate_roadmap_review.py [--project-root PATH] [--output FILE]
 
 **Environment Variables:**
 
-- `AMPLIHACK_AGENT_BINARY` - Which SDK to use (auto-detected)
-- `ANTHROPIC_API_KEY` - Required when using Claude SDK
+- `ANTHROPIC_API_KEY` - Required for Claude SDK
 
 **Returns:** Markdown roadmap review with goal progress, velocity analysis, and strategic recommendations.
 
@@ -77,7 +58,7 @@ python generate_roadmap_review.py --output roadmap.md
 
 ### triage_pr.py
 
-Intelligent PR triage using the detected agent SDK.
+Intelligent PR triage using Claude Agent SDK.
 
 **Usage:**
 
@@ -87,8 +68,7 @@ python triage_pr.py PR_NUMBER [--project-root PATH] [--output FILE]
 
 **Environment Variables:**
 
-- `AMPLIHACK_AGENT_BINARY` - Which SDK to use (auto-detected)
-- `ANTHROPIC_API_KEY` - Required when using Claude SDK
+- `ANTHROPIC_API_KEY` - Required for Claude SDK
 
 **Returns:** Markdown triage analysis with priority, complexity, suggested reviewers, and risks.
 
@@ -223,9 +203,8 @@ python manage_state.py list-workstreams --status RUNNING
 
 All scripts require:
 
-- Python 3.10+
+- Python 3.9+
 - PyYAML (`pip install pyyaml`)
-- At least one agent SDK: `claude-agent-sdk` or `github-copilot-sdk`
 
 No other external dependencies - standard library only.
 

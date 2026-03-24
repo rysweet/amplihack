@@ -65,7 +65,7 @@ class TestMainFunction:
 
     def test_main_sdk_not_available(self, capsys):
         """Test main when SDK not available."""
-        with patch("generate_roadmap_review.SDK_AVAILABLE", False):
+        with patch("generate_roadmap_review.CLAUDE_SDK_AVAILABLE", False):
             with patch("sys.argv", ["generate_roadmap_review.py"]):
                 from generate_roadmap_review import main
 
@@ -74,4 +74,4 @@ class TestMainFunction:
 
                 assert exc_info.value.code == 1
                 captured = capsys.readouterr()
-                assert "No agent SDK installed" in captured.err
+                assert "not installed" in captured.err
