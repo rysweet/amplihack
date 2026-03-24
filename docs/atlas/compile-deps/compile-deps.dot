@@ -24,7 +24,7 @@ digraph compile_deps {
         azure_id [label="azure-identity >=1.12"];
         kuzu [label="kuzu >=0.11"];
         memory_lib [label="amplihack-memory-lib\n@git v0.2.0"];
-        agent_eval [label="amplihack-agent-eval\n@git main"];
+        agent_eval [label="amplihack-agent-eval\n@git d7a28a55"];
         tree_sitter [label="tree-sitter >=0.23\n+ 7 language grammars"];
         langchain [label="langchain >=1.2.3\n+ openai/anthropic/google"];
         psutil [label="psutil >=7.0"];
@@ -84,8 +84,6 @@ digraph compile_deps {
     launcher -> hooks [label="imports"];
     eval_pkg -> knowledge [label="imports"];
 
-<<<<<<< HEAD
-=======
     // Intra-package: recipes/rust_runner -> recipes/discovery
     subgraph cluster_recipes_internal {
         label="recipes (intra-package)";
@@ -95,9 +93,7 @@ digraph compile_deps {
         rust_runner [label="rust_runner.py"];
         discovery [label="discovery.py"];
     }
-    rust_runner -> discovery [label="imports\n_AMPLIHACK_HOME_BUNDLE_DIR", style=solid, color="#6666aa"];
-
->>>>>>> origin/main
+    rust_runner -> discovery [label="imports\n_AMPLIHACK_HOME_BUNDLE_DIR", style=solid, color="#6666aa"]; // pragma: allowlist secret
     // External dependency edges
     proxy -> flask [style=dashed, label="web server"];
     proxy -> aiohttp [style=dashed, label="async HTTP"];

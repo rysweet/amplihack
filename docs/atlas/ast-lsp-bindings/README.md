@@ -3,7 +3,7 @@ Mode: static-approximation
 # Layer 2: AST+LSP Symbol Bindings
 
 **Slug:** `ast-lsp-bindings` | **Display Order:** 2
-**Last rebuilt:** 2026-03-23 | **Package version:** 0.6.99
+**Last rebuilt:** 2026-03-24 | **Package version:** 0.6.99
 
 No LSP server was available for this analysis. All symbol bindings were derived via static grep/read of `__all__` exports and `from amplihack.X import Y` statements.
 

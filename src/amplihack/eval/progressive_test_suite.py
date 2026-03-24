@@ -30,7 +30,8 @@ from pathlib import Path
 from .grader import grade_answer
 from .metacognition_grader import grade_metacognition
 
-AMPLIHACK_AGENT_EVAL_REV = "5b8a8b2fef172ab87b326c6c1c848c0874fe874f"  # pragma: allowlist secret
+# Keep this in sync with pyproject.toml's direct git dependency pin.
+AMPLIHACK_AGENT_EVAL_REV = "d7a28a552bed6e8daa752e465475024b281913f6"  # pragma: allowlist secret
 AMPLIHACK_AGENT_EVAL_INSTALL = (
     "pip install 'amplihack-agent-eval @ "
     "git+https://github.com/rysweet/amplihack-agent-eval.git@"
