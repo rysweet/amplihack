@@ -1773,14 +1773,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.memory_command == "import":
             from pathlib import Path as _Path
 
-            from .agents.goal_seeking.memory_export import import_memory
-
             if args.merge and getattr(args, "format", "json") == "kuzu":
                 print(
                     "Error importing memory: --merge is not supported with --format kuzu. "
                     "Use --format json for merge imports."
                 )
                 return 1
+
+            from .agents.goal_seeking.memory_export import import_memory
 
             storage = _Path(args.storage_path) if args.storage_path else None
             try:
