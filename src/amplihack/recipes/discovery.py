@@ -435,6 +435,8 @@ def _load_recipe_info(yaml_path: Path) -> RecipeInfo | None:
             return None
 
         steps = data.get("steps", [])
+        # Compute hash from already-read text to avoid a second file read.
+        sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
         return RecipeInfo(
             name=data["name"],
             path=yaml_path.resolve(),
@@ -442,7 +444,7 @@ def _load_recipe_info(yaml_path: Path) -> RecipeInfo | None:
             version=data.get("version", ""),
             step_count=len(steps) if isinstance(steps, list) else 0,
             tags=data.get("tags", []),
-            sha256=_file_hash(yaml_path),
+            sha256=sha256,
         )
     except Exception:
         logger.debug("Failed to load recipe info from %s", yaml_path)

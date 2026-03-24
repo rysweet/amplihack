@@ -712,6 +712,7 @@ def _execute_rust_command(
 # -- Public entry point ------------------------------------------------------
 
 
+@functools.lru_cache(maxsize=1)
 def _default_package_recipe_dirs() -> list[str]:
     """Return bundled recipe directories visible to Python discovery.
 
@@ -723,6 +724,10 @@ def _default_package_recipe_dirs() -> list[str]:
     Also includes ``$AMPLIHACK_HOME/amplifier-bundle/recipes/`` when the env
     var is set, so recipes are found when running from non-amplihack repos
     (issue #3237).
+
+    Result is cached: the bundled recipe directories are fixed for the
+    lifetime of the process (computed from package install paths and env vars
+    that are read at import time).
     """
     try:
         from amplihack.recipes.discovery import (
@@ -821,25 +826,34 @@ def run_recipe_via_rust(
             flush=True,
         )
 
+    # Resolve once; pass the absolute path to all helpers to avoid redundant
+    # Path.resolve() calls inside _normalize_recipe_dirs, _resolve_recipe_target,
+    # and _build_rust_command.
     resolved_working_dir = str(Path(working_dir).resolve())
-    effective_recipe_dirs = _normalize_recipe_dirs(recipe_dirs, working_dir=working_dir)
+    effective_recipe_dirs = _normalize_recipe_dirs(recipe_dirs, working_dir=resolved_working_dir)
     if effective_recipe_dirs is None:
         effective_recipe_dirs = _normalize_recipe_dirs(
             _default_package_recipe_dirs() or None,
-            working_dir=working_dir,
+            working_dir=resolved_working_dir,
         )
 
     resolved_name = _resolve_recipe_target(
         name,
         recipe_dirs=effective_recipe_dirs,
-        working_dir=working_dir,
+        working_dir=resolved_working_dir,
     )
 
-    # Create a process-scoped temp directory for context value spill files.
+    # Create a process-scoped temp directory for context value spill files only
+    # when there is user context that might exceed the env-var size limit.
+    # Skipping mkdtemp() when context is absent avoids an unnecessary syscall.
     # tempfile.mkdtemp() creates it atomically (O_CREAT|O_EXCL) with 0o700
     # permissions, eliminating TOCTOU race conditions from predictable paths.
-    # The finally block removes it unconditionally.
-    tmp_dir = Path(tempfile.mkdtemp(prefix=f"recipe-context-{os.getpid()}-"))
+    # The finally block removes it unconditionally when it was created.
+    tmp_dir = (
+        Path(tempfile.mkdtemp(prefix=f"recipe-context-{os.getpid()}-"))
+        if user_context
+        else None
+    )
 
     try:
         cmd = _build_rust_command(
@@ -869,5 +883,6 @@ def run_recipe_via_rust(
             )
     finally:
         # Clean up spill directory whether execution succeeded or failed.
-        if tmp_dir.exists():
+        # tmp_dir is None when user_context was absent (no directory was created).
+        if tmp_dir is not None and tmp_dir.exists():
             shutil.rmtree(tmp_dir, ignore_errors=True)
