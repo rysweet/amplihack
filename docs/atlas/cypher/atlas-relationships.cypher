@@ -19,9 +19,6 @@ CREATE (a)-[:CALLS {protocol: 'function-call'}]->(b);
 MATCH (a:Service {name: 'amplihack-cli'}), (b:Service {name: 'fleet-cli'})
 CREATE (a)-[:CALLS {protocol: 'function-call'}]->(b);
 
-MATCH (a:Service {name: 'claude-launcher'}), (b:Service {name: 'proxy-server'})
-CREATE (a)-[:CALLS {protocol: 'subprocess'}]->(b);
-
 MATCH (a:Service {name: 'claude-launcher'}), (b:Service {name: 'auto-mode'})
 CREATE (a)-[:CALLS {protocol: 'function-call'}]->(b);
 
@@ -32,9 +29,6 @@ MATCH (a:Service {name: 'claude-launcher'}), (b:Service {name: 'blarify'})
 CREATE (a)-[:CALLS {protocol: 'function-call'}]->(b);
 
 MATCH (a:Service {name: 'claude-launcher'}), (b:Service {name: 'docker-manager'})
-CREATE (a)-[:CALLS {protocol: 'function-call'}]->(b);
-
-MATCH (a:Service {name: 'proxy-server'}), (b:Service {name: 'trace-logger'})
 CREATE (a)-[:CALLS {protocol: 'function-call'}]->(b);
 
 // --- Service EXPOSES Route ---
@@ -75,12 +69,6 @@ MATCH (s:Service {name: 'amplihack-cli'}), (r:Route {path: 'amplihack plugin ins
 CREATE (s)-[:EXPOSES]->(r);
 
 MATCH (s:Service {name: 'amplihack-cli'}), (r:Route {path: 'amplihack new'})
-CREATE (s)-[:EXPOSES]->(r);
-
-MATCH (s:Service {name: 'proxy-server'}), (r:Route {path: '/v1/messages'})
-CREATE (s)-[:EXPOSES]->(r);
-
-MATCH (s:Service {name: 'responses-api-proxy'}), (r:Route {path: '/v1/responses'})
 CREATE (s)-[:EXPOSES]->(r);
 
 // --- Service READS_FROM / WRITES_TO DataStore ---
@@ -136,21 +124,6 @@ CREATE (s)-[:USES_ENV]->(e);
 MATCH (s:Service {name: 'claude-launcher'}), (e:EnvVar {name: 'AMPLIHACK_ENABLE_BLARIFY'})
 CREATE (s)-[:USES_ENV]->(e);
 
-MATCH (s:Service {name: 'proxy-server'}), (e:EnvVar {name: 'ANTHROPIC_API_KEY'})
-CREATE (s)-[:USES_ENV]->(e);
-
-MATCH (s:Service {name: 'proxy-server'}), (e:EnvVar {name: 'AZURE_OPENAI_API_KEY'})
-CREATE (s)-[:USES_ENV]->(e);
-
-MATCH (s:Service {name: 'proxy-server'}), (e:EnvVar {name: 'AZURE_OPENAI_ENDPOINT'})
-CREATE (s)-[:USES_ENV]->(e);
-
-MATCH (s:Service {name: 'proxy-server'}), (e:EnvVar {name: 'PREFERRED_PROVIDER'})
-CREATE (s)-[:USES_ENV]->(e);
-
-MATCH (s:Service {name: 'proxy-server'}), (e:EnvVar {name: 'AMPLIHACK_TRACE_LOGGING'})
-CREATE (s)-[:USES_ENV]->(e);
-
 MATCH (s:Service {name: 'memory-system'}), (e:EnvVar {name: 'AMPLIHACK_MEMORY_ENABLED'})
 CREATE (s)-[:USES_ENV]->(e);
 
@@ -164,15 +137,6 @@ MATCH (s:Service {name: 'copilot-launcher'}), (e:EnvVar {name: 'AMPLIHACK_HOOK_E
 CREATE (s)-[:USES_ENV]->(e);
 
 // --- Package DEPENDS_ON Package ---
-MATCH (a:Package {name: 'amplihack.proxy'}), (b:Package {name: 'flask'})
-CREATE (a)-[:DEPENDS_ON]->(b);
-
-MATCH (a:Package {name: 'amplihack.proxy'}), (b:Package {name: 'fastapi'})
-CREATE (a)-[:DEPENDS_ON]->(b);
-
-MATCH (a:Package {name: 'amplihack.proxy'}), (b:Package {name: 'litellm'})
-CREATE (a)-[:DEPENDS_ON]->(b);
-
 MATCH (a:Package {name: 'amplihack.memory'}), (b:Package {name: 'kuzu'})
 CREATE (a)-[:DEPENDS_ON]->(b);
 
@@ -183,9 +147,6 @@ MATCH (a:Package {name: 'amplihack'}), (b:Package {name: 'rich'})
 CREATE (a)-[:DEPENDS_ON]->(b);
 
 MATCH (a:Package {name: 'amplihack'}), (b:Package {name: 'aiohttp'})
-CREATE (a)-[:DEPENDS_ON]->(b);
-
-MATCH (a:Package {name: 'amplihack.launcher'}), (b:Package {name: 'amplihack.proxy'})
 CREATE (a)-[:DEPENDS_ON]->(b);
 
 MATCH (a:Package {name: 'amplihack.launcher'}), (b:Package {name: 'amplihack.memory'})
@@ -207,17 +168,11 @@ CREATE (j)-[:TRAVERSES {step_order: 1}]->(r);
 MATCH (j:Journey {name: 'launch-claude-session'}), (r:Route {path: 'amplihack launch'})
 CREATE (j)-[:TRAVERSES {step_order: 1}]->(r);
 
-MATCH (j:Journey {name: 'launch-claude-session'}), (r:Route {path: '/v1/messages'})
-CREATE (j)-[:TRAVERSES {step_order: 2}]->(r);
-
 MATCH (j:Journey {name: 'run-recipe'}), (r:Route {path: 'amplihack recipe run'})
 CREATE (j)-[:TRAVERSES {step_order: 1}]->(r);
 
 MATCH (j:Journey {name: 'auto-mode-execution'}), (r:Route {path: 'amplihack launch'})
 CREATE (j)-[:TRAVERSES {step_order: 1}]->(r);
-
-MATCH (j:Journey {name: 'auto-mode-execution'}), (r:Route {path: '/v1/messages'})
-CREATE (j)-[:TRAVERSES {step_order: 2}]->(r);
 
 MATCH (j:Journey {name: 'store-memory'}), (r:Route {path: 'amplihack memory tree'})
 CREATE (j)-[:TRAVERSES {step_order: 1}]->(r);

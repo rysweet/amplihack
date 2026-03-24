@@ -249,7 +249,7 @@ class MetaEvalExperiment:
         # Use pre-built quiz, limited by config
         return EVAL_QUIZ[: self.config.quiz_questions]
 
-    def run(self) -> ExperimentReport:
+    async def run(self) -> ExperimentReport:
         """Run the complete experiment.
 
         Returns:
@@ -269,7 +269,7 @@ class MetaEvalExperiment:
                 model=self.config.model,
             )
             session = TeachingSession(knowledge_base=kb, config=teaching_config)
-            teaching_result = session.run()
+            teaching_result = await session.run()
             turns_completed = len(teaching_result.turns)
             logger.info("Teaching session completed: %d turns", turns_completed)
         except Exception as e:
@@ -281,7 +281,7 @@ class MetaEvalExperiment:
         logger.info("Quiz generated: %d questions", len(quiz))
 
         # Step 4: Quiz the student (use teaching history as context)
-        quiz_results = self._quiz_student(quiz, teaching_result)
+        quiz_results = await self._quiz_student(quiz, teaching_result)
 
         # Step 5: Grade metacognition
         grader = MetacognitionGrader(model=self.config.model)
@@ -289,7 +289,7 @@ class MetaEvalExperiment:
         score_values = []
 
         for i, (q, result) in enumerate(zip(quiz, quiz_results, strict=False)):
-            mc_score = grader.grade(
+            mc_score = await grader.grade(
                 question=q["question"],
                 expected_answer=q["expected_answer"],
                 student_answer=result.get("student_answer", ""),
@@ -327,7 +327,7 @@ class MetaEvalExperiment:
         logger.info("Report saved to %s", report_path)
         return report
 
-    def _quiz_student(
+    async def _quiz_student(
         self,
         quiz: list[dict[str, str]],
         teaching_result,
@@ -337,7 +337,7 @@ class MetaEvalExperiment:
         The student has no direct access to the knowledge base;
         it can only use what it learned during the teaching session.
         """
-        import litellm  # type: ignore[import-unresolved]
+        from amplihack.llm import completion
 
         # Build teaching context from the session
         teaching_context = ""
@@ -348,9 +348,8 @@ class MetaEvalExperiment:
         results = []
         for q in quiz:
             try:
-                response = litellm.completion(
-                    model=self.config.model,
-                    messages=[
+                response_text = await completion(
+                    [
                         {
                             "role": "system",
                             "content": (
@@ -370,10 +369,11 @@ class MetaEvalExperiment:
                             ),
                         },
                     ],
+                    model=self.config.model,
                     temperature=0.3,
                 )
 
-                text = response.choices[0].message.content.strip()
+                text = response_text.strip()
                 try:
                     parsed = json.loads(text)
                     results.append(

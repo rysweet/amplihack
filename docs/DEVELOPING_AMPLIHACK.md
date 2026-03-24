@@ -33,22 +33,19 @@ This is the **authoritative technical reference** for developing with and extend
    - 2.3 [Data Flow](#23-data-flow)
 3. [Feature Inventory](#3-feature-inventory)
    - 3.1 [Launcher Features](#31-launcher-features)
-   - 3.2 [Proxy Features](#32-proxy-features)
-   - 3.3 [Bundle Generator Features](#33-bundle-generator-features)
+   - 3.2 [Bundle Generator Features](#32-bundle-generator-features)
    - 3.4 [Security Features](#34-security-features)
    - 3.5 [Agent System Features](#35-agent-system-features)
 4. [Module Reference](#4-module-reference)
    - 4.1 [Launcher Module](#41-launcher-module)
-   - 4.2 [Proxy Module](#42-proxy-module)
-   - 4.3 [Bundle Generator Module](#43-bundle-generator-module)
+   - 4.2 [Bundle Generator Module](#42-bundle-generator-module)
    - 4.4 [Security Module](#44-security-module)
    - 4.5 [Memory Module](#45-memory-module)
    - 4.6 [Utilities Module](#46-utilities-module)
 5. [Configuration Guide](#5-configuration-guide)
    - 5.1 [Environment Configuration](#51-environment-configuration)
    - 5.2 [Claude Configuration](#52-claude-configuration)
-   - 5.3 [Proxy Configuration](#53-proxy-configuration)
-   - 5.4 [Security Configuration](#54-security-configuration)
+   - 5.3 [Security Configuration](#53-security-configuration)
 6. [Development Workflows](#6-development-workflows)
    - 6.1 [Local Development Setup](#61-local-development-setup)
    - 6.2 [Agent Development](#62-agent-development)
@@ -58,8 +55,7 @@ This is the **authoritative technical reference** for developing with and extend
    - 7.1 [Creating Custom Agents](#71-creating-custom-agents)
    - 7.2 [Configuring Azure Integration](#72-configuring-azure-integration)
    - 7.3 [Adding Slash Commands](#73-adding-slash-commands)
-   - 7.4 [Working with Proxy](#74-working-with-proxy)
-   - 7.5 [Security Integration](#75-security-integration)
+   - 7.4 [Security Integration](#74-security-integration)
 8. [Troubleshooting](#8-troubleshooting)
    - 8.1 [Common Issues](#81-common-issues)
    - 8.2 [Debugging Guide](#82-debugging-guide)
@@ -103,9 +99,6 @@ This is the **authoritative technical reference** for developing with and extend
 # Basic launch
 amplihack claude
 
-# Launch with Azure proxy
-amplihack claude --with-proxy-config ./azure.env
-
 # Autonomous mode
 amplihack claude --auto -- -p "your task"
 
@@ -135,7 +128,6 @@ amplihack copilot
 | Module               | Purpose                  | Entry Point                                   |
 | -------------------- | ------------------------ | --------------------------------------------- |
 | **Launcher**         | Claude Code execution    | `src/amplihack/launcher/core.py`              |
-| **Proxy**            | Azure/GitHub integration | `src/amplihack/proxy/integrated_proxy.py`     |
 | **Bundle Generator** | Agent creation           | `src/amplihack/bundle_generator/generator.py` |
 | **Security**         | XPIA defense             | `src/amplihack/security/xpia_defender.py`     |
 | **Memory**           | Session persistence      | `src/amplihack/memory/manager.py`             |
@@ -170,7 +162,6 @@ Key Directories:
 │   └── workflow/               # Development workflows
 ├── src/amplihack/              # Source code
 │   ├── launcher/               # Launch functionality
-│   ├── proxy/                  # Proxy implementation
 │   ├── bundle_generator/       # Agent generation
 │   ├── security/               # Security features
 │   └── memory/                 # Session management
@@ -232,7 +223,6 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
                      │
 ┌────────────────────┴────────────────────────────────────────┐
 │                   Service Layer                              │
-│  • Proxy Service (Azure/GitHub integration)                 │
 │  • Security Service (XPIA defense)                          │
 │  • Memory Service (session persistence)                     │
 │  • Bundle Generator (agent creation)                        │
@@ -241,7 +231,7 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 ┌────────────────────┴────────────────────────────────────────┐
 │                  Infrastructure Layer                        │
 │  • File System (project detection)                          │
-│  • Network (API proxying)                                   │
+│  • Network (API communication)                              │
 │  • Process Management (subprocess execution)                │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -267,34 +257,10 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 
 1. Prerequisites checking (Node.js, npm, claude CLI)
 2. Repository checkout and directory management
-3. Proxy lifecycle management
-4. Claude process spawning and monitoring
-5. Environment variable configuration
+3. Claude process spawning and monitoring
+4. Environment variable configuration
 
 **See Also**: Section 4.1 (Launcher Module)
-
----
-
-#### Component: Proxy
-
-**Purpose**: Enables Azure OpenAI and GitHub Copilot integration
-**Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/proxy/`
-**Key Files**:
-
-- `integrated_proxy.py:1-500` - Main proxy server
-- `config.py:1-580` - Configuration management
-- `azure_unified_handler.py:1-400` - Azure request handling
-- `github_client.py:1-300` - GitHub Copilot integration
-
-**Responsibilities**:
-
-1. Anthropic API to Azure OpenAI translation
-2. Model mapping (claude-_ to gpt-_)
-3. Request/response transformation
-4. Authentication management
-5. Error handling and retries
-
-**See Also**: Section 4.2 (Proxy Module)
 
 ---
 
@@ -349,14 +315,13 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 #### Claude Launch Flow
 
 ```
-1. User executes: amplihack claude --with-proxy-config azure.env
+1. User executes: amplihack claude
    ↓
 2. CLI parses arguments (cli.py:30-150)
    ↓
 3. ClaudeLauncher.prepare_launch() (launcher/core.py:74-100)
    ├── Check prerequisites (utils/prerequisites.py:1-150)
    ├── Detect .claude directory (launcher/detector.py:20-80)
-   ├── Start proxy if configured (proxy/manager.py:30-120)
    └── Configure environment variables
    ↓
 4. ClaudeLauncher.build_claude_command() (launcher/core.py:281-348)
@@ -376,36 +341,6 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 
 ---
 
-#### Proxy Request Flow
-
-```
-1. Claude Code sends request to ANTHROPIC_BASE_URL (proxy endpoint)
-   ↓
-2. IntegratedProxy.handle_chat_completion() (integrated_proxy.py:200-300)
-   ├── Parse Anthropic request format
-   ├── Load proxy configuration (config.py:48-98)
-   └── Detect endpoint type (azure/github/openai)
-   ↓
-3. AzureUnifiedHandler.handle_request() (azure_unified_handler.py:100-250)
-   ├── Map model name (claude-sonnet-4 → gpt-4)
-   ├── Transform request format
-   ├── Add Azure authentication
-   └── Set API version
-   ↓
-4. Send request to Azure OpenAI endpoint
-   ↓
-5. AzureUnifiedHandler.transform_response() (azure_unified_handler.py:300-400)
-   ├── Transform Azure response to Anthropic format
-   ├── Map usage statistics
-   └── Handle streaming if enabled
-   ↓
-6. Return response to Claude Code
-```
-
-**See Also**: Section 4.2 (Proxy Module), Section 7.4 (Working with Proxy)
-
----
-
 ## 3. Feature Inventory
 
 **Complete feature-to-implementation mapping for rapid discovery**
@@ -420,12 +355,10 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 | ----------------------- | -------------------------------------- | ------------------------------------ | ------------- |
 | **Basic Launch**        | Launch Claude Code with .claude config | `launcher/core.py:350-420`           | ✅ Stable     |
 | **Repository Checkout** | Clone and launch in GitHub repo        | `launcher/repo_checkout.py:1-100`    | ✅ Stable     |
-| **Proxy Integration**   | Auto-start Azure/GitHub proxy          | `launcher/core.py:189-211`           | ✅ Stable     |
 | **UVX Detection**       | Detect uvx execution mode              | `uvx/manager.py:1-200`               | ✅ Stable     |
 | **--add-dir Support**   | Add project directory to Claude        | `launcher/core.py:311-338`           | ✅ Stable     |
 | **Prerequisites Check** | Validate Node.js, npm, claude CLI      | `utils/prerequisites.py:1-150`       | ✅ Stable     |
 | **Path Caching**        | Cache resolved paths for performance   | `launcher/core.py:510-528`           | ✅ Stable     |
-| **Log Tailing**         | Open terminal with proxy logs          | `launcher/core.py:213-279`           | ✅ macOS only |
 | **Autonomous Mode**     | Multi-turn task execution              | `launcher/auto_mode.py:1-200`        | ✅ Stable     |
 | **Settings Backup**     | Backup/restore Claude settings         | `launcher/settings_manager.py:1-150` | ✅ Stable     |
 
@@ -433,28 +366,7 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 
 ---
 
-### 3.2 Proxy Features
-
-| Feature                | Description                           | Implementation                           | Status    |
-| ---------------------- | ------------------------------------- | ---------------------------------------- | --------- |
-| **Azure Integration**  | Anthropic to Azure OpenAI translation | `proxy/azure_unified_handler.py:1-400`   | ✅ Stable |
-| **GitHub Copilot**     | GitHub Copilot API support            | `proxy/github_client.py:1-300`           | ✅ Stable |
-| **Model Mapping**      | Map claude-_ to gpt-_ models          | `proxy/azure_models.py:20-150`           | ✅ Stable |
-| **Endpoint Detection** | Auto-detect Azure/GitHub endpoints    | `proxy/azure_detector.py:1-200`          | ✅ Stable |
-| **Request Transform**  | Convert Anthropic to OpenAI format    | `proxy/azure_unified_handler.py:100-250` | ✅ Stable |
-| **Response Transform** | Convert OpenAI to Anthropic format    | `proxy/azure_unified_handler.py:300-400` | ✅ Stable |
-| **Streaming Support**  | Server-sent events streaming          | `proxy/integrated_proxy.py:400-500`      | ✅ Stable |
-| **Authentication**     | Azure API key management              | `proxy/config.py:248-280`                | ✅ Stable |
-| **Config Validation**  | Validate proxy configuration          | `proxy/config.py:145-297`                | ✅ Stable |
-| **File Logging**       | Log requests/responses to files       | `proxy/file_logging.py:1-200`            | ✅ Stable |
-| **Log Streaming**      | Real-time log streaming               | `proxy/log_streaming.py:1-250`           | ✅ Stable |
-| **Passthrough Mode**   | Direct passthrough without transform  | `proxy/passthrough.py:1-150`             | ✅ Stable |
-
-**Search Terms**: proxy, azure, github copilot, integration, api, model mapping
-
----
-
-### 3.3 Bundle Generator Features
+### 3.2 Bundle Generator Features
 
 | Feature                | Description                         | Implementation                          | Status    |
 | ---------------------- | ----------------------------------- | --------------------------------------- | --------- |
@@ -534,7 +446,7 @@ class ClaudeLauncher:
     """Launches Claude Code with proper configuration and performance optimization."""
 ```
 
-**Purpose**: Manages the complete Claude Code launch lifecycle including repository checkout, proxy management, and environment configuration.
+**Purpose**: Manages the complete Claude Code launch lifecycle including repository checkout and environment configuration.
 
 **Performance Optimizations**:
 
@@ -549,7 +461,6 @@ class ClaudeLauncher:
 ```python
 def __init__(
     self,
-    proxy_manager: Optional[ProxyManager] = None,
     append_system_prompt: Optional[Path] = None,
     force_staging: bool = False,
     checkout_repo: Optional[str] = None,
@@ -559,7 +470,6 @@ def __init__(
 
 **Parameters**:
 
-- `proxy_manager`: Optional ProxyManager instance for Azure integration
 - `append_system_prompt`: Path to additional system prompt file
 - `force_staging`: Force staging approach instead of --add-dir (UVX mode)
 - `checkout_repo`: GitHub repository URI (format: "owner/repo")
@@ -569,15 +479,9 @@ def __init__(
 
 ```python
 from amplihack.launcher.core import ClaudeLauncher
-from amplihack.proxy.manager import ProxyManager
 
 # Basic launch
 launcher = ClaudeLauncher()
-exit_code = launcher.launch()
-
-# With Azure proxy
-proxy_mgr = ProxyManager(config_path=Path("azure.env"))
-launcher = ClaudeLauncher(proxy_manager=proxy_mgr)
 exit_code = launcher.launch()
 
 # With repository checkout
@@ -595,7 +499,7 @@ exit_code = launcher.launch()
 
 **Location**: `core.py:74-100`
 
-**Purpose**: Prepare environment for launching Claude (prerequisites, directory setup, proxy startup).
+**Purpose**: Prepare environment for launching Claude (prerequisites, directory setup).
 
 **Returns**: `True` if preparation successful, `False` otherwise
 
@@ -605,7 +509,6 @@ exit_code = launcher.launch()
 2. Handle repository checkout if requested - lines 85-87
 3. Find and validate target directory - lines 90-93
 4. Handle directory change - lines 96-97
-5. Start proxy if configured - line 100
 
 **Example**:
 
@@ -630,18 +533,16 @@ if launcher.prepare_launch():
 
 - Detects Claude CLI availability (line 291)
 - Adds --add-dir for UVX mode (lines 312-313, 336-338)
-- Configures Azure model when proxy is active (lines 316-317, 341-342)
 - Appends user-provided arguments (lines 320-321, 345-346)
 
 **Example**:
 
 ```python
 launcher = ClaudeLauncher(
-    proxy_manager=proxy_mgr,
-    claude_args=["--model", "azure/gpt-4"]
+    claude_args=["--model", "claude-sonnet-4-5-20250929"]
 )
 cmd = launcher.build_claude_command()
-# cmd = ["claude", "--dangerously-skip-permissions", "--model", "azure/gpt-4"]
+# cmd = ["claude", "--dangerously-skip-permissions", "--model", "claude-sonnet-4-5-20250929"]
 ```
 
 ---
@@ -740,315 +641,7 @@ if repo_path:
 
 ---
 
-### 4.2 Proxy Module
-
-**Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/proxy/`
-
-**Search Terms**: proxy, azure integration, api translation, model mapping, github copilot
-
----
-
-#### 4.2.1 IntegratedProxy Class
-
-**File**: `integrated_proxy.py:1-500`
-
-**Purpose**: Main proxy server that translates Anthropic API calls to Azure OpenAI or GitHub Copilot.
-
-**Key Features**:
-
-- Anthropic to OpenAI format conversion
-- Azure endpoint detection and routing
-- GitHub Copilot integration
-- Streaming response support
-- Error handling and retries
-
----
-
-**Constructor**:
-
-```python
-class IntegratedProxy:
-    def __init__(self, config_path: Optional[Path] = None):
-        """
-        Initialize integrated proxy.
-
-        Args:
-            config_path: Path to .env configuration file
-        """
-```
-
-**Example**:
-
-```python
-from amplihack.proxy.integrated_proxy import IntegratedProxy
-
-proxy = IntegratedProxy(config_path=Path("azure.env"))
-proxy.start()
-```
-
----
-
-**Key Methods**:
-
-##### `start(host: str = "127.0.0.1", port: int = 8000) -> None`
-
-**Purpose**: Start the proxy server.
-
-**Parameters**:
-
-- `host`: Host address to bind to (default: 127.0.0.1)
-- `port`: Port to listen on (default: 8000)
-
-**Example**:
-
-```python
-proxy.start(host="0.0.0.0", port=8080)
-```
-
----
-
-##### `handle_chat_completion(request_data: dict) -> dict`
-
-**Location**: `integrated_proxy.py:200-300`
-
-**Purpose**: Handle chat completion requests from Claude.
-
-**Process**:
-
-1. Parse Anthropic request format
-2. Detect endpoint type (Azure/GitHub/OpenAI)
-3. Transform request format
-4. Send to backend API
-5. Transform response back to Anthropic format
-
-**Example Request Flow**:
-
-```python
-# Anthropic request format
-anthropic_request = {
-    "model": "claude-sonnet-4",
-    "messages": [{"role": "user", "content": "Hello"}],
-    "max_tokens": 1024
-}
-
-# After transformation (Azure format)
-azure_request = {
-    "model": "gpt-4",
-    "messages": [{"role": "user", "content": "Hello"}],
-    "max_tokens": 1024
-}
-```
-
----
-
-#### 4.2.2 ProxyConfig Class
-
-**File**: `config.py:1-580`
-
-**Purpose**: Manage proxy configuration from .env files.
-
-**Constructor**:
-
-```python
-class ProxyConfig:
-    def __init__(self, config_path: Optional[Path] = None):
-        """
-        Initialize proxy configuration.
-
-        Args:
-            config_path: Path to .env configuration file
-        """
-```
-
----
-
-**Key Methods**:
-
-##### `validate() -> bool`
-
-**Location**: `config.py:145-162`
-
-**Purpose**: Validate required configuration values.
-
-**Returns**: `True` if configuration is valid, `False` otherwise
-
-**Validation Checks**:
-
-- Azure: API key format, endpoint URL, API version
-- GitHub: Token format, endpoint validity
-- OpenAI: API key presence
-
-**Example**:
-
-```python
-from amplihack.proxy.config import ProxyConfig
-
-config = ProxyConfig(Path("azure.env"))
-if config.validate():
-    print("Configuration valid")
-else:
-    errors = config.get_validation_errors()
-    print(f"Validation failed: {errors}")
-```
-
----
-
-##### `get_azure_deployment(model_name: str) -> Optional[str]`
-
-**Location**: `config.py:299-308`
-
-**Purpose**: Map OpenAI model names to Azure deployment names.
-
-**Parameters**:
-
-- `model_name`: OpenAI model name (e.g., "gpt-4", "gpt-4-turbo")
-
-**Returns**: Azure deployment name or None
-
-**Model Mapping**:
-
-| OpenAI Model  | Azure Deployment Variable   |
-| ------------- | --------------------------- |
-| gpt-4         | AZURE_GPT4_DEPLOYMENT       |
-| gpt-4-turbo   | AZURE_GPT4_TURBO_DEPLOYMENT |
-| gpt-4-mini    | AZURE_GPT4_MINI_DEPLOYMENT  |
-| gpt-3.5-turbo | AZURE_GPT35_DEPLOYMENT      |
-
-**Example**:
-
-```python
-deployment = config.get_azure_deployment("gpt-4")
-# Returns: "my-gpt4-deployment"
-```
-
----
-
-##### `is_azure_endpoint() -> bool`
-
-**Location**: `config.py:213-222`
-
-**Purpose**: Check if configuration uses Azure OpenAI endpoint.
-
-**Detection Logic**:
-
-- Checks AZURE_OPENAI_BASE_URL
-- Checks AZURE_OPENAI_ENDPOINT
-- Validates URL contains ".openai.azure.com"
-
-**Example**:
-
-```python
-if config.is_azure_endpoint():
-    # Use Azure-specific handling
-    pass
-```
-
----
-
-##### `is_github_endpoint() -> bool`
-
-**Location**: `config.py:387-394`
-
-**Purpose**: Check if configuration uses GitHub Copilot endpoint.
-
-**Detection Logic**:
-
-- Checks GITHUB_COPILOT_ENDPOINT
-- Validates endpoint is api.github.com
-- Checks GITHUB_COPILOT_ENABLED flag
-
-**Example**:
-
-```python
-if config.is_github_endpoint():
-    # Use GitHub Copilot handling
-    pass
-```
-
----
-
-#### 4.2.3 AzureUnifiedHandler Class
-
-**File**: `azure_unified_handler.py:1-400`
-
-**Purpose**: Handle Azure OpenAI request/response transformation.
-
-**Key Methods**:
-
-##### `handle_request(request_data: dict) -> dict`
-
-**Location**: `azure_unified_handler.py:100-250`
-
-**Purpose**: Transform Anthropic request to Azure OpenAI format.
-
-**Transformations**:
-
-1. Map model name (claude-_ → gpt-_)
-2. Convert message format
-3. Add Azure-specific parameters
-4. Set API version and authentication
-
-**Example**:
-
-```python
-handler = AzureUnifiedHandler(config)
-azure_request = handler.handle_request(anthropic_request)
-```
-
----
-
-##### `transform_response(azure_response: dict) -> dict`
-
-**Location**: `azure_unified_handler.py:300-400`
-
-**Purpose**: Transform Azure response to Anthropic format.
-
-**Transformations**:
-
-1. Convert message format
-2. Map usage statistics
-3. Handle streaming chunks
-4. Convert error format
-
----
-
-#### 4.2.4 ProxyManager Class
-
-**File**: `manager.py:30-250`
-
-**Purpose**: Manage proxy lifecycle (start/stop/status).
-
-**Key Methods**:
-
-```python
-def start_proxy() -> bool:
-    """Start proxy server in background."""
-
-def stop_proxy() -> None:
-    """Stop proxy server."""
-
-def is_running() -> bool:
-    """Check if proxy is running."""
-
-def get_proxy_url() -> str:
-    """Get proxy base URL."""
-```
-
-**Example**:
-
-```python
-from amplihack.proxy.manager import ProxyManager
-
-mgr = ProxyManager(config_path=Path("azure.env"))
-if mgr.start_proxy():
-    print(f"Proxy running at: {mgr.get_proxy_url()}")
-    # Use proxy
-    mgr.stop_proxy()
-```
-
----
-
-### 4.3 Bundle Generator Module
+### 4.2 Bundle Generator Module
 
 **Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/bundle_generator/`
 
@@ -1793,7 +1386,6 @@ dependencies = [
     "fastapi>=0.68.0",
     "uvicorn>=0.15.0",
     "aiohttp>=3.8.0",
-    "litellm>=1.0.0",
     "python-dotenv>=0.19.0",
 ]
 
@@ -1879,124 +1471,7 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 
 ---
 
-### 5.3 Proxy Configuration
-
-#### 5.3.1 Azure OpenAI Configuration
-
-**File**: `azure.env` (user-created in project root)
-
-**Template** (see `.env.security-template`):
-
-```bash
-# Required: Azure OpenAI credentials
-OPENAI_API_KEY=your-azure-api-key-here
-OPENAI_BASE_URL=https://your-instance.openai.azure.com/openai/deployments/gpt-4/chat/completions?api-version=2025-01-01-preview
-
-# Or use separate endpoint and version
-AZURE_OPENAI_ENDPOINT=https://your-instance.openai.azure.com
-AZURE_OPENAI_API_KEY=your-azure-api-key-here
-AZURE_OPENAI_API_VERSION=2025-01-01-preview
-
-# Model mappings to your Azure deployments
-BIG_MODEL=gpt-4
-MIDDLE_MODEL=gpt-4
-SMALL_MODEL=gpt-4o-mini
-
-# Optional: Specific deployment names
-AZURE_GPT4_DEPLOYMENT=my-gpt4-deployment
-AZURE_GPT4_TURBO_DEPLOYMENT=my-gpt4-turbo-deployment
-AZURE_GPT4_MINI_DEPLOYMENT=my-gpt4-mini-deployment
-AZURE_GPT35_DEPLOYMENT=my-gpt35-deployment
-
-# Performance settings
-REQUEST_TIMEOUT=300            # Timeout in seconds
-MAX_TOKENS_LIMIT=512000        # Maximum context size
-MAX_RETRIES=2                  # Retry attempts
-
-# Proxy settings
-PORT=8000                      # Proxy port
-HOST=127.0.0.1                 # Proxy host
-LOG_LEVEL=INFO                 # Logging level
-```
-
-**Validation** (`proxy/config.py:240-297`):
-
-- API key format validation
-- Endpoint URL validation (must be HTTPS)
-- API version format (YYYY-MM-DD or YYYY-MM-DD-preview)
-- Deployment name validation
-
-**Usage**:
-
-```bash
-amplihack claude --with-proxy-config ./azure.env
-```
-
----
-
-#### 5.3.2 GitHub Copilot Configuration
-
-**File**: `github.env` (user-created)
-
-```bash
-# GitHub Copilot configuration
-GITHUB_TOKEN=ghp_your_token_here
-GITHUB_COPILOT_ENABLED=true
-GITHUB_COPILOT_ENDPOINT=https://api.github.com
-
-# Optional: LiteLLM integration
-GITHUB_COPILOT_LITELLM_ENABLED=true
-GITHUB_COPILOT_MODEL=copilot-gpt-4
-
-# Proxy settings
-PORT=8000
-HOST=127.0.0.1
-LOG_LEVEL=INFO
-```
-
-**Token Format** (`proxy/config.py:481-506`):
-
-- GitHub tokens: `gho_`, `ghp_`, `ghs_`, `ghu_`, `ghr_` prefix
-- Legacy tokens: 40-character hex string
-- Test tokens: `test-`, `fake-`, `dummy-` prefix (for development)
-
-**Usage**:
-
-```bash
-amplihack copilot --with-proxy-config ./github.env
-```
-
----
-
-#### 5.3.3 Model Mapping
-
-**Azure Model Mapping** (`proxy/azure_models.py:20-150`):
-
-| Anthropic Model | Default Azure Model | Configurable Via |
-| --------------- | ------------------- | ---------------- |
-| claude-3-opus   | gpt-4-turbo         | BIG_MODEL        |
-| claude-3-sonnet | gpt-4               | MIDDLE_MODEL     |
-| claude-3-haiku  | gpt-4o-mini         | SMALL_MODEL      |
-| claude-sonnet-4 | gpt-4               | MIDDLE_MODEL     |
-
-**GitHub Model Mapping** (`proxy/github_models.py:1-150`):
-
-| OpenAI Model  | GitHub Copilot Model  |
-| ------------- | --------------------- |
-| gpt-4         | copilot-gpt-4         |
-| gpt-4-turbo   | copilot-gpt-4-turbo   |
-| gpt-3.5-turbo | copilot-gpt-3.5-turbo |
-
-**Custom Mapping**:
-
-```bash
-# In azure.env
-AZURE_MODEL_MAPPING='{"claude-3-opus": "my-custom-gpt4-deployment"}'
-```
-
----
-
-### 5.4 Security Configuration
+### 5.3 Security Configuration
 
 #### 5.4.1 XPIA Security Configuration
 
@@ -2153,26 +1628,8 @@ amplihack --help
 **Create Azure configuration**:
 
 ```bash
-# Copy example configuration
-cp .env.security-template azure.env
-
-# Edit with your credentials
-nano azure.env
-
-# Test configuration
-python -c "
-from amplihack.proxy.config import ProxyConfig
-from pathlib import Path
-config = ProxyConfig(Path('azure.env'))
-print('Valid:', config.validate())
-"
-```
-
-**Launch development instance**:
-
-```bash
-# With Azure proxy
-amplihack claude --with-proxy-config ./azure.env
+# Launch development instance
+amplihack claude
 
 # With local changes (editable install)
 python -m amplihack claude
@@ -2187,13 +1644,11 @@ amplihack-worktree-921-922/
 ├── .claude/                    # Claude configuration (version controlled)
 ├── src/amplihack/              # Source code
 │   ├── launcher/
-│   ├── proxy/
 │   ├── bundle_generator/
 │   ├── security/
 │   └── ...
 ├── tests/                      # Test suite
 │   ├── launcher/
-│   ├── proxy/
 │   └── ...
 ├── docs/                       # Documentation
 ├── examples/                   # Example scripts
@@ -2394,7 +1849,6 @@ pytest --cov=amplihack tests/
 
 # Specific module
 pytest tests/launcher/
-pytest tests/proxy/
 ```
 
 **Test configuration** (`pyproject.toml:78-105`):
@@ -2425,10 +1879,6 @@ tests/
 │   ├── test_core.py
 │   ├── test_detector.py
 │   └── test_repo_checkout.py
-├── proxy/
-│   ├── test_config.py
-│   ├── test_integrated_proxy.py
-│   └── test_azure_handler.py
 ├── bundle_generator/
 │   ├── test_parser.py
 │   ├── test_generator.py
@@ -2446,50 +1896,21 @@ tests/
 **Example test**:
 
 ```python
-# tests/proxy/test_config.py
+# tests/launcher/test_core.py
 
 import pytest
-from pathlib import Path
-from amplihack.proxy.config import ProxyConfig
+from unittest.mock import patch
+from amplihack.launcher.core import ClaudeLauncher
 
-def test_azure_config_validation():
-    """Test Azure configuration validation."""
-    # Create test config file
-    test_config = Path("test_azure.env")
-    test_config.write_text("""
-AZURE_OPENAI_API_KEY=test-key-12345678901234567890
-AZURE_OPENAI_ENDPOINT=https://test.openai.azure.com
-AZURE_OPENAI_API_VERSION=2025-01-01-preview
-    """)
+def test_launcher_basic_creation():
+    """Test basic launcher creation."""
+    launcher = ClaudeLauncher()
+    assert launcher is not None
 
-    try:
-        # Load and validate
-        config = ProxyConfig(test_config)
-        assert config.is_azure_endpoint()
-        assert config.validate()
-
-        # Test model mapping
-        deployment = config.get_azure_deployment("gpt-4")
-        assert deployment is not None
-    finally:
-        # Cleanup
-        test_config.unlink()
-
-def test_invalid_config():
-    """Test that invalid configuration is rejected."""
-    test_config = Path("test_invalid.env")
-    test_config.write_text("""
-AZURE_OPENAI_API_KEY=short
-AZURE_OPENAI_ENDPOINT=http://insecure.com
-    """)
-
-    try:
-        config = ProxyConfig(test_config)
-        assert not config.validate()
-        errors = config.get_validation_errors()
-        assert len(errors) > 0
-    finally:
-        test_config.unlink()
+def test_launcher_with_repo():
+    """Test launcher with repository checkout."""
+    launcher = ClaudeLauncher(checkout_repo="owner/repo")
+    assert launcher is not None
 ```
 
 ---
@@ -2687,98 +2108,7 @@ amplihack claude
 
 ---
 
-### 7.2 Configuring Azure Integration
-
-#### Task: Set up Azure OpenAI integration for Claude Code
-
-**Time**: 5 minutes
-
-**Steps**:
-
-1. **Obtain Azure Credentials**:
-
-- Azure OpenAI endpoint URL
-- API key
-- Deployment names (optional)
-- API version (e.g., 2025-01-01-preview)
-
-2. **Create Configuration File**:
-
-```bash
-# Create azure.env in project root
-cat > azure.env << 'EOF'
-# Azure OpenAI Configuration
-OPENAI_API_KEY=your-actual-azure-api-key
-AZURE_OPENAI_ENDPOINT=https://your-instance.openai.azure.com
-AZURE_OPENAI_API_VERSION=2025-01-01-preview
-
-# Model mappings
-BIG_MODEL=gpt-4
-MIDDLE_MODEL=gpt-4
-SMALL_MODEL=gpt-4o-mini
-
-# Optional: Specific deployments
-AZURE_GPT4_DEPLOYMENT=my-gpt4-deployment
-
-# Performance settings
-REQUEST_TIMEOUT=300
-MAX_TOKENS_LIMIT=512000
-MAX_RETRIES=2
-
-# Proxy settings
-PORT=8000
-HOST=127.0.0.1
-LOG_LEVEL=INFO
-EOF
-```
-
-3. **Validate Configuration**:
-
-```bash
-python -c "
-from amplihack.proxy.config import ProxyConfig
-from pathlib import Path
-
-config = ProxyConfig(Path('azure.env'))
-if config.validate():
-    print('✓ Configuration valid')
-    print(f'  Endpoint: {config.get_azure_endpoint()}')
-    print(f'  API Version: {config.get_azure_api_version()}')
-else:
-    print('✗ Configuration invalid')
-    for error in config.get_validation_errors():
-        print(f'  - {error}')
-"
-```
-
-4. **Launch Claude with Azure**:
-
-```bash
-amplihack claude --with-proxy-config ./azure.env
-```
-
-5. **Verify Proxy Connection**:
-
-```bash
-# Check proxy logs
-tail -f /tmp/amplihack_logs/proxy-stdout-*.log
-
-# In Claude, run a test query:
-# "Hello, can you confirm you're running through Azure?"
-```
-
-**Troubleshooting**:
-
-- **API Key Invalid**: Verify key format (20+ characters, alphanumeric)
-- **Endpoint Unreachable**: Check HTTPS URL and network connectivity
-- **Model Not Found**: Verify deployment names match Azure configuration
-- **Timeout**: Increase REQUEST_TIMEOUT in config
-
-**See Also**: Section 5.3 (Proxy Configuration), Section 8.1 (Common Issues)
-
----
-
-### 7.3 Adding Slash Commands
+### 7.2 Adding Slash Commands
 
 #### Task: Create a custom slash command
 
@@ -2884,96 +2214,7 @@ See: `~/.amplihack/.claude/commands/amplihack/my-command.md`
 
 ---
 
-### 7.4 Working with Proxy
-
-#### Task: Debug proxy issues and monitor requests
-
-**Time**: Varies
-
----
-
-**7.4.1 Enable Proxy Logging**:
-
-```bash
-# In azure.env
-LOG_LEVEL=DEBUG
-
-# Launch with logging
-amplihack claude --with-proxy-config ./azure.env
-```
-
-**7.4.2 Monitor Proxy Logs**:
-
-```bash
-# Tail stdout
-tail -f /tmp/amplihack_logs/proxy-stdout-*.log
-
-# Tail stderr
-tail -f /tmp/amplihack_logs/proxy-stderr-*.log
-
-# Or use the auto-opened terminal window (macOS)
-# Launcher automatically opens terminal with both logs
-```
-
-**7.4.3 Test Proxy Directly**:
-
-```python
-import requests
-
-# Test proxy health
-response = requests.get("http://127.0.0.1:8000/health")
-print(response.json())
-# {"status": "healthy", "endpoint_type": "azure"}
-
-# Test chat completion
-response = requests.post(
-    "http://127.0.0.1:8000/v1/messages",
-    headers={"x-api-key": "test-key"},
-    json={
-        "model": "claude-sonnet-4",
-        "messages": [{"role": "user", "content": "Hello"}],
-        "max_tokens": 100
-    }
-)
-print(response.json())
-```
-
-**7.4.4 Debug Configuration**:
-
-```bash
-# Check endpoint detection
-python -c "
-from amplihack.proxy.config import ProxyConfig
-from pathlib import Path
-
-config = ProxyConfig(Path('azure.env'))
-print(f'Endpoint type: {config.get_endpoint_type()}')
-print(f'Is Azure: {config.is_azure_endpoint()}')
-print(f'Is GitHub: {config.is_github_endpoint()}')
-"
-```
-
-**7.4.5 Test Model Mapping**:
-
-```bash
-python -c "
-from amplihack.proxy.config import ProxyConfig
-from pathlib import Path
-
-config = ProxyConfig(Path('azure.env'))
-
-models = ['gpt-4', 'gpt-4-turbo', 'gpt-4o-mini']
-for model in models:
-    deployment = config.get_azure_deployment(model)
-    print(f'{model} -> {deployment}')
-"
-```
-
-**See Also**: Section 4.2 (Proxy Module), Section 8.2 (Debugging Guide)
-
----
-
-### 7.5 Security Integration
+### 7.4 Security Integration
 
 #### Task: Integrate XPIA security validation
 
@@ -3147,108 +2388,7 @@ claude --version
 
 ---
 
-#### 8.1.2 Proxy Connection Failed
-
-**Problem**: `Failed to connect to proxy at http://127.0.0.1:8000`
-
-**Diagnosis**:
-
-```bash
-# Check if proxy is running
-curl http://127.0.0.1:8000/health
-
-# Check logs
-tail -f /tmp/amplihack_logs/proxy-stderr-*.log
-```
-
-**Solutions**:
-
-1. **Port already in use**:
-
-   ```bash
-   # In azure.env
-   PORT=8001  # Use different port
-   ```
-
-2. **Configuration invalid**:
-
-   ```bash
-   python -c "
-   from amplihack.proxy.config import ProxyConfig
-   from pathlib import Path
-   config = ProxyConfig(Path('azure.env'))
-   print('Valid:', config.validate())
-   print('Errors:', config.get_validation_errors())
-   "
-   ```
-
-3. **Network issue**:
-   ```bash
-   # Test Azure endpoint directly
-   curl -H "api-key: $AZURE_OPENAI_API_KEY" \
-     "$AZURE_OPENAI_ENDPOINT/openai/deployments/gpt-4/chat/completions?api-version=2025-01-01-preview"
-   ```
-
----
-
-#### 8.1.3 Azure API Key Invalid
-
-**Problem**: `Invalid Azure API key format`
-
-**Validation** (`proxy/config.py:521-538`):
-
-```bash
-# Check key format
-python -c "
-import re
-key = 'your-key-here'
-pattern = r'[a-zA-Z0-9\-_]{20,}'
-print('Valid format:', bool(re.match(pattern, key)))
-print('Length:', len(key))
-"
-```
-
-**Requirements**:
-
-- Minimum 20 characters
-- Alphanumeric with dashes/underscores
-- Test keys allowed (prefix: `test-`, `sk-test-`, `dummy-`)
-
-**Solution**:
-
-- Verify key from Azure Portal
-- Ensure no extra spaces or quotes
-- Check key permissions (should have inference access)
-
----
-
-#### 8.1.4 Model Not Found
-
-**Problem**: `Azure OpenAI deployment 'gpt-4' not found`
-
-**Diagnosis**:
-
-```bash
-# List your deployments in Azure Portal
-# Or use Azure CLI
-az cognitiveservices account deployment list \
-  --name your-instance \
-  --resource-group your-rg
-```
-
-**Solution**:
-
-Update `azure.env` with actual deployment names:
-
-```bash
-# Replace with your actual deployment names
-AZURE_GPT4_DEPLOYMENT=my-actual-gpt4-deployment-name
-AZURE_GPT4_TURBO_DEPLOYMENT=my-gpt4-turbo-name
-```
-
----
-
-#### 8.1.5 UVX Mode Issues
+#### 8.1.2 UVX Mode Issues
 
 **Problem**: `.claude directory not found when using uvx`
 
@@ -3331,15 +2471,6 @@ export AMPLIHACK_DEBUG=1
 amplihack claude
 ```
 
-**Proxy Debug**:
-
-```bash
-# In azure.env
-LOG_LEVEL=DEBUG
-
-amplihack claude --with-proxy-config ./azure.env
-```
-
 **Claude Debug**:
 
 ```bash
@@ -3356,52 +2487,7 @@ amplihack claude
 
 ---
 
-#### 8.2.2 Inspect Configuration
-
-```python
-# Debug script: debug_config.py
-from amplihack.proxy.config import ProxyConfig
-from pathlib import Path
-
-config = ProxyConfig(Path('azure.env'))
-
-print("=== Configuration Debug ===")
-print(f"Valid: {config.validate()}")
-print(f"Errors: {config.get_validation_errors()}")
-print()
-
-print("=== Endpoint Detection ===")
-print(f"Endpoint type: {config.get_endpoint_type()}")
-print(f"Is Azure: {config.is_azure_endpoint()}")
-print(f"Is GitHub: {config.is_github_endpoint()}")
-print()
-
-print("=== Azure Configuration ===")
-print(f"Endpoint: {config.get_azure_endpoint()}")
-print(f"API Version: {config.get_azure_api_version()}")
-print()
-
-print("=== Model Mappings ===")
-for model in ['gpt-4', 'gpt-4-turbo', 'gpt-4o-mini']:
-    deployment = config.get_azure_deployment(model)
-    print(f"{model:20} -> {deployment}")
-print()
-
-print("=== Sanitized Config ===")
-sanitized = config.to_sanitized_dict()
-for key, value in sorted(sanitized.items()):
-    print(f"{key:30} = {value}")
-```
-
-Run:
-
-```bash
-python debug_config.py
-```
-
----
-
-#### 8.2.3 Test Security Validation
+#### 8.2.2 Test Security Validation
 
 ```python
 # Debug script: debug_security.py
@@ -3485,25 +2571,11 @@ for section in required_sections:
 ```bash
 # Profile startup
 time amplihack claude --help
-
-# Check proxy startup
-time python -c "
-from amplihack.proxy.manager import ProxyManager
-from pathlib import Path
-mgr = ProxyManager(Path('azure.env'))
-mgr.start_proxy()
-"
 ```
 
 **Solutions**:
 
-1. **Disable proxy if not needed**:
-
-   ```bash
-   amplihack claude  # Without --with-proxy-config
-   ```
-
-2. **Use faster path resolution** (automatic):
+1. **Use faster path resolution** (automatic):
    - Path caching enabled by default (`launcher/core.py:70-71`)
 
 3. **Skip prerequisites check** (not recommended):
@@ -3514,52 +2586,7 @@ mgr.start_proxy()
 
 ---
 
-#### 8.3.2 Slow Proxy Responses
-
-**Problem**: API calls through proxy are slow
-
-**Diagnosis**:
-
-```bash
-# Test direct Azure endpoint
-time curl -X POST "$AZURE_OPENAI_ENDPOINT/openai/deployments/gpt-4/chat/completions?api-version=2025-01-01-preview" \
-  -H "api-key: $AZURE_OPENAI_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"messages":[{"role":"user","content":"test"}],"max_tokens":10}'
-
-# Test proxy endpoint
-time curl -X POST "http://127.0.0.1:8000/v1/messages" \
-  -H "x-api-key: test-key" \
-  -H "Content-Type: application/json" \
-  -d '{"model":"claude-sonnet-4","messages":[{"role":"user","content":"test"}],"max_tokens":10}'
-```
-
-**Solutions**:
-
-1. **Increase timeout**:
-
-   ```bash
-   # In azure.env
-   REQUEST_TIMEOUT=600  # 10 minutes
-   ```
-
-2. **Reduce max tokens**:
-
-   ```bash
-   # In azure.env
-   MAX_TOKENS_LIMIT=100000  # Smaller context
-   ```
-
-3. **Use faster Azure region**:
-   - Check Azure endpoint latency
-   - Consider using endpoint closer to your location
-
-4. **Enable connection pooling**:
-   - Proxy uses aiohttp with connection pooling by default
-
----
-
-#### 8.3.3 High Memory Usage
+#### 8.3.2 High Memory Usage
 
 **Problem**: Process using > 1GB memory
 
@@ -3575,14 +2602,7 @@ htop -p $(pgrep -f amplihack)
 
 **Solutions**:
 
-1. **Reduce context size**:
-
-   ```bash
-   # In azure.env
-   MAX_TOKENS_LIMIT=50000  # Smaller context
-   ```
-
-2. **Clear runtime logs**:
+1. **Clear runtime logs**:
 
    ```bash
    rm -rf .claude/runtime/logs/old-sessions/
@@ -3815,37 +2835,28 @@ if __name__ == "__main__":
 import sys
 from pathlib import Path
 from amplihack.launcher.core import ClaudeLauncher
-from amplihack.proxy.manager import ProxyManager
 
-def launch_with_azure(
+def launch_claude(
     project_dir: Path,
-    azure_config: Path,
     auto_mode: bool = False
 ) -> int:
     """
-    Launch Claude Code with Azure integration.
+    Launch Claude Code programmatically.
 
     Args:
         project_dir: Project directory with .claude config
-        azure_config: Path to Azure configuration file
         auto_mode: Enable autonomous mode
 
     Returns:
         Exit code from Claude process
     """
-    # Initialize proxy manager
-    proxy_mgr = ProxyManager(config_path=azure_config)
-
     # Prepare additional arguments
     claude_args = []
     if auto_mode:
         claude_args.extend(["--auto"])
 
     # Initialize launcher
-    launcher = ClaudeLauncher(
-        proxy_manager=proxy_mgr,
-        claude_args=claude_args
-    )
+    launcher = ClaudeLauncher(claude_args=claude_args)
 
     # Change to project directory
     import os
@@ -3853,7 +2864,6 @@ def launch_with_azure(
 
     # Launch Claude
     print(f"Launching Claude in: {project_dir}")
-    print(f"Azure config: {azure_config}")
     print(f"Auto mode: {auto_mode}")
 
     exit_code = launcher.launch()
@@ -3861,23 +2871,14 @@ def launch_with_azure(
     return exit_code
 
 def main():
-    # Configuration
     project_dir = Path("/path/to/my/project")
-    azure_config = Path("azure.env")
 
-    # Validate paths
     if not project_dir.exists():
         print(f"Error: Project directory not found: {project_dir}")
         return 1
 
-    if not azure_config.exists():
-        print(f"Error: Azure config not found: {azure_config}")
-        return 1
-
-    # Launch
-    exit_code = launch_with_azure(
+    exit_code = launch_claude(
         project_dir=project_dir,
-        azure_config=azure_config,
         auto_mode=False
     )
 
@@ -3891,94 +2892,6 @@ if __name__ == "__main__":
 
 ```bash
 python launch_claude.py
-```
-
----
-
-#### Example: Proxy Health Check
-
-```python
-# check_proxy.py
-
-import asyncio
-import aiohttp
-from pathlib import Path
-from amplihack.proxy.manager import ProxyManager
-
-async def check_proxy_health(proxy_mgr: ProxyManager) -> dict:
-    """Check proxy health and configuration."""
-
-    # Start proxy
-    if not proxy_mgr.start_proxy():
-        return {"error": "Failed to start proxy"}
-
-    try:
-        # Get proxy URL
-        proxy_url = proxy_mgr.get_proxy_url()
-
-        # Check health endpoint
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"{proxy_url}/health") as response:
-                health = await response.json()
-
-        # Test chat completion
-        test_request = {
-            "model": "claude-sonnet-4",
-            "messages": [{"role": "user", "content": "test"}],
-            "max_tokens": 10
-        }
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{proxy_url}/v1/messages",
-                headers={"x-api-key": "test-key"},
-                json=test_request
-            ) as response:
-                if response.status == 200:
-                    chat_test = "✓ Chat completion working"
-                else:
-                    chat_test = f"✗ Chat completion failed: {response.status}"
-
-        return {
-            "proxy_url": proxy_url,
-            "health": health,
-            "chat_test": chat_test,
-            "is_running": proxy_mgr.is_running()
-        }
-
-    finally:
-        # Stop proxy
-        proxy_mgr.stop_proxy()
-
-async def main():
-    # Load proxy configuration
-    config_path = Path("azure.env")
-
-    if not config_path.exists():
-        print(f"Error: Config file not found: {config_path}")
-        return
-
-    # Create proxy manager
-    proxy_mgr = ProxyManager(config_path=config_path)
-
-    # Check health
-    print("Checking proxy health...")
-    result = await check_proxy_health(proxy_mgr)
-
-    if "error" in result:
-        print(f"Error: {result['error']}")
-        return
-
-    # Display results
-    print(f"\nProxy URL: {result['proxy_url']}")
-    print(f"Running: {result['is_running']}")
-    print(f"\nHealth Status:")
-    for key, value in result['health'].items():
-        print(f"  {key}: {value}")
-    print(f"\n{result['chat_test']}")
-
-if __name__ == "__main__":
-    asyncio.run(main())
 ```
 
 ---
@@ -3999,7 +2912,7 @@ if __name__ == "__main__":
 
 **Auto Mode**: Autonomous mode where agents execute multi-turn tasks with minimal user intervention.
 
-**Azure OpenAI**: Microsoft's managed OpenAI service, integrated via the proxy.
+**Azure OpenAI**: Microsoft's managed OpenAI service.
 
 **Bundle Generator**: Tool for creating custom agent bundles from natural language requirements.
 
@@ -4009,19 +2922,11 @@ if __name__ == "__main__":
 
 **.claude Directory**: Configuration directory containing agents, commands, context, and workflows.
 
-**Deployment**: Azure OpenAI model deployment name (e.g., "my-gpt4-deployment").
-
-**Endpoint**: API endpoint URL for Azure OpenAI or GitHub Copilot.
-
-**GitHub Copilot**: GitHub's AI coding assistant, integrated via the proxy.
+**GitHub Copilot**: GitHub's AI coding assistant.
 
 **Intent**: Structured representation of user requirements parsed by the Bundle Generator.
 
 **Launcher**: Component that manages Claude Code execution lifecycle.
-
-**Model Mapping**: Translation between Anthropic model names (claude-_) and Azure models (gpt-_).
-
-**Proxy**: Service that translates Anthropic API calls to Azure OpenAI or GitHub Copilot format.
 
 **Security Level**: XPIA defense strictness (STRICT, HIGH, MODERATE, LOW).
 
@@ -4051,11 +2956,6 @@ if __name__ == "__main__":
 | `src/amplihack/launcher/detector.py`           | .claude detection      | 150   | Stable |
 | `src/amplihack/launcher/repo_checkout.py`      | Repository checkout    | 100   | Stable |
 | `src/amplihack/launcher/auto_mode.py`          | Autonomous mode        | 200   | Stable |
-| `src/amplihack/proxy/integrated_proxy.py`      | Main proxy server      | 500   | Stable |
-| `src/amplihack/proxy/config.py`                | Proxy configuration    | 580   | Stable |
-| `src/amplihack/proxy/azure_unified_handler.py` | Azure request handling | 400   | Stable |
-| `src/amplihack/proxy/azure_models.py`          | Azure model mapping    | 150   | Stable |
-| `src/amplihack/proxy/github_client.py`         | GitHub integration     | 300   | Stable |
 | `src/amplihack/bundle_generator/generator.py`  | Agent generation       | 556   | Stable |
 | `src/amplihack/bundle_generator/parser.py`     | Intent parsing         | 300   | Stable |
 | `src/amplihack/bundle_generator/packager.py`   | Bundle packaging       | 250   | Stable |
@@ -4074,7 +2974,6 @@ if __name__ == "__main__":
 | `.pre-commit-config.yaml`            | Pre-commit hooks         | Root                    |
 | `.gitignore`                         | Git ignore patterns      | Root                    |
 | `.env.security-template`             | Security config template | Root                    |
-| `litellm_standalone_config.yaml`     | LiteLLM config           | Root                    |
 | `~/.amplihack/.claude/settings.json` | Claude settings          | `~/.amplihack/.claude/` |
 
 ---
@@ -4097,7 +2996,6 @@ if __name__ == "__main__":
 | Directory                 | Purpose                | Tests |
 | ------------------------- | ---------------------- | ----- |
 | `tests/launcher/`         | Launcher tests         | 10+   |
-| `tests/proxy/`            | Proxy tests            | 15+   |
 | `tests/bundle_generator/` | Bundle generator tests | 10+   |
 | `tests/security/`         | Security tests         | 8+    |
 
@@ -4134,9 +3032,6 @@ amplihack claude --help
 # Basic launch
 amplihack claude
 
-# With Azure proxy
-amplihack claude --with-proxy-config ./azure.env
-
 # With repository checkout
 amplihack claude --checkout-repo owner/repo
 
@@ -4153,7 +3048,7 @@ amplihack claude --force-staging
 amplihack claude --append-system-prompt ./prompt.md
 
 # Forward args to Claude
-amplihack claude -- --model azure/gpt-4
+amplihack claude -- --model claude-sonnet-4-5-20250929
 ```
 
 ---
@@ -4222,7 +3117,6 @@ pytest --cov=amplihack tests/
 
 # Specific module
 pytest tests/launcher/
-pytest tests/proxy/
 
 # Run pre-commit hooks
 pre-commit run --all-files

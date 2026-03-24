@@ -11,7 +11,7 @@ from amplihack.eval.meta_eval_experiment import (
 
 
 def _mock_llm_response(text: str) -> MagicMock:
-    """Create a mock litellm response."""
+    """Create a mock LLM response."""
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = text
@@ -97,7 +97,7 @@ class TestMetaEvalExperiment:
             assert "question" in q
             assert "expected_answer" in q
 
-    @patch("litellm.completion")
+    @patch("amplihack.llm.completion")
     def test_run_experiment_produces_report(self, mock_completion, tmp_path):
         """Full experiment produces a structured report."""
         # Mock all LLM calls
@@ -136,7 +136,7 @@ class TestMetaEvalExperiment:
         assert report.knowledge_base_size > 0
         assert 0.0 <= report.overall_score <= 1.0
 
-    @patch("litellm.completion")
+    @patch("amplihack.llm.completion")
     def test_run_experiment_saves_report(self, mock_completion, tmp_path):
         """Experiment saves JSON report to output directory."""
         teacher_msg = _mock_llm_response("Teaching content.")
@@ -174,7 +174,7 @@ class TestMetaEvalExperiment:
         assert "overall_score" in saved
         assert "knowledge_base_size" in saved
 
-    @patch("litellm.completion")
+    @patch("amplihack.llm.completion")
     def test_experiment_handles_llm_errors(self, mock_completion, tmp_path):
         """Experiment handles LLM failures gracefully."""
         mock_completion.side_effect = Exception("API Error")

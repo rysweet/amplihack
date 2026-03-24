@@ -357,12 +357,10 @@ Full reference:
 <details>
 <summary>Integration & Compatibility (5 features)</summary>
 
-- **[GitHub Copilot CLI](https://rysweet.github.io/amplihack/github-copilot-litellm-integration/)**
+- **[GitHub Copilot CLI](https://rysweet.github.io/amplihack/COPILOT_CLI/)**
   — Full Copilot compatibility
 - **[Microsoft Amplifier](https://github.com/microsoft/amplifier)** —
   Multi-model support
-- **[Azure OpenAI Proxy](https://rysweet.github.io/amplihack/PROXY_CONFIG_GUIDE/)**
-  — Use Azure models via Claude Code
 - **[RustyClawd](#rustyclawd-integration)** — High-performance Rust launcher
   (5-10x faster startup)
 - **[Remote Execution](~/.amplihack/.claude/tools/amplihack/remote/README.md)**
@@ -478,28 +476,6 @@ amplihack amplifier
 
 Supports all models available in GitHub Copilot ecosystem.
 
-### Azure OpenAI via Proxy
-
-Create `azure.env`:
-
-```env
-AZURE_OPENAI_API_KEY=your-api-key
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4.1
-AZURE_OPENAI_API_VERSION=2024-12-01-preview  # Optional
-```
-
-Launch with configuration:
-
-```bash
-amplihack launch --with-proxy-config ./azure.env
-```
-
-**Security**: Never commit API keys to version control.
-
-Full guide:
-[docs/PROXY_CONFIG_GUIDE.md](https://rysweet.github.io/amplihack/PROXY_CONFIG_GUIDE/)
-
 ### Workflow Customization
 
 Edit `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md` to customize the
@@ -514,8 +490,6 @@ Custom workflows:
 
 - **[Prerequisites](https://rysweet.github.io/amplihack/PREREQUISITES/)** -
   Platform setup, runtime dependencies, tool installation
-- **[Proxy Configuration](https://rysweet.github.io/amplihack/PROXY_CONFIG_GUIDE/)** -
-  Azure OpenAI setup for Claude Code
 - **[First Session Tutorial](#first-session)** - Interactive guide to amplihack
   basics
 
@@ -550,7 +524,7 @@ Custom workflows:
 
 - **[Skills System](~/.amplihack/.claude/skills/README.md)** - 85+ skills
   including office, Azure, and workflow patterns
-- **[GitHub Copilot Integration](https://rysweet.github.io/amplihack/github-copilot-litellm-integration/)** -
+- **[GitHub Copilot Integration](https://rysweet.github.io/amplihack/COPILOT_CLI/)** -
   Full CLI support
 - **[Awesome-Copilot Integration](docs/howto/awesome-copilot-integration.md)** -
   MCP server and plugin marketplace
@@ -617,7 +591,7 @@ natively.
 | Core CLI (`amplihack claude/copilot/amplifier`) |              ✅              |         ✅          |
 | Workflows & recipes                             |              ✅              |         ✅          |
 | Persistent memory                               |              ✅              |         ✅          |
-| Proxy (LiteLLM)                                 |              ✅              |         ✅          |
+| Direct API access                                |              ✅              |         ✅          |
 | Fleet management (multi-VM)                     |    ❌ (requires tmux/SSH)    |         ✅          |
 | Rust recipe runner                              |        ⚠️ (untested)         |         ✅          |
 | Docker sandbox                                  | ⚠️ (Docker Desktop required) |         ✅          |

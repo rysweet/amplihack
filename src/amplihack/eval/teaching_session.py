@@ -6,7 +6,7 @@ Student provides self-explanations (Chi 1994) for metacognition grading.
 
 Philosophy:
 - Single responsibility: Orchestrate teaching dialogue
-- LLM-powered teacher and student via litellm
+- LLM-powered teacher and student via SDK adapter
 - Self-explanation prompts for metacognition evaluation
 - Stateless turns; accumulated via history list
 """
@@ -18,7 +18,7 @@ import logging
 import os
 from dataclasses import dataclass
 
-import litellm  # type: ignore[import-unresolved]
+from amplihack.llm import completion
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class TeachingConfig:
 
     Attributes:
         max_turns: Number of teacher-student exchanges
-        model: LLM model identifier (litellm format)
+        model: LLM model identifier
         teacher_system_prompt: System prompt for teacher role
         student_system_prompt: System prompt for student role
     """
@@ -119,7 +119,7 @@ class TeachingSession:
         self.knowledge_base = knowledge_base
         self.config = config
 
-    def run(self) -> TeachingResult:
+    async def run(self) -> TeachingResult:
         """Run the full teaching session.
 
         Returns:
@@ -132,10 +132,10 @@ class TeachingSession:
         for turn_num in range(1, self.config.max_turns + 1):
             try:
                 # Teacher generates a teaching message
-                teacher_msg = self._generate_teacher_message(turn_num, history)
+                teacher_msg = await self._generate_teacher_message(turn_num, history)
 
                 # Student responds with self-explanation
-                student_resp, self_explanation = self._generate_student_response(
+                student_resp, self_explanation = await self._generate_student_response(
                     teacher_msg, history
                 )
 
@@ -168,7 +168,7 @@ class TeachingSession:
             student_accuracy=accuracy,
         )
 
-    def _generate_teacher_message(self, turn_number: int, history: list[dict[str, str]]) -> str:
+    async def _generate_teacher_message(self, turn_number: int, history: list[dict[str, str]]) -> str:
         """Generate the teacher's message for this turn.
 
         Args:
@@ -196,18 +196,18 @@ class TeachingSession:
             f"Teach the next concept(s). Do not repeat what was already taught."
         )
 
-        response = litellm.completion(
-            model=self.config.model,
-            messages=[
+        response_text = await completion(
+            [
                 {"role": "system", "content": self.config.teacher_system_prompt},
                 {"role": "user", "content": prompt},
             ],
+            model=self.config.model,
             temperature=0.7,
         )
 
-        return response.choices[0].message.content.strip()
+        return response_text.strip()
 
-    def _generate_student_response(
+    async def _generate_student_response(
         self,
         teacher_message: str,
         history: list[dict[str, str]],
@@ -236,16 +236,16 @@ class TeachingSession:
             f"Remember to include both your response and self-explanation as JSON."
         )
 
-        response = litellm.completion(
-            model=self.config.model,
-            messages=[
+        response_text = await completion(
+            [
                 {"role": "system", "content": self.config.student_system_prompt},
                 {"role": "user", "content": prompt},
             ],
+            model=self.config.model,
             temperature=0.7,
         )
 
-        response_text = response.choices[0].message.content.strip()
+        response_text = response_text.strip()
 
         # Parse JSON response
         try:

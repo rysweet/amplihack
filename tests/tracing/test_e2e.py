@@ -12,7 +12,6 @@ Coverage Focus (10% of test suite):
 """
 
 import json
-import subprocess
 import time
 from unittest.mock import patch
 
@@ -84,112 +83,6 @@ def test_complete_workflow_trace_disabled(tmp_path):
     assert not trace_file.exists()
 
 
-@pytest.mark.e2e
-def test_multi_request_session(tmp_path):
-    """Test session with multiple API requests."""
-    trace_file = tmp_path / "trace.jsonl"
-
-    from amplihack.proxy.litellm_callbacks import register_trace_callbacks
-
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks(enabled=True, trace_file=str(trace_file))
-
-    # Simulate multiple requests
-    with callback.trace_logger:
-        for i in range(5):
-            callback.on_llm_start(
-                {
-                    "model": "claude-3-sonnet-20240229",
-                    "messages": [{"role": "user", "content": f"Request {i}"}],
-                }
-            )
-
-            callback.on_llm_end(
-                {"response": {"choices": [{"message": {"content": f"Response {i}"}}]}}
-            )
-
-    # Verify all requests logged
-    content = trace_file.read_text()
-    lines = content.strip().split("\n")
-    assert len(lines) == 10  # 5 start + 5 end
-
-    # Verify chronological order
-    events = [json.loads(line) for line in lines]
-    timestamps = [event["timestamp"] for event in events]
-
-    # Timestamps should be in order
-    assert timestamps == sorted(timestamps)
-
-
-@pytest.mark.e2e
-def test_streaming_request_e2e(tmp_path):
-    """Test streaming request end-to-end."""
-    trace_file = tmp_path / "trace.jsonl"
-
-    from amplihack.proxy.litellm_callbacks import register_trace_callbacks
-
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks(enabled=True, trace_file=str(trace_file))
-
-    # Simulate streaming request
-    with callback.trace_logger:
-        callback.on_llm_start(
-            {
-                "model": "claude-3-sonnet-20240229",
-                "messages": [{"role": "user", "content": "Tell me a story"}],
-                "stream": True,
-            }
-        )
-
-        # Simulate streaming chunks
-        chunks = ["Once ", "upon ", "a ", "time ", "there ", "was ", "a ", "test."]
-        for chunk in chunks:
-            callback.on_llm_stream({"chunk": {"choices": [{"delta": {"content": chunk}}]}})
-
-        callback.on_llm_end({"response": {"usage": {"total_tokens": 50}}})
-
-    # Verify streaming logged
-    content = trace_file.read_text()
-    lines = content.strip().split("\n")
-    assert len(lines) == 10  # 1 start + 8 chunks + 1 end
-
-
-@pytest.mark.e2e
-def test_error_handling_e2e(tmp_path):
-    """Test error handling end-to-end."""
-    trace_file = tmp_path / "trace.jsonl"
-
-    from amplihack.proxy.litellm_callbacks import register_trace_callbacks
-
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks(enabled=True, trace_file=str(trace_file))
-
-    # Simulate request with error
-    with callback.trace_logger:
-        callback.on_llm_start(
-            {
-                "model": "claude-3-sonnet-20240229",
-                "messages": [{"role": "user", "content": "Test"}],
-            }
-        )
-
-        callback.on_llm_error(
-            {
-                "exception": "RateLimitError",
-                "message": "Rate limit exceeded",
-                "status_code": 429,
-            }
-        )
-
-    # Verify error logged
-    content = trace_file.read_text()
-    lines = content.strip().split("\n")
-    assert len(lines) == 2
-
-    error_entry = json.loads(lines[1])
-    assert "RateLimitError" in str(error_entry) or "error" in str(error_entry)
-
-
 # =============================================================================
 # Real-World Scenario Tests
 # =============================================================================
@@ -237,53 +130,6 @@ def test_developer_debugging_scenario(tmp_path):
 
     assert len(durations) == 3
     assert all(d > 0 for d in durations)
-
-
-@pytest.mark.e2e
-def test_production_monitoring_scenario(tmp_path):
-    """Test production monitoring with trace."""
-    trace_file = tmp_path / "production_trace.jsonl"
-
-    from amplihack.proxy.litellm_callbacks import register_trace_callbacks
-
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks(enabled=True, trace_file=str(trace_file))
-
-    # Simulate production traffic
-    with callback.trace_logger:
-        for request_id in range(10):
-            callback.on_llm_start(
-                {
-                    "model": "claude-3-sonnet-20240229",
-                    "messages": [{"role": "user", "content": f"Request {request_id}"}],
-                    "metadata": {"request_id": request_id, "user_id": f"user_{request_id % 3}"},
-                }
-            )
-
-            # Simulate success/failure
-            if request_id % 5 == 0:
-                callback.on_llm_error({"exception": "TimeoutError", "request_id": request_id})
-            else:
-                callback.on_llm_end(
-                    {
-                        "response": {
-                            "usage": {"total_tokens": 100 + request_id * 10},
-                        },
-                        "metadata": {"request_id": request_id},
-                    }
-                )
-
-    # Analyze production metrics
-    content = trace_file.read_text()
-    lines = content.strip().split("\n")
-    entries = [json.loads(line) for line in lines]
-
-    # Can extract metrics
-    total_requests = len([e for e in entries if "on_llm_start" in str(e) or "llm_start" in str(e)])
-    assert total_requests == 10
-
-    errors = len([e for e in entries if "error" in str(e).lower()])
-    assert errors == 2  # Requests 0 and 5
 
 
 @pytest.mark.e2e

@@ -88,7 +88,7 @@ Invoke as `/fleet <command>` or just describe what you want and Claude will pick
 ```
 fleet scout   [--session vm:session] [--vm VM] [--skip-adopt] [--incremental] [--save PATH]
 fleet advance [--session vm:session] [--vm VM] [--force] [--save PATH]
-fleet dry-run [--vm VM ...] [--backend auto|anthropic|copilot|litellm]
+fleet dry-run [--vm VM ...] [--backend auto|anthropic|copilot]
 fleet adopt   <vm> [--sessions s1 s2]
 fleet watch   <vm> <session> [--lines 30]
 fleet auth    <vm> [--services github azure claude]

@@ -37,7 +37,7 @@ Run the complete security test suite:
 pytest tests/proxy/test_security_sanitization.py -v
 
 # Run with coverage
-pytest tests/proxy/test_security_sanitization.py --cov=amplihack.proxy.security --cov-report=term-missing
+pytest tests/proxy/test_security_sanitization.py --cov=amplihack.utils.token_sanitizer --cov-report=term-missing
 ```
 
 Expected output:
@@ -82,7 +82,7 @@ CI configuration includes:
 - name: Run security tests
   run: |
     pytest tests/proxy/test_security_sanitization.py \
-      --cov=amplihack.proxy.security \
+      --cov=amplihack.utils.token_sanitizer \
       --cov-fail-under=90
 ```
 
@@ -102,7 +102,7 @@ Testing pyramid:
 """
 
 import pytest
-from amplihack.proxy.security import TokenSanitizer
+from amplihack.utils.token_sanitizer import TokenSanitizer
 
 # Unit tests (60%)
 class TestBasicFunctionality:
@@ -247,7 +247,7 @@ Security code requires **90% minimum coverage**:
 
 ```bash
 pytest tests/proxy/test_security_sanitization.py \
-  --cov=amplihack.proxy.security \
+  --cov=amplihack.utils.token_sanitizer \
   --cov-fail-under=90
 ```
 
@@ -271,7 +271,7 @@ Generate detailed coverage report:
 
 ```bash
 pytest tests/proxy/test_security_sanitization.py \
-  --cov=amplihack.proxy.security \
+  --cov=amplihack.utils.token_sanitizer \
   --cov-report=html
 
 # Open in browser

@@ -307,8 +307,8 @@ Use `agent.reset_session()` to start a fresh conversation.
 
 ## Mini Framework
 
-**Package:** None (uses `litellm` which is already an amplihack dependency)
-**Default model:** Any model supported by litellm
+**Package:** None (lightweight built-in adapter)
+**Default model:** Configurable via environment
 **Source:** `src/amplihack/agents/goal_seeking/sdk_adapters/factory.py` (`_MiniFrameworkAdapter`)
 
 ### Installation

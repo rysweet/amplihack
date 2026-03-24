@@ -141,7 +141,7 @@ amplihack new \
 | `copilot`   | GitHub Copilot SDK        | General dev, file/git/web tools (default) |
 | `claude`    | Claude Agent SDK          | Subagent delegation, MCP integration      |
 | `microsoft` | Microsoft Agent Framework | Structured workflows, telemetry           |
-| `mini`      | litellm (mini-framework)  | Lightweight, no SDK dependencies          |
+| `mini`      | Built-in mini-framework   | Lightweight, no SDK dependencies          |
 
 ### Examples
 

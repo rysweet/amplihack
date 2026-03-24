@@ -22,7 +22,6 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:57.864118+00
             E0["pytest<br/>imports: 594"]
             E1["rich<br/>imports: 29"]
             E2["requests<br/>imports: 27"]
-            E3["litellm<br/>imports: 24"]
             E4["tree-sitter<br/>imports: 16"]
             E5["claude-agent-sdk<br/>imports: 14"]
             E6["kuzu<br/>imports: 13"]
@@ -90,7 +89,6 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:46:57.864118+00
     | pytest | >=7.0.0 | dev | 594 |
     | rich | >=13.0.0 | dev | 29 |
     | requests | >=2.32.4 | core | 27 |
-    | litellm | >=1.0.0 | core | 24 |
     | tree-sitter | >=0.23.2 | core | 16 |
     | claude-agent-sdk | >=0.1.0 | core | 14 |
     | kuzu | >=0.11.0 | core | 13 |

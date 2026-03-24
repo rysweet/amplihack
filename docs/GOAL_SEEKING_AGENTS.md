@@ -352,7 +352,7 @@ The teaching system implements a multi-turn dialogue between a teacher agent and
 | Copilot |  | Claude  |  |Microsoft |  |  Mini  |
 |  SDK    |  | Agent   |  |  Agent   |  |Framework|
 |         |  |  SDK    |  |Framework |  |         |
-| gpt-4.1 |  | sonnet  |  | gpt-4o  |  | litellm|
+| gpt-4.1 |  | sonnet  |  | gpt-4o  |  | built- |
 | file,git|  | bash,   |  | session- |  | learning|
 | web     |  | read,   |  | based    |  | agent  |
 |         |  | write,  |  | FuncTool |  | only   |
@@ -437,7 +437,7 @@ agent = create_agent(name="x", sdk="mini")       # Lightweight mini-framework
 
 | Feature           | Copilot                          | Claude                               | Microsoft                            | Mini                                |
 | ----------------- | -------------------------------- | ------------------------------------ | ------------------------------------ | ----------------------------------- |
-| Default model     | gpt-4.1                          | claude-sonnet-4-5-20250929           | gpt-4o                               | (any via litellm)                   |
+| Default model     | gpt-4.1                          | claude-sonnet-4-5-20250929           | gpt-4o                               | (configurable)                      |
 | Install           | `pip install github-copilot-sdk` | `pip install claude-agent-sdk`       | `pip install agent-framework-core`   | No extra deps                       |
 | Native tools      | file_system, git, web_requests   | bash, read/write/edit, glob, grep    | (via FunctionTool)                   | read, search, synthesize, calculate |
 | Tool registration | Session config tools list        | Recreate agent with updated tools    | Recreate agent via FunctionTool      | Fixed tool set (no-op)              |

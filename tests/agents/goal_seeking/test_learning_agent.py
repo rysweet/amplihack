@@ -9,9 +9,8 @@ Philosophy:
 import shutil
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-import litellm
 import pytest
 
 from amplihack.agents.goal_seeking import LearningAgent
@@ -45,23 +44,19 @@ class TestLearningAgent:
         assert agent.loop is not None
         agent.close()
 
-    def test_llm_completion_with_retry_retries_transient_internal_server_errors(self, agent):
-        response = MagicMock()
-        response.choices = [MagicMock(message=MagicMock(content="answer"))]
-        overloaded = litellm.InternalServerError(
-            message="overloaded_error: capacity exceeded",
-            llm_provider="anthropic",
-            model="claude-haiku",
-        )
+    @pytest.mark.asyncio
+    async def test_llm_completion_with_retry_retries_transient_internal_server_errors(self, agent):
+        overloaded = OSError("overloaded_error: capacity exceeded")
 
         with (
             patch(
-                "amplihack.agents.goal_seeking.learning_agent.litellm.completion",
-                side_effect=[overloaded, response],
+                "amplihack.agents.goal_seeking.learning_agent._llm_completion",
+                new_callable=AsyncMock,
+                side_effect=[overloaded, "answer"],
             ) as completion,
             patch("amplihack.agents.goal_seeking.learning_agent.time.sleep") as sleep,
         ):
-            result = agent._llm_completion_with_retry(
+            result = await agent._llm_completion_with_retry(
                 [{"role": "user", "content": "hello"}],
                 max_retries=2,
             )
@@ -70,15 +65,12 @@ class TestLearningAgent:
         assert completion.call_count == 2
         sleep.assert_called_once_with(2)
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_learn_from_content_extracts_facts(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_learn_from_content_extracts_facts(self, mock_completion, agent):
         """Test learning from content extracts and stores facts."""
-        # Mock LLM fact extraction
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content="""[
+        # Mock LLM fact extraction - returns string directly
+        mock_completion.return_value = """[
                 {
                     "context": "Photosynthesis",
                     "fact": "Plants convert light to energy",
@@ -86,27 +78,20 @@ class TestLearningAgent:
                     "tags": ["biology", "plants"]
                 }
             ]"""
-                )
-            )
-        ]
-        mock_completion.return_value = mock_response
 
         content = "Photosynthesis is the process by which plants convert light energy into chemical energy."
 
-        result = agent.learn_from_content(content)
+        result = await agent.learn_from_content(content)
 
         assert result["facts_extracted"] == 1
         assert result["facts_stored"] == 1
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_learn_from_content_handles_markdown_json(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_learn_from_content_handles_markdown_json(self, mock_completion, agent):
         """Test learning handles JSON in markdown code blocks."""
-        # Mock LLM with markdown
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content="""```json
+        # Mock LLM with markdown - returns string directly
+        mock_completion.return_value = """```json
 [
     {
         "context": "Test",
@@ -116,56 +101,48 @@ class TestLearningAgent:
     }
 ]
 ```"""
-                )
-            )
-        ]
-        mock_completion.return_value = mock_response
 
-        result = agent.learn_from_content("Test content")
+        result = await agent.learn_from_content("Test content")
 
         assert result["facts_extracted"] >= 1
 
-    def test_learn_from_empty_content(self, agent):
+    @pytest.mark.asyncio
+    async def test_learn_from_empty_content(self, agent):
         """Test learning from empty content returns zero facts."""
-        result = agent.learn_from_content("")
+        result = await agent.learn_from_content("")
 
         assert result["facts_extracted"] == 0
         assert result["facts_stored"] == 0
         assert result["content_summary"] == "Empty content"
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_learn_from_content_continues_on_storage_error(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_learn_from_content_continues_on_storage_error(self, mock_completion, agent):
         """Test learning continues even if some facts fail to store."""
-        # Mock extraction with multiple facts
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content="""[
+        # Mock extraction with multiple facts - returns string directly
+        mock_completion.return_value = """[
                 {"context": "Valid", "fact": "Valid fact", "confidence": 0.9, "tags": []},
                 {"context": "", "fact": "Invalid - empty context", "confidence": 0.9, "tags": []}
             ]"""
-                )
-            )
-        ]
-        mock_completion.return_value = mock_response
 
-        result = agent.learn_from_content("Test content")
+        result = await agent.learn_from_content("Test content")
 
         # Should store at least the valid one
         assert result["facts_extracted"] == 2
         assert result["facts_stored"] >= 1
 
-    def test_prepare_fact_batch_builds_direct_storage_payload(self, agent):
+    @pytest.mark.asyncio
+    async def test_prepare_fact_batch_builds_direct_storage_payload(self, agent):
         agent.use_hierarchical = True
         agent.memory.store_episode = MagicMock(return_value="episode-1")
         with (
             patch.object(
-                agent, "_detect_temporal_metadata", return_value={"source_date": "2025-01-02"}
+                agent, "_detect_temporal_metadata", new_callable=AsyncMock, return_value={"source_date": "2025-01-02"}
             ),
             patch.object(
                 agent,
                 "_extract_facts_with_llm",
+                new_callable=AsyncMock,
                 return_value=[
                     {
                         "context": "Campaign",
@@ -178,6 +155,7 @@ class TestLearningAgent:
             patch.object(
                 agent,
                 "_build_summary_store_kwargs",
+                new_callable=AsyncMock,
                 return_value={
                     "context": "SUMMARY",
                     "fact": "Summary fact",
@@ -186,7 +164,7 @@ class TestLearningAgent:
                 },
             ),
         ):
-            batch = agent.prepare_fact_batch("Title: Campaign report\nCAMP-1 is active")
+            batch = await agent.prepare_fact_batch("Title: Campaign report\nCAMP-1 is active")
 
         assert batch["facts_extracted"] == 1
         assert batch["source_label"] == "Campaign report"
@@ -197,12 +175,14 @@ class TestLearningAgent:
         assert batch["facts"][0]["temporal_metadata"]["source_label"] == "Campaign report"
         assert batch["summary_fact"]["context"] == "SUMMARY"
 
-    def test_prepare_fact_batch_skips_summary_when_disabled(self, agent):
+    @pytest.mark.asyncio
+    async def test_prepare_fact_batch_skips_summary_when_disabled(self, agent):
         with (
-            patch.object(agent, "_detect_temporal_metadata", return_value={}),
+            patch.object(agent, "_detect_temporal_metadata", new_callable=AsyncMock, return_value={}),
             patch.object(
                 agent,
                 "_extract_facts_with_llm",
+                new_callable=AsyncMock,
                 return_value=[
                     {
                         "context": "Campaign",
@@ -212,17 +192,18 @@ class TestLearningAgent:
                     }
                 ],
             ),
-            patch.object(agent, "_build_summary_store_kwargs") as build_summary,
+            patch.object(agent, "_build_summary_store_kwargs", new_callable=AsyncMock) as build_summary,
         ):
-            batch = agent.prepare_fact_batch("Campaign content", include_summary=False)
+            batch = await agent.prepare_fact_batch("Campaign content", include_summary=False)
 
         build_summary.assert_not_called()
         assert batch["summary_fact"] is None
 
-    def test_detect_temporal_metadata_uses_timestamp_fast_path(self, agent):
-        agent._llm_completion_with_retry = MagicMock()
+    @pytest.mark.asyncio
+    async def test_detect_temporal_metadata_uses_timestamp_fast_path(self, agent):
+        agent._llm_completion_with_retry = AsyncMock()
 
-        metadata = agent._detect_temporal_metadata(
+        metadata = await agent._detect_temporal_metadata(
             "[MDE DeviceProcessEvents] Timestamp: 2024-03-14 09:26:53 | DeviceName: WS-001"
         )
 
@@ -279,62 +260,56 @@ class TestLearningAgent:
         agent.loop.observe.assert_called_once_with("Campaign content")
         agent.loop.learn.assert_called_once()
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_answer_question_synthesizes_answer(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_answer_question_synthesizes_answer(self, mock_completion, agent):
         """Test answering question uses LLM to synthesize answer."""
         # First, store some facts with a context that will match search
         agent.memory.store_fact(
             context="Dogs are mammals", fact="Dogs belong to the class Mammalia", confidence=0.9
         )
 
-        # Mock LLM for answer synthesis
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content="Yes, dogs are mammals. They belong to the class Mammalia."
-                )
-            )
-        ]
-        mock_completion.return_value = mock_response
+        # Mock LLM for answer synthesis - returns string directly
+        mock_completion.return_value = "Yes, dogs are mammals. They belong to the class Mammalia."
 
         # Use a search term that will match the stored context
-        answer = agent.answer_question("Are dogs mammals?", question_level="L1")
+        answer = await agent.answer_question("Are dogs mammals?", question_level="L1")
 
         # Either we get a synthesized answer with "mammals" or no information found
         # Both are acceptable since memory search may not always return results
         assert answer is not None
         assert len(answer) > 0
 
-    def test_answer_question_empty_returns_error(self, agent):
+    @pytest.mark.asyncio
+    async def test_answer_question_empty_returns_error(self, agent):
         """Test answering empty question returns error."""
-        answer = agent.answer_question("")
+        answer = await agent.answer_question("")
 
         assert "Error" in answer or "empty" in answer.lower()
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_answer_question_no_knowledge_returns_message(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_answer_question_no_knowledge_returns_message(self, mock_completion, agent):
         """Test answering question with no stored knowledge."""
-        answer = agent.answer_question("What is quantum entanglement?")
+        answer = await agent.answer_question("What is quantum entanglement?")
 
         assert "don't have" in answer.lower() or "no" in answer.lower()
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_answer_question_stores_qa_pair(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_answer_question_stores_qa_pair(self, mock_completion, agent):
         """Test answering question stores Q&A pair in memory."""
         # Store initial fact that will be found by search
         agent.memory.store_fact("Test question context", "Test fact answer", confidence=0.9)
 
-        # Mock synthesis
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(content="Test answer"))]
-        mock_completion.return_value = mock_response
+        # Mock synthesis - returns string directly
+        mock_completion.return_value = "Test answer"
 
         initial_stats = agent.get_memory_stats()
         initial_count = initial_stats.get("total_experiences", 0)
 
         # Use search term that matches stored context
-        agent.answer_question("Test question?", question_level="L2")
+        await agent.answer_question("Test question?", question_level="L2")
 
         final_stats = agent.get_memory_stats()
         final_count = final_stats.get("total_experiences", 0)
@@ -342,16 +317,15 @@ class TestLearningAgent:
         # Should store Q&A pair, increasing count by at least 1
         assert final_count >= initial_count
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_answer_question_l2_level(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_answer_question_l2_level(self, mock_completion, agent):
         """Test L2 (inference) question uses appropriate prompt."""
         agent.memory.store_fact("Test", "Fact", confidence=0.9)
 
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock(message=MagicMock(content="Inferred answer"))]
-        mock_completion.return_value = mock_response
+        mock_completion.return_value = "Inferred answer"
 
-        answer = agent.answer_question("Why does this happen?", question_level="L2")
+        answer = await agent.answer_question("Why does this happen?", question_level="L2")
 
         # Check that LLM was called with appropriate instruction
         call_args = mock_completion.call_args
@@ -359,38 +333,33 @@ class TestLearningAgent:
         # Should contain L2 instruction about inference
         assert answer is not None
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_answer_question_l3_synthesis(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_answer_question_l3_synthesis(self, mock_completion, agent):
         """Test L3 (synthesis) question level."""
         agent.memory.store_fact("Context", "Fact", confidence=0.9)
 
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(message=MagicMock(content="Synthesized comprehensive answer"))
-        ]
-        mock_completion.return_value = mock_response
+        mock_completion.return_value = "Synthesized comprehensive answer"
 
-        answer = agent.answer_question("How are these related?", question_level="L3")
+        answer = await agent.answer_question("How are these related?", question_level="L3")
 
         assert answer is not None
         assert len(answer) > 0
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_answer_question_l4_application(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_answer_question_l4_application(self, mock_completion, agent):
         """Test L4 (application) question level."""
         agent.memory.store_fact("Context", "Fact", confidence=0.9)
 
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(message=MagicMock(content="Applied answer showing usage"))
-        ]
-        mock_completion.return_value = mock_response
+        mock_completion.return_value = "Applied answer showing usage"
 
-        answer = agent.answer_question("How would you use this?", question_level="L4")
+        answer = await agent.answer_question("How would you use this?", question_level="L4")
 
         assert answer is not None
 
-    def test_answer_question_skips_redundant_fanout_after_exhaustive_retrieval(self, agent):
+    @pytest.mark.asyncio
+    async def test_answer_question_skips_redundant_fanout_after_exhaustive_retrieval(self, agent):
         """Small-KB exhaustive retrieval should not trigger extra distributed-style passes."""
         agent.memory.store_fact(
             context="Sarah Chen",
@@ -412,6 +381,7 @@ class TestLearningAgent:
             patch.object(
                 agent,
                 "_detect_intent",
+                new_callable=AsyncMock,
                 return_value={
                     "intent": "temporal_comparison",
                     "needs_temporal": False,
@@ -421,6 +391,7 @@ class TestLearningAgent:
             patch.object(
                 agent,
                 "_synthesize_with_llm",
+                new_callable=AsyncMock,
                 return_value="Sarah Chen and Marcus Rivera worked on Atlas.",
             ),
             patch.object(
@@ -436,10 +407,11 @@ class TestLearningAgent:
             patch.object(
                 agent,
                 "_keyword_expanded_retrieval",
+                new_callable=AsyncMock,
                 side_effect=AssertionError("keyword-expanded retrieval should be skipped"),
             ),
         ):
-            answer = agent.answer_question(
+            answer = await agent.answer_question(
                 "How did Sarah Chen and Marcus Rivera affect INC-2024-001 over time?",
                 question_level="L3",
                 _skip_qanda_store=True,
@@ -447,7 +419,8 @@ class TestLearningAgent:
 
         assert "Sarah Chen" in answer
 
-    def test_answer_question_uses_local_only_supplements_after_initial_pass(self, agent):
+    @pytest.mark.asyncio
+    async def test_answer_question_uses_local_only_supplements_after_initial_pass(self, agent):
         """Supplemental retrieval should stay local after the first pass."""
         initial_facts = [
             {"context": "Incident", "outcome": "INC-2024-001 was opened", "experience_id": "e1"}
@@ -463,6 +436,7 @@ class TestLearningAgent:
             patch.object(
                 agent,
                 "_detect_intent",
+                new_callable=AsyncMock,
                 return_value={
                     "intent": "temporal_comparison",
                     "needs_temporal": False,
@@ -470,7 +444,7 @@ class TestLearningAgent:
                 },
             ),
             patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
-            patch.object(agent, "_synthesize_with_llm", return_value="answer"),
+            patch.object(agent, "_synthesize_with_llm", new_callable=AsyncMock, return_value="answer"),
             patch.object(
                 agent,
                 "_entity_linked_retrieval",
@@ -484,10 +458,11 @@ class TestLearningAgent:
             patch.object(
                 agent,
                 "_keyword_expanded_retrieval",
+                new_callable=AsyncMock,
                 side_effect=lambda question, facts, local_only=False: facts,
             ) as keyword_expansion,
         ):
-            agent.answer_question(
+            await agent.answer_question(
                 "How did INC-2024-001 and INC-2024-002 change over time?",
                 question_level="L3",
                 _skip_qanda_store=True,
@@ -497,7 +472,8 @@ class TestLearningAgent:
         assert multi_entity.call_args.kwargs["local_only"] is True
         assert keyword_expansion.call_args.kwargs["local_only"] is True
 
-    def test_answer_question_large_simple_retrieval_supplements_entity_hits(self, agent):
+    @pytest.mark.asyncio
+    async def test_answer_question_large_simple_retrieval_supplements_entity_hits(self, agent):
         """Large simple-retrieval questions should merge targeted entity facts before synthesis."""
         initial_facts = [
             {
@@ -517,12 +493,13 @@ class TestLearningAgent:
             return list(initial_facts)
 
         agent.memory.search_local = MagicMock(return_value=[])
-        synth = MagicMock(return_value="answer")
+        synth = AsyncMock(return_value="answer")
 
         with (
             patch.object(
                 agent,
                 "_detect_intent",
+                new_callable=AsyncMock,
                 return_value={
                     "intent": "incremental_update",
                     "needs_temporal": False,
@@ -545,10 +522,11 @@ class TestLearningAgent:
             patch.object(
                 agent,
                 "_keyword_expanded_retrieval",
+                new_callable=AsyncMock,
                 side_effect=lambda question, facts, local_only=False: facts,
             ),
         ):
-            agent.answer_question(
+            await agent.answer_question(
                 "Who leads Project Beacon now, and who led it originally?",
                 question_level="L3",
                 _skip_qanda_store=True,
@@ -558,7 +536,8 @@ class TestLearningAgent:
         synth_context = synth.call_args.kwargs["context"]
         assert any(f.get("experience_id") == "beacon-1" for f in synth_context)
 
-    def test_answer_question_large_simple_retrieval_supplements_concept_hits(self, agent):
+    @pytest.mark.asyncio
+    async def test_answer_question_large_simple_retrieval_supplements_concept_hits(self, agent):
         """Large simple-retrieval questions should merge targeted concept facts before synthesis."""
         initial_facts = [
             {
@@ -578,12 +557,13 @@ class TestLearningAgent:
             return list(initial_facts)
 
         agent.memory.search_local = MagicMock(return_value=[])
-        synth = MagicMock(return_value="answer")
+        synth = AsyncMock(return_value="answer")
 
         with (
             patch.object(
                 agent,
                 "_detect_intent",
+                new_callable=AsyncMock,
                 return_value={
                     "intent": "incremental_update",
                     "needs_temporal": False,
@@ -606,10 +586,11 @@ class TestLearningAgent:
             patch.object(
                 agent,
                 "_keyword_expanded_retrieval",
+                new_callable=AsyncMock,
                 side_effect=lambda question, facts, local_only=False: facts,
             ),
         ):
-            agent.answer_question(
+            await agent.answer_question(
                 "How much does the database query optimization save monthly and what was the change?",
                 question_level="L3",
                 _skip_qanda_store=True,
@@ -619,7 +600,8 @@ class TestLearningAgent:
         synth_context = synth.call_args.kwargs["context"]
         assert any(f.get("experience_id") == "db-1" for f in synth_context)
 
-    def test_answer_question_incremental_update_orders_temporal_facts_first(self, agent):
+    @pytest.mark.asyncio
+    async def test_answer_question_incremental_update_orders_temporal_facts_first(self, agent):
         """incremental_update questions should get temporal ordering even without needs_temporal."""
         facts = [
             {
@@ -656,13 +638,14 @@ class TestLearningAgent:
             agent._thread_local._last_simple_retrieval_exhaustive = True
             return list(facts)
 
-        synth = MagicMock(return_value="answer")
+        synth = AsyncMock(return_value="answer")
         agent.memory.search_local = MagicMock(return_value=[])
 
         with (
             patch.object(
                 agent,
                 "_detect_intent",
+                new_callable=AsyncMock,
                 return_value={
                     "intent": "incremental_update",
                     "needs_temporal": False,
@@ -671,7 +654,7 @@ class TestLearningAgent:
             ),
             patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
             patch.object(agent, "_synthesize_with_llm", synth),
-            patch.object(agent, "_code_generation_tool", return_value={}),
+            patch.object(agent, "_code_generation_tool", new_callable=AsyncMock, return_value={}),
             patch.object(
                 agent,
                 "_multi_entity_retrieval",
@@ -680,10 +663,11 @@ class TestLearningAgent:
             patch.object(
                 agent,
                 "_keyword_expanded_retrieval",
+                new_callable=AsyncMock,
                 side_effect=lambda question, facts, local_only=False: facts,
             ),
         ):
-            agent.answer_question(
+            await agent.answer_question(
                 "How did the Atlas average response time change over time?",
                 question_level="L3",
                 _skip_qanda_store=True,
@@ -693,7 +677,8 @@ class TestLearningAgent:
         assert [fact["experience_id"] for fact in synth_context[:2]] == ["atlas-1", "atlas-2"]
         assert [fact["experience_id"] for fact in synth_context[2:4]] == ["noise-1", "noise-2"]
 
-    def test_synthesize_with_llm_includes_temporal_markers_for_incremental_update(self, agent):
+    @pytest.mark.asyncio
+    async def test_synthesize_with_llm_includes_temporal_markers_for_incremental_update(self, agent):
         """incremental_update synthesis should show temporal markers even when needs_temporal is false."""
         context = [
             {
@@ -706,8 +691,8 @@ class TestLearningAgent:
             }
         ]
 
-        with patch.object(agent, "_llm_completion_with_retry", return_value="answer") as llm:
-            answer = agent._synthesize_with_llm(
+        with patch.object(agent, "_llm_completion_with_retry", new_callable=AsyncMock, return_value="answer") as llm:
+            answer = await agent._synthesize_with_llm(
                 "How did the Atlas average response time change over time?",
                 context,
                 "L3",
@@ -915,7 +900,8 @@ class TestLearningAgent:
         )
         assert result[-1]["experience_id"] == "apt-29"
 
-    def test_answer_question_does_not_run_second_distributed_id_search(self, agent):
+    @pytest.mark.asyncio
+    async def test_answer_question_does_not_run_second_distributed_id_search(self, agent):
         """Structured-ID questions should not trigger a second distributed text search."""
         initial_facts = [
             {"context": "Campaign", "outcome": "CAMP-2025-011 touched WS-01", "experience_id": "e1"}
@@ -934,6 +920,7 @@ class TestLearningAgent:
             patch.object(
                 agent,
                 "_detect_intent",
+                new_callable=AsyncMock,
                 return_value={
                     "intent": "temporal_comparison",
                     "needs_temporal": False,
@@ -941,7 +928,7 @@ class TestLearningAgent:
                 },
             ),
             patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
-            patch.object(agent, "_synthesize_with_llm", return_value="answer"),
+            patch.object(agent, "_synthesize_with_llm", new_callable=AsyncMock, return_value="answer"),
             patch.object(
                 agent,
                 "_entity_linked_retrieval",
@@ -955,10 +942,11 @@ class TestLearningAgent:
             patch.object(
                 agent,
                 "_keyword_expanded_retrieval",
+                new_callable=AsyncMock,
                 side_effect=lambda question, facts, local_only=False: facts,
             ),
         ):
-            agent.answer_question(
+            await agent.answer_question(
                 "What was the objective of CAMP-2025-011?",
                 question_level="L3",
                 _skip_qanda_store=True,
@@ -1018,7 +1006,8 @@ class TestLearningAgent:
             for batch in summarized_inputs
         )
 
-    def test_answer_question_skips_keyword_expansion_when_initial_retrieval_is_not_sparse(
+    @pytest.mark.asyncio
+    async def test_answer_question_skips_keyword_expansion_when_initial_retrieval_is_not_sparse(
         self, agent
     ):
         """Keyword expansion should only run for sparse initial retrieval."""
@@ -1036,6 +1025,7 @@ class TestLearningAgent:
             patch.object(
                 agent,
                 "_detect_intent",
+                new_callable=AsyncMock,
                 return_value={
                     "intent": "temporal_comparison",
                     "needs_temporal": False,
@@ -1043,14 +1033,15 @@ class TestLearningAgent:
                 },
             ),
             patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
-            patch.object(agent, "_synthesize_with_llm", return_value="answer"),
+            patch.object(agent, "_synthesize_with_llm", new_callable=AsyncMock, return_value="answer"),
             patch.object(
                 agent,
                 "_keyword_expanded_retrieval",
+                new_callable=AsyncMock,
                 side_effect=AssertionError("keyword expansion should be skipped"),
             ),
         ):
-            agent.answer_question(
+            await agent.answer_question(
                 "How did latency change over time?",
                 question_level="L3",
                 _skip_qanda_store=True,
@@ -1063,27 +1054,29 @@ class TestLearningAgent:
         assert "total_experiences" in stats
         assert isinstance(stats["total_experiences"], int)
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_extract_facts_fallback_on_error(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_extract_facts_fallback_on_error(self, mock_completion, agent):
         """Test fact extraction falls back gracefully on LLM error."""
         # Mock LLM failure
         mock_completion.side_effect = Exception("API error")
 
         # Should fallback to simple extraction
-        result = agent._extract_facts_with_llm("Test content")
+        result = await agent._extract_facts_with_llm("Test content")
 
         assert isinstance(result, list)
         # Fallback creates at least one fact
         assert len(result) >= 1
         assert result[0]["context"] == "General"
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_synthesize_answer_handles_llm_error(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_synthesize_answer_handles_llm_error(self, mock_completion, agent):
         """Test answer synthesis handles LLM errors gracefully."""
         mock_completion.side_effect = Exception("API unavailable")
 
         context = [{"context": "Test", "outcome": "Fact"}]
-        answer = agent._synthesize_with_llm("Question?", context, "L1")
+        answer = await agent._synthesize_with_llm("Question?", context, "L1")
 
         assert "unable" in answer.lower() or "error" in answer.lower()
 
@@ -1487,14 +1480,11 @@ class TestTemporalCodeGeneration:
 
     # -- Integration test with _code_generation_tool --
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_code_generation_tool_extracts_entity_field(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_code_generation_tool_extracts_entity_field(self, mock_completion, agent):
         """Test _code_generation_tool extracts entity and field via LLM."""
-        mock_response = MagicMock()
-        mock_response.choices = [
-            MagicMock(message=MagicMock(content='{"entity": "Atlas", "field": "deadline"}'))
-        ]
-        mock_completion.return_value = mock_response
+        mock_completion.return_value = '{"entity": "Atlas", "field": "deadline"}'
 
         agent.memory.store_fact(
             context="Atlas project deadline",
@@ -1502,25 +1492,27 @@ class TestTemporalCodeGeneration:
             confidence=0.9,
         )
 
-        result = agent._code_generation_tool("What WAS the Atlas deadline BEFORE the first change?")
+        result = await agent._code_generation_tool("What WAS the Atlas deadline BEFORE the first change?")
 
         assert "code" in result
         assert "Atlas" in result["code"]
         assert "deadline" in result["code"]
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_code_generation_tool_handles_llm_error(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_code_generation_tool_handles_llm_error(self, mock_completion, agent):
         """Test _code_generation_tool gracefully handles LLM extraction failure."""
         mock_completion.side_effect = Exception("API error")
 
-        result = agent._code_generation_tool("What was the original value?")
+        result = await agent._code_generation_tool("What was the original value?")
 
         # Should return empty result instead of proceeding with bad data
         assert result["code"] == ""
         assert result["result"] is None
         assert result["transitions"] == []
 
-    def test_answer_question_injects_temporal_code_for_change_count_questions(self, agent):
+    @pytest.mark.asyncio
+    async def test_answer_question_injects_temporal_code_for_change_count_questions(self, agent):
         """Temporal change-count questions should trigger deterministic temporal code."""
         fact = {
             "context": "Atlas project deadline",
@@ -1533,7 +1525,7 @@ class TestTemporalCodeGeneration:
             agent._thread_local._last_simple_retrieval_exhaustive = True
             return [fact]
 
-        synth = MagicMock(return_value="answer")
+        synth = AsyncMock(return_value="answer")
         code_result = {
             "code": "answer = max(0, len(transitions) - 1)",
             "index_expr": "max(0, len(transitions) - 1)",
@@ -1546,6 +1538,7 @@ class TestTemporalCodeGeneration:
             patch.object(
                 agent,
                 "_detect_intent",
+                new_callable=AsyncMock,
                 return_value={
                     "intent": "temporal_comparison",
                     "needs_temporal": True,
@@ -1554,7 +1547,7 @@ class TestTemporalCodeGeneration:
             ),
             patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
             patch.object(agent, "_synthesize_with_llm", synth),
-            patch.object(agent, "_code_generation_tool", return_value=code_result) as code_tool,
+            patch.object(agent, "_code_generation_tool", new_callable=AsyncMock, return_value=code_result) as code_tool,
             patch.object(
                 agent,
                 "_multi_entity_retrieval",
@@ -1563,10 +1556,11 @@ class TestTemporalCodeGeneration:
             patch.object(
                 agent,
                 "_keyword_expanded_retrieval",
+                new_callable=AsyncMock,
                 side_effect=lambda question, facts, local_only=False: facts,
             ),
         ):
-            agent.answer_question(
+            await agent.answer_question(
                 "How many times did the Atlas deadline change?",
                 question_level="L3",
                 _skip_qanda_store=True,
@@ -1578,8 +1572,9 @@ class TestTemporalCodeGeneration:
         )
         assert synth.call_args.kwargs["intent"]["temporal_code"]["result"] == 2
 
-    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
-    def test_code_generation_tool_uses_direct_lookup_heuristic(self, mock_completion, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
+    async def test_code_generation_tool_uses_direct_lookup_heuristic(self, mock_completion, agent):
         code_result = {
             "code": "answer = transitions[0].value",
             "index_expr": "0",
@@ -1592,13 +1587,14 @@ class TestTemporalCodeGeneration:
         question = "What was the ORIGINAL deadline for Project Atlas before any changes?"
 
         with patch.object(agent, "temporal_code_synthesis", return_value=code_result) as synth:
-            result = agent._code_generation_tool(question)
+            result = await agent._code_generation_tool(question)
 
         assert result == code_result
         synth.assert_called_once_with(question, "Project Atlas", "deadline", candidate_facts=None)
         mock_completion.assert_not_called()
 
-    def test_answer_question_returns_temporal_lookup_result_directly(self, agent):
+    @pytest.mark.asyncio
+    async def test_answer_question_returns_temporal_lookup_result_directly(self, agent):
         fact = {
             "context": "Atlas project deadline",
             "outcome": "Atlas deadline changed from June 15 to August 3 to September 20.",
@@ -1623,12 +1619,13 @@ class TestTemporalCodeGeneration:
             "state_count": 3,
         }
 
-        synth = MagicMock(return_value="The current deadline is June 15.")
+        synth = AsyncMock(return_value="The current deadline is June 15.")
 
         with (
             patch.object(
                 agent,
                 "_detect_intent",
+                new_callable=AsyncMock,
                 return_value={
                     "intent": "incremental_update",
                     "needs_temporal": True,
@@ -1636,7 +1633,7 @@ class TestTemporalCodeGeneration:
                 },
             ),
             patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
-            patch.object(agent, "_code_generation_tool", return_value=code_result),
+            patch.object(agent, "_code_generation_tool", new_callable=AsyncMock, return_value=code_result),
             patch.object(agent, "_synthesize_with_llm", synth),
             patch.object(
                 agent,
@@ -1646,10 +1643,11 @@ class TestTemporalCodeGeneration:
             patch.object(
                 agent,
                 "_keyword_expanded_retrieval",
+                new_callable=AsyncMock,
                 side_effect=lambda question, facts, local_only=False: facts,
             ),
         ):
-            answer = agent.answer_question(
+            answer = await agent.answer_question(
                 "What is the CURRENT deadline for Project Atlas?",
                 question_level="L1",
                 _skip_qanda_store=True,
@@ -1661,7 +1659,8 @@ class TestTemporalCodeGeneration:
         )
         synth.assert_not_called()
 
-    def test_answer_question_direct_lookup_uses_temporal_code_even_when_intent_misclassified(
+    @pytest.mark.asyncio
+    async def test_answer_question_direct_lookup_uses_temporal_code_even_when_intent_misclassified(
         self, agent
     ):
         fact = {
@@ -1684,12 +1683,13 @@ class TestTemporalCodeGeneration:
             "state_count": 1,
         }
 
-        synth = MagicMock(return_value="This content covers Atlas deadlines.")
+        synth = AsyncMock(return_value="This content covers Atlas deadlines.")
 
         with (
             patch.object(
                 agent,
                 "_detect_intent",
+                new_callable=AsyncMock,
                 return_value={
                     "intent": "simple_recall",
                     "needs_temporal": False,
@@ -1697,7 +1697,7 @@ class TestTemporalCodeGeneration:
                 },
             ),
             patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
-            patch.object(agent, "_code_generation_tool", return_value=code_result) as code_tool,
+            patch.object(agent, "_code_generation_tool", new_callable=AsyncMock, return_value=code_result) as code_tool,
             patch.object(agent, "_synthesize_with_llm", synth),
             patch.object(
                 agent,
@@ -1707,10 +1707,11 @@ class TestTemporalCodeGeneration:
             patch.object(
                 agent,
                 "_keyword_expanded_retrieval",
+                new_callable=AsyncMock,
                 side_effect=lambda question, facts, local_only=False: facts,
             ),
         ):
-            answer = agent.answer_question(
+            answer = await agent.answer_question(
                 "What was the ORIGINAL deadline for Project Atlas before any changes?",
                 question_level="L1",
                 _skip_qanda_store=True,
@@ -1723,7 +1724,8 @@ class TestTemporalCodeGeneration:
         )
         synth.assert_not_called()
 
-    def test_answer_question_uses_deterministic_meta_memory_project_count(self, agent):
+    @pytest.mark.asyncio
+    async def test_answer_question_uses_deterministic_meta_memory_project_count(self, agent):
         facts = [
             {
                 "context": "Project Atlas",
@@ -1770,6 +1772,7 @@ class TestTemporalCodeGeneration:
             patch.object(
                 agent,
                 "_detect_intent",
+                new_callable=AsyncMock,
                 return_value={
                     "intent": "meta_memory",
                     "needs_math": False,
@@ -1779,9 +1782,9 @@ class TestTemporalCodeGeneration:
                 },
             ),
             patch.object(agent, "_aggregation_retrieval", return_value=facts),
-            patch.object(agent, "_synthesize_with_llm") as synth,
+            patch.object(agent, "_synthesize_with_llm", new_callable=AsyncMock) as synth,
         ):
-            answer = agent.answer_question("How many different projects have I told you about?")
+            answer = await agent.answer_question("How many different projects have I told you about?")
 
         synth.assert_not_called()
         assert "5 different projects" in answer
@@ -1790,7 +1793,8 @@ class TestTemporalCodeGeneration:
         for noise in ("Assignment", "Overview", "Status", "Type", "Lead", "Management"):
             assert noise not in answer
 
-    def test_answer_question_uses_deterministic_meta_memory_people_count(self, agent):
+    @pytest.mark.asyncio
+    async def test_answer_question_uses_deterministic_meta_memory_people_count(self, agent):
         facts = [
             {
                 "context": "Personal Information - Birthday",
@@ -1843,6 +1847,7 @@ class TestTemporalCodeGeneration:
             patch.object(
                 agent,
                 "_detect_intent",
+                new_callable=AsyncMock,
                 return_value={
                     "intent": "meta_memory",
                     "needs_math": True,
@@ -1852,10 +1857,10 @@ class TestTemporalCodeGeneration:
                 },
             ),
             patch.object(agent, "_aggregation_retrieval", return_value=facts),
-            patch.object(agent, "_compute_math_result") as compute_math,
-            patch.object(agent, "_synthesize_with_llm") as synth,
+            patch.object(agent, "_compute_math_result", new_callable=AsyncMock) as compute_math,
+            patch.object(agent, "_synthesize_with_llm", new_callable=AsyncMock) as synth,
         ):
-            answer = agent.answer_question(
+            answer = await agent.answer_question(
                 "How many different people's personal details did I share with you?"
             )
 

@@ -7,7 +7,6 @@ Public API:
     LLMBackend: Protocol defining the complete() method
     AnthropicBackend: Anthropic SDK backend
     CopilotBackend: GitHub Copilot SDK backend
-    LiteLLMBackend: LiteLLM backend (100+ providers)
     auto_detect_backend: Pick the best available backend
 """
 
@@ -22,7 +21,6 @@ __all__ = [
     "LLMBackend",
     "AnthropicBackend",
     "CopilotBackend",
-    "LiteLLMBackend",
     "auto_detect_backend",
 ]
 
@@ -119,37 +117,6 @@ class CopilotBackend:
             return "".join(response_parts)
         finally:
             await client.stop()
-
-
-class LiteLLMBackend:
-    """LiteLLM backend -- supports 100+ LLM providers.
-
-    Requires: pip install litellm
-    Works with: OpenAI, Anthropic, Azure, Copilot, Ollama, etc.
-    Set model via constructor: "gpt-4o", "claude-opus-4-6", "ollama/llama3", etc.
-    """
-
-    def __init__(self, model: str = "gpt-4o", max_tokens: int = DEFAULT_LLM_MAX_TOKENS):
-        self.model = model
-        self.max_tokens = max_tokens
-
-    def complete(self, system_prompt: str, user_prompt: str) -> str:
-        import litellm
-
-        response = litellm.completion(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            max_tokens=self.max_tokens,
-        )
-        choices = getattr(response, "choices", [])
-        if choices:
-            msg = getattr(choices[0], "message", None)
-            content = getattr(msg, "content", None) if msg else None
-            return str(content) if content else ""
-        return ""
 
 
 def auto_detect_backend() -> LLMBackend:

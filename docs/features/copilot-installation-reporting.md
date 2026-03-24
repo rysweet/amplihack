@@ -181,7 +181,6 @@ See [Copilot Installation Troubleshooting](../troubleshooting/copilot-installati
 ## Related Features
 
 - [Copilot CLI Integration](../COPILOT_CLI_INTEGRATION_SUMMARY.md) - Complete Copilot support
-- [GitHub Copilot with amplihack](../github-copilot-litellm-integration.md) - Using Copilot models
 - [Interactive Installation](../INTERACTIVE_INSTALLATION.md) - Full setup wizard
 
 ## Version History

@@ -13,7 +13,6 @@ import pytest
 from amplihack.fleet._backends import (
     AnthropicBackend,
     CopilotBackend,
-    LiteLLMBackend,
     LLMBackend,
     auto_detect_backend,
 )
@@ -512,15 +511,6 @@ class TestLLMBackends:
             with pytest.raises((ImportError, ModuleNotFoundError)):
                 backend.complete("system", "user")
 
-    def test_litellm_backend_import_error(self):
-        """LiteLLMBackend.complete raises ImportError when litellm not installed."""
-        backend = LiteLLMBackend(model="gpt-4o")
-        assert backend.model == "gpt-4o"
-        # Patch litellm import to simulate missing package
-        with patch.dict("sys.modules", {"litellm": None}):
-            with pytest.raises((ImportError, ModuleNotFoundError)):
-                backend.complete("system", "user")
-
     def test_auto_detect_with_anthropic_key(self):
         """auto_detect_backend returns AnthropicBackend when ANTHROPIC_API_KEY is set."""
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key-123"}):
@@ -528,7 +518,7 @@ class TestLLMBackends:
             assert isinstance(backend, AnthropicBackend)
 
     def test_auto_detect_always_returns_backend(self):
-        """auto_detect_backend always returns a backend (litellm is a base dependency)."""
+        """auto_detect_backend always returns a backend."""
         with patch.dict(os.environ, {}, clear=True):
             backend = auto_detect_backend()
             assert backend is not None
@@ -637,97 +627,6 @@ class TestCopilotBackendComplete:
             # The import asyncio happens inside complete(), so patching sys.modules works
             result = backend.complete("system", "user")
         assert result == "test response"
-
-
-class TestLiteLLMBackendComplete:
-    """Tests for LiteLLMBackend.complete() with mocked litellm."""
-
-    def test_litellm_default_model(self):
-        backend = LiteLLMBackend()
-        assert backend.model == "gpt-4o"
-
-    def test_litellm_custom_model(self):
-        backend = LiteLLMBackend(model="ollama/llama3")
-        assert backend.model == "ollama/llama3"
-
-    def test_complete_success(self):
-        """LiteLLMBackend.complete() returns text from response."""
-        backend = LiteLLMBackend(model="gpt-4o")
-
-        mock_msg = MagicMock()
-        mock_msg.content = "Hello from LiteLLM"
-        mock_choice = MagicMock()
-        mock_choice.message = mock_msg
-        mock_response = MagicMock()
-        mock_response.choices = [mock_choice]
-
-        mock_litellm_module = MagicMock()
-        mock_litellm_module.completion.return_value = mock_response
-
-        import sys
-        with patch.dict(sys.modules, {"litellm": mock_litellm_module}):
-            result = backend.complete("system prompt", "user prompt")
-
-        assert result == "Hello from LiteLLM"
-        mock_litellm_module.completion.assert_called_once_with(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "system prompt"},
-                {"role": "user", "content": "user prompt"},
-            ],
-            max_tokens=backend.max_tokens,
-        )
-
-    def test_complete_empty_choices(self):
-        """LiteLLMBackend returns empty string when choices are empty."""
-        backend = LiteLLMBackend()
-        mock_response = MagicMock()
-        mock_response.choices = []
-
-        mock_litellm_module = MagicMock()
-        mock_litellm_module.completion.return_value = mock_response
-
-        import sys
-        with patch.dict(sys.modules, {"litellm": mock_litellm_module}):
-            result = backend.complete("sys", "usr")
-
-        assert result == ""
-
-    def test_complete_none_message(self):
-        """LiteLLMBackend returns empty string when message is None."""
-        backend = LiteLLMBackend()
-        mock_choice = MagicMock()
-        mock_choice.message = None
-        mock_response = MagicMock()
-        mock_response.choices = [mock_choice]
-
-        mock_litellm_module = MagicMock()
-        mock_litellm_module.completion.return_value = mock_response
-
-        import sys
-        with patch.dict(sys.modules, {"litellm": mock_litellm_module}):
-            result = backend.complete("sys", "usr")
-
-        assert result == ""
-
-    def test_complete_none_content(self):
-        """LiteLLMBackend returns empty string when content is None."""
-        backend = LiteLLMBackend()
-        mock_msg = MagicMock()
-        mock_msg.content = None
-        mock_choice = MagicMock()
-        mock_choice.message = mock_msg
-        mock_response = MagicMock()
-        mock_response.choices = [mock_choice]
-
-        mock_litellm_module = MagicMock()
-        mock_litellm_module.completion.return_value = mock_response
-
-        import sys
-        with patch.dict(sys.modules, {"litellm": mock_litellm_module}):
-            result = backend.complete("sys", "usr")
-
-        assert result == ""
 
 
 class TestAutoDetectBackendEdgeCases:

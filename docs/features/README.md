@@ -56,8 +56,6 @@ Additional amplihack capabilities:
 
 Connect amplihack with external services and tools:
 
-- [GitHub Copilot via LiteLLM](../github-copilot-litellm-integration.md) - Use Copilot with amplihack
-- [OpenAI Responses API](../OPENAI_RESPONSES_API.md) - OpenAI integration patterns
 - [MCP Evaluation](../mcp_evaluation/README.md) - Model Context Protocol evaluation
 - [Azure Integration](../AZURE_INTEGRATION.md) - Deploy to Azure cloud
 
@@ -69,7 +67,6 @@ Feature-related configuration:
 
 - [Hook Configuration](../HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
 - [Profile Management](../PROFILE_MANAGEMENT.md) - Multiple environment configurations
-- [Proxy Configuration](../PROXY_CONFIG_GUIDE.md) - Network proxy setup
 
 ---
 

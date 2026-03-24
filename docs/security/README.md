@@ -28,7 +28,7 @@ Automatically detect and redact sensitive tokens from logs, errors, and debug ou
 **Quick Start**:
 
 ```python
-from amplihack.proxy.security import TokenSanitizer
+from amplihack.utils.token_sanitizer import TokenSanitizer
 
 sanitizer = TokenSanitizer()
 safe_msg = sanitizer.sanitize("Token: gho_abc123xyz")
@@ -152,7 +152,7 @@ pytest tests/proxy/test_security_sanitization.py -v
 
 # With coverage
 pytest tests/proxy/test_security_sanitization.py \
-  --cov=amplihack.proxy.security \
+  --cov=amplihack.utils.token_sanitizer \
   --cov-fail-under=90
 ```
 

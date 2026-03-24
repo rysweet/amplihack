@@ -13,7 +13,7 @@ from amplihack.eval.teaching_session import (
 
 
 def _mock_llm_response(text: str) -> MagicMock:
-    """Create a mock litellm response."""
+    """Create a mock LLM response."""
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = text
@@ -81,7 +81,7 @@ class TestTeachingSession:
         with pytest.raises(ValueError, match="knowledge_base cannot be empty"):
             TeachingSession(knowledge_base=[], config=TeachingConfig())
 
-    @patch("litellm.completion")
+    @patch("amplihack.llm.completion")
     def test_generate_teacher_message(self, mock_completion):
         """Teacher generates a teaching message from knowledge base."""
         mock_completion.return_value = _mock_llm_response(
@@ -98,7 +98,7 @@ class TestTeachingSession:
         assert message  # Non-empty
         assert isinstance(message, str)
 
-    @patch("litellm.completion")
+    @patch("amplihack.llm.completion")
     def test_generate_student_response(self, mock_completion):
         """Student generates a response with self-explanation."""
         mock_completion.return_value = _mock_llm_response(
@@ -119,7 +119,7 @@ class TestTeachingSession:
         assert isinstance(response, str)
         assert isinstance(explanation, str)
 
-    @patch("litellm.completion")
+    @patch("amplihack.llm.completion")
     def test_run_session_produces_turns(self, mock_completion):
         """Full session produces correct number of turns."""
         # Alternate teacher and student responses
@@ -150,7 +150,7 @@ class TestTeachingSession:
         assert len(result.turns) == 3
         assert all(isinstance(t, Turn) for t in result.turns)
 
-    @patch("litellm.completion")
+    @patch("amplihack.llm.completion")
     def test_session_accumulates_history(self, mock_completion):
         """Each turn builds on previous conversation."""
         call_count = 0
@@ -179,7 +179,7 @@ class TestTeachingSession:
         assert result.turns[0].turn_number == 1
         assert result.turns[1].turn_number == 2
 
-    @patch("litellm.completion")
+    @patch("amplihack.llm.completion")
     def test_session_extracts_knowledge_transferred(self, mock_completion):
         """Session identifies what knowledge was transferred."""
         mock_completion.side_effect = [
