@@ -13,7 +13,9 @@
     "scripts/",
     "src/amplihack/agents/goal_seeking/sdk_adapters",
     "amplihack-memory-lib/",
-    "amplifier-bundle/tools/"
+    "amplifier-bundle/tools/",
+    "amplifier-bundle/skills/",
+    "docs/claude/skills/"
   ],
   "typeCheckingMode": "basic",
   "reportMissingImports": true,
