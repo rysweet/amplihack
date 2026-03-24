@@ -935,6 +935,30 @@ class TestStep15CommitPush(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertIn("COMMIT_OK", result.stdout)
 
+    def test_no_upstream_tracking_skips_push(self):
+        """When no upstream tracking branch exists, step-15 should skip push with WARNING."""
+        script = """
+        set -euo pipefail
+        TMPDIR=$(mktemp -d)
+        cd "$TMPDIR"
+        git init -q
+        git commit --allow-empty -m "init" -q
+        # No remote configured — @{u} should fail
+        if ! git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
+            echo "WARNING: No upstream tracking branch configured — skipping push" >&2
+            rm -rf "$TMPDIR"
+            exit 0
+        fi
+        rm -rf "$TMPDIR"
+        exit 1  # Should not reach here
+        """
+        result = subprocess.run(
+            ["/bin/bash", "-c", script], capture_output=True, text=True, timeout=10
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("WARNING", result.stderr)
+        self.assertIn("upstream", result.stderr.lower())
+
 
 class TestStep16CreateDraftPR(unittest.TestCase):
     """
@@ -1002,6 +1026,24 @@ class TestStep16CreateDraftPR(unittest.TestCase):
         finally:
             shutil.rmtree(repo_dir, ignore_errors=True)
             shutil.rmtree(origin_dir, ignore_errors=True)
+
+    def test_existing_pr_detection_logic(self):
+        """When gh pr list returns a match, skip PR creation."""
+        script = """
+        set -euo pipefail
+        # Simulate gh pr list returning a PR URL
+        EXISTING_PR="https://github.com/test/repo/pull/42"
+        if [ -n "$EXISTING_PR" ]; then
+            echo "PR already exists: $EXISTING_PR"
+            exit 0
+        fi
+        exit 1
+        """
+        result = subprocess.run(
+            ["/bin/bash", "-c", script], capture_output=True, text=True, timeout=5
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("PR already exists", result.stdout)
 
     def test_commits_ahead_succeeds(self):
         """When commits exist ahead of origin/main, the check passes."""

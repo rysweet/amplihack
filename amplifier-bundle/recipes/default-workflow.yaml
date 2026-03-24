@@ -1095,8 +1095,8 @@ steps:
   - id: "step-15-commit-push"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}}
       set -euo pipefail
+      cd "{{worktree_setup.worktree_path}}"
       echo "=== Step 15: Commit and Push ==="
       echo ""
       echo "--- Staging Changes ---"
@@ -1128,7 +1128,8 @@ steps:
         echo "WARNING: No upstream tracking branch configured — skipping push" >&2
         exit 0
       fi
-      if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then
+      COMMITS_AHEAD=$(git rev-list --count @{u}..HEAD)
+      if [ "$COMMITS_AHEAD" -ne 0 ]; then
         # REL-001: No stderr suppression on rebase — surface conflict diagnostics
         git pull --rebase && git push
       else
@@ -1145,8 +1146,8 @@ steps:
   - id: "step-16-create-draft-pr"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}}
       set -euo pipefail
+      cd "{{worktree_setup.worktree_path}}"
       echo "=== Step 16: Creating Draft PR ===" >&2
 
       # FIX (#3324): Idempotency guard — detect pre-existing PRs before creating one
