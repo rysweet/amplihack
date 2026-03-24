@@ -9,6 +9,7 @@ from .errors import (
     ToolTimeoutError,
     XpiaEscalationError,
 )
+from .external_tools import check_missing_tools, install_all_missing, install_tool
 from .schema import Finding, FindingId, validate_finding
 
 __all__ = [
@@ -16,6 +17,9 @@ __all__ = [
     "Finding",
     "FindingId",
     "validate_finding",
+    "check_missing_tools",
+    "install_tool",
+    "install_all_missing",
     "InvalidScopeError",
     "PathTraversalError",
     "ToolTimeoutError",
