@@ -7,6 +7,7 @@ Philosophy: Single responsibility - just grading, no other logic.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import statistics
 from dataclasses import dataclass
@@ -118,7 +119,7 @@ def _single_grade_call(model: str, prompt: str) -> GradeResult:
     Returns:
         GradeResult from this single call
     """
-    result_json = call_grader_json(prompt, model=model, max_tokens=500)
+    result_json = asyncio.run(call_grader_json(prompt, model=model, max_tokens=500))
 
     return GradeResult(
         score=float(result_json["score"]),

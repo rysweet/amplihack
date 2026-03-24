@@ -23,6 +23,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from amplihack.llm import completion
+
 from .metacognition_grader import MetacognitionGrader
 from .teaching_session import TeachingConfig, TeachingSession
 
@@ -337,8 +339,6 @@ class MetaEvalExperiment:
         The student has no direct access to the knowledge base;
         it can only use what it learned during the teaching session.
         """
-        from amplihack.llm import completion
-
         # Build teaching context from the session
         teaching_context = ""
         for turn in teaching_result.turns:
@@ -479,8 +479,10 @@ def main():
     print(f"Output: {config.output_dir}")
     print("=" * 70)
 
+    import asyncio
+
     experiment = MetaEvalExperiment(config=config)
-    report = experiment.run()
+    report = asyncio.run(experiment.run())
 
     print(f"\n{report.summary}")
     print(f"\nOverall Score: {report.overall_score:.2%}")

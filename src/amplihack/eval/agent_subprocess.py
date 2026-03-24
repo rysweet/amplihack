@@ -5,6 +5,7 @@ Philosophy: Stateless within each phase, state persists via memory backend.
 Now uses LearningAgent with HierarchicalMemory for enhanced knowledge retrieval.
 """
 
+import asyncio
 import json
 import os
 import sys
@@ -116,7 +117,7 @@ def learning_phase(news_articles: list[dict], agent_name: str, sdk: str = "mini"
             # Combine title and content for learning
             content = f"Title: {article['title']}\n\n{article['content']}"
 
-            result = agent.learn_from_content(content)
+            result = asyncio.run(agent.learn_from_content(content))
             if result["facts_stored"] > 0:
                 stored_count += result["facts_stored"]
     finally:
@@ -163,7 +164,9 @@ def testing_phase(quiz_questions: list[dict], agent_name: str, sdk: str = "mini"
             level = question_data.get("level", "L1")
 
             # Use agent's answer_question with LLM synthesis and trace
-            result = agent.answer_question(question, question_level=level, return_trace=True)
+            result = asyncio.run(
+                agent.answer_question(question, question_level=level, return_trace=True)
+            )
             if isinstance(result, tuple):
                 answer, trace = result
             else:
