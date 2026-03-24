@@ -1,7 +1,6 @@
 # Claude Code Hooks vs GitHub Copilot CLI Hooks - Complete Comparison
 
-**Last Updated**: 2026-01-16
-**Testing**: Both platforms tested in production
+**Last Updated**: 2026-01-16 **Testing**: Both platforms tested in production
 **Sources**: Official documentation + empirical testing
 
 ## Hook Types Comparison
@@ -64,15 +63,15 @@
 
 ## Implementation Comparison
 
-| Aspect                 | Claude Code                    | Copilot CLI              | Our Implementation                               |
-| ---------------------- | ------------------------------ | ------------------------ | ------------------------------------------------ |
-| **Language**           | Python                         | Bash/PowerShell          | Bash wrappers → Python hooks (zero duplication!) |
-| **Configuration**      | settings.json                  | `.github/hooks/*.json`   | Both supported                                   |
-| **Input Format**       | JSON via stdin                 | JSON via stdin           | Same format                                      |
-| **Output Format**      | JSON with `hookSpecificOutput` | JSON with limited fields | Different capabilities                           |
-| **Complexity**         | 522 lines (session_start.py)   | Must rewrite in Bash     | 15-line wrappers call Python ✅                  |
-| **Can Import Modules** | ✅ YES - Full Python           | ❌ NO - Shell only       | Wrappers enable Python ✅                        |
-| **Async Support**      | ✅ YES - asyncio               | ❌ NO - Bash sequential  | Wrappers enable async ✅                         |
+| Aspect                 | Claude Code                    | Copilot CLI              | Our Implementation                                                    |
+| ---------------------- | ------------------------------ | ------------------------ | --------------------------------------------------------------------- |
+| **Language**           | Python                         | Bash/PowerShell          | Mixed: bash wrappers + Rust hook binary + Python bridges where needed |
+| **Configuration**      | settings.json                  | `.github/hooks/*.json`   | Both supported                                                        |
+| **Input Format**       | JSON via stdin                 | JSON via stdin           | Same format                                                           |
+| **Output Format**      | JSON with `hookSpecificOutput` | JSON with limited fields | Normalized to one valid response per wrapper                          |
+| **Complexity**         | 522 lines (session_start.py)   | Must rewrite in Bash     | Wrappers can delegate to Rust or Python                               |
+| **Can Import Modules** | ✅ YES - Full Python           | ❌ NO - Shell only       | Python bridges still available where Rust has not fully replaced them |
+| **Async Support**      | ✅ YES - asyncio               | ❌ NO - Bash sequential  | Wrapper layer still enables richer behavior                           |
 
 ---
 
@@ -156,7 +155,8 @@ exit 0
 → Opus responds normally (didn't see the hook output)
 ```
 
-**Conclusion**: Copilot CLI ignores sessionStart stdout (despite docs suggesting it should work)
+**Conclusion**: Copilot CLI ignores sessionStart stdout (despite docs suggesting
+it should work)
 
 ### Test 2: Hooks Execute
 
@@ -187,7 +187,8 @@ Hook executes → Returns JSON → Claude Code injects into context → AI sees 
 Hook executes → Returns JSON → Copilot logs it → AI NEVER sees it (except preToolUse)
 ```
 
-**Key Difference**: Claude Code treats hook output as **modifiable context**, Copilot CLI treats it as **metadata to log**.
+**Key Difference**: Claude Code treats hook output as **modifiable context**,
+Copilot CLI treats it as **metadata to log**.
 
 ---
 
@@ -216,7 +217,8 @@ Hook executes → Returns JSON → Copilot logs it → AI NEVER sees it (except 
 
 **Adaptive Context Injection Strategy**:
 
-amplihack uses an adaptive hook system that detects which platform is calling and applies the appropriate context injection strategy:
+amplihack uses an adaptive hook system that detects which platform is calling
+and applies the appropriate context injection strategy:
 
 | Platform        | Strategy             | Implementation                                                  |
 | --------------- | -------------------- | --------------------------------------------------------------- |
@@ -302,4 +304,5 @@ else:  # Copilot CLI
 
 ---
 
-**Conclusion**: Copilot CLI hooks are more limited than Claude Code hooks, but our zero-duplication wrapper architecture works with both platforms! 🏴‍☠️
+**Conclusion**: Copilot CLI hooks are more limited than Claude Code hooks, but
+our zero-duplication wrapper architecture works with both platforms! 🏴‍☠️

@@ -162,7 +162,7 @@ class TestXPIAHookMergeUtility(unittest.TestCase):
                         "hooks": [
                             {
                                 "type": "command",
-                                "command": "/Users/test/.claude/tools/xpia/hooks/session_start.py",
+                                "command": "/Users/test/.amplihack/.claude/tools/xpia/hooks/session_start.py",
                                 "timeout": 5000,  # Different timeout
                             }
                         ]
@@ -270,7 +270,7 @@ class TestXPIAHealthCheck(unittest.TestCase):
                         "hooks": [
                             {
                                 "type": "command",
-                                "command": "/Users/test/.claude/tools/xpia/hooks/session_start.py",
+                                "command": "/Users/test/.amplihack/.claude/tools/xpia/hooks/session_start.py",
                                 "timeout": 10000,
                             }
                         ]
@@ -282,7 +282,7 @@ class TestXPIAHealthCheck(unittest.TestCase):
                         "hooks": [
                             {
                                 "type": "command",
-                                "command": "/Users/test/.claude/tools/xpia/hooks/post_tool_use.py",
+                                "command": "/Users/test/.amplihack/.claude/tools/xpia/hooks/post_tool_use.py",
                                 "timeout": 3000,
                             }
                         ],
@@ -294,7 +294,7 @@ class TestXPIAHealthCheck(unittest.TestCase):
                         "hooks": [
                             {
                                 "type": "command",
-                                "command": "/Users/test/.claude/tools/xpia/hooks/pre_tool_use.py",
+                                "command": "/Users/test/.amplihack/.claude/tools/xpia/hooks/pre_tool_use.py",
                                 "timeout": 5000,
                             }
                         ],
@@ -326,7 +326,7 @@ class TestXPIAHealthCheck(unittest.TestCase):
                         "hooks": [
                             {
                                 "type": "command",
-                                "command": "/Users/test/.claude/tools/xpia/hooks/session_start.py",
+                                "command": "/Users/test/.amplihack/.claude/tools/xpia/hooks/session_start.py",
                                 "timeout": 10000,
                             }
                         ]
@@ -395,8 +395,7 @@ class TestXPIAHookExecution(unittest.TestCase):
         if not hook_path.exists():
             self.skipTest(f"Pre-tool-use hook not found: {hook_path}")
 
-        # Claude Code PreToolUse protocol: {"toolUse": {"name": ..., "input": ...}}
-        test_input = {"toolUse": {"name": "Bash", "input": {"command": "ls -la"}}}
+        test_input = {"tool_name": "Bash", "tool_input": {"command": "ls -la"}}
 
         try:
             result = subprocess.run(
@@ -425,8 +424,7 @@ class TestXPIAHookExecution(unittest.TestCase):
         if not hook_path.exists():
             self.skipTest(f"Pre-tool-use hook not found: {hook_path}")
 
-        # Claude Code PreToolUse protocol: {"toolUse": {"name": ..., "input": ...}}
-        test_input = {"toolUse": {"name": "Bash", "input": {"command": "rm -rf /"}}}
+        test_input = {"tool_name": "Bash", "tool_input": {"command": "rm -rf /"}}
 
         try:
             result = subprocess.run(

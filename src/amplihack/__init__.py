@@ -15,6 +15,8 @@ Public API:
 """
 
 import os
+import subprocess
+import sys
 
 # Read version from installed package metadata
 from importlib.metadata import PackageNotFoundError, version
@@ -40,6 +42,7 @@ CLI_NAME = "amplihack_cli.py"
 CLI_SRC = os.path.abspath(__file__)
 
 MANIFEST_JSON = os.path.join(CLAUDE_DIR, "install", "amplihack-manifest.json")
+RUST_FIRST_COMMANDS = {"install", "mode", "recipe", "update"}
 
 # Essential directories that must be copied during installation
 ESSENTIAL_DIRS = [
@@ -145,6 +148,10 @@ def filecmp(f1, f2):
 
 def main():
     """Main CLI entry point."""
+    rust_exit_code = _delegate_to_rust_cli_if_supported()
+    if rust_exit_code is not None:
+        return rust_exit_code
+
     # Ensure dependencies are installed at CLI startup (not import time)
     from .copilot_auto_install import ensure_copilot_sdk_installed
     from .memory_auto_install import ensure_memory_lib_installed
@@ -158,6 +165,26 @@ def main():
     return cli_main()
 
 
+def _delegate_to_rust_cli_if_supported(argv: list[str] | None = None) -> int | None:
+    """Delegate Rust-backed commands to an installed Rust CLI when available."""
+    args = list(sys.argv[1:] if argv is None else argv)
+    if not args:
+        return None
+
+    top_level_command = next((arg for arg in args if not arg.startswith("-")), None)
+    if top_level_command not in RUST_FIRST_COMMANDS:
+        return None
+
+    from .auto_update import _find_rust_cli
+
+    rust_cli = _find_rust_cli()
+    if rust_cli is None:
+        return None
+
+    result = subprocess.run([str(rust_cli), *args], check=False)
+    return result.returncode
+
+
 # Public API
 __all__ = [
     # Version
@@ -168,6 +195,7 @@ __all__ = [
     "CLI_NAME",
     "CLI_SRC",
     "MANIFEST_JSON",
+    "RUST_FIRST_COMMANDS",
     "ESSENTIAL_DIRS",
     "ESSENTIAL_FILES",
     "RUNTIME_DIRS",

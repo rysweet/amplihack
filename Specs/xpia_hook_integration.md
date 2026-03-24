@@ -48,7 +48,7 @@ def validate_settings_format(settings_path: str) -> bool
    ```json
    {
      "type": "command",
-     "command": "~/.claude/tools/xpia/hooks/pre_tool_use.py",
+     "command": "~/.amplihack/.claude/tools/xpia/hooks/pre_tool_use.py",
      "matcher": "Bash",
      "timeout": 5000
    }
@@ -59,7 +59,7 @@ def validate_settings_format(settings_path: str) -> bool
    ```json
    {
      "type": "command",
-     "command": "~/.claude/tools/xpia/hooks/post_tool_use.py",
+     "command": "~/.amplihack/.claude/tools/xpia/hooks/post_tool_use.py",
      "matcher": "*",
      "timeout": 3000
    }
@@ -69,7 +69,7 @@ def validate_settings_format(settings_path: str) -> bool
    ```json
    {
      "type": "command",
-     "command": "~/.claude/tools/xpia/hooks/session_start.py",
+     "command": "~/.amplihack/.claude/tools/xpia/hooks/session_start.py",
      "timeout": 10
    }
    ```
@@ -222,7 +222,8 @@ graph TD
 1. **JSON-Based Configuration**: Use native Claude Code settings.json format
 2. **Backup-First Strategy**: Always backup before modification for safety
 3. **Incremental Merge**: Add XPIA hooks without removing user hooks
-4. **Graceful Degradation**: Installation succeeds even if XPIA hooks fail
+4. **Fail-Closed PreTool Path**: the Rust-backed XPIA pre-tool hook denies on
+   hook errors or missing defender binaries instead of silently allowing
 5. **Explicit Validation**: Verify installation success with health checks
 
 ## Dependencies
