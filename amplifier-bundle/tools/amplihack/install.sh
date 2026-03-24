@@ -1,7 +1,7 @@
 #!/bin/bash
 # Enhanced install script for dual-mode hook path management
-# if the AMPLIHACK_INSTALL_LOCATION variable is not set, default to https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding
-AMPLIHACK_INSTALL_LOCATION=${AMPLIHACK_INSTALL_LOCATION:-https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding}
+# if the AMPLIHACK_INSTALL_LOCATION variable is not set, default to https://github.com/rysweet/amplihack
+AMPLIHACK_INSTALL_LOCATION=${AMPLIHACK_INSTALL_LOCATION:-https://github.com/rysweet/amplihack}
 
 # clone the repository to a tmp local directory
 # make sure the dir does not exist first - exit if it does
