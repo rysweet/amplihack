@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 Philosophy:
 - Single responsibility: Orchestrate agent loop
-- LLM-powered reasoning via litellm
+- LLM-powered reasoning via amplihack.llm
 - Clear separation of concerns (perceive, reason, act, learn)
 - Stateless execution (state stored in memory)
 - Iterative reasoning: plan → search → evaluate → refine → answer
@@ -18,7 +18,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
-import litellm
+from amplihack.llm import completion
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +175,7 @@ class AgenticLoop:
             agent_name: Name of the agent
             action_executor: ActionExecutor instance
             memory_retriever: MemoryRetriever instance
-            model: LLM model to use (litellm format)
+            model: LLM model to use
             max_iterations: Maximum iterations per goal
             memory: Optional Memory facade instance (from amplihack.memory.facade).
                 When provided, perceive() uses memory.remember/recall and learn()
@@ -269,7 +269,7 @@ class AgenticLoop:
 
         return perception
 
-    def reason(self, perception: str) -> dict[str, Any]:
+    async def reason(self, perception: str) -> dict[str, Any]:
         """REASON phase: Use LLM to decide what action to take.
 
         Args:
@@ -282,7 +282,7 @@ class AgenticLoop:
                 - params: Parameters for the action
 
         Note:
-            This uses litellm to call the configured LLM model.
+            This uses amplihack.llm to call the configured LLM model.
             Set OPENAI_API_KEY or other provider keys as needed.
         """
         # Get available actions
@@ -309,18 +309,15 @@ Respond in this JSON format:
 """
 
         try:
-            # Call LLM via litellm
-            response = litellm.completion(
-                model=self.model,
-                messages=[
+            # Call LLM via amplihack.llm
+            response_text = await completion(
+                [
                     {"role": "system", "content": "You are a helpful goal-seeking agent."},
                     {"role": "user", "content": prompt},
                 ],
+                model=self.model,
                 temperature=0.7,
             )
-
-            # Extract response
-            response_text = response.choices[0].message.content
 
             # Parse JSON response
             import json
@@ -414,7 +411,7 @@ Respond in this JSON format:
 
         return learning
 
-    def run_iteration(self, goal: str, observation: str) -> LoopState:
+    async def run_iteration(self, goal: str, observation: str) -> LoopState:
         """Run one iteration of the PERCEIVE→REASON→ACT→LEARN loop.
 
         Args:
@@ -426,7 +423,7 @@ Respond in this JSON format:
 
         Example:
             >>> loop = AgenticLoop("agent", executor, memory)
-            >>> state = loop.run_iteration("Greet user", "User Alice present")
+            >>> state = await loop.run_iteration("Greet user", "User Alice present")
             >>> print(state.reasoning)  # LLM's reasoning
             >>> print(state.outcome)    # Action result
         """
@@ -436,7 +433,7 @@ Respond in this JSON format:
         perception = self.perceive(observation, goal)
 
         # REASON
-        action_decision = self.reason(perception)
+        action_decision = await self.reason(perception)
 
         # ACT
         outcome = self.act(action_decision)
@@ -458,7 +455,7 @@ Respond in this JSON format:
             iteration=self.iteration_count,
         )
 
-    def run_until_goal(
+    async def run_until_goal(
         self, goal: str, initial_observation: str, is_goal_achieved: Callable | None = None
     ) -> list[LoopState]:
         """Run loop until goal is achieved or max iterations reached.
@@ -475,7 +472,7 @@ Respond in this JSON format:
             >>> def check_goal(state):
             ...     return "success" in str(state.outcome).lower()
             >>>
-            >>> states = loop.run_until_goal(
+            >>> states = await loop.run_until_goal(
             ...     goal="Complete task",
             ...     initial_observation="Task pending",
             ...     is_goal_achieved=check_goal
@@ -485,7 +482,7 @@ Respond in this JSON format:
         observation = initial_observation
 
         for _ in range(self.max_iterations):
-            state = self.run_iteration(goal, observation)
+            state = await self.run_iteration(goal, observation)
             states.append(state)
 
             # Check if goal achieved
@@ -501,7 +498,7 @@ Respond in this JSON format:
     # Iterative reasoning: plan → search → evaluate → refine → answer
     # ------------------------------------------------------------------
 
-    def reason_iteratively(
+    async def reason_iteratively(
         self,
         question: str,
         memory,
@@ -551,10 +548,10 @@ Respond in this JSON format:
         for step in range(max_steps):
             # Step 1/1b: Plan or refine retrieval
             if step == 0:
-                plan = self._plan_retrieval(question, intent)
+                plan = await self._plan_retrieval(question, intent)
                 step_type = "plan"
             else:
-                plan = self._refine_retrieval(question, collected_facts, evaluation)
+                plan = await self._refine_retrieval(question, collected_facts, evaluation)
                 step_type = "refine"
 
             if not plan.search_queries:
@@ -606,7 +603,7 @@ Respond in this JSON format:
                 break
 
             # Step 3: Evaluate sufficiency
-            evaluation = self._evaluate_sufficiency(question, collected_facts, intent)
+            evaluation = await self._evaluate_sufficiency(question, collected_facts, intent)
 
             # Record evaluation step
             trace.steps.append(
@@ -636,7 +633,7 @@ Respond in this JSON format:
 
         return collected_facts, collected_nodes, trace
 
-    def _plan_retrieval(self, question: str, intent: dict[str, Any]) -> RetrievalPlan:
+    async def _plan_retrieval(self, question: str, intent: dict[str, Any]) -> RetrievalPlan:
         """Plan what information to retrieve. One short LLM call.
 
         Args:
@@ -686,19 +683,19 @@ Return ONLY a JSON object:
 {{"search_queries": ["query1", "query2", ...], "reasoning": "brief explanation of search strategy"}}"""
 
         try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
+            response_text = await completion(
+                [
                     {
                         "role": "system",
                         "content": "You are a search planner. Generate targeted search queries. Return only JSON.",
                     },
                     {"role": "user", "content": prompt},
                 ],
+                model=self.model,
                 temperature=0.0,
             )
 
-            result = self._parse_json_response(response.choices[0].message.content)
+            result = self._parse_json_response(response_text)
             if result and "search_queries" in result:
                 return RetrievalPlan(
                     search_queries=result["search_queries"][:5],
@@ -713,7 +710,7 @@ Return ONLY a JSON object:
             reasoning="fallback: using original question",
         )
 
-    def _refine_retrieval(
+    async def _refine_retrieval(
         self,
         question: str,
         collected_facts: list[dict[str, Any]],
@@ -748,19 +745,19 @@ Return ONLY a JSON object:
 {{"search_queries": ["query1", "query2"], "reasoning": "what these queries target"}}"""
 
         try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
+            response_text = await completion(
+                [
                     {
                         "role": "system",
                         "content": "You are a search planner. Generate targeted search queries for missing information. Return only JSON.",
                     },
                     {"role": "user", "content": prompt},
                 ],
+                model=self.model,
                 temperature=0.0,
             )
 
-            result = self._parse_json_response(response.choices[0].message.content)
+            result = self._parse_json_response(response_text)
             if result and "search_queries" in result:
                 return RetrievalPlan(
                     search_queries=result["search_queries"][:3],
@@ -777,7 +774,7 @@ Return ONLY a JSON object:
             )
         return RetrievalPlan()
 
-    def _evaluate_sufficiency(
+    async def _evaluate_sufficiency(
         self,
         question: str,
         collected_facts: list[dict[str, Any]],
@@ -824,19 +821,19 @@ Return ONLY a JSON object:
 {{"sufficient": true/false, "missing": "what's missing or empty string", "confidence": 0.8, "refined_queries": ["query if more search needed"]}}"""
 
         try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
+            response_text = await completion(
+                [
                     {
                         "role": "system",
                         "content": "You are a fact sufficiency evaluator. Be strict: if key data points are missing, say so. Return only JSON.",
                     },
                     {"role": "user", "content": prompt},
                 ],
+                model=self.model,
                 temperature=0.0,
             )
 
-            result = self._parse_json_response(response.choices[0].message.content)
+            result = self._parse_json_response(response_text)
             if result:
                 return SufficiencyEvaluation(
                     sufficient=bool(result.get("sufficient", False)),

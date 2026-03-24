@@ -22,9 +22,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from ..proxy.token_sanitizer import TokenSanitizer
+from ..utils.token_sanitizer import TokenSanitizer
 
-# Default trace file location - used by trace_logger and litellm_callbacks
+# Default trace file location - used by trace_logger
 DEFAULT_TRACE_FILE = Path.home() / ".amplihack" / "trace.jsonl"
 
 

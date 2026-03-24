@@ -2,7 +2,7 @@
 
 > [Security](./README.md) > API Reference
 
-Complete reference for `amplihack.proxy.security` module.
+Complete reference for `amplihack.utils.token_sanitizer` module.
 
 ## Contents
 
@@ -13,10 +13,10 @@ Complete reference for `amplihack.proxy.security` module.
 
 ## TokenSanitizer Class
 
-**Module**: `amplihack.proxy.security`
+**Module**: `amplihack.utils.token_sanitizer`
 
 ```python
-from amplihack.proxy.security import TokenSanitizer
+from amplihack.utils.token_sanitizer import TokenSanitizer
 
 sanitizer = TokenSanitizer()
 ```
@@ -46,7 +46,7 @@ Initializes TokenSanitizer with compiled regex patterns for all supported token 
 **Example**:
 
 ```python
-from amplihack.proxy.security import TokenSanitizer
+from amplihack.utils.token_sanitizer import TokenSanitizer
 
 sanitizer = TokenSanitizer()
 ```

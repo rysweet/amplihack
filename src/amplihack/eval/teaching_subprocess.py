@@ -52,7 +52,9 @@ def teaching_phase(knowledge_base: list[str], agent_name: str, max_turns: int = 
 
         # Then run a simplified teaching dialogue
         # The teacher extracts key concepts and stores teaching summaries
-        import litellm  # type: ignore[import-unresolved]
+        import asyncio
+
+        from amplihack.llm import completion
 
         kb_text = "\n\n".join(knowledge_base)
 
@@ -66,16 +68,7 @@ Knowledge base:
 
 Return a structured lesson plan with numbered key facts."""
 
-        response = litellm.completion(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are an expert teacher creating a lesson plan."},
-                {"role": "user", "content": teacher_prompt},
-            ],
-            temperature=0.3,
-        )
-
-        lesson = response.choices[0].message.content.strip()
+        lesson = asyncio.run(_generate_lesson(model, teacher_prompt))
 
         # Store the lesson as additional knowledge
         agent.learn_from_content(f"Teaching Summary:\n{lesson}")
@@ -93,6 +86,21 @@ Return a structured lesson plan with numbered key facts."""
         return {"status": "error", "turns": 0, "error": str(e)}
     finally:
         agent.close()
+
+
+async def _generate_lesson(model: str, teacher_prompt: str) -> str:
+    """Generate a lesson plan via the LLM adapter."""
+    from amplihack.llm import completion
+
+    response_text = await completion(
+        [
+            {"role": "system", "content": "You are an expert teacher creating a lesson plan."},
+            {"role": "user", "content": teacher_prompt},
+        ],
+        model=model,
+        temperature=0.3,
+    )
+    return response_text.strip()
 
 
 def main():

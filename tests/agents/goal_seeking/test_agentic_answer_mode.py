@@ -15,7 +15,7 @@ import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -234,64 +234,55 @@ class TestEvaluateAnswerCompleteness:
         )
         assert result["is_complete"] is False
 
-    @patch("litellm.completion")
-    def test_complete_answer_from_llm(self, mock_llm, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_complete_answer_from_llm(self, mock_llm, agent):
         """When LLM says complete, returns is_complete=True."""
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = json.dumps({"is_complete": True})
-        mock_llm.return_value = mock_response
+        mock_llm.return_value = json.dumps({"is_complete": True})
 
-        result = agent._evaluate_answer_completeness("What is X?", "X is a thing that does Y.")
+        result = await agent._evaluate_answer_completeness("What is X?", "X is a thing that does Y.")
         assert result["is_complete"] is True
         assert result["gaps"] == []
 
-    @patch("litellm.completion")
-    def test_incomplete_answer_from_llm(self, mock_llm, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_incomplete_answer_from_llm(self, mock_llm, agent):
         """When LLM finds gaps, returns them as search queries."""
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = json.dumps(
+        mock_llm.return_value = json.dumps(
             {"is_complete": False, "gaps": ["missing detail about Z", "need info on W"]}
         )
-        mock_llm.return_value = mock_response
 
-        result = agent._evaluate_answer_completeness("What is X?", "X is partially described.")
+        result = await agent._evaluate_answer_completeness("What is X?", "X is partially described.")
         assert result["is_complete"] is False
         assert len(result["gaps"]) == 2
         assert "missing detail about Z" in result["gaps"]
 
-    @patch("litellm.completion")
-    def test_handles_markdown_wrapped_json(self, mock_llm, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_handles_markdown_wrapped_json(self, mock_llm, agent):
         """Handles LLM responses wrapped in markdown code fences."""
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[
-            0
-        ].message.content = '```json\n{"is_complete": false, "gaps": ["topic A"]}\n```'
-        mock_llm.return_value = mock_response
+        mock_llm.return_value = '```json\n{"is_complete": false, "gaps": ["topic A"]}\n```'
 
-        result = agent._evaluate_answer_completeness("Q?", "A.")
+        result = await agent._evaluate_answer_completeness("Q?", "A.")
         assert result["is_complete"] is False
         assert "topic A" in result["gaps"]
 
-    @patch("litellm.completion")
-    def test_defaults_to_complete_on_parse_error(self, mock_llm, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_defaults_to_complete_on_parse_error(self, mock_llm, agent):
         """On JSON parse error, defaults to complete (conservative)."""
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = "Not valid JSON at all"
-        mock_llm.return_value = mock_response
+        mock_llm.return_value = "Not valid JSON at all"
 
-        result = agent._evaluate_answer_completeness("Q?", "A.")
+        result = await agent._evaluate_answer_completeness("Q?", "A.")
         assert result["is_complete"] is True
 
-    @patch("litellm.completion")
-    def test_defaults_to_complete_on_exception(self, mock_llm, agent):
+    @pytest.mark.asyncio
+    @patch("amplihack.agents.goal_seeking.learning_agent.completion", new_callable=AsyncMock)
+    async def test_defaults_to_complete_on_exception(self, mock_llm, agent):
         """On LLM failure, defaults to complete (conservative)."""
         mock_llm.side_effect = RuntimeError("API down")
 
-        result = agent._evaluate_answer_completeness("Q?", "A.")
+        result = await agent._evaluate_answer_completeness("Q?", "A.")
         assert result["is_complete"] is True
 
 

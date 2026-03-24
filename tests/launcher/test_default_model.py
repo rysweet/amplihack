@@ -16,7 +16,6 @@ from unittest.mock import Mock, patch
 import pytest
 
 from amplihack.launcher.core import ClaudeLauncher
-from amplihack.proxy.manager import ProxyManager
 
 
 class TestDefaultModelSelection:
@@ -35,7 +34,7 @@ class TestDefaultModelSelection:
         }
 
         with patch("amplihack.launcher.core.ProxyManager"):
-            mock_proxy = Mock(spec=ProxyManager)
+            mock_proxy = Mock()
             mock_proxy.proxy_config = mock_proxy_config
 
             launcher = ClaudeLauncher(proxy_manager=mock_proxy)
@@ -173,7 +172,7 @@ class TestDefaultModelSelection:
         }
 
         with patch("amplihack.launcher.core.ProxyManager"):
-            mock_proxy = Mock(spec=ProxyManager)
+            mock_proxy = Mock()
             mock_proxy.proxy_config = mock_proxy_config
 
             launcher = ClaudeLauncher(

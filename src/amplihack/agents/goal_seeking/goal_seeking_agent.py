@@ -83,7 +83,7 @@ class GoalSeekingAgent:
 
     Args:
         agent_name: Unique identifier for this agent.
-        model: LLM model string (litellm format).  Defaults to ``EVAL_MODEL``
+        model: LLM model string.  Defaults to ``EVAL_MODEL``
             env var or ``claude-opus-4-6``.
         storage_path: Override storage directory for memory.
         use_hierarchical: Pass through to LearningAgent backend selection.

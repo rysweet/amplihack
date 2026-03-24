@@ -75,7 +75,7 @@ def register_fleet_ops(fleet_cli: click.Group) -> None:
     @click.option("--priorities", default="", help="Project priorities to guide decisions")
     @click.option(
         "--backend",
-        type=click.Choice(["auto", "anthropic", "copilot", "litellm"]),
+        type=click.Choice(["auto", "anthropic", "copilot"]),
         default="auto",
         help="LLM backend for reasoning (default: auto-detect)",
     )
@@ -93,8 +93,6 @@ def register_fleet_ops(fleet_cli: click.Group) -> None:
             llm_backend = _cmd.AnthropicBackend()
         elif backend == "copilot":
             llm_backend = _cmd.CopilotBackend()
-        elif backend == "litellm":
-            llm_backend = _cmd.LiteLLMBackend()
         else:
             llm_backend = _cmd.auto_detect_backend()
 

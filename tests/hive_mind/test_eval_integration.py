@@ -3,7 +3,7 @@
 Verifies that the eval harness (amplihack_eval) can use InMemoryHiveGraph
 as a hive_store for distributed memory sharing through LearningAgentAdapter.
 
-All LLM calls are mocked via unittest.mock patching litellm.completion.
+All LLM calls are mocked via unittest.mock.
 Tests run fast (<2s) with no external dependencies.
 """
 
@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from amplihack_eval.adapters.learning_agent import LearningAgentAdapter
 from amplihack_eval.core.multi_seed import MultiSeedReport
@@ -27,26 +29,14 @@ from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
 # ---------------------------------------------------------------------------
 
 
-def _mock_litellm_completion(**kwargs):
-    """Return a mock litellm response with plausible content."""
-    msg = MagicMock()
-    msg.content = '{"facts": [{"fact": "Test fact about photosynthesis", "confidence": 0.9}]}'
-    choice = MagicMock()
-    choice.message = msg
-    resp = MagicMock()
-    resp.choices = [choice]
-    return resp
+async def _mock_completion(**kwargs):
+    """Return a mock LLM response with plausible content."""
+    return '{"facts": [{"fact": "Test fact about photosynthesis", "confidence": 0.9}]}'
 
 
-def _mock_litellm_completion_answer(**kwargs):
-    """Return a mock litellm response for answer_question."""
-    msg = MagicMock()
-    msg.content = "Photosynthesis converts light energy into chemical energy in plants."
-    choice = MagicMock()
-    choice.message = msg
-    resp = MagicMock()
-    resp.choices = [choice]
-    return resp
+async def _mock_completion_answer(**kwargs):
+    """Return a mock LLM response for answer_question."""
+    return "Photosynthesis converts light energy into chemical energy in plants."
 
 
 # ---------------------------------------------------------------------------
@@ -57,8 +47,9 @@ def _mock_litellm_completion_answer(**kwargs):
 class TestAdapterWithHiveStore:
     """Verify LearningAgentAdapter accepts and uses hive_store param."""
 
-    @patch("litellm.completion", side_effect=_mock_litellm_completion)
-    def test_adapter_accepts_hive_store_param(self, mock_llm):
+    @pytest.mark.asyncio
+    @patch("amplihack.llm.completion", new_callable=AsyncMock, side_effect=_mock_completion)
+    async def test_adapter_accepts_hive_store_param(self, mock_llm):
         """Test 1: LearningAgentAdapter can be constructed with hive_store=InMemoryHiveGraph."""
         hive = InMemoryHiveGraph(hive_id="eval-test-hive")
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -73,8 +64,9 @@ class TestAdapterWithHiveStore:
             assert adapter.name == "LearningAgent(gpt-4o-mini)"
             adapter.close()
 
-    @patch("litellm.completion", side_effect=_mock_litellm_completion)
-    def test_adapter_learn_stores_in_hive(self, mock_llm):
+    @pytest.mark.asyncio
+    @patch("amplihack.llm.completion", new_callable=AsyncMock, side_effect=_mock_completion)
+    async def test_adapter_learn_stores_in_hive(self, mock_llm):
         """Test 2: adapter.learn() stores facts in both local DB and hive."""
         hive = InMemoryHiveGraph(hive_id="learn-test-hive")
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -98,8 +90,9 @@ class TestAdapterWithHiveStore:
             assert stats["hive_id"] == "learn-test-hive"
             adapter.close()
 
-    @patch("litellm.completion", side_effect=_mock_litellm_completion_answer)
-    def test_adapter_answer_retrieves_from_hive(self, mock_llm):
+    @pytest.mark.asyncio
+    @patch("amplihack.llm.completion", new_callable=AsyncMock, side_effect=_mock_completion_answer)
+    async def test_adapter_answer_retrieves_from_hive(self, mock_llm):
         """Test 3: adapter.answer() can retrieve from both local and hive."""
         hive = InMemoryHiveGraph(hive_id="answer-test-hive")
         # Pre-populate hive with a fact from a different agent
@@ -145,8 +138,9 @@ class TestAdapterWithHiveStore:
 class TestAdapterCleanup:
     """Verify adapter.close() cleans up properly."""
 
-    @patch("litellm.completion", side_effect=_mock_litellm_completion)
-    def test_adapter_close_cleans_up(self, mock_llm):
+    @pytest.mark.asyncio
+    @patch("amplihack.llm.completion", new_callable=AsyncMock, side_effect=_mock_completion)
+    async def test_adapter_close_cleans_up(self, mock_llm):
         """Test 4: adapter.close() runs without error and cleans up resources."""
         hive = InMemoryHiveGraph(hive_id="cleanup-test-hive")
         with tempfile.TemporaryDirectory() as tmpdir:

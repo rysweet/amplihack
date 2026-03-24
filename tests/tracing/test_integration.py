@@ -12,7 +12,6 @@ Coverage Focus (30% of test suite):
 """
 
 import json
-import subprocess
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -20,7 +19,6 @@ import pytest
 
 from amplihack.launcher.claude_binary_manager import BinaryInfo, ClaudeBinaryManager
 from amplihack.launcher.core import launch_claude
-from amplihack.proxy.litellm_callbacks import register_trace_callbacks
 from amplihack.tracing.trace_logger import TraceLogger
 
 # =============================================================================
@@ -114,115 +112,6 @@ def test_launcher_initializes_trace_logger(tmp_path):
                 mock_logger_cls.assert_called_once()
 
 
-@pytest.mark.integration
-def test_launcher_registers_litellm_callbacks(tmp_path):
-    """Test that launcher registers LiteLLM callbacks."""
-    trace_file = tmp_path / "trace.jsonl"
-
-    with patch("amplihack.proxy.litellm_callbacks.register_trace_callbacks") as mock_register:
-        with patch("shutil.which", return_value="/usr/local/bin/rustyclawd"):
-            with patch("subprocess.run"):
-                launch_claude(enable_trace=True, trace_file=str(trace_file))
-
-                # Should register callbacks
-                mock_register.assert_called_once()
-                call_kwargs = mock_register.call_args[1]
-                assert call_kwargs.get("enabled") is True
-                assert str(trace_file) in str(call_kwargs.get("trace_file"))
-
-
-# =============================================================================
-# LiteLLM Integration Tests
-# =============================================================================
-
-
-@pytest.mark.integration
-def test_litellm_callbacks_write_to_trace_file(tmp_path):
-    """Test that LiteLLM callbacks write to trace file."""
-    trace_file = tmp_path / "trace.jsonl"
-
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks(enabled=True, trace_file=str(trace_file))
-
-    # Simulate LiteLLM request
-    with callback.trace_logger:
-        callback.on_llm_start(
-            {
-                "model": "claude-3-sonnet-20240229",
-                "messages": [{"role": "user", "content": "Hello"}],
-            }
-        )
-
-    # Verify trace file created and populated
-    assert trace_file.exists()
-    content = trace_file.read_text()
-    assert "claude-3-sonnet" in content
-
-
-@pytest.mark.integration
-def test_litellm_callbacks_sanitize_credentials(tmp_path):
-    """Test end-to-end credential sanitization."""
-    trace_file = tmp_path / "trace.jsonl"
-
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks(enabled=True, trace_file=str(trace_file))
-
-    # Simulate request with credentials
-    with callback.trace_logger:
-        callback.on_llm_start(
-            {
-                "model": "claude-3-sonnet-20240229",
-                "api_key": "sk-1234567890abcdefghij",
-                "messages": [{"role": "user", "content": "Using key sk-1234567890abcdefghij"}],
-            }
-        )
-
-    # Verify credentials sanitized in file
-    content = trace_file.read_text()
-    assert "sk-1234567890abcdefghij" not in content
-    assert "sk-***" in content
-
-
-@pytest.mark.integration
-def test_litellm_full_request_cycle(tmp_path):
-    """Test full LiteLLM request cycle with tracing."""
-    trace_file = tmp_path / "trace.jsonl"
-
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks(enabled=True, trace_file=str(trace_file))
-
-    # Simulate complete request cycle
-    with callback.trace_logger:
-        callback.on_llm_start(
-            {
-                "model": "claude-3-sonnet-20240229",
-                "messages": [{"role": "user", "content": "Hello"}],
-            }
-        )
-
-        callback.on_llm_end(
-            {
-                "response": {
-                    "id": "msg_123",
-                    "model": "claude-3-sonnet-20240229",
-                    "usage": {"prompt_tokens": 5, "completion_tokens": 10, "total_tokens": 15},
-                    "choices": [{"message": {"content": "Hi!"}}],
-                }
-            }
-        )
-
-    # Verify complete cycle logged
-    content = trace_file.read_text()
-    lines = content.strip().split("\n")
-    assert len(lines) == 2
-
-    start = json.loads(lines[0])
-    end = json.loads(lines[1])
-
-    assert "timestamp" in start
-    assert "timestamp" in end
-
-
 # =============================================================================
 # Configuration Integration Tests
 # =============================================================================
@@ -240,11 +129,6 @@ def test_env_configuration_propagates_to_all_components(monkeypatch, tmp_path):
     assert logger.enabled is True
     assert logger.log_file == trace_file
 
-    # Should propagate to callbacks
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks()
-        assert callback is not None
-
 
 @pytest.mark.integration
 def test_disabled_trace_skips_all_components(monkeypatch):
@@ -254,12 +138,6 @@ def test_disabled_trace_skips_all_components(monkeypatch):
     # TraceLogger should be disabled
     logger = TraceLogger.from_env()
     assert logger.enabled is False
-
-    # Callbacks should not be registered
-    with patch("litellm.callbacks.append") as mock_append:
-        callback = register_trace_callbacks()
-        assert callback is None
-        mock_append.assert_not_called()
 
 
 # =============================================================================
@@ -282,95 +160,6 @@ def test_trace_error_does_not_break_launcher(tmp_path):
                 launch_claude(enable_trace=True, trace_file=trace_file)
             except (OSError, PermissionError):
                 pass  # Trace error, but launcher should handle gracefully
-
-
-@pytest.mark.integration
-def test_litellm_continues_on_callback_error(tmp_path):
-    """Test that LiteLLM continues even if callback fails."""
-    trace_file = tmp_path / "readonly.jsonl"
-    trace_file.touch()
-    trace_file.chmod(0o444)  # Read-only
-
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks(enabled=True, trace_file=str(trace_file))
-
-    # Callback error should not break LiteLLM flow
-    try:
-        with callback.trace_logger:
-            callback.on_llm_start({"model": "test"})
-    except PermissionError:
-        pass  # Expected, but shouldn't propagate
-
-
-# =============================================================================
-# Performance Integration Tests
-# =============================================================================
-
-
-@pytest.mark.integration
-@pytest.mark.performance
-def test_end_to_end_trace_overhead(tmp_path):
-    """Test end-to-end tracing overhead."""
-    trace_file = tmp_path / "trace.jsonl"
-
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks(enabled=True, trace_file=str(trace_file))
-
-    # Measure complete request cycle
-    import time
-
-    start = time.perf_counter()
-
-    with callback.trace_logger:
-        callback.on_llm_start(
-            {
-                "model": "claude-3-sonnet-20240229",
-                "messages": [{"role": "user", "content": "test" * 100}],
-            }
-        )
-
-        callback.on_llm_end({"response": {"choices": [{"message": {"content": "response" * 100}}]}})
-
-    end = time.perf_counter()
-
-    # Total overhead should be reasonable (<20ms for entire cycle)
-    total_time = (end - start) * 1000
-    assert total_time < 20, f"Total trace overhead {total_time:.3f}ms exceeds 20ms"
-
-
-# =============================================================================
-# Concurrent Access Tests
-# =============================================================================
-
-
-@pytest.mark.integration
-def test_concurrent_trace_writes(tmp_path):
-    """Test concurrent writes to trace file."""
-    import threading
-
-    trace_file = tmp_path / "trace.jsonl"
-
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks(enabled=True, trace_file=str(trace_file))
-
-    def write_logs(thread_id):
-        with callback.trace_logger:
-            for i in range(10):
-                callback.on_llm_start({"model": "test", "thread": thread_id, "seq": i})
-
-    # Spawn multiple threads
-    threads = [threading.Thread(target=write_logs, args=(i,)) for i in range(5)]
-
-    for t in threads:
-        t.start()
-
-    for t in threads:
-        t.join()
-
-    # Verify all writes succeeded
-    content = trace_file.read_text()
-    lines = content.strip().split("\n")
-    assert len(lines) == 50  # 5 threads * 10 logs each
 
 
 # =============================================================================
@@ -414,75 +203,15 @@ def test_prerequisites_checker_reports_trace_support():
 
 
 @pytest.mark.integration
-def test_cleanup_on_launcher_exit(tmp_path):
-    """Test that resources are cleaned up on launcher exit."""
+def test_trace_logger_data_flow(tmp_path):
+    """Test TraceLogger data flow from creation to file output."""
     trace_file = tmp_path / "trace.jsonl"
 
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks(enabled=True, trace_file=str(trace_file))
-
-    with callback.trace_logger:
-        callback.on_llm_start({"model": "test"})
-
-    # After exit, file should be flushed and closed
-    assert trace_file.exists()
-
-    # Should be able to read file (not locked)
-    content = trace_file.read_text()
-    assert len(content) > 0
-
-
-# =============================================================================
-# Cross-Component Data Flow Tests
-# =============================================================================
-
-
-@pytest.mark.integration
-def test_data_flows_from_launcher_to_trace_file(tmp_path):
-    """Test complete data flow from launcher to trace file."""
-    trace_file = tmp_path / "trace.jsonl"
-
-    # Initialize all components
     logger = TraceLogger(enabled=True, log_file=trace_file)
 
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks(enabled=True, trace_file=str(trace_file))
-
-    # Simulate launcher -> LiteLLM -> TraceLogger flow
     with logger:
         logger.log({"event": "launcher_start", "binary": "rustyclawd"})
 
-    with callback.trace_logger:
-        callback.on_llm_start({"model": "claude-3-sonnet-20240229"})
-
-    # Verify both events in trace file
+    assert trace_file.exists()
     content = trace_file.read_text()
     assert "launcher_start" in content
-    assert "claude-3-sonnet" in content
-
-
-@pytest.mark.integration
-def test_configuration_consistency_across_components(tmp_path):
-    """Test that configuration is consistent across components."""
-    trace_file = tmp_path / "trace.jsonl"
-
-    # All components should use same trace file
-    logger = TraceLogger(enabled=True, log_file=trace_file)
-
-    with patch("litellm.callbacks.append"):
-        callback = register_trace_callbacks(enabled=True, trace_file=str(trace_file))
-
-    # Both should write to same file
-    with logger:
-        logger.log({"source": "logger"})
-
-    with callback.trace_logger:
-        callback.on_llm_start({"source": "callback"})
-
-    # Verify both in same file
-    content = trace_file.read_text()
-    lines = content.strip().split("\n")
-    assert len(lines) == 2
-
-    sources = [json.loads(line).get("source") or json.loads(line).get("event") for line in lines]
-    assert "logger" in str(sources)

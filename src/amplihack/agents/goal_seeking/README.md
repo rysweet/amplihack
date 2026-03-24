@@ -5,7 +5,7 @@ LLM-powered agentic loop for goal-seeking agents using the PERCEIVE→REASON→A
 ## Philosophy
 
 - **Ruthlessly Simple**: Core loop with 4 clear phases
-- **LLM-Powered**: Uses litellm for reasoning and synthesis (not hardcoded rules)
+- **LLM-Powered**: Uses amplihack.llm for reasoning and synthesis (not hardcoded rules)
 - **Memory-First**: Stores all learnings in Kuzu graph database
 - **Zero-BS**: No stubs, every function works
 - **Modular Design**: Self-contained modules with clear contracts
@@ -26,7 +26,7 @@ LLM-powered agentic loop for goal-seeking agents using the PERCEIVE→REASON→A
        │                  │              │
        ▼                  ▼              ▼
 ┌─────────────┐  ┌──────────────┐  ┌──────────────┐
-│  Memory     │  │   Action     │  │   LiteLLM    │
+│  Memory     │  │   Action     │  │amplihack.llm │
 │  Retrieval  │  │  Executor    │  │  (Reasoning) │
 └─────────────┘  └──────────────┘  └──────────────┘
        │
@@ -48,7 +48,7 @@ Main PERCEIVE→REASON→ACT→LEARN loop orchestrator.
 **Key Methods:**
 
 - `perceive()`: Observe environment + retrieve relevant memory
-- `reason()`: Use LLM to decide action (via litellm)
+- `reason()`: Use LLM to decide action (via amplihack.llm)
 - `act()`: Execute chosen action
 - `learn()`: Store experience in memory
 - `run_iteration()`: Execute one complete loop iteration
@@ -196,7 +196,7 @@ agent.close()
 
 ### LLM-Powered Reasoning
 
-Unlike rule-based systems, this implementation uses LLMs (via litellm) to:
+Unlike rule-based systems, this implementation uses LLMs (via amplihack.llm) to:
 
 - **Decide actions**: LLM reasons about what to do given the goal
 - **Extract facts**: LLM structures information from unstructured text
@@ -216,21 +216,17 @@ All learnings are stored in amplihack-memory-lib with Kuzu backend:
 All tests use mocked LLM responses:
 
 ```python
-@patch('amplihack.agents.goal_seeking.agentic_loop.litellm.completion')
-def test_reason_calls_llm(mock_completion, loop):
-    mock_response = MagicMock()
-    mock_response.choices = [
-        MagicMock(message=MagicMock(content='{"reasoning": "...", "action": "greet"}'))
-    ]
-    mock_completion.return_value = mock_response
+@patch('amplihack.agents.goal_seeking.agentic_loop.completion')
+async def test_reason_calls_llm(mock_completion, loop):
+    mock_completion.return_value = '{"reasoning": "...", "action": "greet"}'
 
-    result = loop.reason("Goal: Test")
+    result = await loop.reason("Goal: Test")
     assert result["action"] == "greet"
 ```
 
 ## Dependencies
 
-- **litellm**: LLM calls (OpenAI, Anthropic, etc.)
+- **amplihack.llm**: LLM calls (OpenAI, Anthropic, etc.)
 - **amplihack-memory-lib**: Memory storage (Kuzu backend)
 - **kuzu**: Graph database
 
@@ -318,7 +314,7 @@ for question, level in questions:
 
 ## Implementation Notes
 
-### LiteLLM Configuration
+### LLM Configuration
 
 Set environment variables for your LLM provider:
 
@@ -335,7 +331,7 @@ export AZURE_API_BASE=...
 export AZURE_API_VERSION=...
 ```
 
-Then specify model in litellm format:
+Model names are passed to `amplihack.llm.completion()`:
 
 - `"gpt-3.5-turbo"` - OpenAI GPT-3.5
 - `"gpt-4"` - OpenAI GPT-4
@@ -371,7 +367,7 @@ This implementation addresses Issue #2341: LLM-powered agentic loop for goal-see
 
 **Key Requirements Met:**
 
-- ✅ PERCEIVE→REASON→ACT→LEARN loop using litellm
+- ✅ PERCEIVE→REASON→ACT→LEARN loop using amplihack.llm
 - ✅ Kuzu memory search via amplihack-memory-lib
 - ✅ Tool registry with extensible actions
 - ✅ Wikipedia learning agent with L1-L4 questions

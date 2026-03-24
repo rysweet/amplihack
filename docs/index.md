@@ -89,7 +89,7 @@ Centralized plugin system that works across all your projects:
 - Requires: `$ANTHROPIC_API_KEY` environment variable for Anthropic models
 - Plugin mode: Install globally with [Plugin Installation Guide](plugin/INSTALLATION.md)
 - Per-project mode: Copy `~/.amplihack/.claude/` directory to your project
-- Azure OpenAI: Use proxy configuration (see [Proxy Configuration](PROXY_CONFIG_GUIDE.md))
+- Azure OpenAI: Configure via environment variables
 
 **Microsoft Amplifier**
 
@@ -108,7 +108,7 @@ amplihack copilot
 - Uses GitHub Copilot models (switch with `/model` command)
 - Adaptive hooks enable preference injection and context loading
 - All 38 agents available via `--agent <name>` flag
-- See [GitHub Copilot Integration](github-copilot-litellm-integration.md) for complete guide
+- See [GitHub Copilot CLI](../COPILOT_CLI.md) for complete guide
 - See [How to Use amplihack with a Non-Claude Agent](howto/use-non-claude-agent.md) for `AMPLIHACK_AGENT_BINARY` propagation and nested Copilot compatibility details
 
 **Codex**
@@ -120,7 +120,6 @@ amplihack copilot
 #### General Configuration
 
 - [Profile Management](PROFILE_MANAGEMENT.md) - Multiple environment configurations
-- [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup (Azure OpenAI, custom endpoints)
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
 - [Memory Configuration Consent](features/memory-consent-prompt.md) - Intelligent memory settings with timeout protection
 - [Verify .claude/ Staging](howto/verify-claude-staging.md) - Check that framework files are properly staged
@@ -582,8 +581,6 @@ Robust handling of conversation compaction in long sessions:
 
 ### Third-Party Integrations
 
-- [GitHub Copilot via LiteLLM](github-copilot-litellm-integration.md) - Use Copilot with amplihack
-- [OpenAI Responses API](OPENAI_RESPONSES_API.md) - OpenAI integration patterns
 - [MCP Evaluation](mcp_evaluation/README.md) - Model Context Protocol evaluation
 
 ---
@@ -595,7 +592,6 @@ Advanced configuration, deployment patterns, and environment management.
 ### Configuration
 
 - [Profile Management](PROFILE_MANAGEMENT.md) - Multiple environment configurations
-- [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
 - [Shell Command Hook](SHELL_COMMAND_HOOK.md) - Custom shell integrations
 
@@ -604,7 +600,6 @@ Advanced configuration, deployment patterns, and environment management.
 - [UVX Deployment Solutions](UVX_DEPLOYMENT_SOLUTIONS.md) - Production deployment with uvx
 - [UVX Data Models](UVX_DATA_MODELS.md) - Understanding uvx data structures
 - [Azure Integration](AZURE_INTEGRATION.md) - Deploy to Azure cloud
-- [Test Azure Proxy](TEST_AZURE_PROXY.md) - Validate Azure proxy setup
 
 ### Build System
 

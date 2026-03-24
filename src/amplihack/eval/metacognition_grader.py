@@ -8,7 +8,7 @@ Evaluates student learning across four metacognitive dimensions:
 
 Philosophy:
 - Single responsibility: Grade metacognition only
-- LLM-powered evaluation via litellm
+- LLM-powered evaluation via SDK adapter
 - Structured JSON output for reliable parsing
 - Graceful degradation on errors
 """
@@ -20,7 +20,7 @@ import logging
 import os
 from dataclasses import dataclass
 
-import litellm  # type: ignore[import-unresolved]
+from amplihack.llm import completion
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ class MetacognitionGrader:
     and what they do not know, beyond just factual correctness.
 
     Args:
-        model: LLM model identifier (litellm format)
+        model: LLM model identifier
 
     Example:
         >>> grader = MetacognitionGrader()
@@ -85,7 +85,7 @@ class MetacognitionGrader:
     def __init__(self, model: str = "") -> None:
         self.model = model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
-    def grade(
+    async def grade(
         self,
         question: str,
         expected_answer: str,
@@ -104,12 +104,12 @@ class MetacognitionGrader:
             MetacognitionScore with 4 dimensions and overall score
         """
         try:
-            return self._grade_with_llm(question, expected_answer, student_answer, self_explanation)
+            return await self._grade_with_llm(question, expected_answer, student_answer, self_explanation)
         except Exception as e:
             logger.warning("Grading failed: %s", e)
             return self._zero_score("Grading failed due to an internal error")
 
-    def batch_grade(self, items: list[dict[str, str]]) -> list[MetacognitionScore]:
+    async def batch_grade(self, items: list[dict[str, str]]) -> list[MetacognitionScore]:
         """Grade multiple question-answer pairs.
 
         Args:
@@ -119,17 +119,18 @@ class MetacognitionGrader:
         Returns:
             List of MetacognitionScore objects
         """
-        return [
-            self.grade(
+        results = []
+        for item in items:
+            score = await self.grade(
                 question=item["question"],
                 expected_answer=item["expected"],
                 student_answer=item["actual"],
                 self_explanation=item.get("explanation", ""),
             )
-            for item in items
-        ]
+            results.append(score)
+        return results
 
-    def _grade_with_llm(
+    async def _grade_with_llm(
         self,
         question: str,
         expected_answer: str,
@@ -172,19 +173,19 @@ Return ONLY a JSON object with this structure:
 "knowledge_boundaries": {{"score": 0.7, "reasoning": "brief explanation"}},
 "explanation_quality": {{"score": 0.85, "reasoning": "brief explanation"}}}}"""
 
-        response = litellm.completion(
-            model=self.model,
-            messages=[
+        response_text = await completion(
+            [
                 {
                     "role": "system",
                     "content": "You are a metacognition evaluation expert. Return only valid JSON.",
                 },
                 {"role": "user", "content": prompt},
             ],
+            model=self.model,
             temperature=0.3,
         )
 
-        response_text = response.choices[0].message.content.strip()
+        response_text = response_text.strip()
         return self._parse_grading_response(response_text)
 
     def _parse_grading_response(self, response_text: str) -> MetacognitionScore:
@@ -274,7 +275,7 @@ class ReasoningTraceScore:
     details: dict
 
 
-def grade_metacognition(
+async def grade_metacognition(
     trace: dict | str,
     answer_score: float,
     level: str,
@@ -300,7 +301,7 @@ def grade_metacognition(
 
     grader = MetacognitionGrader(model=model)
     try:
-        result = grader.grade(
+        result = await grader.grade(
             question=f"[{level}] Reasoning trace evaluation",
             expected_answer=f"Score: {answer_score:.2f}",
             student_answer=trace_text[:2000],

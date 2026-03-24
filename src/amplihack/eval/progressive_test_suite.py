@@ -87,7 +87,7 @@ class ProgressiveResult:
 def _extract_json_line(stdout: str) -> str:
     """Extract the JSON object line from subprocess stdout.
 
-    Subprocess stdout may contain litellm warnings, deprecation notices,
+    Subprocess stdout may contain LLM warnings, deprecation notices,
     or other non-JSON lines mixed in. This finds the line that is a valid
     JSON object starting with '{'.
 

@@ -614,13 +614,13 @@ cat .claude/logs/*.log | grep -i "trace\|sanitiz"
 **Solution 3: API call bypassed logging**
 
 ```python
-# If using custom API client, ensure callbacks registered
-from trace.litellm_callbacks import setup_trace_callbacks
+# If using custom API client, ensure trace logger is initialized
+from trace.trace_logger import TraceLogger
 
 logger = TraceLogger()
-setup_trace_callbacks(logger)
 
-# Now all litellm calls will be traced
+# Ensure all API calls go through the trace logger
+# by calling logger.log_request() and logger.log_response()
 ```
 
 **Verification**:

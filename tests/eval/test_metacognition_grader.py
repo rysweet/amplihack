@@ -12,7 +12,7 @@ from amplihack.eval.metacognition_grader import (
 
 
 def _mock_llm_response(text: str) -> MagicMock:
-    """Create a mock litellm response."""
+    """Create a mock LLM response."""
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = text
@@ -86,7 +86,7 @@ class TestMetacognitionGrader:
         grader = MetacognitionGrader(model="gpt-4")
         assert grader.model == "gpt-4"
 
-    @patch("litellm.completion")
+    @patch("amplihack.llm.completion")
     def test_grade_produces_4_dimensions(self, mock_completion):
         """Grading produces exactly 4 metacognition dimensions."""
         mock_completion.return_value = _mock_llm_response(
@@ -112,7 +112,7 @@ class TestMetacognitionGrader:
         assert "knowledge_boundaries" in dimension_names
         assert "explanation_quality" in dimension_names
 
-    @patch("litellm.completion")
+    @patch("amplihack.llm.completion")
     def test_grade_computes_overall_score(self, mock_completion):
         """Overall score is mean of all dimensions."""
         mock_completion.return_value = _mock_llm_response(
@@ -133,7 +133,7 @@ class TestMetacognitionGrader:
         expected_overall = (0.8 + 0.6 + 1.0 + 0.4) / 4
         assert score.overall_score == pytest.approx(expected_overall, abs=0.001)
 
-    @patch("litellm.completion")
+    @patch("amplihack.llm.completion")
     def test_grade_handles_empty_self_explanation(self, mock_completion):
         """Grader handles student with no self-explanation."""
         mock_completion.return_value = _mock_llm_response(
@@ -153,7 +153,7 @@ class TestMetacognitionGrader:
 
         assert score.overall_score < 0.5  # Should be low without explanation
 
-    @patch("litellm.completion")
+    @patch("amplihack.llm.completion")
     def test_grade_handles_llm_error(self, mock_completion):
         """Grader returns zero scores on LLM error."""
         mock_completion.side_effect = Exception("API Error")
@@ -170,7 +170,7 @@ class TestMetacognitionGrader:
         assert len(score.dimensions) == 4
         assert all(d.score == 0.0 for d in score.dimensions)
 
-    @patch("litellm.completion")
+    @patch("amplihack.llm.completion")
     def test_batch_grade(self, mock_completion):
         """Batch grading scores multiple question-answer pairs."""
         mock_completion.return_value = _mock_llm_response(

@@ -24,7 +24,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-import litellm
+from amplihack.llm import completion as _llm_completion
 
 from .action_executor import ActionExecutor, calculate, read_content, search_memory
 from .agentic_loop import AgenticLoop, ReasoningTrace
@@ -118,7 +118,7 @@ class LearningAgent:
 
         Args:
             agent_name: Name for the agent
-            model: LLM model to use (litellm format)
+            model: LLM model to use
             storage_path: Custom storage path for memory
             use_hierarchical: If True, use HierarchicalMemory via FlatRetrieverAdapter.
                 If False, use original MemoryRetriever (backward compatible).
@@ -210,22 +210,21 @@ class LearningAgent:
         # evaluation so all threads use the same consistent fact snapshot.
         self._pre_snapshot_facts: list[dict[str, Any]] | None = None
 
-    def _llm_completion_with_retry(
+    async def _llm_completion_with_retry(
         self, messages: list, temperature: float = 0.0, max_retries: int = 5
     ) -> str:
-        """Call litellm.completion with exponential backoff on transient failures.
+        """Call amplihack.llm.completion with exponential backoff on transient failures.
 
         Returns the response text content. Raises on non-rate-limit errors.
         """
         last_exception: Exception | None = None
         for _retry_attempt in range(max_retries + 1):  # attempt 0 = first try
             try:
-                response = litellm.completion(
+                return await _llm_completion(
+                    messages,
                     model=self.model,
-                    messages=messages,
                     temperature=temperature,
                 )
-                return response.choices[0].message.content
             except Exception as exc:
                 is_transient = self._is_transient_llm_error(exc)
                 if not is_transient or _retry_attempt >= max_retries:
@@ -289,7 +288,7 @@ class LearningAgent:
             content_lines.append(line)
         return "\n".join(content_lines).strip()
 
-    def learn_from_content(self, content: str) -> dict[str, Any]:
+    async def learn_from_content(self, content: str) -> dict[str, Any]:
         """Learn from content by extracting and storing facts.
 
         When use_hierarchical=True, stores the raw content as an episode first,
@@ -312,7 +311,7 @@ class LearningAgent:
             ... )
             >>> print(result['facts_extracted'])  # 1
         """
-        batch = self.prepare_fact_batch(content)
+        batch = await self.prepare_fact_batch(content)
         return self.store_fact_batch(batch, record_learning=True)
 
     @staticmethod
@@ -366,7 +365,7 @@ class LearningAgent:
 
         return store_kwargs
 
-    def _build_summary_store_kwargs(self, facts: list[dict[str, Any]]) -> dict[str, Any] | None:
+    async def _build_summary_store_kwargs(self, facts: list[dict[str, Any]]) -> dict[str, Any] | None:
         """Generate SUMMARY-node store kwargs for a learned fact batch."""
         fact_list = "\n".join(
             f"- [{f.get('context', 'General')}] {f.get('fact', '')}" for f in facts[:15]
@@ -374,19 +373,17 @@ class LearningAgent:
 
         prompt = _load_prompt("concept_map_user", fact_list=fact_list)
         try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
+            summary = (await _llm_completion(
+                [
                     {
                         "role": "system",
                         "content": load_prompt("concept_map_system"),
                     },
                     {"role": "user", "content": prompt},
                 ],
+                model=self.model,
                 temperature=0.2,
-            )
-
-            summary = response.choices[0].message.content.strip()
+            )).strip()
             return {
                 "context": "SUMMARY",
                 "fact": summary,
@@ -397,7 +394,7 @@ class LearningAgent:
             logger.debug("Failed to generate summary concept map: %s", e)
             return None
 
-    def prepare_fact_batch(self, content: str, include_summary: bool = True) -> dict[str, Any]:
+    async def prepare_fact_batch(self, content: str, include_summary: bool = True) -> dict[str, Any]:
         """Extract a content batch once so peers can store facts directly.
 
         The returned payload contains only direct-storage kwargs plus enough
@@ -415,9 +412,9 @@ class LearningAgent:
             }
 
         content = self._truncate_learning_content(content)
-        temporal_meta = self._detect_temporal_metadata(content)
+        temporal_meta = await self._detect_temporal_metadata(content)
         source_label = self._extract_source_label(content)
-        facts = self._extract_facts_with_llm(content, temporal_meta)
+        facts = await self._extract_facts_with_llm(content, temporal_meta)
 
         prepared_facts: list[dict[str, Any]] = []
         for fact in facts:
@@ -431,7 +428,7 @@ class LearningAgent:
 
         summary_store_kwargs = None
         if include_summary and facts and prepared_facts:
-            summary_store_kwargs = self._build_summary_store_kwargs(facts)
+            summary_store_kwargs = await self._build_summary_store_kwargs(facts)
 
         return {
             "facts_extracted": len(facts),
@@ -506,7 +503,7 @@ class LearningAgent:
             "content_summary": str(batch.get("content_summary", "")),
         }
 
-    def _store_summary_concept_map(
+    async def _store_summary_concept_map(
         self, content: str, facts: list[dict], episode_id: str = ""
     ) -> None:
         """Generate and store a summary concept map for knowledge organization.
@@ -521,7 +518,7 @@ class LearningAgent:
             episode_id: Optional source episode ID
         """
         del content  # Summary depends only on extracted facts, not raw text.
-        store_kwargs = self._build_summary_store_kwargs(facts)
+        store_kwargs = await self._build_summary_store_kwargs(facts)
         if store_kwargs is None:
             return
         try:
@@ -585,7 +582,7 @@ class LearningAgent:
 
         return None
 
-    def _detect_temporal_metadata(self, content: str) -> dict[str, Any]:
+    async def _detect_temporal_metadata(self, content: str) -> dict[str, Any]:
         """Detect dates and temporal markers in content using LLM.
 
         Makes a single LLM call to extract temporal context from content.
@@ -605,13 +602,13 @@ class LearningAgent:
 
         prompt = _load_prompt("temporal_detection_user", content=content[:500])
         try:
-            response_text = self._llm_completion_with_retry(
+            response_text = (await self._llm_completion_with_retry(
                 messages=[
                     {"role": "system", "content": load_prompt("temporal_detection_system")},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.0,
-            ).strip()
+            )).strip()
 
             # Parse JSON response
             try:
@@ -663,7 +660,7 @@ class LearningAgent:
     # All other intents use iterative reasoning for targeted retrieval
     # The iterative loop filters noise better than dumping all facts
 
-    def answer_question(
+    async def answer_question(
         self,
         question: str,
         question_level: str = "L1",
@@ -717,7 +714,7 @@ class LearningAgent:
         self.loop.observe(question)
 
         # Step 1 / OODA ORIENT (start): Intent detection -- single LLM call
-        intent = self._detect_intent(question)
+        intent = await self._detect_intent(question)
         intent_type = intent.get("intent", "simple_recall")
 
         # Step 2: Adaptive retrieval based on intent complexity
@@ -881,7 +878,7 @@ class LearningAgent:
             existing_ids = {
                 f.get("experience_id", "") for f in relevant_facts if f.get("experience_id")
             }
-            supplemental = self._keyword_expanded_retrieval(
+            supplemental = await self._keyword_expanded_retrieval(
                 question,
                 relevant_facts,
                 local_only=supplemental_local_only,
@@ -971,7 +968,7 @@ class LearningAgent:
 
         # Pre-compute math result if needed, so synthesis can use it directly
         if intent.get("needs_math") and deterministic_meta_answer is None:
-            computed = self._compute_math_result(question, relevant_facts, intent)
+            computed = await self._compute_math_result(question, relevant_facts, intent)
             if computed:
                 intent["computed_math"] = computed
 
@@ -1008,7 +1005,7 @@ class LearningAgent:
 
         if is_temporal_code_candidate:
             try:
-                code_result = self._code_generation_tool(question, candidate_facts=relevant_facts)
+                code_result = await self._code_generation_tool(question, candidate_facts=relevant_facts)
                 if code_result.get("result") is not None:
                     intent["temporal_code"] = code_result
                     logger.info(
@@ -1038,7 +1035,7 @@ class LearningAgent:
             answer = self._format_temporal_lookup_answer(question, intent.get("temporal_code"))
         else:
             # Synthesize answer from the oriented world model (relevant_facts).
-            answer = self._synthesize_with_llm(
+            answer = await self._synthesize_with_llm(
                 question=question,
                 context=relevant_facts,
                 question_level=question_level,
@@ -1079,7 +1076,7 @@ class LearningAgent:
             return answer, reasoning_trace
         return answer
 
-    def answer_question_agentic(
+    async def answer_question_agentic(
         self, question: str, max_iterations: int = 3, return_trace: bool = False
     ) -> str | tuple[str, ReasoningTrace | None]:
         """Agentic mode: run single-shot FIRST, then augment with iterative refinement.
@@ -1109,7 +1106,7 @@ class LearningAgent:
         # Solution C: pass _force_simple=True so entity-retrieval fallback returns
         #   all verbatim facts instead of compressed Tier 3 summaries, ensuring
         #   early-stored infrastructure facts are not lost.
-        initial_result = self.answer_question(
+        initial_result = await self.answer_question(
             question,
             return_trace=True,
             _skip_qanda_store=True,
@@ -1122,7 +1119,7 @@ class LearningAgent:
             trace = None
 
         # Step 2: Self-evaluate -- is the answer complete?
-        evaluation = self._evaluate_answer_completeness(question, initial_answer)
+        evaluation = await self._evaluate_answer_completeness(question, initial_answer)
 
         if evaluation.get("is_complete", True):
             logger.info("Agentic: single-shot answer is complete, no refinement needed")
@@ -1180,9 +1177,9 @@ class LearningAgent:
                 deduped.append(f)
 
         # Re-detect intent for proper synthesis prompting
-        intent = self._detect_intent(question)
+        intent = await self._detect_intent(question)
 
-        refined_answer = self._synthesize_with_llm(
+        refined_answer = await self._synthesize_with_llm(
             question=question,
             context=deduped,
             question_level="L3",  # Use L3 for synthesis-level refinement
@@ -1199,7 +1196,7 @@ class LearningAgent:
             return refined_answer, trace
         return refined_answer
 
-    def _evaluate_answer_completeness(self, question: str, answer: str) -> dict[str, Any]:
+    async def _evaluate_answer_completeness(self, question: str, answer: str) -> dict[str, Any]:
         """Evaluate whether an answer fully addresses the question.
 
         Uses a single LLM call to assess completeness and identify gaps.
@@ -1252,13 +1249,11 @@ class LearningAgent:
         )
 
         try:
-            response = litellm.completion(
+            raw = (await _llm_completion(
+                [{"role": "user", "content": prompt}],
                 model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=300,
                 temperature=0.0,
-            )
-            raw = response.choices[0].message.content.strip()
+            )).strip()
 
             # Parse JSON -- handle markdown code fences if the LLM wraps it
             if raw.startswith("```"):
@@ -1857,10 +1852,9 @@ class LearningAgent:
     )
     _PROJECT_NAME_PATTERNS = (re.compile(r"\bProject\s+([A-Z][A-Za-z0-9_-]+)\b"),)
     _TRANSIENT_LLM_ERROR_TYPES = (
-        litellm.RateLimitError,
-        litellm.InternalServerError,
-        litellm.ServiceUnavailableError,
-        litellm.APIConnectionError,
+        ConnectionError,
+        TimeoutError,
+        OSError,
     )
     _TRANSIENT_LLM_ERROR_MARKERS = (
         "rate_limit",
@@ -2825,7 +2819,7 @@ class LearningAgent:
             logger.debug("Failed to retrieve summary nodes: %s", e)
             return []
 
-    def _detect_intent(self, question: str) -> dict[str, Any]:
+    async def _detect_intent(self, question: str) -> dict[str, Any]:
         """Detect question intent using a single LLM call.
 
         Classifies the question to determine what kind of reasoning is needed,
@@ -2845,19 +2839,17 @@ class LearningAgent:
         prompt = _load_prompt("intent_classification_user", question=question)
 
         try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
+            response_text = (await _llm_completion(
+                [
                     {
                         "role": "system",
                         "content": load_prompt("intent_classification_system"),
                     },
                     {"role": "user", "content": prompt},
                 ],
+                model=self.model,
                 temperature=0.0,
-            )
-
-            response_text = response.choices[0].message.content.strip()
+            )).strip()
 
             try:
                 result = json.loads(response_text)
@@ -2944,7 +2936,7 @@ class LearningAgent:
 
         return answer
 
-    def _compute_math_result(
+    async def _compute_math_result(
         self, question: str, facts: list[dict[str, Any]], intent: dict[str, Any]
     ) -> str | None:
         """Pre-compute a math result from facts using LLM extraction + safe eval.
@@ -2973,19 +2965,17 @@ class LearningAgent:
         )
 
         try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
+            response_text = (await _llm_completion(
+                [
                     {
                         "role": "system",
                         "content": load_prompt("number_extraction_system"),
                     },
                     {"role": "user", "content": prompt},
                 ],
+                model=self.model,
                 temperature=0.0,
-            )
-
-            response_text = response.choices[0].message.content.strip()
+            )).strip()
 
             # Parse JSON response
             try:
@@ -3019,7 +3009,7 @@ class LearningAgent:
             logger.debug("_compute_math_result failed: %s", e)
             return None
 
-    def _keyword_expanded_retrieval(
+    async def _keyword_expanded_retrieval(
         self,
         question: str,
         existing_facts: list[dict[str, Any]],
@@ -3041,19 +3031,17 @@ class LearningAgent:
         prompt = _load_prompt("keyword_expansion_user", question=question)
 
         try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
+            response_text = (await _llm_completion(
+                [
                     {
                         "role": "system",
                         "content": load_prompt("keyword_expansion_system"),
                     },
                     {"role": "user", "content": prompt},
                 ],
+                model=self.model,
                 temperature=0.0,
-            )
-
-            response_text = response.choices[0].message.content.strip()
+            )).strip()
             try:
                 phrases = json.loads(response_text)
             except json.JSONDecodeError:
@@ -3097,7 +3085,7 @@ class LearningAgent:
             logger.debug("_keyword_expanded_retrieval failed: %s", e)
             return existing_facts
 
-    def _extract_facts_with_llm(
+    async def _extract_facts_with_llm(
         self, content: str, temporal_meta: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
         """Use LLM to extract structured facts from content.
@@ -3153,7 +3141,7 @@ class LearningAgent:
         )
 
         try:
-            response_text = self._llm_completion_with_retry(
+            response_text = await self._llm_completion_with_retry(
                 messages=[
                     {"role": "system", "content": load_prompt("fact_extraction_system")},
                     {"role": "user", "content": prompt},
@@ -3187,7 +3175,7 @@ class LearningAgent:
                 }
             ]
 
-    def _synthesize_with_llm(
+    async def _synthesize_with_llm(
         self,
         question: str,
         context: list[dict[str, Any]],
@@ -3793,7 +3781,7 @@ class LearningAgent:
         )
 
         try:
-            return self._llm_completion_with_retry(
+            return (await self._llm_completion_with_retry(
                 messages=[
                     {
                         "role": "system",
@@ -3802,7 +3790,7 @@ class LearningAgent:
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.3,
-            ).strip()
+            )).strip()
 
         except Exception as e:
             logger.error("LLM synthesis failed: %s", e)
@@ -3816,7 +3804,7 @@ class LearningAgent:
         """
         return self.memory.get_statistics()
 
-    def _explain_knowledge(self, topic: str, depth: str = "overview") -> str:
+    async def _explain_knowledge(self, topic: str, depth: str = "overview") -> str:
         """Generate an explanation of a topic from stored knowledge.
 
         Unlike synthesize_answer (which requires a question), this generates
@@ -3850,20 +3838,19 @@ class LearningAgent:
         )
 
         try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
+            return (await _llm_completion(
+                [
                     {"role": "system", "content": load_prompt("explanation_system")},
                     {"role": "user", "content": prompt},
                 ],
+                model=self.model,
                 temperature=0.3,
-            )
-            return response.choices[0].message.content.strip()
+            )).strip()
         except Exception as e:
             logger.error("Explanation generation failed: %s", e)
             return f"Unable to generate explanation for '{topic}'."
 
-    def _find_knowledge_gaps(self, topic: str) -> dict[str, Any]:
+    async def _find_knowledge_gaps(self, topic: str) -> dict[str, Any]:
         """Identify what's unknown or uncertain about a topic.
 
         Analyzes stored facts and identifies missing information,
@@ -3903,17 +3890,17 @@ class LearningAgent:
         gaps = ["Unable to analyze gaps"]
         coverage = "unknown"
         try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
+            response_text = await _llm_completion(
+                [
                     {"role": "system", "content": load_prompt("knowledge_gaps_system")},
                     {"role": "user", "content": prompt},
                 ],
+                model=self.model,
                 temperature=0.2,
             )
             from .json_utils import parse_llm_json
 
-            result = parse_llm_json(response.choices[0].message.content)
+            result = parse_llm_json(response_text)
             if result:
                 gaps = result.get("gaps", gaps)
                 coverage = result.get("overall_coverage", coverage)
@@ -3932,7 +3919,7 @@ class LearningAgent:
             "overall_coverage": coverage,
         }
 
-    def _verify_fact(self, fact: str) -> dict[str, Any]:
+    async def _verify_fact(self, fact: str) -> dict[str, Any]:
         """Verify if a fact is consistent with stored knowledge.
 
         Checks the fact against all stored facts for consistency,
@@ -3961,17 +3948,17 @@ class LearningAgent:
         prompt = _load_prompt("verify_fact_user", fact=fact, facts_text=facts_text)
 
         try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
+            response_text = await _llm_completion(
+                [
                     {"role": "system", "content": load_prompt("verify_fact_system")},
                     {"role": "user", "content": prompt},
                 ],
+                model=self.model,
                 temperature=0.1,
             )
             from .json_utils import parse_llm_json
 
-            result = parse_llm_json(response.choices[0].message.content)
+            result = parse_llm_json(response_text)
             if result:
                 return {
                     "fact": fact,
@@ -4514,7 +4501,7 @@ class LearningAgent:
             "state_count": len(effective_transitions),
         }
 
-    def _code_generation_tool(
+    async def _code_generation_tool(
         self, question: str, candidate_facts: list[dict[str, Any]] | None = None
     ) -> dict[str, Any]:
         """Tool interface for temporal code generation.
@@ -4542,15 +4529,14 @@ class LearningAgent:
         prompt = _load_prompt("entity_field_extraction_user", question=question)
 
         try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
+            response_text = (await _llm_completion(
+                [
                     {"role": "system", "content": load_prompt("entity_field_extraction_system")},
                     {"role": "user", "content": prompt},
                 ],
+                model=self.model,
                 temperature=0.0,
-            )
-            response_text = response.choices[0].message.content.strip()
+            )).strip()
             parsed = json.loads(response_text)
             if isinstance(parsed, dict):
                 entity = parsed.get("entity", "").strip()

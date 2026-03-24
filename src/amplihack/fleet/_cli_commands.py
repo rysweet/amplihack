@@ -24,7 +24,6 @@ from amplihack.fleet.fleet_observer import FleetObserver
 from amplihack.fleet._backends import (
     AnthropicBackend,
     CopilotBackend,
-    LiteLLMBackend,
     auto_detect_backend,
 )
 from amplihack.fleet.fleet_session_reasoner import SessionReasoner

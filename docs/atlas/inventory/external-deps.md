@@ -11,7 +11,6 @@ Source: `pyproject.toml` — amplihack v0.6.81
 | fastapi | >=0.68.0 | Async web framework (Responses API proxy) |
 | uvicorn | >=0.15.0 | ASGI server for FastAPI |
 | aiohttp | >=3.8.0 | Async HTTP client |
-| litellm | >=1.0.0 | LLM API abstraction / proxy router |
 | python-dotenv | >=0.19.0 | .env file loading |
 | claude-agent-sdk | >=0.1.0 | Claude Python Agent SDK for auto mode streaming |
 | github-copilot-sdk | >=0.1.0 | GitHub Copilot SDK for embedding Copilot |
