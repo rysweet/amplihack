@@ -45,6 +45,8 @@ class TestRustRunnerEnvironment:
             "AMPLIHACK_SESSION_DEPTH": "2",
             "AMPLIHACK_MAX_DEPTH": "3",
             "AMPLIHACK_MAX_SESSIONS": "10",
+            "CLAUDE_PROJECT_DIR": "/tmp/project-root",
+            "PYTHONPATH": "/tmp/project-root/src",
             "RECIPE_RUNNER_RS_PATH": "/custom/bin/recipe-runner-rs",
             "GITHUB_TOKEN": "secret-token",  # pragma: allowlist secret
             "AWS_SECRET_ACCESS_KEY": "super-secret",  # pragma: allowlist secret
@@ -65,6 +67,8 @@ class TestRustRunnerEnvironment:
         assert env["AMPLIHACK_SESSION_DEPTH"] == "2"
         assert env["AMPLIHACK_MAX_DEPTH"] == "3"
         assert env["AMPLIHACK_MAX_SESSIONS"] == "10"
+        assert env["CLAUDE_PROJECT_DIR"] == "/tmp/project-root"
+        assert env["PYTHONPATH"] == "/tmp/project-root/src"
         assert env["RECIPE_RUNNER_RS_PATH"] == "/custom/bin/recipe-runner-rs"
         assert "GITHUB_TOKEN" not in env
         assert "AWS_SECRET_ACCESS_KEY" not in env
