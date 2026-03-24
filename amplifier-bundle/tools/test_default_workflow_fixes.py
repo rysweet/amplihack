@@ -25,7 +25,6 @@ Run:
 import json
 import os
 import re
-import shlex
 import shutil
 import subprocess
 import tempfile
@@ -846,205 +845,205 @@ class TestYAMLBugRegression(unittest.TestCase):
 
 
 # ===========================================================================
-# BL-003: Bootstrap detection tests (issue #3603)
+# TEST-001: Step 15/16 error path tests
 # ===========================================================================
 
+# --- Step 15 bash snippets ---
 
-class TestStep4Bootstrap(unittest.TestCase):
-    """Test bootstrap detection when origin/main does not exist.
+# Extracted staging-area check from step-15-commit-push.
+# Mirrors the if/else logic that detects hollow-success (nothing staged).
+_STEP15_STAGING_CHECK = textwrap.dedent("""\
+    set -euo pipefail
+    cd {repo_path}
+    git add -A
+    if [ -n "$(git diff --cached --name-only)" ]; then
+      echo "COMMIT_OK"
+    else
+      echo "ERROR: Nothing staged to commit." >&2
+      echo "This is a hollow-success condition" >&2
+      exit 1
+    fi
+""")
 
-    BL-003: default-workflow step-04 must detect missing origin/main and
-    fall back to HEAD with visible BOOTSTRAP messaging, rather than crashing
-    with 'fatal: couldn't find remote ref main'.
+# --- Step 16 bash snippets ---
+
+# Extracted issue_number validation from step-16-create-draft-pr.
+_STEP16_ISSUE_VALIDATION = textwrap.dedent("""\
+    set -euo pipefail
+    ISSUE_NUM="{issue_number}"
+    if ! [[ "$ISSUE_NUM" =~ ^[0-9]+$ ]]; then
+        echo "ERROR: issue_number is not numeric: $ISSUE_NUM" >&2
+        exit 1
+    fi
+    echo "VALID"
+""")
+
+# Extracted commits-ahead check from step-16-create-draft-pr.
+_STEP16_COMMITS_AHEAD_CHECK = textwrap.dedent("""\
+    set -euo pipefail
+    cd {repo_path}
+    COMMITS_AHEAD=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "0")
+    if [ "$COMMITS_AHEAD" -eq 0 ]; then
+        echo "ERROR: 0 commits ahead of main." >&2
+        echo "This is a hollow-success condition: the workflow ran but produced no commits." >&2
+        exit 1
+    fi
+    echo "PUSH_OK"
+""")
+
+
+class TestStep15CommitPush(unittest.TestCase):
+    """
+    Tests for step-15-commit-push error paths (TEST-001).
+
+    Regression contract:
+      - Empty staging area (nothing to commit) must exit 1 with 'hollow-success'
+      - Non-empty staging area proceeds to commit
     """
 
     def setUp(self):
-        """Create a fresh git repo with NO remote (bootstrap state)."""
-        self._tmpdir = tempfile.mkdtemp(prefix="bl003_")
-        self.repo = os.path.join(self._tmpdir, "repo")
-        os.makedirs(self.repo)
-        subprocess.run(["git", "init", self.repo], capture_output=True, check=True)
-        subprocess.run(
-            ["git", "-C", self.repo, "commit", "--allow-empty", "-m", "initial"],
-            capture_output=True,
-            check=True,
-            env={
-                **os.environ,
-                "GIT_AUTHOR_NAME": "test",
-                "GIT_AUTHOR_EMAIL": "t@t",
-                "GIT_COMMITTER_NAME": "test",
-                "GIT_COMMITTER_EMAIL": "t@t",
-            },
-        )
+        self.repo_dir = tempfile.mkdtemp(prefix="test_step15_")
+        _init_repo_with_commit(self.repo_dir)
 
     def tearDown(self):
-        shutil.rmtree(self._tmpdir, ignore_errors=True)
+        shutil.rmtree(self.repo_dir, ignore_errors=True)
 
-    def _run_bootstrap_script(self, repo_path, task_desc="bootstrap test task"):
-        """Run the bootstrap detection logic extracted from step-04."""
-        script = textwrap.dedent(f"""\
-            set -euo pipefail
-            cd {shlex.quote(repo_path)}
+    def test_empty_staging_area_exits_1_with_hollow_success(self):
+        """Empty staging area → must exit 1 with 'hollow-success' in message."""
+        script = _STEP15_STAGING_CHECK.format(repo_path=self.repo_dir)
+        result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1, f"Expected exit 1 but got {result.returncode}")
+        self.assertIn("hollow-success", result.stderr)
 
-            # Guard: HEAD must resolve
-            if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
-                echo "ERROR: No commits in repository — create an initial commit before running the workflow." >&2
-                exit 1
-            fi
-
-            BOOTSTRAP=false
-            if ! git remote get-url origin >/dev/null 2>&1; then
-                echo "BOOTSTRAP: No 'origin' remote configured — using HEAD as base ref." >&2
-                BOOTSTRAP=true
-                BASE_REF="HEAD"
-            else
-                LS_EXIT=0
-                git ls-remote --exit-code origin refs/heads/main >/dev/null 2>&1 || LS_EXIT=$?
-                if [ "$LS_EXIT" -eq 2 ]; then
-                    echo "BOOTSTRAP: origin exists but refs/heads/main not found — using HEAD as base ref." >&2
-                    BOOTSTRAP=true
-                    BASE_REF="HEAD"
-                elif [ "$LS_EXIT" -ne 0 ]; then
-                    echo "ERROR: git ls-remote failed (exit $LS_EXIT) — possible network error. Cannot continue." >&2
-                    exit 1
-                else
-                    BASE_REF="origin/main"
-                fi
-            fi
-
-            BRANCH_NAME="feat/test-bootstrap"
-            WORKTREE_PATH="{repo_path}/worktrees/$BRANCH_NAME"
-            mkdir -p "$(dirname "$WORKTREE_PATH")"
-
-            if [ "$BOOTSTRAP" = "false" ]; then
-                git fetch origin main >&2
-            fi
-            git worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME" "$BASE_REF" >&2
-
-            echo '{{"bootstrap": '$BOOTSTRAP', "base_ref": "'$BASE_REF'", "worktree": "'$WORKTREE_PATH'"}}'
-        """)
-        result = subprocess.run(
-            ["bash", "-c", script],
-            capture_output=True,
-            text=True,
+    def test_staging_area_with_changes_succeeds(self):
+        """When new files exist, git add -A stages them and the check passes."""
+        new_file = os.path.join(self.repo_dir, "new_file.txt")
+        Path(new_file).write_text("test content\n")
+        script = _STEP15_STAGING_CHECK.format(repo_path=self.repo_dir)
+        result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+        self.assertEqual(
+            result.returncode, 0, f"Expected exit 0 but got {result.returncode}: {result.stderr}"
         )
-        return result
+        self.assertIn("COMMIT_OK", result.stdout)
 
-    def test_no_origin_remote_creates_worktree_from_head(self):
-        """Repo with no origin remote → BOOTSTRAP=true, BASE_REF=HEAD, worktree created."""
-        result = self._run_bootstrap_script(self.repo)
-        self.assertEqual(result.returncode, 0, f"Script failed:\nstderr: {result.stderr}")
-        self.assertIn("BOOTSTRAP:", result.stderr)
-        output = json.loads(result.stdout.strip())
-        self.assertTrue(output["bootstrap"])
-        self.assertEqual(output["base_ref"], "HEAD")
-        self.assertTrue(os.path.isdir(output["worktree"]))
-
-    def test_origin_exists_but_no_main_branch(self):
-        """Repo with origin remote but no main branch → BOOTSTRAP=true."""
-        # Create a bare remote with no branches
-        bare = os.path.join(self._tmpdir, "bare.git")
-        subprocess.run(["git", "init", "--bare", bare], capture_output=True, check=True)
-        subprocess.run(
-            ["git", "-C", self.repo, "remote", "add", "origin", bare],
-            capture_output=True,
-            check=True,
-        )
-        result = self._run_bootstrap_script(self.repo)
-        self.assertEqual(result.returncode, 0, f"Script failed:\nstderr: {result.stderr}")
-        self.assertIn("BOOTSTRAP:", result.stderr)
-        output = json.loads(result.stdout.strip())
-        self.assertTrue(output["bootstrap"])
-        self.assertEqual(output["base_ref"], "HEAD")
-
-    def test_bootstrap_message_not_silent(self):
-        """BOOTSTRAP message must appear on stderr — no silent fallback."""
-        result = self._run_bootstrap_script(self.repo)
+    def test_git_diff_cached_detects_staged_modifications(self):
+        """Modified tracked file must be detected as staged after git add -A."""
+        readme = os.path.join(self.repo_dir, "README.md")
+        Path(readme).write_text("modified content\n")
+        script = _STEP15_STAGING_CHECK.format(repo_path=self.repo_dir)
+        result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0)
-        bootstrap_lines = [line for line in result.stderr.splitlines() if "BOOTSTRAP:" in line]
-        self.assertGreater(
-            len(bootstrap_lines),
-            0,
-            "Bootstrap mode must emit visible BOOTSTRAP: messages on stderr.",
-        )
+        self.assertIn("COMMIT_OK", result.stdout)
 
-    def test_normal_repo_with_origin_main_skips_bootstrap(self):
-        """Repo with origin/main → BOOTSTRAP=false, BASE_REF=origin/main."""
-        bare = os.path.join(self._tmpdir, "bare.git")
-        subprocess.run(["git", "init", "--bare", bare], capture_output=True, check=True)
-        subprocess.run(
-            ["git", "-C", self.repo, "remote", "add", "origin", bare],
-            capture_output=True,
-            check=True,
-        )
-        # Push main so origin/main exists
-        subprocess.run(
-            ["git", "-C", self.repo, "push", "origin", "HEAD:refs/heads/main"],
-            capture_output=True,
-            check=True,
-        )
-        result = self._run_bootstrap_script(self.repo)
-        self.assertEqual(result.returncode, 0, f"Script failed:\nstderr: {result.stderr}")
-        self.assertNotIn("BOOTSTRAP:", result.stderr)
-        output = json.loads(result.stdout.strip())
-        self.assertFalse(output["bootstrap"])
-        self.assertEqual(output["base_ref"], "origin/main")
 
-    def test_bootstrap_idempotent_second_run(self):
-        """Running bootstrap detection twice must not crash."""
-        result1 = self._run_bootstrap_script(self.repo, "first run")
-        self.assertEqual(result1.returncode, 0)
-        # Clean up worktree for second run
-        output1 = json.loads(result1.stdout.strip())
-        subprocess.run(
-            ["git", "-C", self.repo, "worktree", "remove", "--force", output1["worktree"]],
-            capture_output=True,
-        )
-        subprocess.run(
-            ["git", "-C", self.repo, "branch", "-D", "feat/test-bootstrap"],
-            capture_output=True,
-        )
-        result2 = self._run_bootstrap_script(self.repo, "second run")
-        self.assertEqual(result2.returncode, 0, f"Second run failed:\nstderr: {result2.stderr}")
+class TestStep16CreateDraftPR(unittest.TestCase):
+    """
+    Tests for step-16-create-draft-pr error paths (TEST-001).
 
-    def test_zero_commit_repo_fails_with_clear_error(self):
-        """Repo with no commits (HEAD invalid) → exit 1 with ERROR message."""
-        empty_repo = os.path.join(self._tmpdir, "empty")
-        os.makedirs(empty_repo)
-        subprocess.run(["git", "init", empty_repo], capture_output=True, check=True)
-        # Do NOT create any commits — HEAD is invalid
-        result = self._run_bootstrap_script(empty_repo)
-        self.assertNotEqual(
-            result.returncode,
-            0,
-            "Zero-commit repo must fail — HEAD is not a valid object.",
-        )
-        self.assertIn(
-            "No commits in repository",
-            result.stderr,
-            "Error message must explain that an initial commit is required.",
-        )
+    Regression contract:
+      - Non-numeric issue_number must exit 1
+      - Zero commits ahead of upstream must exit 1 with 'hollow-success'
+      - Valid numeric issue_number passes validation
+    """
 
-    def test_network_error_exits_nonzero(self):
-        """Origin exists but ls-remote fails (non-2 exit) → exit 1 with ERROR."""
-        # Point origin to a non-existent host to simulate network error
-        subprocess.run(
-            ["git", "-C", self.repo, "remote", "add", "origin",
-             "https://nonexistent.invalid/repo.git"],
-            capture_output=True,
-            check=True,
-        )
-        result = self._run_bootstrap_script(self.repo)
-        self.assertNotEqual(
-            result.returncode,
-            0,
-            "Network error on ls-remote must cause script to exit non-zero.",
-        )
-        self.assertIn(
-            "ERROR:",
-            result.stderr,
-            "Error message must be visible on stderr.",
-        )
+    def test_non_numeric_issue_number_exits_1(self):
+        """Non-numeric issue_number must exit 1 with 'not numeric' message."""
+        for bad_value in ["abc", "12.34", "issue-42", "", " "]:
+            with self.subTest(issue_number=bad_value):
+                script = _STEP16_ISSUE_VALIDATION.format(issue_number=bad_value)
+                result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+                self.assertNotEqual(
+                    result.returncode, 0, f"Expected non-zero exit for '{bad_value}'"
+                )
+
+    def test_numeric_issue_number_succeeds(self):
+        """Valid numeric issue_number must pass validation."""
+        for good_value in ["1", "42", "999999"]:
+            with self.subTest(issue_number=good_value):
+                script = _STEP16_ISSUE_VALIDATION.format(issue_number=good_value)
+                result = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0)
+                self.assertIn("VALID", result.stdout)
+
+    def test_zero_commits_ahead_exits_1_with_hollow_success(self):
+        """Zero commits ahead of upstream → must exit 1 with 'hollow-success'."""
+        origin_dir = tempfile.mkdtemp(prefix="test_step16_origin_")
+        repo_dir = tempfile.mkdtemp(prefix="test_step16_")
+        try:
+            subprocess.run(
+                ["git", "init", "--bare", origin_dir],
+                check=True,
+                capture_output=True,
+            )
+            _git("init", cwd=repo_dir)
+            _git("config", "user.email", "test@example.com", cwd=repo_dir)
+            _git("config", "user.name", "Test", cwd=repo_dir)
+            _git("remote", "add", "origin", origin_dir, cwd=repo_dir)
+            Path(os.path.join(repo_dir, "README.md")).write_text("init\n")
+            _git("add", "README.md", cwd=repo_dir)
+            _git("commit", "-m", "Initial commit", cwd=repo_dir)
+            _git("push", "-u", "origin", "HEAD:main", cwd=repo_dir)
+            _git(
+                "branch",
+                "--set-upstream-to=origin/main",
+                "main",
+                cwd=repo_dir,
+                check=False,
+            )
+
+            script = _STEP16_COMMITS_AHEAD_CHECK.format(repo_path=repo_dir)
+            result = subprocess.run(
+                ["bash", "-c", script],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("hollow-success", result.stderr)
+        finally:
+            shutil.rmtree(repo_dir, ignore_errors=True)
+            shutil.rmtree(origin_dir, ignore_errors=True)
+
+    def test_commits_ahead_succeeds(self):
+        """When commits exist ahead of origin/main, the check passes."""
+        origin_dir = tempfile.mkdtemp(prefix="test_step16_origin_")
+        repo_dir = tempfile.mkdtemp(prefix="test_step16_")
+        try:
+            subprocess.run(
+                ["git", "init", "--bare", origin_dir],
+                check=True,
+                capture_output=True,
+            )
+            _git("init", cwd=repo_dir)
+            _git("config", "user.email", "test@example.com", cwd=repo_dir)
+            _git("config", "user.name", "Test", cwd=repo_dir)
+            _git("remote", "add", "origin", origin_dir, cwd=repo_dir)
+            Path(os.path.join(repo_dir, "README.md")).write_text("init\n")
+            _git("add", "README.md", cwd=repo_dir)
+            _git("commit", "-m", "Initial commit", cwd=repo_dir)
+            _git("push", "-u", "origin", "HEAD:main", cwd=repo_dir)
+            _git(
+                "branch",
+                "--set-upstream-to=origin/main",
+                "main",
+                cwd=repo_dir,
+                check=False,
+            )
+            # Add a commit ahead of origin/main
+            Path(os.path.join(repo_dir, "extra.txt")).write_text("extra\n")
+            _git("add", "extra.txt", cwd=repo_dir)
+            _git("commit", "-m", "Extra commit", cwd=repo_dir)
+
+            script = _STEP16_COMMITS_AHEAD_CHECK.format(repo_path=repo_dir)
+            result = subprocess.run(
+                ["bash", "-c", script],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("PUSH_OK", result.stdout)
+        finally:
+            shutil.rmtree(repo_dir, ignore_errors=True)
+            shutil.rmtree(origin_dir, ignore_errors=True)
 
 
 # ===========================================================================

@@ -1,6 +1,6 @@
 name: "default-workflow"
 description: "Complete 23-step development workflow (Steps 0-22) with full agent orchestration"
-version: "2.3.0"
+version: "2.2.0"
 author: "Amplihack Team"
 tags: ["development", "feature", "bugfix", "refactoring", "standard", "full-workflow"]
 
@@ -43,9 +43,6 @@ recursion:
 context:
   # Description of the task
   task_description: ""
-context_validation:
-  task_description: "nonempty"
-  repo_path: "git_repo"
 
   # Specific requirements (user-provided or empty)
   requirements: ""
@@ -92,36 +89,6 @@ steps:
   - id: "step-00-workflow-preparation"
     type: "bash"
     command: |
-      # ── Pre-flight validation ──────────────────────────────────────────
-      ERRORS=""
-      REPO="{{repo_path}}"
-      if [ ! -d "$REPO" ]; then
-        ERRORS="${ERRORS}\n  ✗ repo_path '$REPO' does not exist or is not a directory"
-      elif ! git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1; then
-        ERRORS="${ERRORS}\n  ✗ repo_path '$REPO' is not a git repository"
-      fi
-      TASK_CHECK="{{task_description}}"
-      if [ -z "$TASK_CHECK" ]; then
-        ERRORS="${ERRORS}\n  ✗ task_description is empty — nothing to do"
-      fi
-      if ! git config user.email >/dev/null 2>&1; then
-        ERRORS="${ERRORS}\n  ✗ git user.email not configured (run: git config --global user.email you@example.com)"
-      fi
-      if ! command -v gh >/dev/null 2>&1; then
-        ERRORS="${ERRORS}\n  ✗ gh CLI not found (install: https://cli.github.com)"
-      elif ! gh auth status >/dev/null 2>&1; then
-        ERRORS="${ERRORS}\n  ✗ gh CLI not authenticated (run: gh auth login)"
-      fi
-      if [ -n "$ERRORS" ]; then
-        echo "=== PRE-FLIGHT VALIDATION FAILED ===" >&2
-        printf "%b\n" "$ERRORS" >&2
-        echo "" >&2
-        echo "Fix the above, then restart with:" >&2
-        echo "  run_recipe_by_name('default-workflow', user_context={'task_description': '...', 'repo_path': '/path/to/repo'})" >&2
-        exit 1
-      fi
-      echo "=== Pre-flight checks passed ==="
-      # ── End pre-flight ─────────────────────────────────────────────────
       echo "=== WORKFLOW PREPARATION COMPLETE ==="
       echo ""
       echo "23-Step Workflow Initialized (with granular sub-steps for Steps 17-19):"
@@ -184,7 +151,7 @@ steps:
   - id: "step-01-prepare-workspace"
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
+      cd {{repo_path}} && \
       echo "=== Step 1: Preparing Workspace ===" && \
       echo "" && \
       echo "Current directory: $(pwd)" && \
@@ -207,12 +174,6 @@ steps:
   - id: "step-02-clarify-requirements"
     agent: "amplihack:prompt-writer"
     prompt: |
-      === [RECIPE PROGRESS] Step: step-02-clarify-requirements ===
-
-      **IMPORTANT**: You are ONLY clarifying requirements. Do NOT invoke any skills,
-      workflows, or tools. Do NOT call /dev, dev-orchestrator, or any recipe runner.
-      Do NOT create files, run commands, or make changes. Return ONLY the JSON below.
-
       # Step 2: Rewrite and Clarify Requirements
 
       **Task Description:** {{task_description}}
@@ -299,18 +260,12 @@ steps:
 
   - id: "step-02c-resolve-ambiguity"
     agent: "amplihack:ambiguity"
-    timeout: 60
     prompt: |
       # Step 2c: Resolve Any Remaining Ambiguity
 
       **Task:** {{task_description}}
       **Clarified Requirements:** {{clarified_requirements}}
       **Codebase Analysis:** {{codebase_analysis}}
-
-      **IMPORTANT: Context size guard** — If the accumulated context (especially
-      codebase_analysis) exceeds 100KB or feels excessively large, summarize the
-      key points into a concise overview before analyzing. Do NOT process
-      extremely large context verbatim; extract the relevant sections first.
 
       Review for any remaining ambiguity in the requirements.
 
@@ -334,7 +289,7 @@ steps:
   - id: "step-03-create-issue"
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
+      cd {{repo_path}} && \
       echo "=== Step 3: Creating GitHub Issue ===" && \
       # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
       TASK_DESC=$(cat <<EOFTASKDESC
@@ -352,8 +307,7 @@ steps:
       if ! gh label list --limit 1000 2>/dev/null | grep -qw "$LABEL_NAME"; then
         gh label create "$LABEL_NAME" \
           --color "0366d6" \
-          --description "Created by default-workflow recipe" 2>&1 || \
-          echo "WARNING: Could not create label '$LABEL_NAME' — will attempt issue creation without it" >&2
+          --description "Created by default-workflow recipe" 2>/dev/null || true
       fi && \
       gh issue create \
         --title "$ISSUE_TITLE" \
@@ -404,41 +358,13 @@ steps:
         echo "ERROR: repo_path '{{repo_path}}' does not exist or is not a directory" >&2
         exit 1
       fi
-      cd "{{repo_path}}"
+      cd {{repo_path}}
 
       echo "=== Step 4: Creating Worktree and Branch ===" >&2
       echo "" >&2
 
-      # --- Bootstrap detection (BL-003 / issue #3603) ---
-      # Detect whether origin/main exists BEFORE attempting fetch/worktree.
-      # Uses git ls-remote --exit-code which returns 2 for "ref not found" (distinct
-      # from network errors which return 128). This prevents silent degradation on
-      # network failures — only genuine "ref missing" triggers bootstrap mode.
-      # Security: stderr suppressed to avoid leaking credential helper output.
-      # Guard: HEAD must resolve — a zero-commit repo cannot be used as a base ref.
-      if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
-        echo "ERROR: No commits in repository — create an initial commit before running the workflow." >&2
-        exit 1
-      fi
-      BOOTSTRAP=false
-      if ! git remote get-url origin >/dev/null 2>&1; then
-        echo "BOOTSTRAP: No 'origin' remote configured — using HEAD as base ref." >&2
-        BOOTSTRAP=true
-        BASE_REF="HEAD"
-      else
-        LS_EXIT=0
-        git ls-remote --exit-code origin refs/heads/main >/dev/null 2>&1 || LS_EXIT=$?
-        if [ "$LS_EXIT" -eq 2 ]; then
-          echo "BOOTSTRAP: origin exists but refs/heads/main not found — using HEAD as base ref." >&2
-          BOOTSTRAP=true
-          BASE_REF="HEAD"
-        elif [ "$LS_EXIT" -ne 0 ]; then
-          echo "ERROR: git ls-remote failed (exit $LS_EXIT) — possible network error. Cannot continue." >&2
-          exit 1
-        else
-          BASE_REF="origin/main"
-        fi
-      fi
+      # Fetch latest refs
+      git fetch origin main >&2
 
       # NOTE: This slug pipeline is duplicated in consensus-workflow.yaml step3-setup-worktree
       # with a 30-char limit instead of 50. If you update this pipeline (e.g. security patch),
@@ -455,7 +381,7 @@ steps:
       {{task_description}}
       EOFTASKDESC
       )
-      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-' | sed 's/-\{2,\}/-/g;s/^-//;s/-$//' | cut -c1-50 | sed 's/-$//')
+      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-50 | sed 's/-$//')
       # Guard: empty slug (blank/all-symbol input) produces a trailing-hyphen branch that
       # git check-ref-format accepts as valid but is undesirable. Catch it explicitly first.
       if [ -z "$TASK_SLUG" ]; then
@@ -467,16 +393,6 @@ steps:
         BRANCH_NAME="feat/task-unnamed-$(date +%s)"
       else
         BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
-        # FIX (#3551): Truncate branch names exceeding 200 chars to prevent gh CLI failures.
-        # Cut on hyphen boundary to avoid mid-word truncation, append 4-char hash for uniqueness.
-        if [ ${#BRANCH_NAME} -gt 200 ]; then
-          echo "WARNING: branch name is ${#BRANCH_NAME} chars (>200 limit) — truncating" >&2
-          TRUNCATED="${BRANCH_NAME:0:195}"
-          TRUNCATED="${TRUNCATED%-}"
-          HASH_SUFFIX=$(printf '%s' "$BRANCH_NAME" | md5sum | cut -c1-4)
-          BRANCH_NAME="${TRUNCATED}-${HASH_SUFFIX}"
-          echo "WARNING: truncated branch name to ${#BRANCH_NAME} chars: ${BRANCH_NAME}" >&2
-        fi
         # Validate with authoritative git ref checker; fall back to safe unique name on failure
         if ! git check-ref-format --branch "${BRANCH_NAME}" >/dev/null 2>&1; then
           echo "WARNING: derived branch name '${BRANCH_NAME}' is invalid — falling back to task-unnamed" >&2
@@ -509,26 +425,15 @@ steps:
         CREATED=true
       else
         echo "INFO: Creating new branch and worktree." >&2
-        if [ "$BOOTSTRAP" = "false" ]; then
-          git fetch origin main >&2
-        fi
-        git worktree add "${WORKTREE_PATH}" -b "${BRANCH_NAME}" "${BASE_REF}" >&2
+        git worktree add "${WORKTREE_PATH}" -b "${BRANCH_NAME}" origin/main >&2
         CREATED=true
       fi
 
-      # Push branch to remote with tracking (only on fresh creation).
-      # Bootstrap mode: skip push entirely with visible message (no remote ref to push to).
-      # Normal mode: push failures are suppressed here and surface at step-16 PR creation.
-      if [ "$CREATED" = "true" ]; then
-        if [ "$BOOTSTRAP" = "true" ]; then
-          echo "BOOTSTRAP: Skipping push — no remote main branch available. Push manually or at PR creation." >&2
-        else
-          git -C "${WORKTREE_PATH}" push origin "${BRANCH_NAME}" > /dev/null 2>&1 || \
-            echo "WARNING: Initial push of '${BRANCH_NAME}' failed — will retry at PR creation (step 16)." >&2
-          git -C "${WORKTREE_PATH}" branch --set-upstream-to="origin/${BRANCH_NAME}" "${BRANCH_NAME}" > /dev/null 2>&1 || \
-            echo "WARNING: set-upstream-to failed — will set at push time." >&2
-        fi
-      fi
+      # Push branch to remote with tracking (idempotent).
+      # NOTE: Push failures are suppressed here and surface at step-16 PR creation.
+      # This allows idempotent re-runs where the remote branch already exists.
+      git -C "${WORKTREE_PATH}" push origin "${BRANCH_NAME}" > /dev/null 2>&1 || true
+      git -C "${WORKTREE_PATH}" branch --set-upstream-to="origin/${BRANCH_NAME}" "${BRANCH_NAME}" > /dev/null 2>&1 || true
 
       echo "" >&2
       echo "=== Worktree Setup Complete ===" >&2
@@ -539,8 +444,7 @@ steps:
       {
         "worktree_path": "${WORKTREE_PATH}",
         "branch_name": "${BRANCH_NAME}",
-        "created": ${CREATED},
-        "bootstrap": ${BOOTSTRAP:-false}
+        "created": ${CREATED}
       }
       EOF
     output: "worktree_setup"
@@ -551,7 +455,6 @@ steps:
   # ==========================================================================
   - id: "step-05-architecture"
     agent: "amplihack:architect"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5: Research and Design - Architecture
 
@@ -575,7 +478,6 @@ steps:
 
   - id: "step-05b-api-design"
     agent: "amplihack:api-designer"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5b: API Design (if applicable)
 
@@ -593,7 +495,6 @@ steps:
 
   - id: "step-05c-database-design"
     agent: "amplihack:database"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5c: Database Design (if applicable)
 
@@ -611,7 +512,6 @@ steps:
 
   - id: "step-05d-security-review"
     agent: "amplihack:security"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5d: Security Requirements Review
 
@@ -631,7 +531,6 @@ steps:
 
   - id: "step-05e-design-consolidation"
     agent: "amplihack:architect"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5e: Design Consolidation
 
@@ -656,37 +555,11 @@ steps:
     output: "design_spec"
     parse_json: true
 
-  # --------------------------------------------------------------------------
-  # CHECKPOINT: Stage design artifacts to prevent loss if implementation fails.
-  # Design work (architecture, API, DB schema) can take significant time;
-  # losing it to a later failure wastes hours of agent work.
-  # --------------------------------------------------------------------------
-  - id: "checkpoint-after-design"
-    fatal: false
-    type: "bash"
-    command: |
-      cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}" && \
-      echo "=== Checkpoint: Staging Design Artifacts ===" && \
-      git add -A && \
-      STAGED=$(git diff --cached --name-only) && \
-      if [ -n "$STAGED" ]; then \
-        git commit --no-verify -m "wip: checkpoint after design consolidation (steps 5-5e)
-
-      Automatic checkpoint to preserve design artifacts.
-      Architecture, API design, and database schema saved before documentation phase." && \
-        echo "Checkpoint commit created with $(wc -l <<< "$STAGED") file(s)" ; \
-      else \
-        echo "No design changes to checkpoint" ; \
-      fi && \
-      echo "=== Design Checkpoint Complete ==="
-    output: "design_checkpoint"
-
   # ==========================================================================
   # STEP 6: RETCON DOCUMENTATION WRITING
   # ==========================================================================
   - id: "step-06-documentation"
     agent: "amplihack:documentation-writer"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 6: Retcon Documentation Writing
 
@@ -708,7 +581,6 @@ steps:
 
   - id: "step-06b-documentation-review"
     agent: "amplihack:architect"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 6b: Documentation Review
 
@@ -725,7 +597,6 @@ steps:
 
   - id: "step-06c-documentation-refinement"
     agent: "amplihack:documentation-writer"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 6c: Documentation Refinement
 
@@ -741,7 +612,6 @@ steps:
   # ==========================================================================
   - id: "step-07-write-tests"
     agent: "amplihack:tester"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 7: TDD - Write Tests First
 
@@ -771,7 +641,6 @@ steps:
   # ==========================================================================
   - id: "step-08-implement"
     agent: "amplihack:builder"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 8: Implement the Solution
 
@@ -801,7 +670,6 @@ steps:
 
   - id: "step-08b-integration"
     agent: "amplihack:integration"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 8b: External Service Integration
 
@@ -821,15 +689,14 @@ steps:
   # CHECKPOINT: Stage implementation work to prevent loss if later steps fail
   # --------------------------------------------------------------------------
   - id: "checkpoint-after-implementation"
-    fatal: false
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}" && \
+      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
       echo "=== Checkpoint: Staging Implementation ===" && \
       git add -A && \
       STAGED=$(git diff --cached --name-only) && \
       if [ -n "$STAGED" ]; then \
-        git commit --no-verify -m "wip: checkpoint after implementation (steps 7-8)
+        git commit -m "wip: checkpoint after implementation (steps 7-8)
 
       Automatic checkpoint to preserve work in progress.
       Tests and implementation saved before refactoring phase." && \
@@ -845,7 +712,6 @@ steps:
   # ==========================================================================
   - id: "step-09-refactor"
     agent: "amplihack:cleanup"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 9: Refactor and Simplify
 
@@ -874,7 +740,6 @@ steps:
 
   - id: "step-09b-optimize"
     agent: "amplihack:optimizer"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 9b: Performance Optimization
 
@@ -895,7 +760,6 @@ steps:
   # ==========================================================================
   - id: "step-10-pre-commit-review"
     agent: "amplihack:reviewer"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 10: Review Pass Before Commit
 
@@ -927,7 +791,6 @@ steps:
 
   - id: "step-10b-security-review"
     agent: "amplihack:security"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 10b: Security Review
 
@@ -947,7 +810,6 @@ steps:
 
   - id: "step-10c-philosophy-check"
     agent: "amplihack:philosophy-guardian"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 10c: Philosophy Compliance Check
 
@@ -969,7 +831,6 @@ steps:
   # ==========================================================================
   - id: "step-11-incorporate-feedback"
     agent: "amplihack:architect"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 11: Assess Review Feedback
 
@@ -987,7 +848,6 @@ steps:
 
   - id: "step-11b-implement-feedback"
     agent: "amplihack:builder"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 11b: Implement Review Feedback
 
@@ -1008,15 +868,14 @@ steps:
   # CHECKPOINT: Stage review feedback changes before pre-commit hooks
   # --------------------------------------------------------------------------
   - id: "checkpoint-after-review-feedback"
-    fatal: false
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}" && \
+      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
       echo "=== Checkpoint: Staging Review Feedback ===" && \
       git add -A && \
       STAGED=$(git diff --cached --name-only) && \
       if [ -n "$STAGED" ]; then \
-        git commit --no-verify -m "wip: checkpoint after review feedback (steps 10-11)
+        git commit -m "wip: checkpoint after review feedback (steps 10-11)
 
       Automatic checkpoint to preserve review-addressed changes.
       Saved before running pre-commit hooks and tests." && \
@@ -1031,9 +890,7 @@ steps:
   # STEP 12: RUN TESTS AND PRE-COMMIT HOOKS
   # ==========================================================================
   - id: "step-12-run-precommit"
-    fatal: false
     agent: "amplihack:pre-commit-diagnostic"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 12: Run Tests and Pre-commit Hooks
 
@@ -1071,7 +928,6 @@ steps:
   # ==========================================================================
   - id: "step-13-local-testing"
     agent: "amplihack:builder"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 13: Mandatory Outside-In Testing (CANNOT BE SKIPPED)
 
@@ -1154,7 +1010,6 @@ steps:
   # ==========================================================================
   - id: "step-14-bump-version"
     agent: "amplihack:architect"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 14: Bump Version in pyproject.toml (MANDATORY - DO NOT SKIP)
 
@@ -1192,7 +1047,7 @@ steps:
 
       **Commands to execute:**
       ```bash
-      cd "{{repo_path}}"
+      cd {{repo_path}}
 
       # Show changes
       git diff main...HEAD --stat
@@ -1240,74 +1095,46 @@ steps:
   - id: "step-15-commit-push"
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}" && \
-      echo "=== Step 15: Commit and Push ===" && \
-      echo "" && \
-      echo "--- Staging Changes ---" && \
-      git add -A && \
-      echo "" && \
-      echo "--- Creating Commit ---" && \
+      cd {{worktree_setup.worktree_path}}
+      set -euo pipefail
+      echo "=== Step 15: Commit and Push ==="
+      echo ""
+      echo "--- Staging Changes ---"
+      git add -A
+      echo ""
+      echo "--- Creating Commit ---"
       # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
       TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
-      ) && \
-      COMMIT_TITLE=$(printf 'feat: %.72s' "$(printf '%s' "$TASK_DESC" | tr '\n\r' ' ' | head -1)") && \
-      COMMIT_MSG=$(printf '%s\n\nImplements issue #%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated\n\nCloses #%s' "$COMMIT_TITLE" {{issue_number}} {{issue_number}}) && \
-      if [ -n "$(git diff --cached --name-only)" ]; then \
-        if ! git commit -m "$COMMIT_MSG"; then \
-          echo "INFO: Pre-commit hooks modified files — re-staging and retrying commit" >&2 && \
-          git add -A && \
-          if [ -n "$(git diff --cached --name-only)" ]; then \
-            git commit -m "$COMMIT_MSG" || \
-            git commit --no-verify -m "$COMMIT_MSG" ; \
-          else \
-            echo "INFO: Hooks fixed files but commit already succeeded — continuing" >&2 ; \
-          fi ; \
-        fi ; \
-      else \
-        echo "ERROR: Nothing staged to commit. The implementation step may have written files" >&2 ; \
-        echo "outside the worktree ({{worktree_setup.worktree_path}}), or no code changes were produced." >&2 ; \
-        echo "This is a hollow-success condition — the workflow completed structurally but" >&2 ; \
-        echo "produced no git artifacts. Check that agents created files in the worktree," >&2 ; \
-        echo "not in AMPLIHACK_HOME or other locations." >&2 ; \
-        git --no-pager status >&2 ; \
-        exit 1 ; \
-      fi && \
-      echo "" && \
-      echo "--- Pushing to Remote ---" && \
-      if git remote get-url origin >/dev/null 2>&1; then HAS_REMOTE=true; else HAS_REMOTE=false; fi && \
-      if [ "$HAS_REMOTE" = "true" ]; then \
-        PUSH_NEEDED=false && \
-        if git rev-parse --verify '@{u}' >/dev/null 2>&1; then \
-          if [ "$(git rev-list --count '@{u}..HEAD' 2>/dev/null || echo 1)" != "0" ]; then \
-            PUSH_NEEDED=true ; \
-          fi ; \
-        else \
-          echo "INFO: No upstream tracking branch — will push and set upstream" >&2 && \
-          PUSH_NEEDED=true ; \
-        fi && \
-        if [ "$PUSH_NEEDED" = "true" ]; then \
-          PUSH_OK=false && \
-          for ATTEMPT in 1 2 3; do \
-            git pull --rebase 2>/dev/null || true && \
-            if git push --set-upstream origin "$(git branch --show-current)" 2>&1; then \
-              PUSH_OK=true && break ; \
-            else \
-              echo "WARNING: Push attempt $ATTEMPT/3 failed — retrying in 2s" >&2 && \
-              sleep 2 ; \
-            fi ; \
-          done && \
-          if [ "$PUSH_OK" = "false" ]; then \
-            echo "ERROR: Push failed after 3 attempts — PR creation (step 16) will fail" >&2 && exit 1 ; \
-          fi ; \
-        else \
-          echo "INFO: Branch is up to date with remote — nothing to push" ; \
-        fi ; \
-      else \
-        echo "Skipping push — no remote configured" >&2 ; \
-      fi && \
-      echo "" && \
+      )
+      COMMIT_TITLE=$(printf 'feat: %.72s' "$(printf '%s' "$TASK_DESC" | tr '\n\r' ' ' | head -1)")
+      COMMIT_MSG=$(printf '%s\n\nImplements issue #%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated\n\nCloses #%s' "$COMMIT_TITLE" {{issue_number}} {{issue_number}})
+      if [ -n "$(git diff --cached --name-only)" ]; then
+        git commit -m "$COMMIT_MSG"
+      else
+        echo "ERROR: Nothing staged to commit. The implementation step may have written files" >&2
+        echo "outside the worktree ({{worktree_setup.worktree_path}}), or no code changes were produced." >&2
+        echo "This is a hollow-success condition — the workflow completed structurally but" >&2
+        echo "produced no git artifacts. Check that agents created files in the worktree," >&2
+        echo "not in AMPLIHACK_HOME or other locations." >&2
+        git --no-pager status >&2
+        exit 1
+      fi
+      echo ""
+      echo "--- Pushing to Remote ---"
+      # REL-002: Detect missing upstream tracking branch before rev-list
+      if ! git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
+        echo "WARNING: No upstream tracking branch configured — skipping push" >&2
+        exit 0
+      fi
+      if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then
+        # REL-001: No stderr suppression on rebase — surface conflict diagnostics
+        git pull --rebase && git push
+      else
+        echo "WARNING: Nothing to push - branch is up to date with remote"
+      fi
+      echo ""
       echo "=== Commit and Push Complete ==="
     output: "commit_result"
 
@@ -1318,15 +1145,9 @@ steps:
   - id: "step-16-create-draft-pr"
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}"
+      cd {{worktree_setup.worktree_path}}
+      set -euo pipefail
       echo "=== Step 16: Creating Draft PR ===" >&2
-
-      # Guard: skip PR creation if no remote (#3668)
-      if ! git remote get-url origin >/dev/null 2>&1; then
-        echo "Skipping PR creation — no remote configured" >&2
-        printf ''
-        exit 0
-      fi
 
       # FIX (#3324): Idempotency guard — detect pre-existing PRs before creating one
       # Prevents: "GraphQL: No commits between main and feat/issue-XXXX" error
@@ -1344,6 +1165,9 @@ steps:
 
       # Check 1: Is there already a PR on the exact current branch?
       # timeout 60: prevents hanging indefinitely if GitHub API is unresponsive
+      # REL-003: 2>/dev/null || echo '' is intentional resilience — gh pr list stderr
+      # is noisy (auth warnings, API rate limits) and failure here should not block
+      # the workflow; an empty result simply means "no existing PR found".
       EXISTING_PR=$(timeout 60 gh pr list --head "$CURRENT_BRANCH" --json url --jq '.[0].url // ""' 2>/dev/null || echo '')
 
       # Check 2: If not, look for a PR on any branch matching the issue number pattern
@@ -1413,7 +1237,6 @@ steps:
   # ==========================================================================
   - id: "step-16b-outside-in-fix-loop"
     agent: "amplihack:builder"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 16b: Outside-In Testing and Fix Loop (MANDATORY)
 
@@ -1521,7 +1344,6 @@ steps:
 
   - id: "step-17b-reviewer-agent"
     agent: "amplihack:reviewer"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 17b: Comprehensive Code Review (MANDATORY)
 
@@ -1549,7 +1371,6 @@ steps:
 
   - id: "step-17c-security-review"
     agent: "amplihack:security"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 17c: Security Review (MANDATORY)
 
@@ -1573,7 +1394,6 @@ steps:
 
   - id: "step-17d-philosophy-guardian"
     agent: "amplihack:philosophy-guardian"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 17d: Philosophy Guardian Review (MANDATORY)
 
@@ -1597,7 +1417,6 @@ steps:
 
   - id: "step-17e-address-blocking-issues"
     agent: "amplihack:builder"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 17e: Address Blocking Issues (MANDATORY)
 
@@ -1640,7 +1459,6 @@ steps:
   # ==========================================================================
   - id: "step-18a-analyze-feedback"
     agent: "amplihack:architect"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 18a: Analyze Review Feedback (MANDATORY)
 
@@ -1658,7 +1476,6 @@ steps:
 
   - id: "step-18b-implement-feedback"
     agent: "amplihack:builder"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 18b: Implement Review Feedback (MANDATORY)
 
@@ -1682,45 +1499,23 @@ steps:
   - id: "step-18c-push-feedback-changes"
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Pushing Review Feedback Changes ===" && \
       git add -A && \
       if [ -n "$(git diff --cached --name-only)" ]; then \
-        if ! git commit -m "address review feedback
+        git commit -m "address review feedback
 
       - Implemented reviewer suggestions
       - Fixed identified issues
       - Updated per security review
-      - Addressed philosophy compliance items"; then \
-          echo "INFO: Pre-commit hooks modified files — re-staging and retrying" >&2 && \
-          git add -A && \
-          if [ -n "$(git diff --cached --name-only)" ]; then \
-            git commit -m "address review feedback" || \
-            git commit --no-verify -m "address review feedback" ; \
-          else \
-            echo "INFO: Hooks fixed files but commit already succeeded — continuing" >&2 ; \
-          fi ; \
-        fi ; \
+      - Addressed philosophy compliance items" ; \
       else \
         echo "WARNING: Nothing to commit - feedback changes already committed" ; \
       fi && \
-      if git remote get-url origin >/dev/null 2>&1; then HAS_REMOTE=true; else HAS_REMOTE=false; fi && \
-      if [ "$HAS_REMOTE" = "true" ]; then \
-        PUSH_OK=false && \
-        for ATTEMPT in 1 2 3; do \
-          git pull --rebase 2>/dev/null || true && \
-          if git push 2>&1; then \
-            PUSH_OK=true && break ; \
-          else \
-            echo "WARNING: Push attempt $ATTEMPT/3 failed — retrying in 2s" >&2 && \
-            sleep 2 ; \
-          fi ; \
-        done && \
-        if [ "$PUSH_OK" = "false" ]; then \
-          echo "ERROR: Push failed after 3 attempts" >&2 && exit 1 ; \
-        fi ; \
+      if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
+        git pull --rebase 2>/dev/null && git push ; \
       else \
-        echo "Skipping push — no remote configured" >&2 ; \
+        echo "WARNING: Nothing to push - branch is up to date with remote" ; \
       fi && \
       echo "=== Changes Pushed ==="
     output: "feedback_push_result"
@@ -1762,7 +1557,6 @@ steps:
   # ==========================================================================
   - id: "step-19a-philosophy-check"
     agent: "amplihack:reviewer"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 19a: Philosophy Compliance Review (MANDATORY)
 
@@ -1782,7 +1576,6 @@ steps:
 
   - id: "step-19b-patterns-check"
     agent: "amplihack:patterns"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 19b: Pattern Compliance Review (MANDATORY)
 
@@ -1802,7 +1595,7 @@ steps:
     type: "bash"
     command: |
       echo "=== ZERO-BS VERIFICATION ===" && \
-      cd "{{worktree_setup.worktree_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "" && \
       echo "Scanning for Zero-BS violations..." && \
       echo "" && \
@@ -1863,9 +1656,7 @@ steps:
   # STEP 20: FINAL CLEANUP AND VERIFICATION
   # ==========================================================================
   - id: "step-20-final-cleanup"
-    fatal: false
     agent: "amplihack:cleanup"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 20: Final Cleanup and Verification
 
@@ -1896,42 +1687,12 @@ steps:
     output: "final_cleanup"
 
   - id: "step-20b-push-cleanup"
-    fatal: false
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Pushing Cleanup Changes ===" && \
       git add -A && \
-      if ! git diff --cached --quiet; then \
-        if ! git commit -m "final cleanup pass"; then \
-          echo "INFO: Pre-commit hooks modified files — re-staging and retrying" >&2 && \
-          git add -A && \
-          if [ -n "$(git diff --cached --name-only)" ]; then \
-            git commit -m "final cleanup pass" || \
-            git commit --no-verify -m "final cleanup pass" ; \
-          else \
-            echo "INFO: Hooks fixed files but commit already succeeded — continuing" >&2 ; \
-          fi ; \
-        fi && \
-        if git remote get-url origin >/dev/null 2>&1; then HAS_REMOTE=true; else HAS_REMOTE=false; fi && \
-        if [ "$HAS_REMOTE" = "true" ]; then \
-          PUSH_OK=false && \
-          for ATTEMPT in 1 2 3; do \
-            git pull --rebase 2>/dev/null || true && \
-            if git push 2>&1; then \
-              PUSH_OK=true && break ; \
-            else \
-              echo "WARNING: Cleanup push attempt $ATTEMPT/3 failed — retrying in 2s" >&2 && \
-              sleep 2 ; \
-            fi ; \
-          done && \
-          if [ "$PUSH_OK" = "false" ]; then \
-            echo "ERROR: Cleanup push failed after 3 attempts" >&2 && exit 1 ; \
-          fi ; \
-        else \
-          echo "Skipping push — no remote configured" >&2 ; \
-        fi ; \
-      fi && \
+      git diff --cached --quiet || (git commit -m "final cleanup pass" && git pull --rebase 2>/dev/null && git push) && \
       echo "=== Cleanup Complete ==="
     output: "cleanup_push_result"
 
@@ -1945,7 +1706,6 @@ steps:
   # ==========================================================================
   - id: "step-20c-quality-audit"
     agent: "amplihack:core:reviewer"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 20c: Quality Audit Loop
 
@@ -2012,19 +1772,18 @@ steps:
   # Convert draft PR to ready-for-review.
   # ==========================================================================
   - id: "step-21-pr-ready"
-    fatal: false
     type: "bash"
     command: |
-      cd "{{worktree_setup.worktree_path}}" && \
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Step 20: Converting PR to Ready ===" && \
       echo "" && \
       echo "--- Verifying All Steps Complete ---" && \
       echo "" && \
-      if git remote get-url origin >/dev/null 2>&1; then HAS_REMOTE=true; else HAS_REMOTE=false; fi && \
-      PR_URL="{{pr_url}}" && \
-      if [ "$HAS_REMOTE" = "true" ] && [ -n "$PR_URL" ]; then \
-        echo "--- Converting PR to Ready ---" && gh pr ready && \
-        echo "--- Adding Ready Comment ---" && gh pr comment --body "## Ready for Final Review
+      echo "--- Converting PR to Ready ---" && \
+      gh pr ready && \
+      echo "" && \
+      echo "--- Adding Ready Comment ---" && \
+      gh pr comment --body "## Ready for Final Review
 
       All workflow steps completed:
       - [x] Requirements clarified
@@ -2036,10 +1795,7 @@ steps:
       - [x] Final cleanup complete
       - [x] Quality audit passed
 
-      Ready for merge approval." ; \
-      else \
-        echo "Skipping PR ready/comment — no remote configured or no PR created" >&2 ; \
-      fi && \
+      Ready for merge approval." && \
       echo "" && \
       echo "=== PR Marked Ready ==="
     output: "pr_ready_result"
@@ -2049,7 +1805,6 @@ steps:
   # ==========================================================================
   - id: "step-22-ensure-mergeable"
     agent: "amplihack:ci-diagnostic-workflow"
-    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 21: Ensure PR is Mergeable (TASK COMPLETION POINT)
 
@@ -2077,19 +1832,13 @@ steps:
     output: "ci_status"
 
   - id: "step-22b-final-status"
-    fatal: false
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
+      cd {{repo_path}} && \
       echo "=== WORKFLOW COMPLETE ===" && \
       echo "" && \
-      if git remote get-url origin >/dev/null 2>&1; then HAS_REMOTE=true; else HAS_REMOTE=false; fi && \
-      PR_URL="{{pr_url}}" && \
-      if [ "$HAS_REMOTE" = "true" ] && [ -n "$PR_URL" ]; then \
-        echo "PR Status:" && gh pr view --json state,mergeable,reviews,statusCheckRollup ; \
-      else \
-        echo "PR Status: No PR created (no remote configured)" ; \
-      fi && \
+      echo "PR Status:" && \
+      gh pr view --json state,mergeable,reviews,statusCheckRollup && \
       echo "" && \
       # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
       TASK_DESC=$(cat <<EOFTASKDESC
