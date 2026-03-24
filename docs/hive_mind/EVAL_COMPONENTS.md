@@ -23,33 +23,30 @@ If you need to explain the stack quickly to another engineer, use this mental mo
 
 ## Plain-English Component Diagram
 
-```text
-Operator
-  -> picks a command in amplihack-agent-eval or amplihack
+```mermaid
+flowchart TD
+    A[Operator] --> B{Which path?}
 
-If the operator runs local evals:
-  amplihack-agent-eval CLI or amplihack wrapper
-    -> generates dialogue and questions
-    -> feeds content to an adapter
-    -> asks questions
-    -> grades answers
-    -> writes reports
+    B -->|Local evals| C[amplihack-agent-eval CLI\nor amplihack wrapper]
+    C --> D[Generate dialogue & questions]
+    D --> E[Feed content to adapter]
+    E --> F[Ask questions]
+    F --> G[Grade answers]
+    G --> H[Write reports]
 
-If the operator runs distributed Azure evals:
-  amplihack-agent-eval wrapper or direct runner
-    -> calls amplihack/deploy/azure_hive/deploy.sh when deployment is needed
-    -> deploy.sh applies main.bicep and pushes the agent image
-    -> Azure Container Apps starts the agent fleet
-    -> Event Hubs delivers learn and question messages
-    -> agents answer through the remote adapter path
-    -> the eval runner collects correlated answers
-    -> the grader scores them and writes report artifacts
+    B -->|Distributed Azure evals| I[amplihack-agent-eval wrapper\nor direct runner]
+    I --> J["Call deploy.sh\n(when deployment needed)"]
+    J --> K[Apply main.bicep & push image]
+    K --> L[Provision Event Hubs\nand start Container Apps fleet]
+    L --> M[Runner publishes learn &\nquestion messages to Event Hubs]
+    M --> N[Running agents in Container Apps\nconsume via remote adapter path]
+    N --> O[Collect correlated answers]
+    O --> P[Grade & write report artifacts]
 
-If the operator uses Aspire:
-  amplihack/deploy/azure_hive/aspire/apphost.cs
-    -> launches deploy.sh, eval_monitor.py, eval_distributed.py, and other scripts as executable resources
-    -> sends OTEL telemetry to the Aspire dashboard
-    -> does not replace the Python eval harness
+    B -->|Aspire| Q["apphost.cs\n(deploy/azure_hive/aspire/)"]
+    Q --> R["Launch deploy.sh, eval_monitor.py,\neval_distributed.py as resources"]
+    R --> S[Send OTEL telemetry\nto Aspire dashboard]
+    S --> T[Does not replace\nPython eval harness]
 ```
 
 ## Who Owns What
@@ -151,7 +148,7 @@ Aspire does not replace:
 
 It orchestrates those pieces. That is why the AppHost is small and the heavy logic still lives in Python and bash.
 
-## Why The Aspire AppHost Is In C#
+## Why The Aspire AppHost Is In C&#35;
 
 The AppHost is in C# because Aspire's application model is a .NET host built around the `DistributedApplication` builder API.
 
