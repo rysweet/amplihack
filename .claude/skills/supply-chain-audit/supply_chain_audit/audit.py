@@ -91,23 +91,30 @@ def _validate_path(path_str: str) -> Path:
     return Path(path_str)
 
 
-def _check_xpia(content: str, filepath: str) -> list[str]:
-    """Check for prompt injection patterns and return advisory messages.
+def _check_xpia(content: str, filepath: str) -> str | None:
+    """Check for prompt injection patterns in workflow content.
 
-    Returns a list of advisory strings (empty if clean). Does NOT abort the
-    audit — XPIA matches are reported as advisories so the audit can continue
-    and surface all issues rather than crashing on the first match.
+    Returns an advisory string if detected, None if clean.
+
+    Design: XPIA-matching files are still audited normally because checkers
+    extract structured data (action refs, permissions, etc.) — not raw content.
+    The advisory alerts the operator to review the file manually. The file IS
+    added to workflow_cache for checker processing.
+
+    The original design aborted the entire audit on any match, which made the
+    tool unusable on repos with legitimate LLM workflows (e.g., bot-detection
+    workflows with <system> prompt templates). Quarantining (skipping) the
+    file was also wrong — it denied audit coverage to the most suspicious files.
     """
-    advisories: list[str] = []
     for pattern in _XPIA_PATTERNS:
         if pattern.search(content):
-            advisories.append(
-                f"⚠️ XPIA WARNING: Possible prompt injection pattern "
-                f"({pattern.pattern}) detected in '{filepath}'. "
-                f"Review manually or escalate to xpia-defense skill."
+            return (
+                f"⚠️ XPIA DETECTED: '{filepath}' matches pattern "
+                f"({pattern.pattern}). File was audited normally (checkers "
+                f"extract structured data, not raw content). Review the file "
+                f"manually or escalate to xpia-defense skill."
             )
-            break  # One advisory per file is sufficient
-    return advisories
+    return None
 
 
 def _load_accepted_risks(root: Path) -> list[dict]:
@@ -487,7 +494,10 @@ def _run_all_checkers(
             try:
                 wf_content = wf_file.read_text(errors="replace")
                 rel = str(wf_file.relative_to(root_path)).replace("\\", "/")
-                xpia_advisories.extend(_check_xpia(wf_content, rel))
+                xpia_hit = _check_xpia(wf_content, rel)
+                if xpia_hit:
+                    xpia_advisories.append(xpia_hit)
+                # Always add to cache — checkers extract structured data, not raw content
                 workflow_cache[wf_file] = wf_content
             except (OSError, PermissionError):
                 rel = str(wf_file).replace("\\", "/")
