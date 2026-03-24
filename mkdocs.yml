@@ -146,6 +146,12 @@ nav:
       - Analyze Codebase: claude/scenarios/analyze-codebase/README.md
       - Creating Tools: CREATE_YOUR_OWN_TOOLS.md
       - Hooks Configuration: HOOK_CONFIGURATION_GUIDE.md
+      - GitHub Copilot CLI:
+          - Overview: COPILOT_CLI.md
+          - Tutorial: tutorials/copilot-parity-control-plane.md
+          - How to Configure the Parity Control Plane: howto/configure-copilot-parity-control-plane.md
+          - Parity Control Plane Design: concepts/copilot-parity-control-plane.md
+          - Parity Control Plane Reference: reference/copilot-parity-control-plane.md
   - Advanced Topics:
       - Development Guide: DEVELOPING_AMPLIHACK.md
       - Hive Mind:

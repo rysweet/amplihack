@@ -110,6 +110,10 @@ amplihack copilot
 - All 38 agents available via `--agent <name>` flag
 - See [GitHub Copilot CLI](../COPILOT_CLI.md) for complete guide
 - See [How to Use amplihack with a Non-Claude Agent](howto/use-non-claude-agent.md) for `AMPLIHACK_AGENT_BINARY` propagation and nested Copilot compatibility details
+- Follow the [Copilot parity control-plane tutorial](tutorials/copilot-parity-control-plane.md) for step-by-step setup and validation
+- Use [How to Configure the Copilot Parity Control Plane](howto/configure-copilot-parity-control-plane.md) to pin the runner, pick the hook engine, and verify XPIA behavior
+- Read [Understanding the Copilot Parity Control Plane](concepts/copilot-parity-control-plane.md) for the architecture and trade-offs
+- Use the [Copilot Parity Control Plane Reference](reference/copilot-parity-control-plane.md) for precedence, hook contracts, and environment variables
 
 **Codex**
 

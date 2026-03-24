@@ -177,6 +177,8 @@ python -m unittest discover -s tests -p "test_*settings*.py"
 
 ## Related Documentation
 
+- [How to Configure the Copilot Parity Control Plane](./configure-copilot-parity-control-plane.md)
+- [Copilot Parity Control Plane Reference](../reference/copilot-parity-control-plane.md)
 - Main README: Setup and installation guide
 - PHILOSOPHY.md: Zero-BS principle and validation approach
 - Settings migration: See `src/amplihack/settings.py` docstrings
