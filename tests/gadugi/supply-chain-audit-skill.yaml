@@ -18,7 +18,7 @@ agents:
     type: "system"
     config:
       shell: "bash"
-      cwd: "/home/azureuser/src/amplihack/worktrees/feat/issue--review-github-issue-3440-gh-issue-view-3440-and-th"
+      cwd: "."
       timeout: 60000
       capture_output: true
 
