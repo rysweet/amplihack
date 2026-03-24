@@ -93,8 +93,8 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:32.422680+00
 
 <div class="atlas-crossref" markdown>
 
-- [Layer 4: Runtime Topology](../runtime-topology/)
-- [Layer 8: User Journeys](../user-journeys/)
+- [Layer 4: Runtime Topology](../runtime-topology/index.md)
+- [Layer 8: User Journeys](../user-journeys/index.md)
 
 </div>
 

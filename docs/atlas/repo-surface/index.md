@@ -189,8 +189,8 @@ Category: <strong>Structural</strong> | Generated: 2026-03-24T16:57:39.682651+00
 
 <div class="atlas-crossref" markdown>
 
-- [Layer 2: AST + LSP Bindings](../ast-lsp-bindings/)
-- [Layer 7: Service Components](../service-components/)
+- [Layer 2: AST + LSP Bindings](../ast-lsp-bindings/index.md)
+- [Layer 7: Service Components](../service-components/index.md)
 
 </div>
 

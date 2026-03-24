@@ -375,8 +375,8 @@ Category: <strong>Structural</strong> | Generated: 2026-03-23T16:47:22.832196+00
 
 <div class="atlas-crossref" markdown>
 
-- [Layer 2: AST + LSP Bindings](../ast-lsp-bindings/)
-- [Layer 3: Compile-time Dependencies](../compile-deps/)
+- [Layer 2: AST + LSP Bindings](../ast-lsp-bindings/index.md)
+- [Layer 3: Compile-time Dependencies](../compile-deps/index.md)
 
 </div>
 
