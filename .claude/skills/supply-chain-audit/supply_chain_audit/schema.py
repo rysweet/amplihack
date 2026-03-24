@@ -10,11 +10,13 @@ from dataclasses import dataclass
 # the XPIA detection list in audit.py.
 _XPIA_SANITIZE_PATTERNS = [
     re.compile(r"</?\s*(?:system|user|assistant|human)\s*>", re.IGNORECASE),
+    re.compile(r"</s(?:ystem|ys)>", re.IGNORECASE),
     re.compile(r"ignore\s+(previous\s+)?instructions", re.IGNORECASE),
     re.compile(r"you\s+are\s+now\s+(?:dan|an?\s+ai|a\s+different)", re.IGNORECASE),
     re.compile(r"new\s+instructions\s*:", re.IGNORECASE),
     re.compile(r"disregard\s+(?:previous|all|your)", re.IGNORECASE),
     re.compile(r"jailbreak", re.IGNORECASE),
+    re.compile(r"(?<![a-zA-Z0-9_-])SYSTEM\s*:", re.IGNORECASE),
 ]
 
 
@@ -183,12 +185,12 @@ class Finding:
             f"**Severity**: {self.severity}",
             f"**Current**: `{current}`",
             f"**Expected**: `{expected}`",
-            f"**Why**: {self.rationale}",
+            f"**Why**: {_sanitize_for_display(self.rationale)}",
         ]
         if self.accepted_risk:
             lines.append("_[ACCEPTED RISK — review date applies]_")
         if self.fix_url:
-            lines.append(f"**Fix**: {self.fix_url}")
+            lines.append(f"**Fix**: {_sanitize_for_display(self.fix_url)}")
         return "\n".join(lines)
 
 
