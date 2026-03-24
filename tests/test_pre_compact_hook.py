@@ -163,11 +163,17 @@ class TestPreCompactHook(unittest.TestCase):
         self.assertEqual(events[0]["messages_exported"], 1)
 
     def test_process_uses_input_session_id(self):
-        """Runtime session_id should control the output directory."""
+        """Runtime session_id (UUID v4) should control the output directory.
+
+        R9: session_id must be a valid UUID v4.  The hook rejects non-UUID
+        session IDs, so this test uses a well-formed UUID v4 value.
+        """
         hook = self._create_hook_with_mocked_paths()
+        # R9: use a valid UUID v4 (version nibble=4, variant bits=8/9/a/b).
+        valid_session_uuid = "550e8400-e29b-41d4-a716-446655440000"
 
         input_data = {
-            "session_id": "runtime-session-123",
+            "session_id": valid_session_uuid,
             "conversation": [
                 {
                     "role": "user",
@@ -181,7 +187,7 @@ class TestPreCompactHook(unittest.TestCase):
         result = hook.process(input_data)
 
         self.assertEqual(result["status"], "success")
-        runtime_dir = Path(self.temp_dir) / ".claude" / "runtime" / "logs" / "runtime-session-123"
+        runtime_dir = Path(self.temp_dir) / ".claude" / "runtime" / "logs" / valid_session_uuid
         self.assertTrue(runtime_dir.exists())
         self.assertTrue((runtime_dir / "CONVERSATION_TRANSCRIPT.md").exists())
 

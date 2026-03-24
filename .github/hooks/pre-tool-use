@@ -69,5 +69,6 @@ if amplihack.get("block"):
     )
     raise SystemExit(0)
 
-print("{}")
+# R1: fail-secure terminal — deny anything not explicitly matched above.
+print(json.dumps({"decision": "deny", "reason": "no matching rule - fail-secure default"}))
 PY

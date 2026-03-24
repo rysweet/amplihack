@@ -257,21 +257,33 @@ def find_rust_hook_binary():
     return None
 
 
+HOOK_ENGINE_ALLOWLIST: frozenset[str] = frozenset({"python", "rust", "auto"})
+
+
 def get_hook_engine():
     """Get the configured hook engine.
 
     Returns "rust" or "python" based on AMPLIHACK_HOOK_ENGINE env var.
-    When the env var is unset, prefer "rust" if ``amplihack-hooks`` is
-    installed; otherwise fall back to "python".
+    When the env var is unset or "auto", prefer "rust" if
+    ``amplihack-hooks`` is installed; otherwise fall back to "python".
+
+    R10: raises ``ValueError`` when the env var is set to a value outside
+    the allowlist ``{"python", "rust", "auto"}`` — fail-secure rather than
+    silently using a default that may not match operator intent.
     """
     configured_engine = os.environ.get("AMPLIHACK_HOOK_ENGINE")
     if configured_engine is None:
         return "rust" if find_rust_hook_binary() else "python"
 
     engine = configured_engine.lower()
-    if engine not in ("python", "rust"):
-        print(f"  ⚠️  Unknown AMPLIHACK_HOOK_ENGINE={engine!r}, using 'python'", file=sys.stderr)
-        return "python"
+    if engine not in HOOK_ENGINE_ALLOWLIST:
+        raise ValueError(
+            f"AMPLIHACK_HOOK_ENGINE={configured_engine!r} is not a recognized engine. "
+            f"Allowed values: {sorted(HOOK_ENGINE_ALLOWLIST)}. "
+            "Refusing to start with an unknown hook engine (fail-secure)."
+        )
+    if engine == "auto":
+        return "rust" if find_rust_hook_binary() else "python"
     return engine
 
 

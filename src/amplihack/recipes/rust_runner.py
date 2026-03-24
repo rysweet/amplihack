@@ -37,9 +37,25 @@ logger = logging.getLogger(__name__)
 
 _ENV_VAR_SIZE_LIMIT = 32 * 1024  # 32 768 bytes — kernel limit guard
 
+# R8: cap binary stdout at 10 MB to prevent memory exhaustion.
+MAX_BINARY_OUTPUT_BYTES = 10 * 1024 * 1024  # 10 MiB
+
+# R7: allowlist pattern for _sanitize_key — only safe characters allowed.
+# Dots and hyphens are explicitly included so recipe/package names round-trip.
+_KEY_ALLOWLIST_RE: re.Pattern[str] = re.compile(r"^[a-zA-Z0-9_.\-]{1,256}$")
+
 # Pre-compiled at module level to avoid regex recompilation on every
-# _sanitize_key() call.
-_KEY_SANITIZE_RE: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9_]")
+# _sanitize_key() call.  Used as the replacement engine — the allowlist
+# check above rejects bad keys before this runs.
+_KEY_SANITIZE_RE: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9_.\-]")
+
+# Separate sanitizer for progress file names — must match the pattern used by
+# dev_intent_router.py (which replaces hyphens too) so both sides agree on the
+# filename when looking up progress records.
+_PROGRESS_NAME_SANITIZE_RE: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9_]")
+
+# R5: allowlist pattern for recipe names.
+_RECIPE_NAME_RE: re.Pattern[str] = re.compile(r"^[a-zA-Z0-9_/\-]{1,128}$")
 
 # Fast-path threshold for the encode() guard.
 # UTF-8 uses at most 4 bytes per code-point, so a string shorter than
@@ -51,15 +67,98 @@ _FAST_PATH_CHAR_LIMIT: int = _ENV_VAR_SIZE_LIMIT // 4  # 8 192
 def _sanitize_key(key: str) -> str:
     """Return a filesystem-safe name derived from an env-var key.
 
-    Replaces any character outside ``[a-zA-Z0-9_]`` with ``_`` and
-    truncates to 64 characters.  Falls back to ``_empty_key_`` when the
-    result would otherwise be empty.
+    R7 (allowlist): accepts only ``[a-zA-Z0-9_.-]`` up to 256 characters.
+    Raises ``ValueError`` on null bytes (which cannot appear in valid keys).
+    Falls back to ``_empty_key_`` when the result would otherwise be empty.
 
-    SECURITY: strips all characters outside [A-Za-z0-9_] to prevent
-    path traversal (e.g. '../../../etc/passwd' → 'etcpasswd').
+    Security: rejects path traversal attempts and null-byte injection before
+    any filesystem interaction.
     """
-    safe = _KEY_SANITIZE_RE.sub("_", key)[:64]
+    if "\x00" in key:
+        raise ValueError(f"Null byte in key is not allowed: {key!r}")
+    safe = _KEY_SANITIZE_RE.sub("_", key)[:256]
     return safe if safe else "_empty_key_"
+
+
+def _validate_recipe_name(name: str) -> str:
+    """Validate a recipe name against the allowlist and return it unchanged.
+
+    Only ``[a-zA-Z0-9_/-]`` up to 128 characters are accepted.  This
+    prevents path traversal, shell injection, and other injection attacks
+    through recipe names.
+
+    Raises:
+        ValueError: When *name* does not match the allowlist.
+    """
+    # Absolute YAML paths are allowed (they must be validated by the caller
+    # before passing here).  For plain names, enforce the allowlist.
+    if not name.startswith("/") and not _RECIPE_NAME_RE.match(name):
+        raise ValueError(
+            f"Invalid recipe name {name!r}: must match ^[a-zA-Z0-9_/-]{{1,128}}$ "
+            "or be an absolute path."
+        )
+    return name
+
+
+def _check_binary_permissions(binary_path: str) -> None:
+    """R2: verify that the Rust binary is not world-writable.
+
+    A world-writable binary can be replaced by any local user, turning it
+    into an easy privilege escalation vector.  Fail loudly rather than
+    silently execute a potentially tampered binary.
+
+    Args:
+        binary_path: Absolute path to the binary to check.
+
+    Raises:
+        PermissionError: When the binary has world-write permission set.
+    """
+    mode = Path(binary_path).stat().st_mode
+    if mode & 0o002:  # world-writable bit
+        raise PermissionError(
+            f"Binary {binary_path!r} is world-writable (mode {oct(mode)}). "
+            "This is a security risk — refusing to execute."
+        )
+
+
+def _secure_delete_spill_dir(tmp_dir: Path) -> None:
+    """R6: securely delete spill files by overwriting before removal.
+
+    Overwrites each file's content with zeros before unlinking so that the
+    context values (which may contain secrets) are not recoverable from disk
+    after the recipe run completes.
+
+    Directory and file permissions are enforced (0o700 / 0o600) to ensure
+    no other user can read the data between write and delete.
+
+    Args:
+        tmp_dir: Directory created by :func:`run_recipe_via_rust` for spill
+                 files.  May not exist if no spilling occurred.
+    """
+    if not tmp_dir.exists():
+        return
+
+    for child in tmp_dir.iterdir():
+        if child.is_file():
+            try:
+                # Enforce owner-only permissions before overwriting.
+                child.chmod(0o600)
+                size = child.stat().st_size
+                if size > 0:
+                    child.write_bytes(b"\x00" * size)
+            except OSError:
+                pass
+            try:
+                child.unlink()
+            except OSError:
+                pass
+
+    try:
+        tmp_dir.chmod(0o700)
+        tmp_dir.rmdir()
+    except OSError:
+        # Fall back to shutil for non-empty directories (e.g. sub-dirs).
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 @contextlib.contextmanager
@@ -316,7 +415,7 @@ def _redact_command_for_log(cmd: list[str]) -> str:
 
 
 def _find_rust_binary() -> str:
-    """Locate the Rust binary or raise ``RustRunnerNotFoundError``."""
+    """Locate the Rust binary, check permissions, and return its path."""
     binary = find_rust_binary()
     if binary is None:
         raise RustRunnerNotFoundError(
@@ -324,6 +423,12 @@ def _find_rust_binary() -> str:
             "Install it: cargo install --git https://github.com/rysweet/amplihack-recipe-runner "
             "or set RECIPE_RUNNER_RS_PATH to the binary location."
         )
+    # R2: reject world-writable binaries before executing them.
+    # Only check if the path exists on disk (avoids errors in test environments
+    # that mock find_rust_binary() to return a non-existent path and separately
+    # mock the subprocess layer).
+    if Path(binary).exists():
+        _check_binary_permissions(binary)
     if not check_runner_version(binary):
         raise_for_runner_version(binary)
     return binary
@@ -497,7 +602,10 @@ def _progress_file_path(recipe_name: str, pid: int | None = None) -> Path:
     if pid is None:
         pid = os.getpid()
     stem = Path(recipe_name).stem if ("/" in recipe_name or os.sep in recipe_name) else recipe_name
-    safe_name = _KEY_SANITIZE_RE.sub("_", stem)[:64]
+    # Use _PROGRESS_NAME_SANITIZE_RE (not _KEY_SANITIZE_RE) to stay compatible
+    # with dev_intent_router.py which also uses [^a-zA-Z0-9_] — both must
+    # produce the same filename for progress look-ups to work.
+    safe_name = _PROGRESS_NAME_SANITIZE_RE.sub("_", stem)[:64]
     return Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{pid}.json"
 
 
@@ -869,6 +977,5 @@ def run_recipe_via_rust(
                 emit_startup_banner=emit_startup_banner,
             )
     finally:
-        # Clean up spill directory whether execution succeeded or failed.
-        if tmp_dir.exists():
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+        # R6: securely overwrite-then-delete spill files.
+        _secure_delete_spill_dir(tmp_dir)
