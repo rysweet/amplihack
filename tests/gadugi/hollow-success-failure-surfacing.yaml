@@ -19,7 +19,7 @@ agents:
     type: "system"
     config:
       shell: "bash"
-      cwd: "/home/azureuser/src/amplihack"
+      cwd: "."
       timeout: 60000
       capture_output: true
 
