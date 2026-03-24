@@ -16,7 +16,6 @@ digraph compile_deps {
         fastapi [label="fastapi >=0.68"];
         uvicorn [label="uvicorn >=0.15"];
         aiohttp [label="aiohttp >=3.8"];
-        litellm [label="litellm >=1.0"];
         dotenv [label="python-dotenv >=0.19"];
         claude_sdk [label="claude-agent-sdk >=0.1"];
         copilot_sdk [label="github-copilot-sdk >=0.1"];
@@ -97,7 +96,6 @@ digraph compile_deps {
     // External dependency edges
     proxy -> flask [style=dashed, label="web server"];
     proxy -> aiohttp [style=dashed, label="async HTTP"];
-    proxy -> litellm [style=dashed, label="LLM routing"];
     launcher -> claude_sdk [style=dashed, label="agent SDK"];
     launcher -> rich [style=dashed, label="TUI"];
     fleet -> rich [style=dashed, label="TUI"];
