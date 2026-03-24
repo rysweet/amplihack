@@ -171,12 +171,16 @@ export HIVE_RESOURCE_GROUP=hive-pr3175-rg
 ## Path 5: Run The Distributed Runner Directly
 
 Use this when you already know the Event Hubs connection string and hub names.
+Do not paste the secret directly into the Python command line; load it into a shell
+variable first so it does not end up in your shell history or process list.
 
 ```bash
 cd "${AMPLIHACK_EVAL_SOURCE_ROOT}"
 
+read -rsp "Event Hubs connection string: " EH_CONN && echo
+
 python -m amplihack_eval.azure.eval_distributed \
-  --connection-string "<event-hubs-connection-string>" \
+  --connection-string "$EH_CONN" \
   --input-hub "hive-events-amplihive3175e" \
   --response-hub "eval-responses-amplihive3175e" \
   --agents 100 \
@@ -189,6 +193,8 @@ python -m amplihack_eval.azure.eval_distributed \
   --question-failover-retries 2 \
   --answer-timeout 0 \
   --output /tmp/eval_report.json
+
+unset EH_CONN
 ```
 
 ## Path 6: Use Aspire To Orchestrate The Scripts Locally
@@ -221,7 +227,7 @@ dotnet run apphost.cs
 The monitor and eval resources are only added when the Event Hubs connection string and hub names are set.
 
 ```bash
-export EH_CONN="<event-hubs-connection-string>"
+read -rsp "Event Hubs connection string: " EH_CONN && echo
 export AMPLIHACK_EH_INPUT_HUB="hive-events-amplihive3175e"
 export AMPLIHACK_EH_RESPONSE_HUB="eval-responses-amplihive3175e"
 export HIVE_AGENT_COUNT=100
@@ -233,12 +239,14 @@ export AMPLIHACK_ASPIRE_EVAL_QUESTIONS=50
 
 cd "${AMPLIHACK_SOURCE_ROOT}/deploy/azure_hive/aspire"
 dotnet run apphost.cs
+
+unset EH_CONN
 ```
 
 ### Aspire Security Eval Flow
 
 ```bash
-export EH_CONN="<event-hubs-connection-string>"
+read -rsp "Event Hubs connection string: " EH_CONN && echo
 export AMPLIHACK_EH_INPUT_HUB="hive-events-amplihive3175e"
 export AMPLIHACK_EH_RESPONSE_HUB="eval-responses-amplihive3175e"
 export HIVE_AGENT_COUNT=100
@@ -250,6 +258,8 @@ export AMPLIHACK_ASPIRE_SECURITY_CAMPAIGNS=12
 
 cd "${AMPLIHACK_SOURCE_ROOT}/deploy/azure_hive/aspire"
 dotnet run apphost.cs
+
+unset EH_CONN
 ```
 
 ## Outputs To Expect
