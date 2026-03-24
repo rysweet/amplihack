@@ -7,7 +7,7 @@ import os
 import re
 from typing import Any
 
-import litellm  # type: ignore[import-unresolved]
+from amplihack.llm.client import completion
 
 DEFAULT_GRADER_MODEL = "claude-opus-4-6"
 
@@ -35,7 +35,10 @@ def extract_json(text: str) -> dict[str, Any]:
         except json.JSONDecodeError:
             pass
 
-    raise json.JSONDecodeError(f"No valid JSON found in response: {stripped[:200]}", stripped, 0)
+    # REQ-DATA-2: Omit response content from the exception message — it may contain
+    # eval data, student answers, or other sensitive LLM output that must not appear
+    # in log streams or tracebacks.
+    raise json.JSONDecodeError("No valid JSON found in LLM response", "", 0)
 
 
 def get_grader_model(explicit_model: str | None = None) -> str:
@@ -65,32 +68,7 @@ def _require_api_key_for_model(model: str) -> None:
         raise OSError(f"{key_var} environment variable is required for grader model {model}")
 
 
-def _extract_message_text(response: Any) -> str:
-    """Extract the primary text payload from a LiteLLM response."""
-    content = response.choices[0].message.content
-
-    if isinstance(content, str):
-        return content.strip()
-
-    if isinstance(content, list):
-        parts: list[str] = []
-        for item in content:
-            if isinstance(item, str):
-                parts.append(item)
-            elif isinstance(item, dict):
-                text = item.get("text")
-                if text:
-                    parts.append(str(text))
-            else:
-                text = getattr(item, "text", None)
-                if text:
-                    parts.append(str(text))
-        return "\n".join(part for part in parts if part).strip()
-
-    return str(content).strip()
-
-
-def call_grader_json(
+async def call_grader_json(
     prompt: str,
     *,
     model: str | None = None,
@@ -98,7 +76,7 @@ def call_grader_json(
     temperature: float | None = None,
     system: str | None = None,
 ) -> dict[str, Any]:
-    """Run a grading prompt through LiteLLM and parse the JSON response."""
+    """Run a grading prompt through the LLM routing layer and parse the JSON response."""
     resolved_model = get_grader_model(model)
     _require_api_key_for_model(resolved_model)
 
@@ -115,8 +93,8 @@ def call_grader_json(
     if temperature is not None:
         kwargs["temperature"] = temperature
 
-    response = litellm.completion(**kwargs)
-    return extract_json(_extract_message_text(response))
+    response_text = await completion(**kwargs)
+    return extract_json(response_text)
 
 
 __all__ = [
