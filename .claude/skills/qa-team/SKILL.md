@@ -191,16 +191,25 @@ sudo apt-get install -y build-essential python3
 
 **Install the framework:**
 
+The gadugi-agentic-test framework is not published to npm. Install it from GitHub:
+
 ```bash
-# Install globally for CLI access
-npm install -g @gadugi/agentic-test
+# Clone the repository
+git clone https://github.com/rysweet/gadugi-agentic-test.git
+cd gadugi-agentic-test
 
-# Or install locally in your project
-npm install @gadugi/agentic-test
+# Install dependencies and build
+npm install
+npm run build
 
-# Verify installation
-gadugi-test --version
+# Verify the build succeeded
+node dist/cli.js --version
 ```
+
+> **Tip**: If you want CLI-style access from anywhere, you can add an alias:
+> ```bash
+> alias gadugi-test="node /path/to/gadugi-agentic-test/dist/cli.js"
+> ```
 
 ### Your First Test (CLI Example)
 
@@ -229,7 +238,7 @@ scenario:
 Run the test:
 
 ```bash
-gadugi-test run test-hello.yaml
+node dist/cli.js run -s test-hello -d ./
 ```
 
 Output:
