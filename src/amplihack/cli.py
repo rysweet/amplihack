@@ -1377,8 +1377,8 @@ def main(argv: list[str] | None = None) -> int:
                                     / "amplihack"
                                     / "amplihack"
                                     / "0.9.0"
-                            )
-                            os.environ["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
+                                )
+                                os.environ["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
                         except subprocess.TimeoutExpired:
                             print("⚠️  Plugin installation timed out")
                             print("   Falling back to directory copy mode")
