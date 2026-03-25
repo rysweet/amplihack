@@ -2,6 +2,137 @@
 
 This document tracks recent bug fixes and improvements to the Recipe Runner and Skills systems following the Diátaxis framework.
 
+## Remove Silent Fallback Patterns from Startup (PR #3552, Issue #3539)
+
+**What changed**: Eliminated three startup warnings that violated the project philosophy of no silent fallbacks.
+
+- `src/amplihack/worktree/` package created so `git_utils` imports directly without a try/except fallback chain.
+- `ensure_sdk_deps()` now raises `ImportError` instead of silently swallowing dep failures.
+- Call sites in `cli.py` and `session.py` now call `sys.exit(1)` on dep failure instead of continuing silently.
+- `microsoft_sdk.py` no longer prints to stderr at import time.
+
+**Impact**: Startup is silent on success and loud on failure — no more confusing warnings for users with correct environments.
+
+---
+
+## Complete litellm / Proxy Subsystem Removal (PRs #3518, #3531, #3536, #3541)
+
+**Background**: On March 24 2026 a PyPI supply chain attack was discovered in `litellm` versions 1.82.7–1.82.8. The dependency was removed in a series of PRs.
+
+### Step 1 — Remove litellm dependency and atlas update (PR #3518)
+
+Removed `litellm` from `pyproject.toml`, rebuilt the `compile-deps` atlas layer, and updated dependency count from 37 → 36.
+
+### Step 2 — Remove entire proxy subsystem (PR #3531)
+
+- Deleted `src/amplihack/proxy/` (30 files) and `proxy/` (7 files).
+- Removed all proxy CLI args (`--with-proxy-config`, `--builtin-proxy`) and proxy startup logic from the launcher.
+- Created `amplihack.llm.completion()` — async, auto-detects launcher (claude → `claude_agent_sdk`, copilot → Copilot SDK), fail-open design.
+- Migrated eval graders, teaching sessions, fleet backends, and goal-seeking agents to the new async adapter.
+- `TokenSanitizer` relocated from deleted proxy module to `src/amplihack/utils/token_sanitizer.py`.
+
+### Step 3 — Fix launcher crash and deep cleanup (PR #3536)
+
+- Removed dangling `self.proxy_manager` references from `launcher/core.py` that caused `AttributeError` at startup.
+- Deleted 8 additional files: `docs/TEST_AZURE_PROXY.md`, `docs/PASSTHROUGH_MODE.md`, `docs/proxy/*`, `tests/test_openai_responses_api.py`, and others.
+- Surgically edited 16 files to remove remaining proxy references.
+
+### Step 4 — Final cleanup of remaining litellm refs (PR #3541)
+
+- Deleted proxy env config files (`.github.copilot.env`, `docs/examples/example.github.env`).
+- Cleaned 8 atlas JSON layer files and removed 5 stale SVG diagrams.
+- Updated trace-logging, fleet admiral, and architecture docs.
+
+**After all PRs**: `grep -ri litellm` returns only the intentionally kept smoke test and historical security note in `docs/SECURITY_RECOMMENDATIONS.md`.
+
+**User action required**: Remove `--with-proxy-config` and `--builtin-proxy` from any launch scripts. See [SDK Adapters Guide](../SDK_ADAPTERS_GUIDE.md) for the new `amplihack.llm` async adapter.
+
+---
+
+## Replace bare eval() with simpleeval in Recipe Conditions (PR #3486, Issue #3485)
+
+**Security fix**: `Step.evaluate_condition()` previously used Python's built-in `eval()`, allowing arbitrary code execution from recipe condition strings.
+
+**Fix**: Replaced with `simpleeval.EvalWithCompoundTypes`. Added `simpleeval>=0.9.13` dependency.
+
+**Impact**: `__import__()` and `open()` are now blocked. All existing condition expressions (`count >= 4`, `'API' in description`, `is None` checks) continue to work.
+
+---
+
+## Supply-Chain Audit Skill (PR #3481, Issue #3440)
+
+**New skill**: `supply-chain-audit` scans repositories for supply chain security risks across 12 dimensions.
+
+**Key features**:
+- **12 audit dimensions**: Python deps, Node integrity, Go modules, Rust supply chain, .NET packages, GitHub Actions, container images, credential hygiene, Docker build chain, SLSA assessment, and more.
+- **External tool integration**: npm-audit, pip-audit, cargo-audit, gh, trivy (circuit breaker pattern).
+- **SLSA framework assessment**: Evaluates against SLSA Build L1–L3 criteria.
+- **XPIA detection**: Scans for prompt injection patterns in workflow files — all rendered fields sanitized via `_sanitize_for_display()`.
+- **Accepted-risk suppression**: YAML-based risk acceptance with expiry dates.
+
+**Usage**: See [How-to: Run Supply Chain Audit](../howto/run-supply-chain-audit.md).
+
+---
+
+## Merge-Ready Skill for PR Gate Enforcement (PR #3516)
+
+**New skill**: `merge-ready` acts as the final gate before PR merge. Coordinates existing workflows (`qa-team`, `quality-audit`, `default-workflow`) and enforces 6 non-negotiable criteria.
+
+**8-step workflow**: collect evidence → verify QA → check docs impact → run quality audit → verify CI → assess scope → update PR description → produce verdict.
+
+**Usage**: Run `/merge-ready` before proposing a PR merge to produce a structured merge verdict with evidence.
+
+---
+
+## Recipe Runner Progress Reporting Banners (PR #3487)
+
+**What changed**: The recipe runner now emits observable progress banners to stderr so parent sessions can distinguish active work from stalled subprocesses.
+
+- `[recipe-runner] Preparing recipe '<name>'...` emitted before binary lookup.
+- `[recipe-runner] Launching recipe '<name>' (pid N)...` emitted at launch.
+- Progress files are cleaned up on recipe completion (`_cleanup_progress_file()`).
+
+**Impact**: Parent sessions monitoring nested recipe execution can now see activity indicators. No user action required.
+
+---
+
+## Python-Rust Parity for Copilot Hooks (PR #3500)
+
+**What changed**: Converges the Python-Rust parity slice for Copilot hooks.
+
+- Aggregates Copilot pre-tool-use results from amplihack and XPIA into one permission payload.
+- Makes canonical XPIA pre-tool-use Rust-backed; `pre_tool_use_rust.py` kept as a compatibility shim.
+- Prefers the Rust hook engine automatically when `amplihack-hooks` is installed.
+- Hands off top-level `install`, `recipe`, `mode`, and `update` commands to the Rust CLI when available.
+
+**Impact**: Environments with `amplihack-hooks` installed benefit from faster hook execution.
+
+---
+
+## Fix Default AMPLIHACK_INSTALL_LOCATION (PR #3511)
+
+**What changed**: Install scripts (`amplifier-bundle/tools/amplihack/install.sh` and `install_with_xpia.sh`) previously defaulted to the stale `MicrosoftHackathon2025-AgenticCoding` repository.
+
+**Fix**: Updated default to the active `https://github.com/rysweet/amplihack` repository.
+
+**Impact**: Fresh installs and install script guidance now point to the correct repository.
+
+---
+
+## Code Atlas Documentation Fixes (PR #3533)
+
+**What changed**: Fixed unreadable and broken atlas documentation pages.
+
+- Rewrote `docs/atlas/index.md` from broken HTML grid cards to a clean markdown table.
+- Updated `mkdocs.yml` nav from `README.md` → `index.md` for all 8 atlas sub-pages.
+- Fixed 17 cross-reference links across 8 sub-page `index.md` files.
+- Removed 8 conflicting `README.md` files that MkDocs was excluding.
+- Added Health Dashboard and Glossary to mkdocs.yml Code Atlas nav section.
+
+**Impact**: All 8 atlas sub-pages now load correctly and the index renders as a readable table.
+
+---
+
 ## Rust Runner Env Propagation & Investigation Routing (PR #3512, Issue #3496)
 
 **Problem**: Nested workflow sessions started in temp cwds with wrong environment,
@@ -476,6 +607,18 @@ amplihack recipe run investigation --context task_description="How does auth wor
 ---
 
 ## Version History
+
+Fixes released in **amplihack (March 25, 2026)**:
+
+- **Silent fallback removal** (PR #3552) — No startup warnings on correct environments; loud failure on errors
+- **litellm/proxy complete removal** (PRs #3518, #3531, #3536, #3541) — PyPI supply chain attack response; new `amplihack.llm` async adapter
+- **simpleeval for recipe conditions** (PR #3486) — Eliminated arbitrary code execution from `eval()`
+- **Supply-chain-audit skill** (PR #3481) — 12-dimension repository security scanner
+- **Merge-ready skill** (PR #3516) — 6-criteria PR merge gate enforcement
+- **Recipe progress banners** (PR #3487) — Observable progress indicators for parent sessions
+- **Python-Rust Copilot hook parity** (PR #3500) — Rust hook engine preferred when `amplihack-hooks` installed
+- **Install location fix** (PR #3511) — Default install URL points to active repo
+- **Code Atlas docs repair** (PR #3533) — Readable index, working sub-page nav, fixed cross-references
 
 All fixes released in **amplihack v0.9.1** (March 2026):
 
