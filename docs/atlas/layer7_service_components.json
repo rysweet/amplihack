@@ -6842,9 +6842,6 @@
       "src.amplihack.proxy.monitoring": 1,
       "src.amplihack.proxy.streaming": 1
     },
-    "src.amplihack.proxy.litellm_callbacks": {
-      "src.amplihack.tracing.trace_logger": 1
-    },
     "src.amplihack.proxy.manager": {
       "src.amplihack.proxy.config": 1,
       "src.amplihack.proxy.env": 1,
