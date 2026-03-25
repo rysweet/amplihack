@@ -11,6 +11,7 @@ import sys
 import tarfile
 import urllib.request
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -19,9 +20,18 @@ TRIAL_BINARY_ENV = "AMPLIHACK_RUST_TRIAL_BINARY"
 TRIAL_HOME_NAME = ".amplihack-rust-trial"
 RUST_RELEASES_API = "https://api.github.com/repos/rysweet/amplihack-rs/releases?per_page=20"
 USAGE = (
-    "Usage: amplihack-rust-trial [--trial-home PATH] [--] [rust-cli args...]\n"
-    "Runs the bundled Rust amplihack CLI with an isolated HOME."
+    "Usage: amplihack-rust-trial [--trial-home PATH] install [--install-dir PATH] [--force] [--no-bootstrap]\n"
+    "       amplihack-rust-trial [--trial-home PATH] [--] [rust-cli args...]\n"
+    "Runs the bundled Rust amplihack CLI with an isolated HOME, or installs the latest\n"
+    "published Rust binary for daily use."
 )
+
+
+@dataclass(frozen=True)
+class InstallOptions:
+    install_dir: Path
+    force: bool = False
+    bootstrap: bool = True
 
 
 def _binary_name() -> str:
@@ -34,6 +44,11 @@ def default_trial_home() -> Path:
     if configured:
         return Path(configured).expanduser()
     return Path.home() / TRIAL_HOME_NAME
+
+
+def default_install_dir() -> Path:
+    """Return the default user-local install directory for the Rust CLI."""
+    return Path.home() / ".local" / "bin"
 
 
 def _bundled_binary_path() -> Path:
@@ -253,6 +268,119 @@ def build_trial_env(trial_home: Path) -> dict[str, str]:
     return env
 
 
+def _prepend_path(directory: Path, env: dict[str, str] | None = None) -> None:
+    """Prepend a directory to PATH in both the provided env and current process."""
+    target = env if env is not None else os.environ
+    directory_str = str(directory.expanduser().resolve())
+    current_entries = [entry for entry in target.get("PATH", "").split(os.pathsep) if entry]
+    if directory_str not in current_entries:
+        target["PATH"] = (
+            f"{directory_str}{os.pathsep}{target['PATH']}" if target.get("PATH") else directory_str
+        )
+    current_process_entries = [
+        entry for entry in os.environ.get("PATH", "").split(os.pathsep) if entry
+    ]
+    if directory_str not in current_process_entries:
+        os.environ["PATH"] = (
+            f"{directory_str}{os.pathsep}{os.environ['PATH']}"
+            if os.environ.get("PATH")
+            else directory_str
+        )
+
+
+def _shell_profile_path() -> Path | None:
+    if os.name == "nt":
+        return None
+    shell = os.environ.get("SHELL", "")
+    if shell.endswith("/zsh") or shell.endswith("/zsh5"):
+        return Path.home() / ".zshrc"
+    return Path.home() / ".bashrc"
+
+
+def _path_export_line(directory: Path) -> str:
+    resolved = directory.expanduser().resolve()
+    if resolved == default_install_dir().resolve():
+        return 'export PATH="$HOME/.local/bin:$PATH"'
+    return f'export PATH="{resolved}:$PATH"'
+
+
+def _update_shell_profile_path(directory: Path) -> bool:
+    """Persist a PATH entry across shell sessions in an idempotent way."""
+    profile_path = _shell_profile_path()
+    if profile_path is None:
+        return False
+
+    export_line = _path_export_line(directory)
+    try:
+        if profile_path.exists():
+            content = profile_path.read_text(encoding="utf-8")
+            if export_line in content:
+                return True
+        with profile_path.open("a", encoding="utf-8") as handle:
+            handle.write(f"\n# Added by amplihack\n{export_line}\n")
+        return True
+    except OSError:
+        return False
+
+
+def parse_install_args(argv: Sequence[str]) -> InstallOptions:
+    """Parse helper-specific install options."""
+    args = list(argv)
+    install_dir = default_install_dir()
+    force = False
+    bootstrap = True
+    idx = 0
+    while idx < len(args):
+        arg = args[idx]
+        if arg == "--install-dir":
+            idx += 1
+            if idx >= len(args):
+                raise ValueError("--install-dir requires a path")
+            install_dir = Path(args[idx]).expanduser()
+        elif arg.startswith("--install-dir="):
+            install_dir = Path(arg.split("=", 1)[1]).expanduser()
+        elif arg == "--force":
+            force = True
+        elif arg == "--no-bootstrap":
+            bootstrap = False
+        else:
+            raise ValueError(f"Unknown install option: {arg}")
+        idx += 1
+    return InstallOptions(install_dir=install_dir, force=force, bootstrap=bootstrap)
+
+
+def install_rust_cli(trial_home: Path, options: InstallOptions) -> Path:
+    """Install the latest published Rust CLI into the user's local bin directory."""
+    source_binary = download_latest_release_binary(trial_home)
+    install_dir = options.install_dir.expanduser().resolve()
+    install_dir.mkdir(parents=True, exist_ok=True)
+    destination = install_dir / _binary_name()
+
+    if destination.exists() and destination.is_dir():
+        raise RuntimeError(f"Install path {destination} is a directory, not a binary")
+
+    if destination.exists() and not options.force and not _is_rust_cli_binary(destination):
+        raise RuntimeError(
+            f"Refusing to overwrite non-amplihack binary at {destination}; rerun with --force "
+            "if you really want to replace it."
+        )
+
+    shutil.copy2(source_binary, destination)
+    destination.chmod(0o755)
+    _prepend_path(install_dir)
+    _update_shell_profile_path(install_dir)
+
+    if options.bootstrap:
+        result = subprocess.run([str(destination), "install"], check=False)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Installed Rust CLI at {destination}, but `amplihack install` failed "
+                f"with exit code {result.returncode}"
+            )
+
+    return destination
+
+
 def _ensure_trial_copilot_config(trial_home: Path, source_home: Path | None = None) -> Path:
     """Ensure the isolated trial home has a visible Copilot config file.
 
@@ -351,7 +479,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     try:
+        if rust_args and rust_args[0] == "install":
+            options = parse_install_args(rust_args[1:])
+            installed = install_rust_cli(trial_home, options)
+            print(
+                f"[amplihack-rust-trial] Installed Rust CLI at {installed}",
+                file=sys.stderr,
+            )
+            if options.bootstrap:
+                print(
+                    "[amplihack-rust-trial] Ran `amplihack install` automatically.",
+                    file=sys.stderr,
+                )
+            return 0
         return run_rust_trial(rust_args, trial_home)
-    except (FileNotFoundError, RuntimeError) as exc:
+    except (FileNotFoundError, RuntimeError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

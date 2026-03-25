@@ -9,15 +9,19 @@ from amplihack.rust_trial import (
     RUST_RELEASES_API,
     TRIAL_BINARY_ENV,
     TRIAL_HOME_ENV,
+    InstallOptions,
     _ensure_trial_copilot_config,
     _expected_release_asset_name,
     _select_release_asset,
     _target_triple,
+    _update_shell_profile_path,
     build_trial_env,
     download_latest_release_binary,
     ensure_trial_dependencies,
     find_rust_cli_binary,
+    install_rust_cli,
     main,
+    parse_install_args,
     parse_trial_args,
 )
 
@@ -224,7 +228,9 @@ def test_ensure_trial_dependencies_skips_non_copilot(tmp_path, monkeypatch):
         lambda **_kwargs: called.append("install") or True,
     )
 
-    ensure_trial_dependencies(["recipe", "list"], tmp_path / "trial-home", build_trial_env(tmp_path))
+    ensure_trial_dependencies(
+        ["recipe", "list"], tmp_path / "trial-home", build_trial_env(tmp_path)
+    )
 
     assert called == []
 
@@ -304,6 +310,81 @@ def test_parse_trial_args_defaults_to_rust_help(monkeypatch, tmp_path):
     assert forwarded == ["--help"]
 
 
+def test_parse_install_args_supports_force_and_no_bootstrap(tmp_path):
+    options = parse_install_args(
+        ["--install-dir", str(tmp_path / "bin"), "--force", "--no-bootstrap"]
+    )
+    assert options.install_dir == tmp_path / "bin"
+    assert options.force is True
+    assert options.bootstrap is False
+
+
+def test_update_shell_profile_path_is_idempotent(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("SHELL", "/bin/bash")
+
+    assert _update_shell_profile_path(tmp_path / ".local" / "bin") is True
+    assert _update_shell_profile_path(tmp_path / ".local" / "bin") is True
+
+    bashrc = tmp_path / ".bashrc"
+    content = bashrc.read_text(encoding="utf-8")
+    assert content.count('export PATH="$HOME/.local/bin:$PATH"') == 1
+
+
+def test_install_rust_cli_copies_binary_and_bootstraps(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    source_binary = _write_executable(tmp_path / "release" / "amplihack")
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        "amplihack.rust_trial.download_latest_release_binary",
+        lambda _trial_home: source_binary,
+    )
+
+    def fake_run(cmd, check):  # type: ignore[no-untyped-def]
+        captured["cmd"] = cmd
+        captured["check"] = check
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr("amplihack.rust_trial.subprocess.run", fake_run)
+
+    installed = install_rust_cli(
+        tmp_path / "trial-home", InstallOptions(install_dir=tmp_path / ".local" / "bin")
+    )
+
+    assert installed == (tmp_path / ".local" / "bin" / "amplihack").resolve()
+    assert installed.exists()
+    assert captured["cmd"] == [str(installed), "install"]
+    assert captured["check"] is False
+    assert 'export PATH="$HOME/.local/bin:$PATH"' in (tmp_path / ".bashrc").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_install_rust_cli_refuses_to_overwrite_non_amplihack_binary(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    install_dir = tmp_path / ".local" / "bin"
+    install_dir.mkdir(parents=True, exist_ok=True)
+    _write_executable(install_dir / "amplihack")
+    source_binary = _write_executable(tmp_path / "release" / "amplihack")
+
+    monkeypatch.setattr(
+        "amplihack.rust_trial.download_latest_release_binary",
+        lambda _trial_home: source_binary,
+    )
+    monkeypatch.setattr(
+        "amplihack.rust_trial._is_rust_cli_binary",
+        lambda candidate: candidate == source_binary,
+    )
+
+    try:
+        install_rust_cli(tmp_path / "trial-home", InstallOptions(install_dir=install_dir))
+    except RuntimeError as exc:
+        assert "Refusing to overwrite non-amplihack binary" in str(exc)
+    else:
+        raise AssertionError("Expected install_rust_cli() to refuse overwriting unknown binary")
+
+
 def test_main_runs_rust_binary_in_isolated_home(tmp_path, monkeypatch, capsys):
     binary = _write_executable(tmp_path / "amplihack")
     captured: dict[str, object] = {}
@@ -344,3 +425,27 @@ def test_main_errors_when_trial_home_missing_path(capsys):
     exit_code = main(["--trial-home"])
     assert exit_code == 2
     assert "--trial-home requires a path" in capsys.readouterr().err
+
+
+def test_main_install_command_runs_global_bootstrap(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    installed = tmp_path / ".local" / "bin" / "amplihack"
+    captured: dict[str, object] = {}
+
+    def fake_install(trial_home, options):  # type: ignore[no-untyped-def]
+        captured["trial_home"] = trial_home
+        captured["options"] = options
+        installed.parent.mkdir(parents=True, exist_ok=True)
+        installed.write_text("binary", encoding="utf-8")
+        return installed
+
+    monkeypatch.setattr("amplihack.rust_trial.install_rust_cli", fake_install)
+
+    exit_code = main(["--trial-home", str(tmp_path / "trial"), "install", "--no-bootstrap"])
+
+    assert exit_code == 0
+    assert captured["trial_home"] == tmp_path / "trial"
+    options = captured["options"]
+    assert isinstance(options, InstallOptions)
+    assert options.bootstrap is False
+    assert "Installed Rust CLI at" in capsys.readouterr().err
