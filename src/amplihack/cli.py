@@ -782,6 +782,14 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "fleet_args", nargs=argparse.REMAINDER, help="Fleet subcommand and arguments"
     )
 
+    # Supply chain audit commands (delegates to Click CLI)
+    sca_parser = subparsers.add_parser(
+        "supply-chain-audit", help="Audit repos for known supply chain incidents"
+    )
+    sca_parser.add_argument(
+        "sca_args", nargs=argparse.REMAINDER, help="Supply chain audit subcommand and arguments"
+    )
+
     return parser
 
 
@@ -1951,6 +1959,13 @@ def main(argv: list[str] | None = None) -> int:
 
         fleet_args = args.fleet_args if args.fleet_args else ["--help"]
         fleet_cli(fleet_args, standalone_mode=False)  # type: ignore[reportCallIssue]
+        return 0
+
+    elif args.command == "supply-chain-audit":
+        from amplihack.tools.supply_chain_audit.cli import supply_chain_audit
+
+        sca_args = args.sca_args if args.sca_args else ["--help"]
+        supply_chain_audit(sca_args, standalone_mode=False)
         return 0
 
     else:
