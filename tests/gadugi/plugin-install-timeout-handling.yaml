@@ -1,0 +1,71 @@
+# Outside-in test: cli.py plugin install TimeoutExpired handling (#3563)
+# Verifies that subprocess.TimeoutExpired during plugin install is caught
+# and falls back to directory copy mode instead of crashing with a traceback.
+
+scenario:
+  name: "Plugin Install - TimeoutExpired Handling"
+  description: |
+    When `amplihack launch` runs plugin installation via `claude plugin install`
+    or `claude plugin marketplace add`, a subprocess.TimeoutExpired exception
+    must be caught and handled gracefully by falling back to directory copy mode.
+
+    Before this fix, a timeout would produce an unhandled traceback ending in
+    `subprocess.TimeoutExpired`, crashing the launch process entirely.
+  type: cli
+  level: 2
+
+  tags: [cli, plugin-install, timeout, graceful-degradation, pr-3563]
+
+  prerequisites:
+    - "Python 3.10+ with amplihack package importable"
+    - "src/amplihack/cli.py exists"
+
+  environment:
+    variables:
+      PYTHONPATH: "src"
+
+  steps:
+    # Verify the plugin install subprocess calls are wrapped in try/except
+    - action: verify_source
+      target: "src/amplihack/cli.py"
+      contains: "except subprocess.TimeoutExpired"
+      description: "subprocess.TimeoutExpired is caught during plugin installation"
+
+    # Verify the timeout handler falls back to directory copy mode
+    - action: grep_source
+      target: "src/amplihack/cli.py"
+      pattern: "TimeoutExpired.*\n.*Plugin installation timed out"
+      description: "TimeoutExpired handler prints user-friendly message"
+
+    # Verify fallback to directory copy is called on timeout
+    - action: grep_source
+      target: "src/amplihack/cli.py"
+      pattern: "_fallback_to_directory_copy.*Plugin install timed out"
+      description: "Timeout triggers directory copy fallback with descriptive reason"
+
+    # Verify both subprocess.run calls have timeout parameter
+    - action: verify_source
+      target: "src/amplihack/cli.py"
+      contains: "timeout=60"
+      scope: "main"
+      description: "Both plugin subprocess calls have explicit 60s timeout"
+
+  cleanup:
+    - action: capture_output
+      save_as: "plugin-install-timeout-handling-output.txt"
+      description: "Save full test output for debugging"
+
+# Expected Behavior:
+# - subprocess.TimeoutExpired is caught (not propagated as unhandled traceback)
+# - User sees friendly "Plugin installation timed out" message
+# - Falls back to directory copy mode (same path as other plugin failures)
+# - Launch continues successfully via fallback
+#
+# Root Cause (fixed in PR #3563):
+# The subprocess.run calls for `claude plugin marketplace add` and
+# `claude plugin install` both used timeout=60 but were not wrapped in
+# try/except subprocess.TimeoutExpired, causing a raw traceback on slow
+# or unresponsive Claude CLI installations.
+#
+# Run Command:
+# gadugi-test run tests/gadugi/plugin-install-timeout-handling.yaml --verbose
