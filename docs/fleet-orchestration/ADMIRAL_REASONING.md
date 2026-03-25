@@ -138,7 +138,6 @@ The admiral supports multiple LLM backends via a protocol interface:
 |---------|--------------|-------------------|-----------|
 | `AnthropicBackend` | claude-opus-4-6 | 128,000 | `ANTHROPIC_API_KEY` set (uses streaming API internally) |
 | `CopilotBackend` | gpt-4o | — | Copilot SDK available |
-| `LiteLLMBackend` | gpt-4o | 128,000 | Fallback (100+ providers) |
 
 `auto_detect_backend()` checks for `ANTHROPIC_API_KEY` first, then falls back to CopilotBackend. Max output tokens (`DEFAULT_LLM_MAX_TOKENS=128000`). Transcript input context can use up to `TRANSCRIPT_MAX_TOKENS=128000`.
 
@@ -276,7 +275,6 @@ The key difference between `scout`/`advance` and `dry-run`/`run-once`/`start`:
 | `_session_context.py` | `SessionContext` + `SessionDecision` dataclasses |
 | `_status.py` | `infer_agent_status()` — terminal pattern matching |
 | `_system_prompt.py` | LLM system prompt + strategy dictionary |
-| `_backends.py` | `AnthropicBackend`, `CopilotBackend`, `LiteLLMBackend` |
 | `_validation.py` | Input sanitization + dangerous pattern blocklist |
 | `_constants.py` | Confidence thresholds, timeouts, capacity limits |
 | `_cli_session_ops.py` | `scout` + `advance` CLI commands |
