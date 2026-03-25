@@ -92,4 +92,7 @@ argument normalization layer for every Copilot invocation.
 ## See Also
 
 - [Dev-Orchestrator Tutorial](../tutorials/dev-orchestrator-tutorial.md#execution-modes)
+- [Tutorial: Enable the Copilot parity control plane](../tutorials/copilot-parity-control-plane.md)
+- [How to Configure the Copilot Parity Control Plane](./configure-copilot-parity-control-plane.md)
+- [Copilot Parity Control Plane Reference](../reference/copilot-parity-control-plane.md)
 - [Recent Fixes March 2026](../recipes/RECENT_FIXES_MARCH_2026.md#agent-agnostic-binary-selection-pr-3174)

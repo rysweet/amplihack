@@ -91,64 +91,22 @@ def _normalize_copilot_cli_args(args: list[str]) -> list[str]:
 
 
 def _build_copilot_wrapper_source(real_binary: str) -> str:
+    module_path = Path(__file__).resolve()
     return f"""#!/usr/bin/env python3
+import importlib.util
 import subprocess
 import sys
 
 REAL_BINARY = {real_binary!r}
-
+MODULE_PATH = {str(module_path)!r}
 
 def normalize(args):
-    normalized = []
-    system_prompt_parts = []
-    prompt_parts = []
-    saw_tool_permissions = False
-    saw_path_permissions = False
-    i = 0
-    while i < len(args):
-        token = args[i]
-        if token in ("--system-prompt", "--append-system-prompt"):
-            if i + 1 < len(args):
-                system_prompt_parts.append(args[i + 1])
-            i += 2
-            continue
-        if token.startswith("--system-prompt=") or token.startswith("--append-system-prompt="):
-            _, _, value = token.partition("=")
-            if value:
-                system_prompt_parts.append(value)
-            i += 1
-            continue
-        if token in ("-p", "--prompt"):
-            if i + 1 < len(args):
-                prompt_parts.append(args[i + 1])
-            i += 2
-            continue
-        if token.startswith("--prompt="):
-            _, _, value = token.partition("=")
-            if value:
-                prompt_parts.append(value)
-            i += 1
-            continue
-        if token == "--allow-all-tools" or token.startswith("--allow-tool=") or token.startswith("--deny-tool=") or token in ("--allow-tool", "--deny-tool"):
-            saw_tool_permissions = True
-        if token == "--allow-all-paths" or token.startswith("--allow-path=") or token.startswith("--deny-path=") or token in ("--allow-path", "--deny-path"):
-            saw_path_permissions = True
-        normalized.append(token)
-        i += 1
-
-    prefix = []
-    if not saw_tool_permissions:
-        prefix.append("--allow-all-tools")
-    if not saw_path_permissions:
-        prefix.append("--allow-all-paths")
-
-    merged_parts = system_prompt_parts + prompt_parts
-    if merged_parts:
-        merged_prompt = "\\n\\n".join(part for part in merged_parts if part)
-        if merged_prompt:
-            normalized.extend(["-p", merged_prompt])
-
-    return prefix + normalized
+    spec = importlib.util.spec_from_file_location("amplihack_rust_runner_copilot", MODULE_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load compatibility module from {{MODULE_PATH}}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module._normalize_copilot_cli_args(args)
 
 
 def main():

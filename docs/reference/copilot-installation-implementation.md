@@ -11,7 +11,7 @@ Technical reference for maintainers of the Copilot CLI installation system.
 │ launch_copilot()                    │
 │                                     │
 │ 1. Check if already installed      │
-│    shutil.which("github-copilot-cli")│
+│    shutil.which("copilot")         │
 │                                     │
 │ 2. Install if needed               │
 │    install_copilot()               │
@@ -24,9 +24,15 @@ Technical reference for maintainers of the Copilot CLI installation system.
 │    - Exit with appropriate code    │
 │                                     │
 │ 4. Launch CLI                      │
-│    subprocess.run(["github-copilot-cli"])│
+│    subprocess.run(["copilot"])     │
 └─────────────────────────────────────┘
 ```
+
+### Current binary contract
+
+The current runtime launches the `copilot` CLI from `@github/copilot`. Older
+references to `github-copilot-cli` below are historical and should not be read
+as the current install/launch contract.
 
 ### Module Structure
 
@@ -48,13 +54,13 @@ def install_copilot() -> bool:
 
 ### Installation Check
 
-**Function**: `shutil.which("github-copilot-cli")`
+**Function**: `shutil.which("copilot")`
 
 **Purpose**: Check if Copilot CLI binary is in PATH
 
 **Behavior**:
 
-- Returns full path if found: `/home/user/.local/bin/github-copilot-cli`
+- Returns full path if found: `/home/user/.local/bin/copilot`
 - Returns `None` if not found
 - Searches current process's PATH environment variable
 - Does not search outside PATH
@@ -76,7 +82,7 @@ def install_copilot() -> bool:
     """Install GitHub Copilot CLI via npm."""
     try:
         result = subprocess.run(
-            ["npm", "install", "-g", "github-copilot-cli"],
+            ["npm", "install", "-g", "@github/copilot"],
             check=False,  # Don't raise on failure
             capture_output=True,
             text=True

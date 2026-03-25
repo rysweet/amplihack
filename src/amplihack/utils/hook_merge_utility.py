@@ -343,18 +343,18 @@ def get_required_xpia_hooks() -> list[HookConfig]:
     return [
         HookConfig(
             hook_type="SessionStart",
-            command=f"{home_dir}/.claude/tools/xpia/hooks/session_start.py",
+            command=f"{home_dir}/.amplihack/.claude/tools/xpia/hooks/session_start.py",
             timeout=10000,
         ),
         HookConfig(
             hook_type="PostToolUse",
-            command=f"{home_dir}/.claude/tools/xpia/hooks/post_tool_use.py",
+            command=f"{home_dir}/.amplihack/.claude/tools/xpia/hooks/post_tool_use.py",
             matcher="*",
             timeout=3000,
         ),
         HookConfig(
             hook_type="PreToolUse",
-            command=f"{home_dir}/.claude/tools/xpia/hooks/pre_tool_use.py",
+            command=f"{home_dir}/.amplihack/.claude/tools/xpia/hooks/pre_tool_use.py",
             matcher="Bash",
             timeout=5000,
         ),

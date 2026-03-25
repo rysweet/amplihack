@@ -6,10 +6,40 @@ Ensures no conversation history is lost when Claude Code compacts context.
 """
 
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+_UUID_V4_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
+def _validate_session_id(session_id: str) -> str:
+    """Validate that *session_id* is a well-formed UUID v4.
+
+    R9: session IDs sourced from untrusted hook input must be validated
+    before being used to construct filesystem paths.  A malformed or
+    path-traversal ID (e.g. '../../etc') could redirect log writes.
+
+    Args:
+        session_id: The session identifier to validate.
+
+    Returns:
+        The session ID unchanged when it is valid.
+
+    Raises:
+        ValueError: When *session_id* is not a valid UUID v4.
+    """
+    if not _UUID_V4_RE.match(session_id):
+        raise ValueError(
+            f"Invalid session_id {session_id!r}: expected a UUID v4 "
+            "(e.g. '550e8400-e29b-41d4-a716-446655440000')."
+        )
+    return session_id
 
 # Clean import setup
 sys.path.insert(0, str(Path(__file__).parent))
@@ -30,6 +60,16 @@ class PreCompactHook(HookProcessor):
         self.session_dir = self.log_dir / self.session_id
         self.session_dir.mkdir(parents=True, exist_ok=True)
 
+    def _bind_session(self, session_id: str | None):
+        """Rebind session artifacts to the runtime event's session_id when provided.
+
+        R9: validates UUID v4 format before using the session_id as a path component.
+        """
+        if session_id:
+            self.session_id = _validate_session_id(session_id)
+        self.session_dir = self.log_dir / self.session_id
+        self.session_dir.mkdir(parents=True, exist_ok=True)
+
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process pre-compact event and export conversation transcript.
 
@@ -40,6 +80,8 @@ class PreCompactHook(HookProcessor):
             Confirmation of export completion
         """
         try:
+            self._bind_session(input_data.get("session_id"))
+
             # Get conversation data
             conversation = input_data.get("conversation", [])
             messages = input_data.get("messages", [])

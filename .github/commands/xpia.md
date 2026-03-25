@@ -158,7 +158,7 @@ Common issues and solutions:
 **Solution**: Fix permissions:
 
 ```bash
-chmod +x ~/.claude/tools/xpia/hooks/*.py
+chmod +x ~/.amplihack/.claude/tools/xpia/hooks/*.py
 ```
 
 ### "Log directory not writable"
