@@ -531,6 +531,13 @@ with open(".github/agents/AGENTS.md", "w") as f:
 
 For complete hook capability comparison, see [HOOKS_COMPARISON.md](HOOKS_COMPARISON.md).
 
+**See also:**
+
+- [Tutorial: Enable the Copilot parity control plane](tutorials/copilot-parity-control-plane.md)
+- [How to Configure the Copilot Parity Control Plane](howto/configure-copilot-parity-control-plane.md)
+- [Understanding the Copilot Parity Control Plane](concepts/copilot-parity-control-plane.md)
+- [Copilot Parity Control Plane Reference](reference/copilot-parity-control-plane.md)
+
 ### 7. MCP Servers
 
 **File**: `.github/mcp-servers.json`

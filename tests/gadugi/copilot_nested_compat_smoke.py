@@ -3,21 +3,18 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 
 def _load_rust_runner_module(repo_root: Path):
-    module_path = repo_root / "src" / "amplihack" / "recipes" / "rust_runner.py"
-    spec = importlib.util.spec_from_file_location("gadugi_rust_runner", module_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load rust_runner module from {module_path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    sys.path.insert(0, str(repo_root / "src"))
+    from amplihack.recipes import rust_runner
+
+    return rust_runner
 
 
 def main() -> int:

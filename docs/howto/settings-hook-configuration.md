@@ -8,6 +8,14 @@ Amplihack automatically configures hooks in `~/.claude/settings.json` during ins
 
 Starting in v0.5.27, hook configuration is **completely automatic** - no user prompts required.
 
+When `amplihack-hooks` is installed and `AMPLIHACK_HOOK_ENGINE` is unset,
+amplihack now prefers the Rust hook engine automatically. Set
+`AMPLIHACK_HOOK_ENGINE=python` to force the legacy Python hook engine.
+
+XPIA hooks are still configured via explicit Python bridge scripts even when
+the core amplihack hook engine resolves to Rust. This keeps the XPIA hook stack
+distinct until the XPIA control plane is fully Rust-native.
+
 ### What Happens Automatically
 
 When you run `amplihack` or install the framework:
@@ -169,6 +177,8 @@ python -m unittest discover -s tests -p "test_*settings*.py"
 
 ## Related Documentation
 
+- [How to Configure the Copilot Parity Control Plane](./configure-copilot-parity-control-plane.md)
+- [Copilot Parity Control Plane Reference](../reference/copilot-parity-control-plane.md)
 - Main README: Setup and installation guide
 - PHILOSOPHY.md: Zero-BS principle and validation approach
 - Settings migration: See `src/amplihack/settings.py` docstrings

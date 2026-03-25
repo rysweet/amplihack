@@ -13,6 +13,7 @@ amplihack memory <subcommand> [options]
 | Subcommand | Purpose                                         |
 | ---------- | ----------------------------------------------- |
 | `tree`     | Visualize the top-level session memory graph    |
+| `clean`    | Delete matching top-level session-memory rows   |
 | `export`   | Export an agent-local hierarchical memory store |
 | `import`   | Import an agent-local hierarchical memory store |
 
@@ -21,16 +22,17 @@ amplihack memory <subcommand> [options]
 `amplihack memory tree` renders the repo's top-level session memory graph using `MemoryDatabase`, the SQLite-backed store at `~/.amplihack/memory.db` by default.
 
 ```bash
-amplihack memory tree [--session SESSION] [--type TYPE] [--depth N]
+amplihack memory tree [--session SESSION] [--type TYPE] [--depth N] [--backend sqlite]
 ```
 
 ### Options
 
-| Flag                | Meaning                                   |
-| ------------------- | ----------------------------------------- |
-| `--session SESSION` | Filter by session ID                      |
-| `--type TYPE`       | Filter by the current legacy parser types |
-| `--depth N`         | Limit tree depth                          |
+| Flag                | Meaning                                              |
+| ------------------- | ---------------------------------------------------- |
+| `--session SESSION` | Filter by session ID                                 |
+| `--type TYPE`       | Filter by the current legacy parser types            |
+| `--depth N`         | Limit tree depth                                     |
+| `--backend sqlite`  | Explicit SQLite backend selection for parity tooling |
 
 ### Current `--type` choices
 
@@ -50,6 +52,32 @@ amplihack memory tree
 amplihack memory tree --depth 2
 amplihack memory tree --session demo_run_01
 amplihack memory tree --type learning
+amplihack memory tree --backend sqlite
+```
+
+## `memory clean`
+
+`amplihack memory clean` removes top-level session-memory records from the SQLite store when their session ID matches a wildcard pattern.
+
+```bash
+amplihack memory clean --pattern PATTERN [--backend sqlite] [--no-dry-run] [--confirm]
+```
+
+### Options
+
+| Flag               | Meaning                                                  |
+| ------------------ | -------------------------------------------------------- |
+| `--pattern`        | Wildcard pattern for matching session IDs                |
+| `--backend sqlite` | Explicit SQLite backend selection for parity tooling     |
+| `--no-dry-run`     | Delete matching sessions instead of reporting only       |
+| `--confirm`        | Skip the interactive confirmation prompt before deletion |
+
+### Examples
+
+```bash
+amplihack memory clean --pattern 'test_*'
+amplihack memory clean --pattern 'old_run_*' --no-dry-run
+amplihack memory clean --pattern 'tmp_*' --no-dry-run --confirm
 ```
 
 ## `memory export`
@@ -105,13 +133,11 @@ amplihack memory import --agent incident-memory-agent --input ./incident-memory.
 amplihack memory import --agent incident-memory-agent --input ./incident-memory-kuzu --format kuzu
 ```
 
-## What Is Not Exposed by the Top-Level CLI
+## What Is Still Not Exposed by the Top-Level CLI
 
 The current top-level parser does **not** expose these older surfaces:
 
-- `amplihack memory clean`
 - `amplihack memory evaluate`
-- `amplihack memory tree --backend ...`
 
 If you need the backend evaluation module directly, run:
 

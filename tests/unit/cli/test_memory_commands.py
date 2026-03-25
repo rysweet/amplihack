@@ -6,8 +6,6 @@ import importlib.util
 import sys
 from pathlib import Path
 
-import pytest
-
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _SRC_ROOT = _REPO_ROOT / "src"
 _CLI_PATH = _SRC_ROOT / "amplihack" / "cli.py"
@@ -26,23 +24,26 @@ def _load_cli_module():
 
 
 class TestMemoryCommandParser:
-    def test_memory_tree_rejects_backend_flag(self):
+    def test_memory_tree_accepts_sqlite_backend_flag(self):
         cli_module = _load_cli_module()
         parser = cli_module.create_parser()
 
-        with pytest.raises(SystemExit) as exc_info:
-            parser.parse_args(["memory", "tree", "--backend", "sqlite"])
+        args = parser.parse_args(["memory", "tree", "--backend", "sqlite"])
+        assert args.command == "memory"
+        assert args.memory_command == "tree"
+        assert args.backend == "sqlite"
 
-        assert exc_info.value.code == 2
-
-    def test_memory_clean_subcommand_removed(self):
+    def test_memory_clean_subcommand_is_supported(self):
         cli_module = _load_cli_module()
         parser = cli_module.create_parser()
 
-        with pytest.raises(SystemExit) as exc_info:
-            parser.parse_args(["memory", "clean"])
-
-        assert exc_info.value.code == 2
+        args = parser.parse_args(["memory", "clean", "--pattern", "test_*"])
+        assert args.command == "memory"
+        assert args.memory_command == "clean"
+        assert args.pattern == "test_*"
+        assert args.backend == "sqlite"
+        assert args.no_dry_run is False
+        assert args.confirm is False
 
 
 class TestMemoryImportRuntime:

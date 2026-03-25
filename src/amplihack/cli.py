@@ -611,6 +611,31 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Filter by memory type",
     )
     tree_parser.add_argument("--depth", type=int, help="Maximum tree depth")
+    tree_parser.add_argument(
+        "--backend",
+        choices=["sqlite"],
+        default="sqlite",
+        help="Memory backend to inspect (currently only sqlite)",
+    )
+
+    clean_parser = memory_subparsers.add_parser("clean", help="Delete matching memory sessions")
+    clean_parser.add_argument("--pattern", required=True, help="Wildcard pattern for session IDs")
+    clean_parser.add_argument(
+        "--backend",
+        choices=["sqlite"],
+        default="sqlite",
+        help="Memory backend to clean (currently only sqlite)",
+    )
+    clean_parser.add_argument(
+        "--no-dry-run",
+        action="store_true",
+        help="Actually delete matching sessions instead of reporting only",
+    )
+    clean_parser.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Skip the interactive confirmation prompt",
+    )
 
     # Export subcommand
     export_parser = memory_subparsers.add_parser(
@@ -1703,6 +1728,20 @@ def main(argv: list[str] | None = None) -> int:
 
             return 0
 
+        if args.memory_command == "clean":
+            from .memory.cli_clean import run_memory_clean
+
+            try:
+                return run_memory_clean(
+                    pattern=args.pattern,
+                    backend=args.backend,
+                    dry_run=not args.no_dry_run,
+                    confirm=args.confirm,
+                )
+            except ValueError as e:
+                print(f"Error: {e}")
+                return 1
+
         if args.memory_command == "export":
             from pathlib import Path as _Path
 
@@ -1734,14 +1773,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.memory_command == "import":
             from pathlib import Path as _Path
 
-            from .agents.goal_seeking.memory_export import import_memory
-
             if args.merge and getattr(args, "format", "json") == "kuzu":
                 print(
                     "Error importing memory: --merge is not supported with --format kuzu. "
                     "Use --format json for merge imports."
                 )
                 return 1
+
+            from .agents.goal_seeking.memory_export import import_memory
 
             storage = _Path(args.storage_path) if args.storage_path else None
             try:

@@ -34,6 +34,10 @@ def _repo_root() -> Path:
 REPO_ROOT = _repo_root()
 
 
+def _wrapper_calls(wrapper: str, python_file: str, rust_subcommand: str) -> bool:
+    return python_file in wrapper or f"amplihack-hooks {rust_subcommand}" in wrapper
+
+
 def _get_hook_configs():
     """Import HOOK_CONFIGS from the package."""
     from amplihack import HOOK_CONFIGS
@@ -127,12 +131,18 @@ class TestMultiHookPerEventType:
             for hook in config.get("hooks", []):
                 all_commands.append(hook.get("command", ""))
 
-        ups_files = [os.path.basename(cmd) for cmd in all_commands]
-        assert "user_prompt_submit.py" in ups_files, (
-            f"user_prompt_submit.py not found in UserPromptSubmit hooks: {ups_files}"
+        assert any(
+            os.path.basename(cmd) == "user_prompt_submit.py"
+            or "amplihack-hooks user-prompt-submit" in cmd
+            for cmd in all_commands
+        ), (
+            "user_prompt_submit.py / user-prompt-submit not found in "
+            f"UserPromptSubmit hooks: {all_commands}"
         )
-        assert "workflow_classification_reminder.py" in ups_files, (
-            f"workflow_classification_reminder.py not found in UserPromptSubmit hooks: {ups_files}"
+        assert any(
+            os.path.basename(cmd) == "workflow_classification_reminder.py" for cmd in all_commands
+        ), (
+            f"workflow_classification_reminder.py not found in UserPromptSubmit hooks: {all_commands}"
         )
 
     def test_update_does_not_overwrite_existing_hook_of_same_type(self):
@@ -190,7 +200,9 @@ class TestCrossSystemOverwrite:
         ]
 
         # Both systems must have their own hook, neither overwritten
-        amp_commands = [c for c in all_commands if amp_dir in c]
+        amp_commands = [
+            c for c in all_commands if amp_dir in c or "amplihack-hooks post-tool-use" in c
+        ]
         xpia_commands = [c for c in all_commands if xpia_dir in c]
 
         assert len(amp_commands) >= 1, (
@@ -234,7 +246,7 @@ class TestCopilotStageHooks:
         """session-stop wrapper must call stop.py (power steering)."""
         _, wrappers = self._run_stage_hooks()
         wrapper = wrappers.get("session-stop", "")
-        assert "stop.py" in wrapper, (
+        assert _wrapper_calls(wrapper, "stop.py", "stop"), (
             f"session-stop wrapper does not call stop.py (power steering). Content:\n{wrapper}"
         )
 
@@ -242,7 +254,7 @@ class TestCopilotStageHooks:
         """session-stop wrapper must also call session_stop.py (memory capture)."""
         _, wrappers = self._run_stage_hooks()
         wrapper = wrappers.get("session-stop", "")
-        assert "session_stop.py" in wrapper, (
+        assert _wrapper_calls(wrapper, "session_stop.py", "session-stop"), (
             f"session-stop wrapper does not call session_stop.py (memory capture). "
             f"Content:\n{wrapper}"
         )
@@ -251,7 +263,7 @@ class TestCopilotStageHooks:
         """user-prompt-submit wrapper must call both user_prompt_submit.py and workflow_classification_reminder.py."""
         _, wrappers = self._run_stage_hooks()
         wrapper = wrappers.get("user-prompt-submit", "")
-        assert "user_prompt_submit.py" in wrapper, (
+        assert _wrapper_calls(wrapper, "user_prompt_submit.py", "user-prompt-submit"), (
             "user-prompt-submit wrapper does not call user_prompt_submit.py"
         )
         assert "workflow_classification_reminder.py" in wrapper, (
@@ -285,6 +297,14 @@ class TestCopilotStageHooks:
         actual = set(wrappers.keys())
         missing = required - actual
         assert not missing, f"Missing hook wrappers: {missing}. Got: {actual}"
+
+    def test_pre_tool_use_wrapper_calls_xpia_hook(self):
+        """pre-tool-use wrapper must invoke the XPIA pre-tool hook."""
+        _, wrappers = self._run_stage_hooks()
+        wrapper = wrappers.get("pre-tool-use", "")
+        assert "tools/xpia/hooks/pre_tool_use.py" in wrapper, (
+            "pre-tool-use wrapper does not call XPIA pre_tool_use.py"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -335,6 +355,13 @@ class TestGitHubHookWrappers:
             wrapper = REPO_ROOT / ".github" / "hooks" / name
             if wrapper.exists():
                 assert os.access(wrapper, os.X_OK), f"{name} is not executable"
+
+    def test_pre_tool_use_wrapper_calls_xpia_hook(self):
+        """The committed .github/hooks/pre-tool-use must call the XPIA hook."""
+        wrapper = (REPO_ROOT / ".github" / "hooks" / "pre-tool-use").read_text()
+        assert "tools/xpia/hooks/pre_tool_use.py" in wrapper, (
+            ".github/hooks/pre-tool-use does not call tools/xpia/hooks/pre_tool_use.py"
+        )
 
     def test_session_stop_wrapper_pipes_stdin(self):
         """session-stop must pipe stdin to BOTH scripts (hook data comes via stdin)."""
