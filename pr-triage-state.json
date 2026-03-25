@@ -1,106 +1,76 @@
 {
-  "last_run": "2026-03-23T00:00:00Z",
-  "run_id": "23437094020",
+  "last_run": "2026-03-25T18:00:00Z",
+  "run_id": "23557297314",
   "triaged_prs": {
-    "3430": {
-      "title": "[docs] docs(pm-architect): sync scripts README with dual-SDK support",
+    "3561": {
+      "title": "fix: correct gadugi-agentic-test installation instructions in qa-team skill",
       "risk": "low",
       "draft": false,
       "status": "triage:complete",
-      "labels_applied": ["documentation", "triage:low-risk", "triage:complete"],
-      "recommendation": "Docs-only update syncing pm-architect README for dual-SDK support; low-risk, ready to merge after review",
+      "labels_applied": ["documentation", "triage:low-risk", "triage:needs-review", "triage:complete"],
+      "recommendation": "Docs fix; CI drift failure needs resolution before merge (sync qa-team/SKILL.md to amplifier-bundle/skills/)",
       "comment_posted": false,
-      "run": "23437094020"
+      "run": "23557297314"
     },
-    "3425": {
-      "title": "fix(workflows): stop mutating PR branches for version bumps",
-      "risk": "medium",
-      "draft": false,
-      "status": "triage:complete",
-      "labels_applied": ["bug", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
-      "recommendation": "Stacked on feat/parity-distributed-hive-3410; makes version-check advisory-only; 14 unit tests pass; review after base merges",
-      "comment_posted": false,
-      "run": "23437094020"
-    },
-    "3423": {
-      "title": "fix(azure-hive): gate missing remote adapter contract",
-      "risk": "medium",
-      "draft": false,
-      "status": "triage:complete",
-      "labels_applied": ["bug", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
-      "recommendation": "Stacked on feat/parity-distributed-hive-3410; 44 passed, 25 skipped; dependency on external package alignment; review after base merges",
-      "comment_posted": false,
-      "run": "23437094020"
-    },
-    "3419": {
-      "title": "chore: add trivy workflow in disabled state",
+    "3556": {
+      "title": "[docs] docs: daily documentation update for March 25, 2026",
       "risk": "low",
       "draft": false,
       "status": "triage:complete",
-      "labels_applied": ["github-actions", "triage:low-risk", "triage:complete", "triage:needs-review"],
-      "recommendation": "Copilot-generated; adds disabled Trivy scanner workflow; no auto-trigger risk; safe to merge",
+      "labels_applied": ["documentation", "automation", "triage:low-risk", "triage:auto-merge-candidate", "triage:complete"],
+      "recommendation": "Auto-merge candidate; expires 2026-03-26 — review promptly",
       "comment_posted": false,
-      "run": "23437094020"
+      "run": "23557297314"
     },
-    "3418": {
-      "title": "feat(eval): port distributed hive parity",
+    "3549": {
+      "title": "docs(rust-trial): ship install/bootstrap follow-up",
+      "risk": "low",
+      "draft": false,
+      "status": "triage:complete",
+      "labels_applied": ["triage:low-risk", "triage:complete"],
+      "recommendation": "Needs rebase to current main before merge; 23 tests pass",
+      "comment_posted": false,
+      "run": "23557297314"
+    },
+    "3542": {
+      "title": "fix(startup): remove stderr warnings that violate no-silent-fallback philosophy",
       "risk": "medium",
       "draft": false,
       "status": "triage:complete",
-      "labels_applied": ["enhancement", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
-      "recommendation": "Stacked on feat/parity-pm-architect-dual-sdk-3401; 203 passed; blocker #3417 tracked separately via #3423; review after base merges",
+      "labels_applied": ["triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
+      "recommendation": "Touches core startup path; all tests pass; ready for review",
       "comment_posted": false,
-      "run": "23437094020"
+      "run": "23557297314"
     },
-    "3416": {
-      "title": "feat(pm-architect): port dual-SDK parity",
+    "3484": {
+      "title": "fix: surface hollow-success failures instead of swallowing them (#3480)",
       "risk": "medium",
-      "draft": false,
+      "draft": true,
       "status": "triage:complete",
-      "labels_applied": ["enhancement", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
-      "recommendation": "Stacked on feat/parity-workflow-hardening-3390; 73 tests pass; review after base merges",
+      "labels_applied": ["bug", "workflow", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests", "triage:high-priority"],
+      "recommendation": "High priority; 3 quality cycles complete; undraft and merge when ready",
       "comment_posted": false,
-      "run": "23437094020"
+      "run": "23557297314"
     },
-    "3415": {
-      "title": "fix(workflow): port recent upstream hardening",
-      "risk": "medium",
-      "draft": false,
+    "3520": {
+      "title": "[WIP] Fix: Surface hollow-success failures instead of swallowing them",
+      "risk": "low",
+      "draft": true,
       "status": "triage:complete",
-      "labels_applied": ["bug", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
-      "recommendation": "Stacked on feat/parity-next-gap-stacked; 47 tests pass; foundation for parity stack - review first",
+      "labels_applied": ["triage:low-risk", "triage:complete"],
+      "recommendation": "Copilot sub-PR of #3484; awaiting parent branch resolution",
       "comment_posted": false,
-      "run": "23437094020"
+      "run": "23557297314"
     },
-    "3412": {
-      "title": "fix(memory): make memory dependency optional",
-      "risk": "medium",
-      "draft": false,
+    "3519": {
+      "title": "[WIP] Add supply-chain-audit skill",
+      "risk": "low",
+      "draft": true,
       "status": "triage:complete",
-      "labels_applied": ["bug", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests", "triage:high-priority"],
-      "recommendation": "High-priority; base of parity stack; 15 outside-in + unit tests; fixes CLI crash on missing optional memory dep; review first",
+      "labels_applied": ["triage:low-risk", "triage:complete"],
+      "recommendation": "Copilot sub-PR; drift fixes still pending per checklist",
       "comment_posted": false,
-      "run": "23437094020"
-    },
-    "3398": {
-      "title": "feat: add Copilot CLI support to PM Architect triage_pr.py",
-      "risk": "medium",
-      "draft": false,
-      "status": "triage:complete",
-      "labels_applied": ["enhancement", "copilot", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:needs-testing"],
-      "recommendation": "Targets main; SDK detection via env var; needs manual Copilot path verification before merge",
-      "comment_posted": false,
-      "run": "23437094020"
-    },
-    "3389": {
-      "title": "fix(recipes): preserve equals-style Copilot permissions",
-      "risk": "high",
-      "draft": false,
-      "status": "triage:complete",
-      "labels_applied": ["bug", "copilot", "triage:complete", "triage:needs-review", "triage:high-risk", "triage:has-tests"],
-      "recommendation": "Security-adjacent permission fix; reviewer should verify no equals-style flags are dropped",
-      "comment_posted": false,
-      "run": "23397292579"
+      "run": "23557297314"
     },
     "3290": {
       "title": "test(tdd): add failing security tests for SEC-01 through SEC-07 hardening",
@@ -110,13 +80,6 @@
       "recommendation": "Rebase required; coordinate with implementation PRs to avoid CI red period",
       "comment_posted": true,
       "run": "23232157458"
-    },
-    "2876": {
-      "title": "feat(hive): replace broadcast replication with proper DHT sharding (#3034)",
-      "risk": "extreme",
-      "status": "triage:complete",
-      "note": "Previously triaged. Has merge-conflicts, too-large, extreme-risk labels.",
-      "skipped": true
     }
   }
 }
