@@ -21,7 +21,6 @@ US Executive Order 14028 (2021) and EU CRA (2024).
 | Artifact        | Tool       | Format    | Command                                               |
 | --------------- | ---------- | --------- | ----------------------------------------------------- |
 | Container image | syft       | SPDX JSON | `syft <image>@<digest> -o spdx-json > sbom.spdx.json` |
-| Container image | trivy      | CycloneDX | `trivy image --format cyclonedx <image>@<digest>`     |
 | Python project  | syft       | SPDX JSON | `syft dir:. -o spdx-json > sbom.spdx.json`            |
 | Node.js project | cdxgen     | CycloneDX | `cdxgen -t nodejs -o bom.json`                        |
 | Go project      | syft       | SPDX JSON | `syft dir:. -o spdx-json`                             |
