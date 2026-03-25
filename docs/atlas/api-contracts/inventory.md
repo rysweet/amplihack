@@ -9,7 +9,7 @@
 | `uninstall`      | -           | `uninstall.uninstall`                             | -                                                                       |
 | `update`         | -           | `auto_update.update`                              | Delegates to Rust CLI                                                   |
 | `version`        | -           | prints `__version__`                              | -                                                                       |
-| `launch`         | -           | `launch_command`                                  | `--with-proxy-config`, `--docker`, `--checkout-repo`, `--builtin-proxy` |
+| `launch`         | -           | `launch_command`                                  | `--docker`, `--checkout-repo`                                           |
 | `launch`         | (auto)      | `launcher.auto_mode.AutoMode.run`                 | `--auto`, `--max-turns N`, `--append PROMPT`, `--ui`                    |
 | `claude`         | -           | `launch_command` (alias)                          | Same as launch                                                          |
 | `RustyClawd`     | -           | `launch_command` (Rust path)                      | Same as launch                                                          |
@@ -57,7 +57,5 @@
 
 | Argument              | Type | Description                      |
 | --------------------- | ---- | -------------------------------- |
-| `--with-proxy-config` | path | .env file for Azure OpenAI proxy |
-| `--builtin-proxy`     | flag | Use built-in proxy server        |
 | `--checkout-repo`     | URI  | Clone GitHub repo as working dir |
 | `--docker`            | flag | Run in Docker container          |

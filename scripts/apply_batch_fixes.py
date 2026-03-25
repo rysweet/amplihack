@@ -71,7 +71,6 @@ DOCSTRING_TEMPLATES = {
     "validate_model_field": '''"""Validate that a model field contains expected value."""''',
     "validate_model_token_count": '''"""Validate model token count is within expected range."""''',
     "_stream_generator": '''"""Generate streaming response chunks from API."""''',
-    "run_server": '''"""Run the proxy server with given configuration."""''',
     "__call__": '''"""Make the defense interface callable."""''',
     "get_claude_cli_path": '''"""Get the path to the Claude CLI executable.
 

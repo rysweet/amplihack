@@ -444,7 +444,6 @@ Execute complex tasks with simple slash commands.
 
 - [Auto Mode Guide](AUTO_MODE.md) - Autonomous multi-turn execution
 - [Auto Mode Safety](AUTOMODE_SAFETY.md) - Safety guardrails and best practices
-- [Passthrough Mode](PASSTHROUGH_MODE.md) - Direct API access
 
 ---
 
@@ -649,7 +648,6 @@ Security guidelines, context preservation, and best practices.
 ### Safe Operations
 
 - [Auto Mode Safety](AUTOMODE_SAFETY.md) - Autonomous operation guardrails
-- [Passthrough Mode](PASSTHROUGH_MODE.md) - Direct API access patterns
 
 ---
 

@@ -34,7 +34,6 @@ class TestLauncherIntegration:
 
             # Mock other launcher dependencies
             with (
-                patch.object(launcher, "_start_proxy_if_needed", return_value=True),
                 patch.object(launcher.detector, "find_claude_directory", return_value=None),
             ):
                 result = launcher.prepare_launch()
