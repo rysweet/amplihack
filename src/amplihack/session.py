@@ -1,4 +1,3 @@
-# File: src/amplihack/session.py
 """Session lifecycle management: staging, auto mode, instruction append.
 
 Extracted from cli.py (issue #2845). Contains:
@@ -94,11 +93,9 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         # critical when launched via uvx (ephemeral venv != project .venv).
         from .dep_check import ensure_sdk_deps
 
-        try:
-            ensure_sdk_deps()
-        except ImportError as e:
-            print(f"ERROR: {e}", file=sys.stderr)
-            sys.exit(1)
+        dep_result = ensure_sdk_deps()
+        if not dep_result.all_ok:
+            logger.warning("Some SDK deps could not be installed: %s", dep_result.missing)
 
         # Prompt to re-enable power-steering if disabled (#2544)
         try:
@@ -106,8 +103,8 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
 
             prompt_re_enable_if_disabled()
         except Exception as e:
-            # Fail-open: log error but continue
-            logger.debug(f"Error checking power-steering re-enable prompt: {e}")
+            # Fail-open: non-critical startup check; log at warning level so it's visible
+            logger.warning("Power-steering re-enable check failed (non-fatal): %s", e)
 
     # Start session tracking
     tracker = SessionTracker()
