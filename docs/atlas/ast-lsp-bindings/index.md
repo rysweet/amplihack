@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-25T02:50:00+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-25T19:30:00+00:00
 </div>
 
 ## Map
