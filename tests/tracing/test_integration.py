@@ -1,12 +1,11 @@
 """
 Integration tests for native binary trace logging.
 
-Tests integration between components: launcher + trace logging, LiteLLM + callbacks.
+Tests integration between components: launcher + trace logging.
 This is TDD - tests written before implementation.
 
 Coverage Focus (30% of test suite):
 - Launcher integration with binary manager
-- LiteLLM integration with trace callbacks
 - End-to-end trace file generation
 - Configuration propagation
 """
