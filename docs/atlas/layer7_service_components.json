@@ -66,9 +66,7 @@
       "instability": 1.0,
       "cohesion": 1.0,
       "classification": "leaf",
-      "imports_from": [
-        ".claude.scenarios.check-broken-links.link_checker"
-      ],
+      "imports_from": [".claude.scenarios.check-broken-links.link_checker"],
       "imported_by": []
     },
     {
@@ -332,9 +330,7 @@
         ".claude.skills.supply-chain-audit.supply_chain_audit.external_tools",
         ".claude.skills.supply-chain-audit.supply_chain_audit.schema"
       ],
-      "imported_by": [
-        ".claude.skills.supply-chain-audit.supply_chain_audit.checkers"
-      ]
+      "imported_by": [".claude.skills.supply-chain-audit.supply_chain_audit.checkers"]
     },
     {
       "name": ".claude.skills.supply-chain-audit.supply_chain_audit.checkers",
@@ -462,12 +458,8 @@
       "instability": 0.5,
       "cohesion": 0.75,
       "classification": "feature",
-      "imports_from": [
-        "amplihack"
-      ],
-      "imported_by": [
-        ".claude.tools.amplihack.builders"
-      ]
+      "imports_from": ["amplihack"],
+      "imported_by": [".claude.tools.amplihack.builders"]
     },
     {
       "name": ".claude.tools.amplihack.builders",
@@ -505,9 +497,7 @@
       "cohesion": 1.0,
       "classification": "feature",
       "imports_from": [],
-      "imported_by": [
-        ".claude.tools.amplihack.hooks.tests"
-      ]
+      "imported_by": [".claude.tools.amplihack.hooks.tests"]
     },
     {
       "name": ".claude.tools.amplihack.hooks.power_steering_checker",
@@ -549,9 +539,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        ".claude.tools.amplihack.hooks"
-      ],
+      "imports_from": [".claude.tools.amplihack.hooks"],
       "imported_by": []
     },
     {
@@ -567,9 +555,7 @@
       "instability": 1.0,
       "cohesion": 0.667,
       "classification": "leaf",
-      "imports_from": [
-        "amplihack"
-      ],
+      "imports_from": ["amplihack"],
       "imported_by": []
     },
     {
@@ -590,9 +576,7 @@
         ".claude.tools.amplihack.orchestration.execution",
         ".claude.tools.amplihack.orchestration.session"
       ],
-      "imported_by": [
-        ".claude.tools.amplihack.orchestration.patterns"
-      ]
+      "imported_by": [".claude.tools.amplihack.orchestration.patterns"]
     },
     {
       "name": ".claude.tools.amplihack.orchestration.patterns",
@@ -701,9 +685,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        ".claude.tools.amplihack.remote"
-      ],
+      "imports_from": [".claude.tools.amplihack.remote"],
       "imported_by": []
     },
     {
@@ -744,9 +726,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        ".claude.tools.amplihack.session"
-      ],
+      "imports_from": [".claude.tools.amplihack.session"],
       "imported_by": []
     },
     {
@@ -762,9 +742,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        ".claude.tools.amplihack.session"
-      ],
+      "imports_from": [".claude.tools.amplihack.session"],
       "imported_by": []
     },
     {
@@ -787,9 +765,7 @@
         ".claude.tools.platform_bridge.github_bridge",
         ".claude.tools.platform_bridge.operations"
       ],
-      "imported_by": [
-        ".claude.tools.platform_bridge.tests"
-      ]
+      "imported_by": [".claude.tools.platform_bridge.tests"]
     },
     {
       "name": ".claude.tools.platform_bridge.tests",
@@ -804,9 +780,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        ".claude.tools.platform_bridge"
-      ],
+      "imports_from": [".claude.tools.platform_bridge"],
       "imported_by": []
     },
     {
@@ -845,12 +819,8 @@
       "instability": 0.5,
       "cohesion": 1.0,
       "classification": "feature",
-      "imports_from": [
-        ".github.scripts.pr_triage.validator"
-      ],
-      "imported_by": [
-        ".github.scripts.pr_triage.validator"
-      ]
+      "imports_from": [".github.scripts.pr_triage.validator"],
+      "imported_by": [".github.scripts.pr_triage.validator"]
     },
     {
       "name": ".github.scripts.pr_triage.tests",
@@ -1188,12 +1158,8 @@
       "instability": 0.5,
       "cohesion": 0.75,
       "classification": "feature",
-      "imports_from": [
-        "amplihack"
-      ],
-      "imported_by": [
-        "amplifier-bundle.tools.amplihack.builders"
-      ]
+      "imports_from": ["amplihack"],
+      "imported_by": ["amplifier-bundle.tools.amplihack.builders"]
     },
     {
       "name": "amplifier-bundle.tools.amplihack.builders",
@@ -1230,9 +1196,7 @@
       "instability": 1.0,
       "cohesion": 0.667,
       "classification": "leaf",
-      "imports_from": [
-        "amplihack"
-      ],
+      "imports_from": ["amplihack"],
       "imported_by": []
     },
     {
@@ -1253,9 +1217,7 @@
         "amplifier-bundle.tools.amplihack.orchestration.execution",
         "amplifier-bundle.tools.amplihack.orchestration.session"
       ],
-      "imported_by": [
-        "amplifier-bundle.tools.amplihack.orchestration.patterns"
-      ]
+      "imported_by": ["amplifier-bundle.tools.amplihack.orchestration.patterns"]
     },
     {
       "name": "amplifier-bundle.tools.amplihack.orchestration.patterns",
@@ -1364,9 +1326,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "amplifier-bundle.tools.amplihack.remote"
-      ],
+      "imports_from": ["amplifier-bundle.tools.amplihack.remote"],
       "imported_by": []
     },
     {
@@ -1407,9 +1367,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "amplifier-bundle.tools.amplihack.session"
-      ],
+      "imports_from": ["amplifier-bundle.tools.amplihack.session"],
       "imported_by": []
     },
     {
@@ -1425,9 +1383,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "amplifier-bundle.tools.amplihack.session"
-      ],
+      "imports_from": ["amplifier-bundle.tools.amplihack.session"],
       "imported_by": []
     },
     {
@@ -1450,9 +1406,7 @@
         "amplifier-bundle.tools.platform_bridge.github_bridge",
         "amplifier-bundle.tools.platform_bridge.operations"
       ],
-      "imported_by": [
-        "amplifier-bundle.tools.platform_bridge.tests"
-      ]
+      "imported_by": ["amplifier-bundle.tools.platform_bridge.tests"]
     },
     {
       "name": "amplifier-bundle.tools.platform_bridge.tests",
@@ -1467,9 +1421,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "amplifier-bundle.tools.platform_bridge"
-      ],
+      "imports_from": ["amplifier-bundle.tools.platform_bridge"],
       "imported_by": []
     },
     {
@@ -1749,12 +1701,8 @@
       "instability": 0.5,
       "cohesion": 0.833,
       "classification": "feature",
-      "imports_from": [
-        "amplihack"
-      ],
-      "imported_by": [
-        "docs.claude.tools.amplihack.builders"
-      ]
+      "imports_from": ["amplihack"],
+      "imported_by": ["docs.claude.tools.amplihack.builders"]
     },
     {
       "name": "docs.claude.tools.amplihack.builders",
@@ -1791,9 +1739,7 @@
       "instability": 1.0,
       "cohesion": 0.667,
       "classification": "leaf",
-      "imports_from": [
-        "amplihack"
-      ],
+      "imports_from": ["amplihack"],
       "imported_by": []
     },
     {
@@ -1814,9 +1760,7 @@
         "docs.claude.tools.amplihack.orchestration.execution",
         "docs.claude.tools.amplihack.orchestration.session"
       ],
-      "imported_by": [
-        "docs.claude.tools.amplihack.orchestration.patterns"
-      ]
+      "imported_by": ["docs.claude.tools.amplihack.orchestration.patterns"]
     },
     {
       "name": "docs.claude.tools.amplihack.orchestration.patterns",
@@ -1925,9 +1869,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "docs.claude.tools.amplihack.remote"
-      ],
+      "imports_from": ["docs.claude.tools.amplihack.remote"],
       "imported_by": []
     },
     {
@@ -1968,9 +1910,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "docs.claude.tools.amplihack.session"
-      ],
+      "imports_from": ["docs.claude.tools.amplihack.session"],
       "imported_by": []
     },
     {
@@ -1986,9 +1926,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "docs.claude.tools.amplihack.session"
-      ],
+      "imports_from": ["docs.claude.tools.amplihack.session"],
       "imported_by": []
     },
     {
@@ -2025,7 +1963,6 @@
     },
     {
       "name": "proxy.server",
-      "path": "/home/azureuser/src/supply/proxy/server",
       "file_count": 3,
       "class_count": 16,
       "function_count": 19,
@@ -2036,9 +1973,7 @@
       "instability": 1.0,
       "cohesion": 1.0,
       "classification": "leaf",
-      "imports_from": [
-        "proxy.server.main"
-      ],
+      "imports_from": ["proxy.server.main"],
       "imported_by": []
     },
     {
@@ -2202,9 +2137,7 @@
         "src.amplihack.agents.goal_seeking.hive_mind.hive_graph",
         "src.amplihack.agents.goal_seeking.hive_mind.orchestrator"
       ],
-      "imported_by": [
-        "src.amplihack.agents.goal_seeking"
-      ]
+      "imported_by": ["src.amplihack.agents.goal_seeking"]
     },
     {
       "name": "src.amplihack.agents.goal_seeking.prompts",
@@ -2285,9 +2218,7 @@
         "src.amplihack.agents.goal_seeking.sub_agents.multi_agent",
         "src.amplihack.agents.goal_seeking.sub_agents.tool_injector"
       ],
-      "imported_by": [
-        "src.amplihack.agents.goal_seeking"
-      ]
+      "imported_by": ["src.amplihack.agents.goal_seeking"]
     },
     {
       "name": "src.amplihack.bundle_generator",
@@ -2312,10 +2243,7 @@
         "src.amplihack.bundle_generator.packager",
         "src.amplihack.bundle_generator.parser"
       ],
-      "imported_by": [
-        "src.amplihack",
-        "src.amplihack.cli_extensions"
-      ]
+      "imported_by": ["src.amplihack", "src.amplihack.cli_extensions"]
     },
     {
       "name": "src.amplihack.cli",
@@ -2367,9 +2295,7 @@
         "src.amplihack.utils.prerequisites",
         "src.amplihack.utils.project_initializer"
       ],
-      "imported_by": [
-        "src.amplihack"
-      ]
+      "imported_by": ["src.amplihack"]
     },
     {
       "name": "src.amplihack.cli.tests",
@@ -2404,9 +2330,7 @@
         "src.amplihack.context.adaptive.detector",
         "src.amplihack.context.adaptive.strategies"
       ],
-      "imported_by": [
-        "src.amplihack.launcher"
-      ]
+      "imported_by": ["src.amplihack.launcher"]
     },
     {
       "name": "src.amplihack.docker",
@@ -2421,15 +2345,8 @@
       "instability": 0.4,
       "cohesion": 1.0,
       "classification": "utility",
-      "imports_from": [
-        "src.amplihack.docker.detector",
-        "src.amplihack.docker.manager"
-      ],
-      "imported_by": [
-        "src.amplihack",
-        "src.amplihack.cli",
-        "src.amplihack.session"
-      ]
+      "imports_from": ["src.amplihack.docker.detector", "src.amplihack.docker.manager"],
+      "imported_by": ["src.amplihack", "src.amplihack.cli", "src.amplihack.session"]
     },
     {
       "name": "src.amplihack.eval",
@@ -2457,9 +2374,7 @@
         "src.amplihack.eval.self_improve",
         "src.amplihack.eval.teaching_session"
       ],
-      "imported_by": [
-        "src.amplihack.eval.self_improve"
-      ]
+      "imported_by": ["src.amplihack.eval.self_improve"]
     },
     {
       "name": "src.amplihack.eval.self_improve",
@@ -2481,9 +2396,7 @@
         "src.amplihack.eval.self_improve.reviewer_voting",
         "src.amplihack.eval.self_improve.runner"
       ],
-      "imported_by": [
-        "src.amplihack.eval"
-      ]
+      "imported_by": ["src.amplihack.eval"]
     },
     {
       "name": "src.amplihack.fleet",
@@ -2558,10 +2471,7 @@
         "src.amplihack.goal_agent_generator.skill_synthesizer",
         "src.amplihack.goal_agent_generator.templates"
       ],
-      "imported_by": [
-        "src.amplihack",
-        "src.amplihack.goal_agent_generator.tests"
-      ]
+      "imported_by": ["src.amplihack", "src.amplihack.goal_agent_generator.tests"]
     },
     {
       "name": "src.amplihack.goal_agent_generator.templates",
@@ -2684,11 +2594,7 @@
         "src.amplihack.utils",
         "src.amplihack.uvx"
       ],
-      "imported_by": [
-        "src.amplihack",
-        "src.amplihack.cli",
-        "src.amplihack.session"
-      ]
+      "imported_by": ["src.amplihack", "src.amplihack.cli", "src.amplihack.session"]
     },
     {
       "name": "src.amplihack.launcher.tests",
@@ -2719,9 +2625,7 @@
       "instability": 1.0,
       "cohesion": 1.0,
       "classification": "leaf",
-      "imports_from": [
-        "src.amplihack.lsp_detector.detector"
-      ],
+      "imports_from": ["src.amplihack.lsp_detector.detector"],
       "imported_by": []
     },
     {
@@ -2750,10 +2654,7 @@
         "src.amplihack.memory.memory_store",
         "src.amplihack.memory.models"
       ],
-      "imported_by": [
-        "src.amplihack",
-        "src.amplihack.memory.evaluation"
-      ]
+      "imported_by": ["src.amplihack", "src.amplihack.memory.evaluation"]
     },
     {
       "name": "src.amplihack.memory.evaluation",
@@ -2775,10 +2676,7 @@
         "src.amplihack.memory.evaluation.quality_evaluator",
         "src.amplihack.memory.evaluation.reliability_evaluator"
       ],
-      "imported_by": [
-        "src.amplihack.memory",
-        "src.amplihack.memory.cli_evaluate"
-      ]
+      "imported_by": ["src.amplihack.memory", "src.amplihack.memory.cli_evaluate"]
     },
     {
       "name": "src.amplihack.memory.kuzu",
@@ -2825,10 +2723,7 @@
         "src.amplihack.memory.kuzu.indexing.prerequisite_checker",
         "src.amplihack.memory.kuzu.indexing.progress_tracker"
       ],
-      "imported_by": [
-        "src.amplihack",
-        "src.amplihack.launcher"
-      ]
+      "imported_by": ["src.amplihack", "src.amplihack.launcher"]
     },
     {
       "name": "src.amplihack.memory.tests",
@@ -2887,10 +2782,7 @@
         "src.amplihack.mode_detector.detector",
         "src.amplihack.mode_detector.migration"
       ],
-      "imported_by": [
-        "src.amplihack",
-        "src.amplihack.cli"
-      ]
+      "imported_by": ["src.amplihack", "src.amplihack.cli"]
     },
     {
       "name": "src.amplihack.path_resolver",
@@ -2905,9 +2797,7 @@
       "instability": 1.0,
       "cohesion": 1.0,
       "classification": "leaf",
-      "imports_from": [
-        "src.amplihack.path_resolver.resolver"
-      ],
+      "imports_from": ["src.amplihack.path_resolver.resolver"],
       "imported_by": []
     },
     {
@@ -2929,10 +2819,7 @@
         "src.amplihack.plugin_cli.verifier",
         "src.amplihack.plugin_manager"
       ],
-      "imported_by": [
-        "src.amplihack",
-        "src.amplihack.cli"
-      ]
+      "imported_by": ["src.amplihack", "src.amplihack.cli"]
     },
     {
       "name": "src.amplihack.plugin_manager",
@@ -2947,9 +2834,7 @@
       "instability": 0.2,
       "cohesion": 1.0,
       "classification": "utility",
-      "imports_from": [
-        "src.amplihack.plugin_manager.manager"
-      ],
+      "imports_from": ["src.amplihack.plugin_manager.manager"],
       "imported_by": [
         "src.amplihack",
         "src.amplihack.cli",
@@ -2970,13 +2855,8 @@
       "instability": 0.333,
       "cohesion": 1.0,
       "classification": "feature",
-      "imports_from": [
-        "src.amplihack.power_steering.re_enable_prompt"
-      ],
-      "imported_by": [
-        "src.amplihack",
-        "src.amplihack.launcher"
-      ]
+      "imports_from": ["src.amplihack.power_steering.re_enable_prompt"],
+      "imported_by": ["src.amplihack", "src.amplihack.launcher"]
     },
     {
       "name": "src.amplihack.proxy",
@@ -3021,9 +2901,7 @@
         "src.amplihack.recipe_cli.recipe_command",
         "src.amplihack.recipe_cli.recipe_output"
       ],
-      "imported_by": [
-        "src.amplihack"
-      ]
+      "imported_by": ["src.amplihack"]
     },
     {
       "name": "src.amplihack.recipes",
@@ -3039,9 +2917,7 @@
       "cohesion": 1.0,
       "classification": "feature",
       "imports_from": [],
-      "imported_by": [
-        "src.amplihack"
-      ]
+      "imported_by": ["src.amplihack"]
     },
     {
       "name": "src.amplihack.recipes.tests",
@@ -3077,10 +2953,7 @@
         "src.amplihack.safety.prompt_transformer",
         "src.amplihack.safety.safe_copy_strategy"
       ],
-      "imported_by": [
-        "src.amplihack",
-        "src.amplihack.cli"
-      ]
+      "imported_by": ["src.amplihack", "src.amplihack.cli"]
     },
     {
       "name": "src.amplihack.security",
@@ -3100,9 +2973,7 @@
         "src.amplihack.security.xpia_hooks",
         "src.amplihack.security.xpia_patterns"
       ],
-      "imported_by": [
-        "src.amplihack.launcher"
-      ]
+      "imported_by": ["src.amplihack.launcher"]
     },
     {
       "name": "src.amplihack.settings_generator",
@@ -3117,9 +2988,7 @@
       "instability": 1.0,
       "cohesion": 1.0,
       "classification": "leaf",
-      "imports_from": [
-        "src.amplihack.settings_generator.generator"
-      ],
+      "imports_from": ["src.amplihack.settings_generator.generator"],
       "imported_by": []
     },
     {
@@ -3154,14 +3023,8 @@
       "instability": 0.5,
       "cohesion": 0.5,
       "classification": "feature",
-      "imports_from": [
-        "src.amplihack.proxy",
-        "src.amplihack.tracing.trace_logger"
-      ],
-      "imported_by": [
-        "src.amplihack.launcher",
-        "src.amplihack.proxy"
-      ]
+      "imports_from": ["src.amplihack.proxy", "src.amplihack.tracing.trace_logger"],
+      "imported_by": ["src.amplihack.launcher", "src.amplihack.proxy"]
     },
     {
       "name": "src.amplihack.utils",
@@ -3207,13 +3070,8 @@
       "instability": 0.667,
       "cohesion": 0.333,
       "classification": "feature",
-      "imports_from": [
-        "src.amplihack.utils",
-        "src.amplihack.uvx.manager"
-      ],
-      "imported_by": [
-        "src.amplihack.launcher"
-      ]
+      "imports_from": ["src.amplihack.utils", "src.amplihack.uvx.manager"],
+      "imported_by": ["src.amplihack.launcher"]
     },
     {
       "name": "src.amplihack.vendor",
@@ -3372,9 +3230,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "src.amplihack.vendor.blarify.agents"
-      ],
+      "imports_from": ["src.amplihack.vendor.blarify.agents"],
       "imported_by": []
     },
     {
@@ -3457,9 +3313,7 @@
         "src.amplihack.vendor.blarify.code_references.types",
         "src.amplihack.vendor.blarify.graph.node"
       ],
-      "imported_by": [
-        "src.amplihack.vendor.blarify"
-      ]
+      "imported_by": ["src.amplihack.vendor.blarify"]
     },
     {
       "name": "src.amplihack.vendor.blarify.code_references.types",
@@ -3474,9 +3328,7 @@
       "instability": 0.1,
       "cohesion": 1.0,
       "classification": "utility",
-      "imports_from": [
-        "src.amplihack.vendor.blarify.code_references.types.Reference"
-      ],
+      "imports_from": ["src.amplihack.vendor.blarify.code_references.types.Reference"],
       "imported_by": [
         "src.amplihack.vendor.blarify.code_hierarchy",
         "src.amplihack.vendor.blarify.code_hierarchy.tree_sitter_helper",
@@ -3536,9 +3388,7 @@
       "imports_from": [
         "src.amplihack.vendor.blarify.documentation.queries.batch_processing_queries"
       ],
-      "imported_by": [
-        "src.amplihack.vendor.blarify.documentation"
-      ]
+      "imported_by": ["src.amplihack.vendor.blarify.documentation"]
     },
     {
       "name": "src.amplihack.vendor.blarify.documentation.utils",
@@ -3557,9 +3407,7 @@
         "src.amplihack.vendor.blarify",
         "src.amplihack.vendor.blarify.documentation.utils.bottom_up_batch_processor"
       ],
-      "imported_by": [
-        "src.amplihack.vendor.blarify.documentation"
-      ]
+      "imported_by": ["src.amplihack.vendor.blarify.documentation"]
     },
     {
       "name": "src.amplihack.vendor.blarify.graph.node",
@@ -3669,9 +3517,7 @@
       "instability": 1.0,
       "cohesion": 1.0,
       "classification": "leaf",
-      "imports_from": [
-        "src.amplihack.vendor.blarify.mcp_server.server"
-      ],
+      "imports_from": ["src.amplihack.vendor.blarify.mcp_server.server"],
       "imported_by": []
     },
     {
@@ -3687,9 +3533,7 @@
       "instability": 1.0,
       "cohesion": 1.0,
       "classification": "leaf",
-      "imports_from": [
-        "src.amplihack.vendor.blarify.mcp_server.tools.base"
-      ],
+      "imports_from": ["src.amplihack.vendor.blarify.mcp_server.tools.base"],
       "imported_by": []
     },
     {
@@ -3705,9 +3549,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "src.amplihack.vendor.blarify.repositories.graph_db_manager.graph_queries"
-      ],
+      "imports_from": ["src.amplihack.vendor.blarify.repositories.graph_db_manager.graph_queries"],
       "imported_by": []
     },
     {
@@ -3791,9 +3633,7 @@
         "src.amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_found_by_text",
         "src.amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_search_result_dto"
       ],
-      "imported_by": [
-        "src.amplihack.vendor.blarify.documentation"
-      ]
+      "imported_by": ["src.amplihack.vendor.blarify.documentation"]
     },
     {
       "name": "src.amplihack.vendor.blarify.repositories.graph_db_manager.graph_queries",
@@ -3830,9 +3670,7 @@
       "cohesion": 1.0,
       "classification": "feature",
       "imports_from": [],
-      "imported_by": [
-        "src.amplihack.vendor.blarify.tools"
-      ]
+      "imported_by": ["src.amplihack.vendor.blarify.tools"]
     },
     {
       "name": "src.amplihack.vendor.blarify.tools",
@@ -3876,9 +3714,7 @@
       "instability": 1.0,
       "cohesion": 1.0,
       "classification": "leaf",
-      "imports_from": [
-        "src.amplihack.vendor.blarify.tools.utils.id_resolver"
-      ],
+      "imports_from": ["src.amplihack.vendor.blarify.tools.utils.id_resolver"],
       "imported_by": []
     },
     {
@@ -3910,9 +3746,7 @@
       "instability": 0.333,
       "cohesion": 1.0,
       "classification": "feature",
-      "imports_from": [
-        "src.amplihack.vendor.blarify.vendor.multilspy.language_server"
-      ],
+      "imports_from": ["src.amplihack.vendor.blarify.vendor.multilspy.language_server"],
       "imported_by": [
         "src.amplihack.vendor.blarify",
         "src.amplihack.vendor.blarify.vendor.multilspy.language_server"
@@ -3953,9 +3787,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "src.amplihack.workloads.hive"
-      ],
+      "imports_from": ["src.amplihack.workloads.hive"],
       "imported_by": []
     },
     {
@@ -3975,9 +3807,7 @@
         "src.amplihack.workloads.hive.events",
         "src.amplihack.workloads.hive.workload"
       ],
-      "imported_by": [
-        "src.amplihack.workloads"
-      ]
+      "imported_by": ["src.amplihack.workloads"]
     },
     {
       "name": "tests",
@@ -3992,9 +3822,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "amplihack"
-      ],
+      "imports_from": ["amplihack"],
       "imported_by": []
     },
     {
@@ -4090,9 +3918,7 @@
       "instability": 1.0,
       "cohesion": 1.0,
       "classification": "leaf",
-      "imports_from": [
-        "tests.harness.subprocess_test_harness"
-      ],
+      "imports_from": ["tests.harness.subprocess_test_harness"],
       "imported_by": []
     },
     {
@@ -4156,9 +3982,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "tests.integration.uvx.harness"
-      ],
+      "imports_from": ["tests.integration.uvx.harness"],
       "imported_by": []
     },
     {
@@ -4250,9 +4074,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "tests.mcp_evaluation.framework"
-      ],
+      "imports_from": ["tests.mcp_evaluation.framework"],
       "imported_by": []
     },
     {
@@ -4275,10 +4097,7 @@
         "tests.mcp_evaluation.framework.reporter",
         "tests.mcp_evaluation.framework.types"
       ],
-      "imported_by": [
-        "tests.mcp_evaluation",
-        "tests.mcp_evaluation.test_framework"
-      ]
+      "imported_by": ["tests.mcp_evaluation", "tests.mcp_evaluation.test_framework"]
     },
     {
       "name": "tests.mcp_evaluation.scenarios",
@@ -4356,9 +4175,7 @@
         "tests.mcp_evaluation.scenarios.test_codebases.microservice_project.models.session",
         "tests.mcp_evaluation.scenarios.test_codebases.microservice_project.models.user"
       ],
-      "imported_by": [
-        "tests.mcp_evaluation.scenarios.test_codebases.microservice_project.services"
-      ]
+      "imported_by": ["tests.mcp_evaluation.scenarios.test_codebases.microservice_project.services"]
     },
     {
       "name": "tests.mcp_evaluation.scenarios.test_codebases.microservice_project.services",
@@ -4379,9 +4196,7 @@
         "tests.mcp_evaluation.scenarios.test_codebases.microservice_project.services.database_service",
         "tests.mcp_evaluation.scenarios.test_codebases.microservice_project.services.user_service"
       ],
-      "imported_by": [
-        "tests.mcp_evaluation.scenarios.test_codebases.microservice_project.handlers"
-      ]
+      "imported_by": ["tests.mcp_evaluation.scenarios.test_codebases.microservice_project.handlers"]
     },
     {
       "name": "tests.mcp_evaluation.scenarios.test_codebases.microservice_project.utils",
@@ -4400,9 +4215,7 @@
         "tests.mcp_evaluation.scenarios.test_codebases.microservice_project.utils.config",
         "tests.mcp_evaluation.scenarios.test_codebases.microservice_project.utils.logger"
       ],
-      "imported_by": [
-        "tests.mcp_evaluation.scenarios.test_codebases.microservice_project.handlers"
-      ]
+      "imported_by": ["tests.mcp_evaluation.scenarios.test_codebases.microservice_project.handlers"]
     },
     {
       "name": "tests.mcp_evaluation.tools",
@@ -4561,9 +4374,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "amplihack"
-      ],
+      "imports_from": ["amplihack"],
       "imported_by": []
     },
     {
@@ -4643,9 +4454,7 @@
       "instability": 1.0,
       "cohesion": 0.0,
       "classification": "leaf",
-      "imports_from": [
-        "amplihack"
-      ],
+      "imports_from": ["amplihack"],
       "imported_by": []
     },
     {
@@ -6842,9 +6651,6 @@
       "src.amplihack.proxy.monitoring": 1,
       "src.amplihack.proxy.streaming": 1
     },
-    "src.amplihack.proxy.litellm_callbacks": {
-      "src.amplihack.tracing.trace_logger": 1
-    },
     "src.amplihack.proxy.manager": {
       "src.amplihack.proxy.config": 1,
       "src.amplihack.proxy.env": 1,
@@ -6867,7 +6673,6 @@
     "src.amplihack.proxy.server": {
       "src.amplihack.proxy.github_auth": 1,
       "src.amplihack.proxy.github_models": 1,
-      "src.amplihack.proxy.litellm_callbacks": 1,
       "src.amplihack.proxy.passthrough": 1,
       "src.amplihack.proxy.sanitizing_logger": 1,
       "src.amplihack.proxy.security": 1
@@ -7624,10 +7429,7 @@
     "utility_packages": 5,
     "feature_packages": 154,
     "avg_instability": 0.782,
-    "most_coupled_pair": [
-      ".claude.tools.amplihack.remote.tests",
-      ".claude.tools.amplihack.remote"
-    ],
+    "most_coupled_pair": [".claude.tools.amplihack.remote.tests", ".claude.tools.amplihack.remote"],
     "total_cross_package_edges": 1663
   },
   "completeness": {

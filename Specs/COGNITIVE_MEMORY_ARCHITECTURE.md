@@ -288,8 +288,6 @@ ATTENDED_TO(FROM SensoryMemory TO EpisodicMemory, attention_reason)
 - `kuzu>=0.11.0` - Embedded graph database
 - Python ≥3.11
 
-> **Note**: The `litellm` dependency was previously used for LLM provider abstraction but was removed due to a PyPI supply chain attack. LLM calls for consolidation and classification now use direct API integrations.
-
 ## 9. References
 
 - Atkinson-Shiffrin memory model (1968) - Sensory → Short-term → Long-term

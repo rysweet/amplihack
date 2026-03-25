@@ -2,9 +2,6 @@
 
 This guide covers Azure OpenAI configuration for Amplihack.
 
-> **Note**: The litellm proxy subsystem has been removed. Azure OpenAI integration
-> is now configured directly via environment variables.
-
 ## Configuration Reference
 
 ### Required Variables

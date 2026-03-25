@@ -1,17 +1,16 @@
 """
 Integration tests for native binary trace logging.
 
-Tests integration between components: launcher + trace logging, LiteLLM + callbacks.
+Tests integration between components: launcher + trace logging.
 This is TDD - tests written before implementation.
 
 Coverage Focus (30% of test suite):
 - Launcher integration with binary manager
-- LiteLLM integration with trace callbacks
 - End-to-end trace file generation
 - Configuration propagation
 """
 
-import json
+import subprocess
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -172,7 +171,7 @@ def test_integration_with_prerequisites_checker():
     """Test integration with prerequisites checker."""
     from amplihack.utils.prerequisites import PrerequisiteChecker
 
-    checker = PrerequisiteChecker()
+    PrerequisiteChecker()
     manager = ClaudeBinaryManager()
 
     # Binary detection should align with prerequisites
@@ -191,7 +190,7 @@ def test_prerequisites_checker_reports_trace_support():
     checker = PrerequisiteChecker()
 
     with patch("shutil.which", return_value="/usr/local/bin/rustyclawd"):
-        result = checker.check_native_binary()
+        checker.check_native_binary()
 
         # Should report trace support capability
         # Exact API TBD in implementation

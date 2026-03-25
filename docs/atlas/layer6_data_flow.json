@@ -22299,7 +22299,6 @@
       "call": "json.dump"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1339,
       "operation": "read",
       "format": "json",
@@ -22308,7 +22307,6 @@
       "call": "json.loads"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 459,
       "operation": "write",
       "format": "json",
@@ -22317,7 +22315,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1097,
       "operation": "write",
       "format": "json",
@@ -22326,7 +22323,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1100,
       "operation": "write",
       "format": "json",
@@ -22335,7 +22331,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1103,
       "operation": "write",
       "format": "json",
@@ -22344,7 +22339,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1650,
       "operation": "write",
       "format": "json",
@@ -22353,25 +22347,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
-      "lineno": 962,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "convert_litellm_to_anthropic",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
-      "lineno": 1004,
-      "operation": "write",
-      "format": "json",
-      "target_path": null,
-      "function_context": "convert_litellm_to_anthropic",
-      "call": "json.dumps"
-    },
-    {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1302,
       "operation": "write",
       "format": "json",
@@ -22380,7 +22355,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1307,
       "operation": "write",
       "format": "json",
@@ -22389,7 +22363,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1310,
       "operation": "write",
       "format": "json",
@@ -22398,7 +22371,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1323,
       "operation": "write",
       "format": "json",
@@ -22407,7 +22379,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1326,
       "operation": "write",
       "format": "json",
@@ -22416,7 +22387,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1660,
       "operation": "write",
       "format": "json",
@@ -22425,25 +22395,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
-      "lineno": 999,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "convert_litellm_to_anthropic",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
-      "lineno": 1000,
-      "operation": "write",
-      "format": "json",
-      "target_path": null,
-      "function_context": "convert_litellm_to_anthropic",
-      "call": "json.dumps"
-    },
-    {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1573,
       "operation": "write",
       "format": "json",
@@ -22452,7 +22403,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1299,
       "operation": "write",
       "format": "json",
@@ -22461,7 +22411,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1569,
       "operation": "write",
       "format": "json",
@@ -22470,7 +22419,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1656,
       "operation": "write",
       "format": "json",
@@ -22479,7 +22427,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 445,
       "operation": "write",
       "format": "json",
@@ -22488,7 +22435,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1281,
       "operation": "write",
       "format": "json",
@@ -22497,7 +22443,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1284,
       "operation": "write",
       "format": "json",
@@ -22506,7 +22451,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1438,
       "operation": "write",
       "format": "json",
@@ -22515,7 +22459,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1155,
       "operation": "write",
       "format": "json",
@@ -22524,7 +22467,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1237,
       "operation": "write",
       "format": "json",
@@ -22533,7 +22475,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1240,
       "operation": "read",
       "format": "json",
@@ -22542,7 +22483,6 @@
       "call": "json.loads"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1267,
       "operation": "write",
       "format": "json",
@@ -22551,7 +22491,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1167,
       "operation": "write",
       "format": "json",
@@ -22560,7 +22499,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1214,
       "operation": "write",
       "format": "json",
@@ -22569,7 +22507,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1250,
       "operation": "write",
       "format": "json",
@@ -22578,7 +22515,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1259,
       "operation": "write",
       "format": "json",
@@ -22587,7 +22523,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1265,
       "operation": "write",
       "format": "json",
@@ -22596,7 +22531,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1533,
       "operation": "write",
       "format": "json",
@@ -22605,7 +22539,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1173,
       "operation": "write",
       "format": "json",
@@ -22614,7 +22547,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1176,
       "operation": "write",
       "format": "json",
@@ -22623,7 +22555,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1180,
       "operation": "write",
       "format": "json",
@@ -22632,7 +22563,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1453,
       "operation": "write",
       "format": "json",
@@ -22641,7 +22571,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1515,
       "operation": "write",
       "format": "json",
@@ -22650,7 +22579,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 1502,
       "operation": "write",
       "format": "json",
@@ -28600,48 +28528,12 @@
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/proxy/conversion.py",
-      "lineno": 920,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "convert_litellm_to_anthropic",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/conversion.py",
-      "lineno": 962,
-      "operation": "write",
-      "format": "json",
-      "target_path": null,
-      "function_context": "convert_litellm_to_anthropic",
-      "call": "json.dumps"
-    },
-    {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/conversion.py",
       "lineno": 511,
       "operation": "read",
       "format": "json",
       "target_path": null,
       "function_context": "convert_azure_responses_to_anthropic",
       "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/conversion.py",
-      "lineno": 957,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "convert_litellm_to_anthropic",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/conversion.py",
-      "lineno": 958,
-      "operation": "write",
-      "format": "json",
-      "target_path": null,
-      "function_context": "convert_litellm_to_anthropic",
-      "call": "json.dumps"
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/proxy/conversion.py",
@@ -28714,15 +28606,6 @@
       "target_path": null,
       "function_context": "safe_json_serialize",
       "call": "json.dumps"
-    },
-    {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/integrated_proxy.py",
-      "lineno": 529,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "handle_message_with_litellm_router",
-      "call": "json.loads"
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/proxy/integrated_proxy.py",
@@ -28905,7 +28788,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1703,
       "operation": "read",
       "format": "json",
@@ -28914,7 +28796,6 @@
       "call": "json.loads"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 716,
       "operation": "write",
       "format": "json",
@@ -28923,7 +28804,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1364,
       "operation": "write",
       "format": "json",
@@ -28932,7 +28812,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1367,
       "operation": "write",
       "format": "json",
@@ -28941,7 +28820,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1370,
       "operation": "write",
       "format": "json",
@@ -28950,34 +28828,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
-      "lineno": 1103,
-      "operation": "write",
-      "format": "json",
-      "target_path": null,
-      "function_context": "convert_anthropic_to_litellm",
-      "call": "json.dumps"
-    },
-    {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
-      "lineno": 1229,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "convert_litellm_to_anthropic",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
-      "lineno": 1271,
-      "operation": "write",
-      "format": "json",
-      "target_path": null,
-      "function_context": "convert_litellm_to_anthropic",
-      "call": "json.dumps"
-    },
-    {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1668,
       "operation": "write",
       "format": "json",
@@ -28986,7 +28836,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1673,
       "operation": "write",
       "format": "json",
@@ -28995,7 +28844,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1676,
       "operation": "write",
       "format": "json",
@@ -29004,7 +28852,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1689,
       "operation": "write",
       "format": "json",
@@ -29013,7 +28860,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1692,
       "operation": "write",
       "format": "json",
@@ -29022,7 +28868,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 2203,
       "operation": "write",
       "format": "json",
@@ -29031,7 +28876,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 2220,
       "operation": "write",
       "format": "json",
@@ -29040,25 +28884,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
-      "lineno": 1266,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "convert_litellm_to_anthropic",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
-      "lineno": 1267,
-      "operation": "write",
-      "format": "json",
-      "target_path": null,
-      "function_context": "convert_litellm_to_anthropic",
-      "call": "json.dumps"
-    },
-    {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 2065,
       "operation": "write",
       "format": "json",
@@ -29067,7 +28892,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1665,
       "operation": "write",
       "format": "json",
@@ -29076,7 +28900,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 2061,
       "operation": "write",
       "format": "json",
@@ -29085,7 +28908,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 702,
       "operation": "write",
       "format": "json",
@@ -29094,7 +28916,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1647,
       "operation": "write",
       "format": "json",
@@ -29103,7 +28924,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1650,
       "operation": "write",
       "format": "json",
@@ -29112,7 +28932,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1938,
       "operation": "write",
       "format": "json",
@@ -29121,7 +28940,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1450,
       "operation": "write",
       "format": "json",
@@ -29130,7 +28948,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1595,
       "operation": "write",
       "format": "json",
@@ -29139,7 +28956,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1598,
       "operation": "read",
       "format": "json",
@@ -29148,7 +28964,6 @@
       "call": "json.loads"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1633,
       "operation": "write",
       "format": "json",
@@ -29157,7 +28972,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1468,
       "operation": "write",
       "format": "json",
@@ -29166,7 +28980,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1556,
       "operation": "write",
       "format": "json",
@@ -29175,7 +28988,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1611,
       "operation": "write",
       "format": "json",
@@ -29184,7 +28996,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1625,
       "operation": "write",
       "format": "json",
@@ -29193,7 +29004,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1631,
       "operation": "write",
       "format": "json",
@@ -29202,7 +29012,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 2025,
       "operation": "write",
       "format": "json",
@@ -29211,7 +29020,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1474,
       "operation": "write",
       "format": "json",
@@ -29220,7 +29028,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1477,
       "operation": "write",
       "format": "json",
@@ -29229,7 +29036,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1481,
       "operation": "write",
       "format": "json",
@@ -29238,7 +29044,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 1953,
       "operation": "write",
       "format": "json",
@@ -29247,7 +29052,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 2011,
       "operation": "write",
       "format": "json",
@@ -29256,7 +29060,6 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 2002,
       "operation": "write",
       "format": "json",
@@ -37771,24 +37574,6 @@
     },
     {
       "file": "/home/azureuser/src/supply/tests/tracing/test_integration.py",
-      "lineno": 219,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "test_litellm_full_request_cycle",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/tests/tracing/test_integration.py",
-      "lineno": 220,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "test_litellm_full_request_cycle",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/tests/tracing/test_integration.py",
       "lineno": 487,
       "operation": "read",
       "format": "json",
@@ -37803,60 +37588,6 @@
       "format": "json",
       "target_path": null,
       "function_context": "test_configuration_consistency_across_components",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/tests/tracing/test_litellm_callbacks.py",
-      "lineno": 222,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "test_callback_logs_request_metadata",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/tests/tracing/test_litellm_callbacks.py",
-      "lineno": 248,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "test_callback_logs_response_metadata",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/tests/tracing/test_litellm_callbacks.py",
-      "lineno": 275,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "test_callback_logs_timing_information",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/tests/tracing/test_litellm_callbacks.py",
-      "lineno": 276,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "test_callback_logs_timing_information",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/tests/tracing/test_litellm_callbacks.py",
-      "lineno": 543,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "test_callback_integrates_with_litellm_flow",
-      "call": "json.loads"
-    },
-    {
-      "file": "/home/azureuser/src/supply/tests/tracing/test_litellm_callbacks.py",
-      "lineno": 544,
-      "operation": "read",
-      "format": "json",
-      "target_path": null,
-      "function_context": "test_callback_integrates_with_litellm_flow",
       "call": "json.loads"
     },
     {
@@ -43542,7 +43273,6 @@
       "call": "requests.get"
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "lineno": 552,
       "method": "SESSION",
       "url_pattern": "dynamic",
@@ -43718,7 +43448,6 @@
       "call": "requests.get"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "lineno": 2340,
       "method": "SESSION",
       "url_pattern": "dynamic",
@@ -43914,2016 +43643,1144 @@
     {
       "file": "/home/azureuser/src/supply/.claude/commands/transcripts.py",
       "function": "save_session_marker",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/scenarios/az-devops-tools/format_html.py",
       "function": "main",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/scenarios/mcp-manager/tests/test_cli.py",
       "function": "test_cmd_enable",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/scenarios/mcp-manager/tests/test_cli.py",
       "function": "test_cmd_import_merge",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/scenarios/mcp-manager/tests/test_cli.py",
       "function": "test_cmd_import_replace",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/skills/common/ooxml/scripts/pack.py",
       "function": "condense_xml",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/skills/dynamic-debugger/scripts/generate_dap_config.py",
       "function": "generate_config",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/skills/dynamic-debugger/tests/test_config_generation.py",
       "function": "test_cli_output_json_format",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/skills/dynamic-debugger/tests/test_integration.py",
       "function": "test_config_generation_and_serialization",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/skills/dynamic-debugger/tests/test_integration.py",
       "function": "test_config_with_custom_parameters_persistence",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/skills/dynamic-debugger/tests/test_mcp_client.py",
       "function": "send_request",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/skills/lsp-setup/mcp_configurator.py",
       "function": "add_mcp_server_to_claude",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/skills/silent-degradation-audit/tools/exclusion_manager.py",
       "function": "add_exclusion",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/skills/xlsx/scripts/recalc.py",
       "function": "setup_libreoffice_macro",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/builders/export_on_compact_integration.py",
       "function": "process",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/power_steering_checker/main_checker.py",
       "function": "_log_violation",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/power_steering_state_io.py",
       "function": "_do_save_state_write",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/pre_compact.py",
       "function": "process",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/test_user_prompt_submit.py",
       "function": "test_json_output",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/tests/outside-in/test_exception_handling_outside_in.py",
       "function": "test_corrupt_state_file_logs_and_falls_back",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/tests/outside-in/test_exception_handling_outside_in.py",
       "function": "test_log_failure_logged_to_stderr",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/tests/outside-in/test_exception_handling_outside_in.py",
       "function": "test_valid_bash_command_returns_json",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/tests/outside-in/test_exception_handling_outside_in.py",
       "function": "test_valid_read_tool_returns_json",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/tests/outside-in/test_exception_handling_outside_in.py",
       "function": "test_valid_tool_result_returns_json",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/tests/test_power_steering_checker.py",
       "function": "test_check_with_disabled",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/tests/test_power_steering_checker.py",
       "function": "test_is_disabled_by_config",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/tests/test_power_steering_informational_sessions.py",
       "function": "test_simple_question_session",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/tests/test_power_steering_phase2.py",
       "function": "test_config_checkers_enabled_respected",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/tests/test_session_end.py",
       "function": "test_empty_input",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/tests/test_session_end.py",
       "function": "test_uncommitted_work",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/hooks/tests/test_stop_hook_integration.py",
       "function": "test_stop_hook_processes_input_normally",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/memory/core.py",
       "function": "retrieve",
-      "reads": [
-        "json file",
-        "sqlite database"
-      ],
-      "writes": [
-        "sqlite database"
-      ]
+      "reads": ["json file", "sqlite database"],
+      "writes": ["sqlite database"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/remote/session.py",
       "function": "_save_state",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/remote/tests/test_vm_pool.py",
       "function": "test_save_state_preserves_existing_sessions",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/remote/vm_pool.py",
       "function": "_save_state",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/amplihack/session/file_utils.py",
       "function": "safe_write_file",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/xpia/hooks/post_tool_use.py",
       "function": "main",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/.claude/tools/xpia/hooks/pre_tool_use.py",
       "function": "main",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/skills/common/ooxml/scripts/pack.py",
       "function": "condense_xml",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/skills/dynamic-debugger/scripts/generate_dap_config.py",
       "function": "generate_config",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/skills/dynamic-debugger/tests/test_config_generation.py",
       "function": "test_cli_output_json_format",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/skills/dynamic-debugger/tests/test_integration.py",
       "function": "test_config_generation_and_serialization",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/skills/dynamic-debugger/tests/test_integration.py",
       "function": "test_config_with_custom_parameters_persistence",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/skills/dynamic-debugger/tests/test_mcp_client.py",
       "function": "send_request",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/skills/xlsx/scripts/recalc.py",
       "function": "setup_libreoffice_macro",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/tools/amplihack/builders/export_on_compact_integration.py",
       "function": "process",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/tools/amplihack/memory/core.py",
       "function": "retrieve",
-      "reads": [
-        "json file",
-        "sqlite database"
-      ],
-      "writes": [
-        "sqlite database"
-      ]
+      "reads": ["json file", "sqlite database"],
+      "writes": ["sqlite database"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/tools/amplihack/remote/session.py",
       "function": "_save_state",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/tools/amplihack/remote/tests/test_vm_pool.py",
       "function": "test_save_state_preserves_existing_sessions",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/tools/amplihack/remote/vm_pool.py",
       "function": "_save_state",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/tools/amplihack/session/file_utils.py",
       "function": "safe_write_file",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/tools/xpia/hooks/post_tool_use.py",
       "function": "main",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/amplifier-bundle/tools/xpia/hooks/pre_tool_use.py",
       "function": "main",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/commands/transcripts.py",
       "function": "save_session_marker",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/scenarios/mcp-manager/tests/test_cli.py",
       "function": "test_cmd_enable",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/scenarios/mcp-manager/tests/test_cli.py",
       "function": "test_cmd_import_merge",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/scenarios/mcp-manager/tests/test_cli.py",
       "function": "test_cmd_import_replace",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/skills/common/ooxml/scripts/pack.py",
       "function": "condense_xml",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/skills/dynamic-debugger/scripts/generate_dap_config.py",
       "function": "generate_config",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/skills/dynamic-debugger/tests/test_config_generation.py",
       "function": "test_cli_output_json_format",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/skills/dynamic-debugger/tests/test_integration.py",
       "function": "test_config_generation_and_serialization",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/skills/dynamic-debugger/tests/test_integration.py",
       "function": "test_config_with_custom_parameters_persistence",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/skills/dynamic-debugger/tests/test_mcp_client.py",
       "function": "send_request",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/skills/xlsx/scripts/recalc.py",
       "function": "setup_libreoffice_macro",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/amplihack/builders/export_on_compact_integration.py",
       "function": "process",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/amplihack/hooks/power_steering_checker.py",
       "function": "_log_violation",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/amplihack/hooks/pre_compact.py",
       "function": "process",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/amplihack/hooks/test_user_prompt_submit.py",
       "function": "test_json_output",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/amplihack/hooks/tests/test_power_steering_checker.py",
       "function": "test_check_with_disabled",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/amplihack/hooks/tests/test_power_steering_checker.py",
       "function": "test_is_disabled_by_config",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/amplihack/hooks/tests/test_power_steering_phase2.py",
       "function": "test_config_checkers_enabled_respected",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/amplihack/hooks/tests/test_workflow_state.py",
       "function": "test_from_dict_deserialization",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/amplihack/memory/core.py",
       "function": "retrieve",
-      "reads": [
-        "json file",
-        "sqlite database"
-      ],
-      "writes": [
-        "sqlite database"
-      ]
+      "reads": ["json file", "sqlite database"],
+      "writes": ["sqlite database"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/amplihack/remote/session.py",
       "function": "_save_state",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/amplihack/remote/tests/test_vm_pool.py",
       "function": "test_save_state_preserves_existing_sessions",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/amplihack/remote/vm_pool.py",
       "function": "_save_state",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/amplihack/session/file_utils.py",
       "function": "safe_write_file",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/xpia/hooks/post_tool_use.py",
       "function": "main",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/docs/claude/tools/xpia/hooks/pre_tool_use.py",
       "function": "main",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/examples/memory_code_auto_linking_example.py",
       "function": "setup_sample_code_graph",
-      "reads": [
-        "kuzu database"
-      ],
-      "writes": [
-        "kuzu database"
-      ]
+      "reads": ["kuzu database"],
+      "writes": ["kuzu database"]
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
-      "function": "convert_litellm_to_anthropic",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
-    },
-    {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "function": "create_message",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
-      "file": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
       "function": "handle_streaming",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/scripts/apply_50_fixes_automated.py",
       "function": "apply_bare_except_fix",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/scripts/apply_50_fixes_automated.py",
       "function": "apply_error_logging_fix",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/scripts/apply_50_fixes_automated.py",
       "function": "apply_input_validation_fix",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/scripts/apply_50_fixes_automated.py",
       "function": "apply_silent_exception_fix",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/scripts/create_50_specific_fixes.py",
       "function": "apply_single_fix",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/scripts/run_3_scenario_eval.py",
       "function": "run_scenario",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/scripts/sync_hooks.py",
       "function": "sync_hooks",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/scripts/testing/test_security.py",
       "function": "test_hook_with_input",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/scripts/testing/test_shell_hook.py",
       "function": "test_hook_with_input",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/agents/goal_seeking/_hierarchical_memory_local.py",
       "function": "_create_similarity_edges",
-      "reads": [
-        "json file",
-        "kuzu database"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file", "kuzu database"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/agents/goal_seeking/_hierarchical_memory_local.py",
       "function": "import_from_json",
-      "reads": [
-        "kuzu database"
-      ],
-      "writes": [
-        "json file",
-        "kuzu database"
-      ]
+      "reads": ["kuzu database"],
+      "writes": ["json file", "kuzu database"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/agents/goal_seeking/sdk_adapters/copilot_sdk.py",
       "function": "handler",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/bundle_generator/distributor.py",
       "function": "_upload_package",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/bundle_generator/update_manager.py",
       "function": "update_bundle",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/cli/hive.py",
       "function": "_save_config",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "yaml file"
-      ]
+      "reads": ["text file"],
+      "writes": ["yaml file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/eval/agent_subprocess.py",
       "function": "main",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/eval/harness_runner.py",
       "function": "run_harness",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/eval/progressive_test_suite.py",
       "function": "_run_teaching_subprocess",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/eval/progressive_test_suite.py",
       "function": "run_l7_teaching_eval",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/eval/progressive_test_suite.py",
       "function": "run_single_level",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/eval/teaching_subprocess.py",
       "function": "main",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/fleet/_cli_scout_advance.py",
       "function": "scout",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/fleet/fleet_dashboard.py",
       "function": "load",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["json file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/fleet/fleet_graph.py",
       "function": "load",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["json file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/fleet/fleet_results.py",
       "function": "_load_index",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["json file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/fleet/fleet_tasks.py",
       "function": "load",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["json file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/launcher/codex.py",
       "function": "configure_codex",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/launcher/copilot.py",
       "function": "disable_github_mcp_server",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/launcher/copilot.py",
       "function": "enable_awesome_copilot_mcp_server",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/launcher/copilot.py",
       "function": "register_copilot_plugin",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/launcher/memory_config.py",
       "function": "save_user_preference",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/launcher/tests/test_memory_config.py",
       "function": "test_save_user_preference_preserves_existing_keys",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
       "function": "_store_memory_sync",
-      "reads": [
-        "kuzu database"
-      ],
-      "writes": [
-        "json file",
-        "kuzu database"
-      ]
+      "reads": ["kuzu database"],
+      "writes": ["json file", "kuzu database"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/memory/database.py",
       "function": "_migrate_schema",
-      "reads": [
-        "sqlite database"
-      ],
-      "writes": [
-        "sqlite database"
-      ]
+      "reads": ["sqlite database"],
+      "writes": ["sqlite database"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/memory/database.py",
       "function": "get_memory_by_id",
-      "reads": [
-        "sqlite database"
-      ],
-      "writes": [
-        "sqlite database"
-      ]
+      "reads": ["sqlite database"],
+      "writes": ["sqlite database"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/memory/maintenance.py",
       "function": "cleanup_old_sessions",
-      "reads": [
-        "sqlite database"
-      ],
-      "writes": [
-        "sqlite database"
-      ]
+      "reads": ["sqlite database"],
+      "writes": ["sqlite database"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/memory/maintenance.py",
       "function": "export_session_memories",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["text file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/plugin_manager/manager.py",
       "function": "_register_plugin",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
-    },
-    {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/conversion.py",
-      "function": "convert_litellm_to_anthropic",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/proxy/integrated_proxy.py",
       "function": "create_message",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/proxy/refactor_proxy.py",
       "function": "refactor_integrated_proxy",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
-      "function": "convert_litellm_to_anthropic",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
-    },
-    {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "function": "create_message",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
       "function": "handle_streaming",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/proxy/streaming.py",
       "function": "handle_azure_streaming_with_tools",
-      "reads": [
-        "json file",
-        "network SESSION"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file", "network SESSION"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/proxy/streaming.py",
       "function": "handle_streaming",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/proxy/streaming.py",
       "function": "stream_with_tools",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/security/xpia_install.py",
       "function": "_download_and_install",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/utils/uvx_settings_manager.py",
       "function": "create_uvx_settings",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/vendor/blarify/cli/commands/create.py",
       "function": "get_or_create_neo4j_credentials",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/vendor/blarify/cli/project_config.py",
       "function": "delete_project",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/vendor/blarify/cli/project_config.py",
       "function": "save_project_config",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/vendor/blarify/vendor/multilspy/language_server.py",
       "function": "request_completions",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/vendor/blarify/vendor/multilspy/multilspy_utils.py",
       "function": "download_and_extract_archive",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/vendor/blarify/vendor/multilspy/multilspy_utils.py",
       "function": "download_file",
-      "reads": [
-        "network GET"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["network GET"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/e2e/test_copilot_e2e.py",
       "function": "<module>",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/eval/test_self_improve_automation.py",
       "function": "test_review_result_roundtrip",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/gadugi/copilot_nested_compat_smoke.py",
       "function": "main",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/integration/test_backward_compat.py",
       "function": "test_local_hooks_override_plugin",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/integration/uvx/test_settings_generation.py",
       "function": "test_settings_update_preserves_existing",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/launcher/test_copilot.py",
       "function": "test_preserves_existing_plugins",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/launcher/test_hook_restoration_bug.py",
       "function": "mock_prepare_launch",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/launcher/test_hook_restoration_bug.py",
       "function": "test_hooks_added_by_prepare_launch_persist",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/log_streaming/test_unit_log_formatting.py",
       "function": "test_json_serializable_output",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/mcp_evaluation/automated_evaluation.py",
       "function": "run_amplihack_auto",
-      "reads": [
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/plugin/test_installer.py",
       "function": "test_full_installation_workflow",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/plugin/test_integration.py",
       "function": "setup_project",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/plugin/test_integration.py",
       "function": "test_complete_migration_preserves_customizations",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/plugin/test_integration.py",
       "function": "test_install_plugin_and_generate_project_settings",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/plugin/test_integration.py",
       "function": "test_install_with_lsp_auto_detection",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/plugin/test_integration.py",
       "function": "test_multi_project_setup_shares_plugin",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/plugin/test_integration.py",
       "function": "test_plugin_upgrade_preserves_project_settings",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/plugin/test_migration_helper.py",
       "function": "test_complete_migration_workflow",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/plugin/test_migration_helper.py",
       "function": "test_migrate_moves_runtime_data",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/plugin/test_settings_merger.py",
       "function": "test_complete_merge_workflow",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/plugin/test_variable_substitutor.py",
       "function": "test_complete_substitution_workflow",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_auto_mode_session_management.py",
       "function": "test_session_metadata_compatible_with_transcript_builder",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_copilot_launcher_integration.py",
       "function": "test_disable_github_mcp_server_preserves_existing_config",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_link_validator_security.py",
       "function": "test_result_json_serializable",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_orch_helper.py",
       "function": "test_extract_default_no_arg_runs_extract",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_orch_helper.py",
       "function": "test_extract_subcommand_outputs_valid_json",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_orch_helper.py",
       "function": "test_extract_subcommand_with_code_block",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_outside_in_xpia_rust.py",
       "function": "run_hook",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_outside_in_xpia_rust.py",
       "function": "test_timeout_blocks",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "text file"
-      ]
+      "reads": ["json file"],
+      "writes": ["text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_security.py",
       "function": "test_hook_with_input",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_session_start_integration.py",
       "function": "_run_session_start_hook",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_settings_migration.py",
       "function": "test_ensure_settings_json_migrates_legacy_paths",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_shell_hook.py",
       "function": "test_hook_with_input",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_stop_hook_e2e_visibility.py",
       "function": "test_e2e_hook_output_serializes_to_json_for_stdout",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_uvx_settings_manager.py",
       "function": "test_create_uvx_settings_preserves_existing",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_uvx_settings_manager.py",
       "function": "test_existing_user_settings_preservation",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_uvx_staging_integration.py",
       "function": "test_backup_created_for_existing_settings",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_uvx_staging_integration.py",
       "function": "test_existing_settings_with_bypass_preserved",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_uvx_staging_integration.py",
       "function": "test_existing_settings_without_bypass_enhanced",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_validate_docs_examples.py",
       "function": "test_result_json_serializable",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_xpia_hook_integration.py",
       "function": "test_backup_and_rollback",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_xpia_hook_integration.py",
       "function": "test_complete_installation_simulation",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_xpia_hook_integration.py",
       "function": "test_existing_settings_merge",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_xpia_hook_integration.py",
       "function": "test_pre_tool_use_hook_dangerous_command",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_xpia_hook_integration.py",
       "function": "test_pre_tool_use_hook_safe_command",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/tracing/test_trace_logger.py",
       "function": "test_log_sanitizes_api_keys",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/tracing/test_trace_logger.py",
       "function": "test_log_sanitizes_bearer_tokens",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/tracing/test_trace_logger.py",
       "function": "test_log_sanitizes_github_tokens",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/tracing/test_trace_logger.py",
       "function": "test_log_sanitizes_nested_credentials",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/unit/test_hook_processor_run.py",
       "function": "test_unit_run_001_valid_json_input_to_stdout_output",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/unit/test_hook_processor_run.py",
       "function": "test_unit_run_010_no_shutdown_flag_reads_stdin_normally",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/unit/test_stop_hook_json.py",
       "function": "test_unit_json_001_output_dict_is_json_serializable_allow_case",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/unit/test_stop_hook_json.py",
       "function": "test_unit_json_002_output_dict_is_json_serializable_block_case",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/unit/test_stop_hook_json.py",
       "function": "test_unit_json_004_unicode_in_reason_field",
-      "reads": [
-        "json file"
-      ],
-      "writes": [
-        "json file"
-      ]
+      "reads": ["json file"],
+      "writes": ["json file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/verify_uvx_permissions_fix.py",
       "function": "demonstrate_existing_settings_preservation",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     },
     {
       "file": "/home/azureuser/src/supply/tests/verify_uvx_permissions_fix.py",
       "function": "simulate_fresh_uvx_installation",
-      "reads": [
-        "json file",
-        "text file"
-      ],
-      "writes": [
-        "json file",
-        "text file"
-      ]
+      "reads": ["json file", "text file"],
+      "writes": ["json file", "text file"]
     }
   ],
   "summary": {
