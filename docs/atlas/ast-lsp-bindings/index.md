@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-24T16:57:52.393889+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-25T02:50:00+00:00
 </div>
 
 ## Map
@@ -51,7 +51,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-24T16:57:52.393889+00
         F23 --> F5
         F24 --> F6
         F25 --> F7
-    
+
         click F0 "../ast-lsp-bindings/" "View AST bindings"
     ```
 
@@ -75,10 +75,10 @@ Category: <strong>Structural</strong> | Generated: 2026-03-24T16:57:52.393889+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| Rectangle | Source file |
-| Arrow | Import dependency |
+| Symbol    | Meaning               |
+| --------- | --------------------- |
+| Rectangle | Source file           |
+| Arrow     | Import dependency     |
 | `refs: N` | Total reference count |
 
 </div>
@@ -94,7 +94,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-24T16:57:52.393889+00
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-    
+
     - **Total Definitions**: 14689
     - **Total Exports**: 2163
     - **Total Imports**: 16682

@@ -20,7 +20,7 @@ sequenceDiagram
     Prereqs-->>Startup: all OK
     CLI->>Tracker: start_session(pid, launch_dir, argv)
     Tracker-->>CLI: session_id
-    CLI->>Launcher: ClaudeLauncher(proxy_manager, claude_args)
+    CLI->>Launcher: ClaudeLauncher(claude_args)
     Launcher->>Binary: get_claude_cli_path()
     Binary-->>Launcher: /path/to/claude
     Launcher->>Claude: subprocess.run(claude, args)
