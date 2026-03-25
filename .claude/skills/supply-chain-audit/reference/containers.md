@@ -153,8 +153,6 @@ syft python:3.12-slim@sha256:<digest> -o spdx-json > sbom.spdx.json
 # grype — scan SBOM for vulnerabilities
 grype sbom:./sbom.spdx.json
 
-# trivy — combined scan (vulnerabilities + misconfig)
-trivy image python:3.12-slim@sha256:<digest>
 ```
 
 Add to CI workflow (Dimension 1 applies — pin these actions too):
