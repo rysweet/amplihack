@@ -5,7 +5,6 @@
 | Service | Entry Point | Type | Port | Description |
 |---------|------------|------|------|-------------|
 | amplihack CLI | `src/amplihack/cli.py:main` | CLI Process | - | Main entry point; parses subcommands and dispatches to launchers |
-| Proxy Server | `src/amplihack/proxy/server.py` | HTTP Server | dynamic | LiteLLM-based proxy translating Anthropic API to Azure OpenAI |
 | Responses API Proxy | `src/amplihack/proxy/responses_api_proxy.py` | HTTP Server | dynamic | OpenAI Responses API proxy for Claude Code |
 | Recipe Runner | `src/amplihack/recipe_cli/recipe_command.py` | CLI Process | - | Executes YAML recipe files with step orchestration |
 | Fleet CLI | `src/amplihack/fleet/_cli_commands.py` | CLI Process (Click) | - | Multi-agent fleet orchestration via tmux panes |
