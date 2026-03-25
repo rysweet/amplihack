@@ -55,10 +55,22 @@ def check_sdk_dep(import_name: str) -> bool:
         importlib.import_module(import_name)
         return True
     except ImportError:
-        import sys
-
-        print(f"WARNING: {import_name} not available", file=sys.stderr)
         return False
+
+
+def _collect_dep_status() -> DepCheckResult:
+    """Check all SDK deps without logging warnings.
+
+    Used internally before auto-install to avoid warning about deps
+    that are about to be installed.
+    """
+    result = DepCheckResult()
+    for import_name in SDK_DEPENDENCIES:
+        if check_sdk_dep(import_name):
+            result.available.append(import_name)
+        else:
+            result.missing.append(import_name)
+    return result
 
 
 def validate_sdk_deps(raise_on_missing: bool = True) -> DepCheckResult:
@@ -78,15 +90,11 @@ def validate_sdk_deps(raise_on_missing: bool = True) -> DepCheckResult:
     Raises:
         ImportError: When raise_on_missing is True and deps are missing.
     """
-    result = DepCheckResult()
+    result = _collect_dep_status()
 
-    for import_name, pip_name in SDK_DEPENDENCIES.items():
-        if check_sdk_dep(import_name):
-            result.available.append(import_name)
-            logger.debug("SDK dep OK: %s", import_name)
-        else:
-            result.missing.append(import_name)
-            logger.warning("SDK dep MISSING: %s (install: pip install %s)", import_name, pip_name)
+    for import_name in result.missing:
+        pip_name = SDK_DEPENDENCIES[import_name]
+        logger.warning("SDK dep MISSING: %s (install: pip install %s)", import_name, pip_name)
 
     if result.missing and raise_on_missing:
         install_cmds = [f"  pip install {SDK_DEPENDENCIES[m]}" for m in result.missing]
@@ -115,7 +123,8 @@ def ensure_sdk_deps() -> DepCheckResult:
     """
     import sys
 
-    result = validate_sdk_deps(raise_on_missing=False)
+    # Quiet check first — no warnings for deps we're about to install
+    result = _collect_dep_status()
     if result.all_ok:
         return result
 
@@ -140,8 +149,12 @@ def ensure_sdk_deps() -> DepCheckResult:
         if installer:
             base_cmd = [installer, "install", "--pre"]
         else:
-            logger.warning("Neither uv nor pip found. Cannot auto-install SDK deps.")
-            return result
+            install_cmds = [f"  pip install {SDK_DEPENDENCIES[m]}" for m in result.missing]
+            raise ImportError(
+                "Required SDK dependencies are missing and no installer (uv/pip) found.\n"
+                "Install them manually:\n"
+                + "\n".join(install_cmds)
+            )
 
     for import_name in result.missing:
         pip_name = SDK_DEPENDENCIES[import_name]
@@ -165,8 +178,8 @@ def ensure_sdk_deps() -> DepCheckResult:
     # without requiring a process restart.
     importlib.invalidate_caches()
 
-    # Re-check after install
-    return validate_sdk_deps(raise_on_missing=False)
+    # Re-check after install — if still missing, that's a real failure
+    return validate_sdk_deps(raise_on_missing=True)
 
 
 __all__ = [

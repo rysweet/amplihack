@@ -40,7 +40,7 @@ try:
 
     _HAS_AGENT_FRAMEWORK = True
 except ImportError:
-    print("WARNING: agent_framework not available", file=sys.stderr)
+    pass
 
 
 # ---------------------------------------------------------------------------
