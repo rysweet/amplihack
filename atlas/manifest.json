@@ -36107,28 +36107,6 @@
       "classification": "source"
     },
     {
-      "path": "/home/azureuser/src/supply/docs/examples/litellm-chat-api-config.yaml",
-      "rel_path": "docs/examples/litellm-chat-api-config.yaml",
-      "extension": ".yaml",
-      "size_bytes": 1608,
-      "line_count": 52,
-      "is_test": false,
-      "is_init": false,
-      "package": "docs.examples",
-      "classification": "config"
-    },
-    {
-      "path": "/home/azureuser/src/supply/docs/examples/litellm-responses-api-config.yaml",
-      "rel_path": "docs/examples/litellm-responses-api-config.yaml",
-      "extension": ".yaml",
-      "size_bytes": 2179,
-      "line_count": 67,
-      "is_test": false,
-      "is_init": false,
-      "package": "docs.examples",
-      "classification": "config"
-    },
-    {
       "path": "/home/azureuser/src/supply/docs/examples/uvx_models_example.py",
       "rel_path": "docs/examples/uvx_models_example.py",
       "extension": ".py",
@@ -36420,17 +36398,6 @@
       "extension": ".md",
       "size_bytes": 11192,
       "line_count": 457,
-      "is_test": false,
-      "is_init": false,
-      "package": "docs",
-      "classification": "docs"
-    },
-    {
-      "path": "/home/azureuser/src/supply/docs/github-copilot-litellm-integration.md",
-      "rel_path": "docs/github-copilot-litellm-integration.md",
-      "extension": ".md",
-      "size_bytes": 8264,
-      "line_count": 317,
       "is_test": false,
       "is_init": false,
       "package": "docs",
@@ -38593,17 +38560,6 @@
       "classification": "source"
     },
     {
-      "path": "/home/azureuser/src/supply/litellm_standalone_config.yaml",
-      "rel_path": "litellm_standalone_config.yaml",
-      "extension": ".yaml",
-      "size_bytes": 852,
-      "line_count": 33,
-      "is_test": false,
-      "is_init": false,
-      "package": "supply",
-      "classification": "config"
-    },
-    {
       "path": "/home/azureuser/src/supply/marketplace.json",
       "rel_path": "marketplace.json",
       "extension": ".json",
@@ -38692,8 +38648,6 @@
       "classification": "docs"
     },
     {
-      "path": "/home/azureuser/src/supply/proxy/server/__init__.py",
-      "rel_path": "proxy/server/__init__.py",
       "extension": ".py",
       "size_bytes": 62,
       "line_count": 4,
@@ -38703,8 +38657,6 @@
       "classification": "init"
     },
     {
-      "path": "/home/azureuser/src/supply/proxy/server/main.py",
-      "rel_path": "proxy/server/main.py",
       "extension": ".py",
       "size_bytes": 694,
       "line_count": 23,
@@ -38714,8 +38666,6 @@
       "classification": "source"
     },
     {
-      "path": "/home/azureuser/src/supply/proxy/server/proxy_server.py",
-      "rel_path": "proxy/server/proxy_server.py",
       "extension": ".py",
       "size_bytes": 80683,
       "line_count": 1802,
@@ -45391,17 +45341,6 @@
       "classification": "source"
     },
     {
-      "path": "/home/azureuser/src/supply/src/amplihack/proxy/litellm_callbacks.py",
-      "rel_path": "src/amplihack/proxy/litellm_callbacks.py",
-      "extension": ".py",
-      "size_bytes": 9742,
-      "line_count": 305,
-      "is_test": false,
-      "is_init": false,
-      "package": "src.amplihack.proxy",
-      "classification": "source"
-    },
-    {
       "path": "/home/azureuser/src/supply/src/amplihack/proxy/log_streaming.py",
       "rel_path": "src/amplihack/proxy/log_streaming.py",
       "extension": ".py",
@@ -45512,8 +45451,6 @@
       "classification": "source"
     },
     {
-      "path": "/home/azureuser/src/supply/src/amplihack/proxy/server.py",
-      "rel_path": "src/amplihack/proxy/server.py",
       "extension": ".py",
       "size_bytes": 111612,
       "line_count": 2526,
@@ -53630,17 +53567,6 @@
       "classification": "test"
     },
     {
-      "path": "/home/azureuser/src/supply/tests/proxy/test_github_copilot_litellm_integration.py",
-      "rel_path": "tests/proxy/test_github_copilot_litellm_integration.py",
-      "extension": ".py",
-      "size_bytes": 9016,
-      "line_count": 218,
-      "is_test": true,
-      "is_init": false,
-      "package": "tests.proxy",
-      "classification": "test"
-    },
-    {
       "path": "/home/azureuser/src/supply/tests/proxy/test_github_integration.py",
       "rel_path": "tests/proxy/test_github_integration.py",
       "extension": ".py",
@@ -55384,17 +55310,6 @@
       "extension": ".py",
       "size_bytes": 16627,
       "line_count": 488,
-      "is_test": true,
-      "is_init": false,
-      "package": "tests.tracing",
-      "classification": "test"
-    },
-    {
-      "path": "/home/azureuser/src/supply/tests/tracing/test_litellm_callbacks.py",
-      "rel_path": "tests/tracing/test_litellm_callbacks.py",
-      "extension": ".py",
-      "size_bytes": 18341,
-      "line_count": 597,
       "is_test": true,
       "is_init": false,
       "package": "tests.tracing",
