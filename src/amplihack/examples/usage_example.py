@@ -57,7 +57,7 @@ def example_launcher_setup():
     """Example of setting up the launcher (without actually launching)."""
     print("\n=== Launcher Setup Example ===")
 
-    # Create a launcher with no proxy (dry run)
+    # Create a launcher (dry run)
     launcher = ClaudeLauncher()
 
     # Build command that would be executed

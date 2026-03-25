@@ -19,7 +19,6 @@ def _make_args(**kwargs) -> argparse.Namespace:
         "auto": False,
         "docker": False,
         "no_reflection": False,
-        "with_proxy_config": None,
         "checkout_repo": None,
         "max_turns": 10,
         "ui": False,

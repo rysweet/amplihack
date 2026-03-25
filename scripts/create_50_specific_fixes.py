@@ -29,14 +29,6 @@ FIXES = [
         "description": "Add return type hint to _ensure_runtime_directories",
     },
     {
-        "file": "src/amplihack/proxy/azure_unified_handler.py",
-        "function": "_map_finish_reason",
-        "line": 168,
-        "old": "    def _map_finish_reason(self, openai_finish_reason: str) -> str:",
-        "new": "    def _map_finish_reason(self, openai_finish_reason: str) -> str:",
-        "description": "Type hint already exists - verify consistency",
-    },
-    {
         "file": "src/amplihack/bundle_generator/parser.py",
         "function": "__init__",
         "line": 85,
@@ -158,14 +150,6 @@ FIXES = [
         "description": "Add comprehensive logging to process termination fallback",
     },
     {
-        "file": "src/amplihack/proxy/azure_unified_handler.py",
-        "function": "_convert_openai_to_anthropic",
-        "line": 162,
-        "old": '                        "input": json.loads(tool_call.get("function", {}).get("arguments", "{}")),',
-        "new": '                        "input": json.loads(tool_call.get("function", {}).get("arguments", "{}") or "{}"),',
-        "description": "Add fallback for None value in JSON parsing",
-    },
-    {
         "file": ".claude/tools/amplihack/hooks/claude_reflection.py",
         "function": "run_claude_reflection",
         "line": 344,
@@ -231,14 +215,6 @@ FIXES = [
         "description": "Add validation for template formatting inputs",
     },
     {
-        "file": "src/amplihack/proxy/azure_unified_handler.py",
-        "function": "__init__",
-        "line": 34,
-        "old": "        self.provider = AzureUnifiedProvider(api_key, base_url, api_version)",
-        "new": "        if not api_key or not api_key.strip():\n            raise ValueError('Azure API key cannot be empty')\n        if not base_url or not base_url.strip():\n            raise ValueError('Azure base URL cannot be empty')\n        self.provider = AzureUnifiedProvider(api_key, base_url, api_version)",
-        "description": "Add validation for required Azure credentials",
-    },
-    {
         "file": "src/amplihack/utils/process.py",
         "function": "run_command",
         "line": 136,
@@ -278,22 +254,6 @@ FIXES = [
         "old": "        if not session_file.exists():\n            return False",
         "new": "        if not session_file.exists():\n            self.logger.warning(f'Cannot archive non-existent session: {session_id}')\n            return False",
         "description": "Add logging for missing session file",
-    },
-    {
-        "file": "src/amplihack/proxy/azure_unified_handler.py",
-        "function": "handle_anthropic_request",
-        "line": 48,
-        "old": "        # Convert Anthropic request to OpenAI format for processing\n        openai_request = self._convert_anthropic_to_openai(anthropic_request)",
-        "new": "        # Convert Anthropic request to OpenAI format for processing\n        logger.debug(f'Handling Anthropic request for model: {anthropic_request.get(\"model\")}')\n        openai_request = self._convert_anthropic_to_openai(anthropic_request)",
-        "description": "Add debug logging for request handling",
-    },
-    {
-        "file": "src/amplihack/proxy/azure_unified_handler.py",
-        "function": "handle_openai_request",
-        "line": 68,
-        "old": "        # Provider handles everything\n        return await self.provider.make_request(",
-        "new": "        # Provider handles everything\n        logger.debug(f'Handling OpenAI request for model: {openai_request.get(\"model\")}')\n        return await self.provider.make_request(",
-        "description": "Add debug logging for OpenAI request handling",
     },
     {
         "file": "src/amplihack/bundle_generator/parser.py",

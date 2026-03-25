@@ -477,7 +477,6 @@ class TestIntegrationWithPrepareLaunch:
             _ensure_runtime_directories=lambda x: True,
             _fix_hook_paths_in_settings=lambda x: True,
             _handle_directory_change=lambda x: True,
-            _start_proxy_if_needed=lambda: True,
             _configure_lsp_auto=lambda x: None,
         ):
             launcher.prepare_launch()
@@ -508,7 +507,6 @@ class TestIntegrationWithPrepareLaunch:
             _ensure_runtime_directories=lambda x: True,
             _fix_hook_paths_in_settings=lambda x: True,
             _handle_directory_change=lambda x: True,
-            _start_proxy_if_needed=lambda: True,
             _configure_lsp_auto=lambda x: None,
         ):
             with caplog.at_level(logging.INFO):

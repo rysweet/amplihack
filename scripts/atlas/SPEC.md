@@ -240,8 +240,8 @@ Output: layer2_ast_bindings.json
   ],
   "exports": [
     {
-      "file": "src/amplihack/proxy/__init__.py",
-      "all_names": ["ProxyConfig", "ProxyManager"],
+      "file": "src/amplihack/launcher/__init__.py",
+      "all_names": ["ClaudeLauncher", "ClaudeDirectoryDetector"],
       "valid": true,
       "missing_definitions": []
     }
@@ -249,10 +249,10 @@ Output: layer2_ast_bindings.json
   "imports": [
     {
       "file": "src/amplihack/cli.py",
-      "module": "amplihack.proxy",
-      "names": ["ProxyConfig", "ProxyManager"],
+      "module": "amplihack.launcher",
+      "names": ["ClaudeLauncher"],
       "category": "internal",
-      "resolved_target": "src/amplihack/proxy/__init__.py",
+      "resolved_target": "src/amplihack/launcher/__init__.py",
       "lineno": 23
     }
   ],
@@ -339,14 +339,14 @@ Output: layer3_compile_deps.json
       "normalized_name": "flask",
       "version_constraint": ">=2.0.0",
       "group": "core",
-      "imported_by": ["src/amplihack/proxy/server.py"],
+      "imported_by": ["src/amplihack/cli.py"],
       "import_count": 3
     }
   ],
   "internal_import_graph": {
-    "nodes": ["amplihack.cli", "amplihack.proxy", "amplihack.launcher", ...],
+    "nodes": ["amplihack.cli", "amplihack.launcher", ...],
     "edges": [
-      {"from": "amplihack.cli", "to": "amplihack.proxy", "import_count": 2}
+      {"from": "amplihack.cli", "to": "amplihack.launcher", "import_count": 3}
     ]
   },
   "circular_dependencies": [
@@ -437,7 +437,7 @@ Output: layer4_runtime_topology.json
   ],
   "port_bindings": [
     {
-      "file": "src/amplihack/proxy/server.py",
+      "file": "src/amplihack/launcher/core.py",
       "lineno": 88,
       "port": 8080,
       "protocol": "http",
@@ -448,7 +448,7 @@ Output: layer4_runtime_topology.json
     {
       "file": "docker-compose.yml",
       "services": [
-        {"name": "proxy", "image": "...", "ports": ["8080:8080"]}
+        {"name": "app", "image": "...", "ports": ["8080:8080"]}
       ]
     }
   ],
@@ -491,7 +491,7 @@ NONE. LLM may produce a network topology diagram description from the data.
 
 ```
 Input:  CLI files (cli.py, plugin_cli/, recipe_cli/, fleet/fleet_cli.py),
-        proxy files (proxy/), hook files (hooks/),
+        hook files (hooks/),
         recipe YAML files, skill/agent markdown files
 Method:
 
@@ -507,7 +507,7 @@ Method:
        etc.
 
   2. HTTP ROUTES:
-     - Parse proxy/ files for @app.route, @app.get, @router.get, etc.
+     - Parse source files for @app.route, @app.get, @router.get, etc.
      - Extract: method, path, function name, file, lineno
      - Parse FastAPI/Flask decorator arguments
 
@@ -563,7 +563,7 @@ Output: layer5_api_contracts.json
       "method": "POST",
       "path": "/v1/chat/completions",
       "function": "chat_completions",
-      "file": "src/amplihack/proxy/integrated_proxy.py",
+      "file": "src/amplihack/cli.py",
       "lineno": 45
     }
   ],
@@ -695,11 +695,11 @@ Output: layer6_data_flow.json
   ],
   "network_io": [
     {
-      "file": "src/amplihack/proxy/passthrough.py",
+      "file": "src/amplihack/launcher/core.py",
       "lineno": 22,
       "method": "POST",
       "url_pattern": "dynamic",
-      "function_context": "forward_request"
+      "function_context": "launch_claude"
     }
   ],
   "transformation_points": [
@@ -795,7 +795,7 @@ Output: layer7_service_components.json
     }
   ],
   "coupling_matrix": {
-    "amplihack.cli": {"amplihack.proxy": 2, "amplihack.launcher": 3, ...}
+    "amplihack.cli": {"amplihack.launcher": 3, ...}
   },
   "summary": {
     "total_packages": 35,

@@ -377,7 +377,6 @@ _SAFE_ARG_PATTERNS = [
     "--max-turns",
     "--ui",
     "--no-reflection",
-    "--with-proxy-config",
     "--checkout-repo",
     "--docker",
     "--",
@@ -475,7 +474,7 @@ def _restart_cli(args: list[str]) -> None:
         if any(arg.startswith(pattern) for pattern in _SAFE_ARG_PATTERNS):
             safe_args.append(arg)
             # If this flag expects a value, include next arg
-            if arg in ["--max-turns", "--with-proxy-config", "--checkout-repo", "-p"]:
+            if arg in ["--max-turns", "--checkout-repo", "-p"]:
                 skip_next = True
         elif not arg.startswith("-") and not safe_args and arg in _SAFE_TOP_LEVEL_COMMANDS:
             safe_args.append(arg)

@@ -168,13 +168,6 @@ FIXES = [
         "        if not template:\n            raise ValueError('Template cannot be empty')\n        if not variables:\n            raise ValueError('Variables dictionary cannot be empty')\n        return template.format(**variables)",
     ),
     (
-        22,
-        "src/amplihack/proxy/azure_unified_handler.py",
-        "Add validation in AzureUnifiedHandler.__init__",
-        "        self.provider = AzureUnifiedProvider(api_key, base_url, api_version)",
-        "        if not api_key or not api_key.strip():\n            raise ValueError('Azure API key cannot be empty')\n        if not base_url or not base_url.strip():\n            raise ValueError('Azure base URL cannot be empty')\n        self.provider = AzureUnifiedProvider(api_key, base_url, api_version)",
-    ),
-    (
         23,
         "src/amplihack/utils/process.py",
         "Add command validation in run_command",
@@ -187,13 +180,6 @@ FIXES = [
         "Add defensive check in _clean_prompt",
         '        # Remove extra whitespace\n        cleaned = re.sub(r"\\s+", " ", prompt)',
         '        if not prompt:\n            return ""\n        # Remove extra whitespace\n        cleaned = re.sub(r"\\s+", " ", prompt)',
-    ),
-    (
-        25,
-        "src/amplihack/proxy/azure_unified_handler.py",
-        "Add fallback for None in JSON parsing",
-        '                        "input": json.loads(tool_call.get("function", {}).get("arguments", "{}")),',
-        '                        "input": json.loads(tool_call.get("function", {}).get("arguments", "{}") or "{}"),',
     ),
     # Fixes 26-35: Logging improvements
     (
@@ -209,20 +195,6 @@ FIXES = [
         "Add debug logging in get_session",
         "                self._update_session_access(session_id)\n            return session",
         "                self._update_session_access(session_id)\n                self.logger.debug(f'Retrieved active session: {session_id}')\n            else:\n                self.logger.debug(f'Session not found: {session_id}')\n            return session",
-    ),
-    (
-        28,
-        "src/amplihack/proxy/azure_unified_handler.py",
-        "Add debug logging in handle_anthropic_request",
-        "        # Convert Anthropic request to OpenAI format for processing\n        openai_request = self._convert_anthropic_to_openai(anthropic_request)",
-        "        # Convert Anthropic request to OpenAI format for processing\n        logger.debug(f'Handling Anthropic request for model: {anthropic_request.get(\"model\")}')\n        openai_request = self._convert_anthropic_to_openai(anthropic_request)",
-    ),
-    (
-        29,
-        "src/amplihack/proxy/azure_unified_handler.py",
-        "Add debug logging in handle_openai_request",
-        "        # Provider handles everything\n        return await self.provider.make_request(",
-        "        # Provider handles everything\n        logger.debug(f'Handling OpenAI request for model: {openai_request.get(\"model\")}')\n        return await self.provider.make_request(",
     ),
     (
         30,
@@ -310,13 +282,6 @@ FIXES = [
         '            raise ParsingError("Prompt cannot be None or empty. Please provide a valid prompt string.")',
     ),
     (
-        42,
-        "src/amplihack/proxy/azure_unified_handler.py",
-        "Improve error context in response conversion",
-        '            return {\n                "type": "error",\n                "error": {\n                    "type": "api_error",\n                    "message": openai_response["error"].get("message", "Unknown error"),\n                },\n            }',
-        '            error_msg = openai_response["error"].get("message", "Unknown error")\n            logger.warning(f\'OpenAI API error in response conversion: {error_msg}\')\n            return {\n                "type": "error",\n                "error": {\n                    "type": "api_error",\n                    "message": error_msg,\n                },\n            }',
-    ),
-    (
         43,
         ".claude/tools/amplihack/session/session_manager.py",
         "Add metadata to save logging",
@@ -358,13 +323,6 @@ FIXES = [
         "Improve docstring in create_session",
         '    def create_session(\n        self,\n        name: str,\n        config: Optional[SessionConfig] = None,\n        metadata: Optional[Dict[str, Any]] = None,\n    ) -> str:\n        """Create a new session.\n\n        Args:\n            name: Human-readable session name\n            config: Session configuration\n            metadata: Additional session metadata\n\n        Returns:\n            Session ID\n        """',
         '    def create_session(\n        self,\n        name: str,\n        config: Optional[SessionConfig] = None,\n        metadata: Optional[Dict[str, Any]] = None,\n    ) -> str:\n        """Create a new session with automatic tracking and persistence.\n\n        Args:\n            name: Human-readable session name (required, non-empty)\n            config: Session configuration (defaults to SessionConfig())\n            metadata: Additional session metadata (optional)\n\n        Returns:\n            Session ID (auto-generated UUID)\n\n        Raises:\n            ValueError: If name is empty or invalid\n        """',
-    ),
-    (
-        49,
-        "src/amplihack/proxy/azure_unified_handler.py",
-        "Improve class docstring",
-        'class AzureUnifiedHandler:\n    """\n    Unified handler that automatically routes between Azure Chat and Responses APIs.\n\n    This class provides a single interface that the integrated proxy can use,\n    eliminating the need for dual routing logic in the main proxy code.\n    """',
-        'class AzureUnifiedHandler:\n    """\n    Unified handler that automatically routes between Azure Chat and Responses APIs.\n\n    This class provides a single interface that the integrated proxy can use,\n    eliminating the need for dual routing logic in the main proxy code.\n\n    The handler automatically detects which API to use based on model name and\n    request format, providing seamless translation between Anthropic, OpenAI,\n    and Azure formats.\n    """',
     ),
     (
         50,
