@@ -4,7 +4,6 @@
 
 ## What is Trace Logging?
 
-Trace Logging captures detailed request and response data from Claude API calls during amplihack sessions. It uses Anthropic's official native Claude binary and LiteLLM callbacks to record interactions in structured JSONL format, enabling debugging, analysis, and compliance workflows.
 
 ## Why Use Trace Logging?
 
@@ -22,7 +21,6 @@ Trace Logging helps with debugging, analysis, and compliance:
 When trace logging is enabled:
 
 1. **Session initialization** - Creates unique trace file in `.claude/runtime/amplihack-traces/`
-2. **LiteLLM callbacks** - Intercepts Claude API requests/responses
 3. **Security filtering** - TokenSanitizer removes API keys and sensitive tokens
 4. **JSONL writing** - Appends structured log entries to session file
 5. **Session cleanup** - File closed on session end, preserved for analysis
