@@ -15,7 +15,6 @@ amplihack uses Anthropic's native Claude binary with optional JSONL trace loggin
 - **High performance**: <0.1ms overhead when disabled, <10ms when enabled
 - **Automatic security**: TokenSanitizer removes API keys and secrets automatically
 - **Session-scoped logs**: JSONL files organized by session in `.claude/runtime/amplihack-traces/`
-- **LiteLLM integration**: Automatic request/response capture via callbacks
 
 ### Performance
 
@@ -158,7 +157,6 @@ cat ~/amplihack-audit/*/*.jsonl | \
 amplihack Session
         │
         ▼
-LiteLLM Callback Manager
         │
         ▼
 TraceLogger (checks AMPLIHACK_TRACE_LOGGING)
