@@ -337,31 +337,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Import worktree utilities - try multiple paths
-try:
-    # Try installed package location
-    from amplihack.worktree.git_utils import get_shared_runtime_dir  # type: ignore
-except ImportError:
-    try:
-        # Try hooks directory location
-        import sys
-        from pathlib import Path as _Path
-
-        hooks_dir = (
-            _Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks"
-        )
-        sys.path.insert(0, str(hooks_dir))
-        from git_utils import get_shared_runtime_dir  # type: ignore
-
-        sys.path.pop(0)
-    except ImportError:
-        import sys
-
-        print("WARNING: git_utils not available, using fallback runtime dir", file=sys.stderr)
-
-        # Final fallback: use runtime relative to project root
-        def get_shared_runtime_dir(project_root: Path) -> str:
-            return str(project_root / ".claude" / "runtime")
+from amplihack.worktree.git_utils import get_shared_runtime_dir
 
 
 # Timeout duration for user response (seconds)

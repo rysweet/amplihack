@@ -1,0 +1,141 @@
+# Outside-in test: startup dependency checks produce zero stderr warnings (#3539)
+# Verifies that importing startup modules produces no WARNING output to stderr.
+# These warnings were caused by try/except fallback chains that silently degraded.
+
+scenario:
+  name: "Startup Imports - Zero Silent Fallback Warnings"
+  description: |
+    When amplihack starts, the following imports must produce zero stderr output:
+    1. amplihack.dep_check — no "WARNING: agent_framework not available"
+    2. amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk — no "WARNING: agent_framework not available"
+    3. amplihack.power_steering.re_enable_prompt — no "WARNING: git_utils not available"
+    4. amplihack.worktree.git_utils — must import directly (no fallback)
+
+    Additionally:
+    5. ensure_sdk_deps() must raise ImportError when deps can't be installed (not return silently)
+    6. cli.py and session.py must exit with error on dep failure (not swallow)
+  type: cli
+  level: 1
+
+  tags: [cli, startup, no-silent-fallbacks, regression, issue-3539]
+
+  prerequisites:
+    - "Python 3.11+ with amplihack package importable"
+    - "src/amplihack/dep_check.py exists"
+    - "src/amplihack/worktree/git_utils.py exists"
+
+  environment:
+    variables:
+      PYTHONPATH: "src"
+
+  steps:
+    # --- Test 1: dep_check import produces zero stderr ---
+    - action: launch
+      target: "python3"
+      args: ["-c", "import sys; sys.path.insert(0, 'src'); from amplihack.dep_check import check_sdk_dep; print('OK')"]
+      capture_stderr: true
+      description: "Import dep_check with zero stderr"
+
+    - action: verify_output
+      contains: "OK"
+      stream: stdout
+
+    - action: verify_output
+      not_contains: "WARNING"
+      stream: stderr
+      description: "No WARNING on stderr from dep_check import"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # --- Test 2: microsoft_sdk import produces zero stderr ---
+    - action: launch
+      target: "python3"
+      args: ["-c", "import sys; sys.path.insert(0, 'src'); from amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk import MicrosoftGoalSeekingAgent; print('OK')"]
+      capture_stderr: true
+      description: "Import microsoft_sdk with zero stderr"
+
+    - action: verify_output
+      contains: "OK"
+      stream: stdout
+
+    - action: verify_output
+      not_contains: "WARNING: agent_framework not available"
+      stream: stderr
+      description: "No agent_framework warning from microsoft_sdk import"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # --- Test 3: worktree.git_utils imports directly ---
+    - action: launch
+      target: "python3"
+      args: ["-c", "import sys; sys.path.insert(0, 'src'); from amplihack.worktree.git_utils import get_shared_runtime_dir; print(get_shared_runtime_dir('.'))"]
+      capture_stderr: true
+      description: "Import git_utils directly from amplihack.worktree package"
+
+    - action: verify_output
+      contains: ".claude/runtime"
+      stream: stdout
+      description: "get_shared_runtime_dir returns a valid runtime path"
+
+    - action: verify_output
+      not_contains: "WARNING"
+      stream: stderr
+      description: "No WARNING on stderr from git_utils import"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # --- Test 4: re_enable_prompt imports without fallback warning ---
+    - action: launch
+      target: "python3"
+      args: ["-c", "import sys; sys.path.insert(0, 'src'); from amplihack.power_steering.re_enable_prompt import prompt_re_enable_if_disabled; print('OK')"]
+      capture_stderr: true
+      description: "Import re_enable_prompt with zero stderr"
+
+    - action: verify_output
+      contains: "OK"
+      stream: stdout
+
+    - action: verify_output
+      not_contains: "WARNING: git_utils not available"
+      stream: stderr
+      description: "No git_utils fallback warning"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # --- Test 5: ensure_sdk_deps raises on failure (not silent return) ---
+    - action: launch
+      target: "python3"
+      args: ["-c", "import sys; sys.path.insert(0, 'src'); from unittest.mock import patch; from amplihack.dep_check import ensure_sdk_deps; fake={'nonexistent_xyz': 'nonexistent-xyz'}; \ntry:\n    with patch('amplihack.dep_check.SDK_DEPENDENCIES', fake), patch('shutil.which', return_value=None):\n        ensure_sdk_deps()\n    print('FAIL: did not raise')\nexcept ImportError:\n    print('PASS: raised ImportError')"]
+      capture_stderr: true
+      description: "ensure_sdk_deps must raise ImportError when deps missing and no installer"
+
+    - action: verify_output
+      contains: "PASS: raised ImportError"
+      stream: stdout
+      description: "ensure_sdk_deps raises instead of silently returning"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # --- Test 6: check_sdk_dep returns False without printing ---
+    - action: launch
+      target: "python3"
+      args: ["-c", "import sys; sys.path.insert(0, 'src'); from amplihack.dep_check import check_sdk_dep; result = check_sdk_dep('nonexistent_package_xyz_999'); print(f'result={result}')"]
+      capture_stderr: true
+      description: "check_sdk_dep returns False without stderr noise"
+
+    - action: verify_output
+      contains: "result=False"
+      stream: stdout
+
+    - action: verify_output
+      not_contains: "WARNING"
+      stream: stderr
+      description: "check_sdk_dep does not print WARNING to stderr"
+
+    - action: verify_exit_code
+      expected: 0

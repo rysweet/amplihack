@@ -92,14 +92,13 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         # Auto-install missing SDK dependencies (e.g. agent-framework-core)
         # Uses --python sys.executable to target the running interpreter,
         # critical when launched via uvx (ephemeral venv != project .venv).
-        try:
-            from .dep_check import ensure_sdk_deps
+        from .dep_check import ensure_sdk_deps
 
-            dep_result = ensure_sdk_deps()
-            if not dep_result.all_ok:
-                logger.warning("Some SDK deps could not be installed: %s", dep_result.missing)
-        except Exception as e:
-            logger.debug("SDK dep check skipped: %s", e)
+        try:
+            ensure_sdk_deps()
+        except ImportError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            sys.exit(1)
 
         # Prompt to re-enable power-steering if disabled (#2544)
         try:

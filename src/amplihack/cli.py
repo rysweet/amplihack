@@ -1048,15 +1048,14 @@ def _common_launcher_startup(args: "argparse.Namespace") -> None:
     # 3. Rust recipe runner
     _ensure_rust_recipe_runner()
 
-    # 4. SDK dependency check
-    try:
-        from .dep_check import ensure_sdk_deps
+    # 4. SDK dependency check — fail loud if deps can't be installed
+    from .dep_check import ensure_sdk_deps
 
-        dep_result = ensure_sdk_deps()
-        if not dep_result.all_ok:
-            logger.warning("Some SDK deps could not be installed: %s", dep_result.missing)
-    except Exception as e:
-        logger.debug("SDK dep check skipped: %s", e)
+    try:
+        ensure_sdk_deps()
+    except ImportError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
 
     # 5. Power-steering re-enable prompt (#2544)
     try:
