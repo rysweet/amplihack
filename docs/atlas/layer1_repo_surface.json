@@ -10991,8 +10991,6 @@
       }
     },
     {
-      "path": "/home/azureuser/src/supply/proxy/server",
-      "rel_path": "proxy/server",
       "depth": 2,
       "role": "package",
       "parent": "/home/azureuser/src/supply/proxy",
@@ -22519,14 +22517,6 @@
       "type": "md"
     },
     {
-      "path": "/home/azureuser/src/supply/docs/examples/litellm-chat-api-config.yaml",
-      "type": "yaml"
-    },
-    {
-      "path": "/home/azureuser/src/supply/docs/examples/litellm-responses-api-config.yaml",
-      "type": "yaml"
-    },
-    {
       "path": "/home/azureuser/src/supply/docs/external_knowledge_integration.md",
       "type": "md"
     },
@@ -22624,10 +22614,6 @@
     },
     {
       "path": "/home/azureuser/src/supply/docs/git-utils-api.md",
-      "type": "md"
-    },
-    {
-      "path": "/home/azureuser/src/supply/docs/github-copilot-litellm-integration.md",
       "type": "md"
     },
     {
@@ -23313,10 +23299,6 @@
     {
       "path": "/home/azureuser/src/supply/experiments/hive_mind/eval_security_results_v6.json",
       "type": "json"
-    },
-    {
-      "path": "/home/azureuser/src/supply/litellm_standalone_config.yaml",
-      "type": "yaml"
     },
     {
       "path": "/home/azureuser/src/supply/marketplace.json",
@@ -25011,14 +24993,8 @@
   },
   "primary_language": "python",
   "total_code_lines": 753197,
-  "tools_used": [
-    "extension-fallback"
-  ],
-  "manifest_files": [
-    "amplihack-logparse/Cargo.toml",
-    "pyproject.toml",
-    "scripts/requirements.txt"
-  ],
+  "tools_used": ["extension-fallback"],
+  "manifest_files": ["amplihack-logparse/Cargo.toml", "pyproject.toml", "scripts/requirements.txt"],
   "completeness": {
     "directory_file_sum": 5180,
     "manifest_total": 5180,

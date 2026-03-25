@@ -10,9 +10,7 @@
       "normalized_name": "flask",
       "version_constraint": ">=2.0.0",
       "group": "core",
-      "imported_by": [
-        "/home/azureuser/src/supply/src/amplihack/proxy/responses_api_proxy.py"
-      ],
+      "imported_by": ["/home/azureuser/src/supply/src/amplihack/proxy/responses_api_proxy.py"],
       "import_count": 1,
       "language": "python",
       "source": "pyproject.toml"
@@ -489,9 +487,7 @@
       "normalized_name": "simpleeval",
       "version_constraint": ">=0.9.13",
       "group": "core",
-      "imported_by": [
-        "/home/azureuser/src/supply/src/amplihack/recipes/models.py"
-      ],
+      "imported_by": ["/home/azureuser/src/supply/src/amplihack/recipes/models.py"],
       "import_count": 1,
       "language": "python",
       "source": "pyproject.toml"
@@ -501,9 +497,7 @@
       "normalized_name": "packaging",
       "version_constraint": ">=21.0",
       "group": "core",
-      "imported_by": [
-        "/home/azureuser/src/supply/src/amplihack/auto_update.py"
-      ],
+      "imported_by": ["/home/azureuser/src/supply/src/amplihack/auto_update.py"],
       "import_count": 1,
       "language": "python",
       "source": "pyproject.toml"
@@ -1069,7 +1063,6 @@
         "/home/azureuser/src/supply/tests/plugin/test_variable_substitutor.py",
         "/home/azureuser/src/supply/tests/proxy/conftest.py",
         "/home/azureuser/src/supply/tests/proxy/test_error_reporter.py",
-        "/home/azureuser/src/supply/tests/proxy/test_github_copilot_litellm_integration.py",
         "/home/azureuser/src/supply/tests/proxy/test_github_integration.py",
         "/home/azureuser/src/supply/tests/proxy/test_port_selector.py",
         "/home/azureuser/src/supply/tests/proxy/test_proxy_robustness.py",
@@ -1164,7 +1157,6 @@
         "/home/azureuser/src/supply/tests/tracing/test_binary_manager.py",
         "/home/azureuser/src/supply/tests/tracing/test_e2e.py",
         "/home/azureuser/src/supply/tests/tracing/test_integration.py",
-        "/home/azureuser/src/supply/tests/tracing/test_litellm_callbacks.py",
         "/home/azureuser/src/supply/tests/tracing/test_prerequisites_integration.py",
         "/home/azureuser/src/supply/tests/tracing/test_trace_logger.py",
         "/home/azureuser/src/supply/tests/unit/cli/conftest.py",
@@ -1248,9 +1240,7 @@
       "normalized_name": "pytest-asyncio",
       "version_constraint": ">=0.21.0",
       "group": "dev",
-      "imported_by": [
-        "/home/azureuser/src/supply/tests/memory/test_evaluation.py"
-      ],
+      "imported_by": ["/home/azureuser/src/supply/tests/memory/test_evaluation.py"],
       "import_count": 1,
       "language": "python",
       "source": "pyproject.toml"
@@ -2997,7 +2987,6 @@
       "src.amplihack.proxy.github_detector",
       "src.amplihack.proxy.github_models",
       "src.amplihack.proxy.integrated_proxy",
-      "src.amplihack.proxy.litellm_callbacks",
       "src.amplihack.proxy.log_streaming",
       "src.amplihack.proxy.manager",
       "src.amplihack.proxy.models",
@@ -3565,7 +3554,6 @@
       "tests.proxy.test_azure_integration",
       "tests.proxy.test_error_reporter",
       "tests.proxy.test_github_auth_benchmark",
-      "tests.proxy.test_github_copilot_litellm_integration",
       "tests.proxy.test_github_integration",
       "tests.proxy.test_message_sanitization",
       "tests.proxy.test_port_selector",
@@ -3719,7 +3707,6 @@
       "tests.tracing.test_binary_manager",
       "tests.tracing.test_e2e",
       "tests.tracing.test_integration",
-      "tests.tracing.test_litellm_callbacks",
       "tests.tracing.test_prerequisites_integration",
       "tests.tracing.test_trace_logger",
       "tests.unit.cli",
@@ -9596,11 +9583,6 @@
         "import_count": 1
       },
       {
-        "from": "src.amplihack.proxy.litellm_callbacks",
-        "to": "src.amplihack.tracing.trace_logger",
-        "import_count": 1
-      },
-      {
         "from": "src.amplihack.proxy.manager",
         "to": "src.amplihack.proxy.config",
         "import_count": 1
@@ -9653,11 +9635,6 @@
       {
         "from": "src.amplihack.proxy.server",
         "to": "src.amplihack.proxy.github_models",
-        "import_count": 1
-      },
-      {
-        "from": "src.amplihack.proxy.server",
-        "to": "src.amplihack.proxy.litellm_callbacks",
         "import_count": 1
       },
       {
@@ -12450,7 +12427,6 @@
     "hive_graph",
     "amplihack_memory",
     "run_5agent_real_eval",
-    "litellm",
     "scripts",
     "numpy",
     "scipy",
