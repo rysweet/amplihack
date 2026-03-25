@@ -88,6 +88,8 @@ Category: <strong>Structural</strong> | Generated: 2026-03-31T03:25:00.000000+00
 - 14706 total definitions across all files
 - 426 potentially dead definitions (2.9% of total)
 - 1928 files without `__all__` exports
+- `src/amplihack/rust_trial.py` is now an active install/bootstrap seam, not dead experimental code
+- `rust_trial.py` integrates with `launcher.copilot` to provision isolated-home Copilot dependencies before delegating to the Rust binary
 
 ## Detail
 

@@ -22,6 +22,7 @@ digraph ast_lsp_bindings {
     bundle [label="{bundle_generator|BundleBuilder\lBundlePackager\l}"];
     workflows [label="{workflows|WorkflowEngine\l}"];
     settings_gen [label="{settings_generator|SettingsGenerator\l}"];
+    rust_trial [label="{rust_trial|InstallOptions\ldefault_trial_home()\ldefault_install_dir()\lparse_install_args()\linstall_rust_cli()\lrun_rust_trial()\lmain()\l}"];
     power [label="{power_steering|prompt_re_enable_if_disabled()\l}"];
     lsp [label="{lsp_detector|LSPDetector\l}"];
     memory [label="{memory.discoveries|store_discovery()\lget_recent_discoveries()\l}"];
@@ -42,6 +43,8 @@ digraph ast_lsp_bindings {
     cli -> fleet [label="imports"];
     cli -> recipes [label="imports"];
     cli -> bundle [label="imports"];
+    rust_trial -> launcher [label="imports\nlauncher.copilot helpers", color="#6666aa"];
+    rust_trial -> amplihack [label="bootstraps\namplihack install", color="#6666aa"];
 
     auto_mode -> launcher [label="internal"];
     fleet_copilot -> fleet [label="internal"];
@@ -65,7 +68,6 @@ digraph ast_lsp_bindings {
     node [shape=box, style="dashed,filled", fillcolor="#ffcdd2"];
     dead1 [label="examples/usage_example.py\n(demo only)"];
     dead2 [label="examples/usage_example_llm.py\n(demo only)"];
-    dead3 [label="rust_trial.py\n(experimental)"];
     dead4 [label="copilot_auto_install.py"];
     dead5 [label="staging_cleanup.py"];
 
