@@ -62,3 +62,25 @@
 - CI: All passing
 - Large feature; files manually recovered from hollow-success (#3480) — verify completeness
 - Recommendation: Deep review before converting to ready
+
+## 2026-03-26
+
+### PRs Already Triaged (skipped)
+- #3561 - fix: correct gadugi-agentic-test installation instructions — `triage:complete`, `triage:low-risk`, `triage:needs-review`
+- #3556 - [docs] daily documentation update March 25 — `triage:complete`, `triage:low-risk`, `triage:auto-merge-candidate`
+- #3549 - docs(rust-trial): ship install/bootstrap follow-up — `triage:complete`, `triage:low-risk`
+- #3542 - fix(startup): remove stderr warnings — `triage:complete`, `triage:medium-risk`, `triage:needs-review`
+- #3520 - [WIP] Fix: Surface hollow-success failures (sub-PR) — `triage:complete`, `triage:low-risk` (DRAFT)
+- #3519 - [WIP] Add supply-chain-audit skill (sub-PR) — `triage:complete`, `triage:low-risk` (DRAFT)
+- #3484 - fix: surface hollow-success failures — `triage:complete`, `triage:medium-risk`, `triage:high-priority` (DRAFT)
+- #3290 - test(tdd): security hardening SEC-01–SEC-07 — `triage:complete`, `triage:medium-risk`, `triage:security-review`
+
+### PRs Triaged This Run
+
+#### #3567 - feat: Add Crusty Old Engineer (COE) Advisor skill
+- Risk: Low | Priority: Medium | Labels: `triage:complete`, `triage:low-risk`, `triage:needs-review`, `enhancement`
+- Files: SKILL.md (207 lines), test suite (82/82 assertions), howto doc, docs/index.md (+1), SKILL_CATALOG.md, pyproject.toml (0.6.33→0.7.0)
+- CI: No checks registered
+- ⚠️ Potential duplicate: main already has commit `988260e` merging #3565 (same feature). Verify before merge.
+- PR body has duplicated Step 16b section (cosmetic only)
+- Recommendation: Verify against #3565 — close if already merged, otherwise approve
