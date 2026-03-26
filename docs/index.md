@@ -381,6 +381,7 @@ Modular, on-demand capabilities that extend amplihack:
 - [Mermaid Diagrams](claude/skills/mermaid-diagram-generator/SKILL.md) - Visual documentation
 - [Test Gap Analyzer](claude/skills/test-gap-analyzer/SKILL.md) - Find untested code
 - [Code Smell Detector](claude/skills/code-smell-detector/SKILL.md) - Identify anti-patterns
+- [How to Use the Crusty Old Engineer Advisor](howto/use-crusty-old-engineer.md) - Grounded skepticism for architectural decisions
 
 ### Scenario Tools
 

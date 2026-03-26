@@ -1,6 +1,6 @@
 # Claude Code Skills Catalog
 
-**Last Updated**: November 24, 2025
+**Last Updated**: March 26, 2026
 
 This document provides a comprehensive catalog of all Claude Code skills available in amplihack.
 
@@ -44,6 +44,7 @@ These skills add NEW capabilities like decision recording, email drafting, meeti
 | **dynamic-debugger** 🆕       | 92.0  | Interactive debugging for Python/C++/Rust via DAP-MCP (opt-in, disabled by default) | [#1552](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1552) | [#1553](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1553) |
 | **multitask** 🆕              | -     | Parallel workstream execution with Recipe Runner code-enforced workflows            | [#2306](https://github.com/rysweet/amplihack/issues/2306)                            | [#2308](https://github.com/rysweet/amplihack/pull/2308)                            |
 | **workiq-wsl** 🆕              | -     | Access M365 data (emails, calendar, files) from WSL via Windows Copilot CLI bridge  | -                                                                                    | [#3136](https://github.com/rysweet/amplihack/pull/3136)                            |
+| **crusty-old-engineer** 🆕    | -     | Curmudgeonly engineering advisor: grounded skepticism, evidence-linked judgment, constructive direction for architectural decisions and tooling choices | [#3564](https://github.com/rysweet/amplihack/issues/3564) | [#3565](https://github.com/rysweet/amplihack/pull/3565) |
 
 ### Type 2: Domain Expert Analyst Skills (23 skills)
 

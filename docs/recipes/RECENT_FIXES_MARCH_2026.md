@@ -2,6 +2,55 @@
 
 This document tracks recent bug fixes and improvements to the Recipe Runner and Skills systems following the Diátaxis framework.
 
+## Silent Fallback Removal at Startup (PR #3552, Issue #3539)
+
+**Problem**: Three startup warnings violated the amplihack philosophy of no silent
+fallbacks:
+
+1. `power_steering/re_enable_prompt.py` used a 3-level `try/except` fallback chain
+   when importing `git_utils`, masking import failures silently.
+2. `dep_check.py` called `ensure_sdk_deps()` and swallowed failures — the launcher
+   continued even when required SDK dependencies could not be installed.
+3. `agents/.../microsoft_sdk.py` printed to stderr at import time.
+
+**Fix**:
+
+- Created `src/amplihack/worktree/` package so `git_utils` is a proper importable
+  module (`from amplihack.worktree import git_utils`) with no fallback chain.
+- `ensure_sdk_deps()` now raises `ImportError` on post-install failure instead of
+  swallowing it. Call sites in `cli.py` and `session.py` exit via `sys.exit(1)`
+  with a clear error message.
+- Removed the import-time `stderr` print from `microsoft_sdk.py`.
+
+**Impact**: `amplihack claude` startup now produces no spurious warnings in a
+correctly configured environment. If a required dependency is missing, you get a
+clear error rather than a silent degraded session.
+
+**No action required** for existing users unless you were relying on the
+degraded-but-running behaviour when SDK deps were absent.
+
+---
+
+## Plugin Install Timeout Graceful Handling (PR #3563)
+
+**Problem**: `amplihack launch` crashed with an unhandled `subprocess.TimeoutExpired`
+stack trace when the `claude plugin install` subprocess exceeded its 60-second
+timeout.
+
+**Fix**: Both `claude plugin install` and `claude plugin marketplace add` subprocess
+calls are now wrapped in `try/except subprocess.TimeoutExpired`. On timeout, the
+launcher falls back to directory-copy mode (the same graceful degradation path used
+for other plugin install failures) and logs a clear warning.
+
+Also fixed a pre-existing indentation bug where `os.environ["CLAUDE_PLUGIN_ROOT"]`
+was set even on plugin install failure (the closing paren was incorrectly dedented
+into the try-block body instead of staying inside the else block).
+
+**Impact**: If your environment is slow or rate-limited and plugin install times out,
+amplihack now continues using directory-copy mode instead of crashing with a traceback.
+
+---
+
 ## Rust Runner Env Propagation & Investigation Routing (PR #3512, Issue #3496)
 
 **Problem**: Nested workflow sessions started in temp cwds with wrong environment,
