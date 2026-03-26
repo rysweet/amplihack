@@ -972,5 +972,64 @@ class TestSummarizeSkipCondition(unittest.TestCase):
         self.assertFalse(self._summarize_should_run('Development', ''))
 
 
+# ---------------------------------------------------------------------------
+# Regression test: trailing whitespace in workstream_count (fix #3570)
+# ---------------------------------------------------------------------------
+
+
+class TestWorkstreamCountTrailingWhitespace(unittest.TestCase):
+    """Verify conditions route correctly when workstream_count has trailing whitespace.
+
+    Root cause of #3570: Python print() appends '\\n' and the recipe runner
+    stores step output as-is.  Old conditions compared workstream_count == '1'
+    which failed for '1\\n', causing misrouting to the parallel path even for
+    single-workstream tasks.
+    """
+
+    def _single_dev_condition(self, workstream_count, force_single="false"):
+        """Simulate execute-single-round-1-development condition (post-fix)."""
+        return (
+            "Development" in "Development"
+            and (
+                (workstream_count.strip() == "1" or workstream_count.strip() == "")
+                or force_single == "true"
+            )
+        )
+
+    def _parallel_condition(self, workstream_count, recursion_guard="ALLOWED", force_single="false"):
+        """Simulate create-workstreams-config / launch-parallel-round-1 condition (post-fix)."""
+        return (
+            workstream_count.strip() != "1"
+            and workstream_count.strip() != ""
+            and "ALLOWED" in recursion_guard
+            and force_single != "true"
+        )
+
+    def test_clean_single_routes_to_single(self):
+        self.assertTrue(self._single_dev_condition("1"))
+        self.assertFalse(self._parallel_condition("1"))
+
+    def test_trailing_newline_routes_to_single(self):
+        """The actual bug from #3570 — '1\\n' must route to single, not parallel."""
+        self.assertTrue(self._single_dev_condition("1\n"))
+        self.assertFalse(self._parallel_condition("1\n"))
+
+    def test_trailing_spaces_routes_to_single(self):
+        self.assertTrue(self._single_dev_condition("1  "))
+        self.assertFalse(self._parallel_condition("1  "))
+
+    def test_leading_whitespace_routes_to_single(self):
+        self.assertTrue(self._single_dev_condition("  1"))
+        self.assertFalse(self._parallel_condition("  1"))
+
+    def test_multi_workstream_with_newline_routes_to_parallel(self):
+        self.assertFalse(self._single_dev_condition("2\n"))
+        self.assertTrue(self._parallel_condition("2\n"))
+
+    def test_empty_routes_to_single(self):
+        self.assertTrue(self._single_dev_condition(""))
+        self.assertFalse(self._parallel_condition(""))
+
+
 if __name__ == "__main__":
     unittest.main()
