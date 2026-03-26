@@ -143,7 +143,10 @@ steps:
 
   - id: "clarify-ambiguities"
     agent: "amplihack:ambiguity"
-    condition: "scope.has_ambiguities"
+    # Guard against scope being empty string (default) or non-dict when
+    # parse_json fails — dot-notation raises AttributeDoesNotExist on
+    # non-dict values. Short-circuit on falsy scope (fix #3570).
+    condition: "scope and scope['has_ambiguities']"
     prompt: |
       The scope definition identified ambiguities that need clarification.
 
