@@ -25,7 +25,7 @@ No installation needed! Run directly from GitHub:
 
 ```bash
 # Generate an agent bundle
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack bundle generate \
+uvx --from git+https://github.com/rysweet/amplihack amplihack bundle generate \
   "Create an agent that monitors my system resources and alerts me when CPU or memory usage is high" \
   --output-dir ~/src/system-monitor
 
@@ -248,7 +248,7 @@ Create an agent that keeps your WSL development tools up to date:
 
 ```bash
 # Generate the bundle
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack bundle generate \
+uvx --from git+https://github.com/rysweet/amplihack amplihack bundle generate \
   "Build an agent that can run on a WSL windows system and always ensure that I have the latest dev tools including python, rust, golang, uv, node, pnpm, VS Code Insiders, claude code, claude trace etc. The agent should persist in running the install commands and processing the results until all the dev tools are up to date." \
   --output-dir ~/src/wsl-dev-updater
 
@@ -270,7 +270,7 @@ Create an agent that automatically triages GitHub issues:
 
 ```bash
 # Generate and distribute in one command
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack bundle pipeline \
+uvx --from git+https://github.com/rysweet/amplihack amplihack bundle pipeline \
   "create an agent that can triage all the issues in my gh repo by analyzing content, applying labels, assigning priorities, and identifying duplicates" \
   --output-dir ~/issue-triager \
   --distribute
@@ -645,7 +645,7 @@ amplihack bundle generate \
 
 For issues, questions, or contributions:
 
-- **GitHub Issues**: [Report a bug or request a feature](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
+- **GitHub Issues**: [Report a bug or request a feature](https://github.com/rysweet/amplihack/issues)
 - **Documentation**: Check the [main README](../README.md) for general usage
 - **Examples**: Browse the [examples directory](./examples/) for more code samples
 

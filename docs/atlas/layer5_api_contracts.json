@@ -5458,8 +5458,8 @@
       ],
       "type": "--repository",
       "required": false,
-      "default": "rysweet/MicrosoftHackathon2025-AgenticCoding",
-      "help": "GitHub repository (default: rysweet/MicrosoftHackathon2025-AgenticCoding)",
+      "default": "rysweet/amplihack",
+      "help": "GitHub repository (default: rysweet/amplihack)",
       "action": "--repository",
       "file": "/home/azureuser/src/supply/.claude/tools/scripts/cleanup_duplicate_issues.py",
       "lineno": 984
@@ -7578,8 +7578,8 @@
       ],
       "type": "--repository",
       "required": false,
-      "default": "rysweet/MicrosoftHackathon2025-AgenticCoding",
-      "help": "GitHub repository (default: rysweet/MicrosoftHackathon2025-AgenticCoding)",
+      "default": "rysweet/amplihack",
+      "help": "GitHub repository (default: rysweet/amplihack)",
       "action": "--repository",
       "file": "/home/azureuser/src/supply/amplifier-bundle/tools/scripts/cleanup_duplicate_issues.py",
       "lineno": 984
@@ -10377,8 +10377,8 @@
       ],
       "type": "--repository",
       "required": false,
-      "default": "rysweet/MicrosoftHackathon2025-AgenticCoding",
-      "help": "GitHub repository (default: rysweet/MicrosoftHackathon2025-AgenticCoding)",
+      "default": "rysweet/amplihack",
+      "help": "GitHub repository (default: rysweet/amplihack)",
       "action": "--repository",
       "file": "/home/azureuser/src/supply/docs/claude/tools/scripts/cleanup_duplicate_issues.py",
       "lineno": 984

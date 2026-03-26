@@ -411,7 +411,7 @@ All deliverables meet requirements:
 ## File Locations
 
 All files created in:
-`/Users/ryan/src/tempsaturday/MicrosoftHackathon2025-AgenticCoding/.claude/tools/amplihack/orchestration/patterns/`
+`/Users/ryan/src/tempsaturday/amplihack/.claude/tools/amplihack/orchestration/patterns/`
 
 ```
 patterns/

@@ -859,7 +859,7 @@ git push -u origin feat/issue-{N}-{description}
 gh pr create --title "..." --body "..."
 
 # Cleanup
-cd /home/azureuser/src/MicrosoftHackathon2025-AgenticCoding
+cd /home/azureuser/src/amplihack
 git worktree remove /tmp/worktree-issue-{N}
 ```
 

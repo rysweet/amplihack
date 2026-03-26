@@ -5,7 +5,7 @@
 When users run AmplifyHack via UVX:
 
 ```bash
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
+uvx --from git+https://github.com/rysweet/amplihack amplihack launch
 ```
 
 The framework files (`~/.amplihack/.claude/`, `CLAUDE.md`, etc.) are downloaded to UVX's temporary cache directory, but Claude Code expects them in the working directory for `@` imports to work.
@@ -25,7 +25,7 @@ The framework files (`~/.amplihack/.claude/`, `CLAUDE.md`, etc.) are downloaded 
 
 ```bash
 # Simple command - everything automatic
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
+uvx --from git+https://github.com/rysweet/amplihack amplihack launch
 ```
 
 **Pros:**
@@ -55,7 +55,7 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 
 ```bash
 # User must know/find UVX path
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --add-dir $(uvx cache dir)/.../MicrosoftHackathon2025-AgenticCoding
+uvx --from git+https://github.com/rysweet/amplihack amplihack launch --add-dir $(uvx cache dir)/.../amplihack
 ```
 
 **Pros:**
@@ -84,7 +84,7 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 
 ```bash
 # Primary: Automatic (our current implementation)
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
+uvx --from git+https://github.com/rysweet/amplihack amplihack launch
 
 # Fallback: Manual when automatic fails
 amplihack find-uvx-path  # Helper command

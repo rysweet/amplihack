@@ -107,7 +107,7 @@ class DuplicateDetectionTester:
                     "issue",
                     "list",
                     "--repo",
-                    "rysweet/MicrosoftHackathon2025-AgenticCoding",
+                    "rysweet/amplihack",
                     "--limit",
                     "200",
                     "--json",

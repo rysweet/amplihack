@@ -12,7 +12,7 @@ If you don't have any existing hooks, amplihack installation works seamlessly:
 
 ```bash
 # Install amplihack
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack install
+uvx --from git+https://github.com/rysweet/amplihack amplihack install
 
 # Hooks are installed to ~/.claude/settings.json
 # Everything works!
@@ -183,7 +183,7 @@ If you're still having issues:
 
 2. Verify your paths are absolute and correct
 
-3. File an issue at: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues
+3. File an issue at: https://github.com/rysweet/amplihack/issues
 
 ## Example: Complete Settings File
 

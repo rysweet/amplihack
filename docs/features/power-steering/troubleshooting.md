@@ -225,7 +225,7 @@ If issues persist after these steps:
    - Compressed logs
    - Description of the problem
 
-Repository: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues
+Repository: https://github.com/rysweet/amplihack/issues
 
 ## Related Documentation
 

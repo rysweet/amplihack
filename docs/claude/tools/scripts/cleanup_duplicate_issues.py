@@ -127,7 +127,7 @@ class CleanupSession:
 class SafeCleanupOrchestrator:
     """Safe orchestrator for duplicate issue cleanup with comprehensive safety features."""
 
-    def __init__(self, repository: str = "rysweet/MicrosoftHackathon2025-AgenticCoding"):
+    def __init__(self, repository: str = "rysweet/amplihack"):
         """Initialize the cleanup orchestrator."""
         self.repository = repository
         self.detector = (
@@ -983,8 +983,8 @@ async def main():
     )
     parser.add_argument(
         "--repository",
-        default="rysweet/MicrosoftHackathon2025-AgenticCoding",
-        help="GitHub repository (default: rysweet/MicrosoftHackathon2025-AgenticCoding)",
+        default="rysweet/amplihack",
+        help="GitHub repository (default: rysweet/amplihack)",
     )
 
     args = parser.parse_args()

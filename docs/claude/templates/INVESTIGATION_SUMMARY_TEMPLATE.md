@@ -643,7 +643,7 @@ verbosity :: detailed        # Double colon
 **Test Execution**:
 
 ```bash
-cd /home/azureuser/src/MicrosoftHackathon2025-AgenticCoding
+cd /home/azureuser/src/amplihack
 pytest tests/test_user_prompt_submit_integration.py -v
 pytest tests/test_session_start_hook.py -v
 # Output: 20 passed, 0 failed

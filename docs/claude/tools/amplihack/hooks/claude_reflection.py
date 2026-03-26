@@ -25,7 +25,7 @@ except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
 # Repository constants
-AMPLIHACK_REPO_URI = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
+AMPLIHACK_REPO_URI = "https://github.com/rysweet/amplihack"
 
 # Template paths (relative to this file)
 TEMPLATE_DIR = Path(__file__).parent / "templates"

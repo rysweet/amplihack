@@ -211,7 +211,7 @@ Task(subagent_type="guide", prompt="Start tutorial from Section 1")
 
 - [Documentation Index](../index.md)
 - [Command Selection Guide](../commands/COMMAND_SELECTION_GUIDE.md)
-- [GitHub Issues](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
+- [GitHub Issues](https://github.com/rysweet/amplihack/issues)
 
 ## Feedback
 
@@ -221,7 +221,7 @@ Help us improve this tutorial:
 2. Suggest additional topics
 3. Share your learning path preferences
 
-**Create an issue**: [Tutorial Feedback](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/new?labels=tutorial-feedback)
+**Create an issue**: [Tutorial Feedback](https://github.com/rysweet/amplihack/issues/new?labels=tutorial-feedback)
 
 ---
 

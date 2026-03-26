@@ -295,7 +295,7 @@ If you encounter migration issues:
 
 1. **Run diagnostic**: See [Troubleshooting Guide](../../howto/power-steering-worktree-troubleshooting.md)
 2. **Check logs**: `~/.claude/runtime/logs/power-steering-*.log`
-3. **File issue**: [GitHub Issues](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
+3. **File issue**: [GitHub Issues](https://github.com/rysweet/amplihack/issues)
 
 Include this diagnostic output:
 

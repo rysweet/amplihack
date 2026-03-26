@@ -530,7 +530,7 @@ python main.py
 - **User Guide:** `docs/GOAL_AGENT_GENERATOR_GUIDE.md`
 - **Module README:** `src/amplihack/goal_agent_generator/README.md`
 - **Example Prompts:** `examples/goal_agent_generator/`
-- **PR #1295:** https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1295
+- **PR #1295:** https://github.com/rysweet/amplihack/pull/1295
 
 ---
 

@@ -359,8 +359,8 @@ Choose your path:
 ## Support
 
 - **Documentation**: See guides above
-- **Issues**: [GitHub Issues](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/discussions)
+- **Issues**: [GitHub Issues](https://github.com/rysweet/amplihack/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/rysweet/amplihack/discussions)
 
 ---
 

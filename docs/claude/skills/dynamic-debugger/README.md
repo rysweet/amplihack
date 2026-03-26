@@ -66,7 +66,7 @@ The skill automatically:
 - ✅ C/C++ (lldb)
 - ✅ Rust (lldb)
 
-**Planned (see [issue #1570](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1570)):**
+**Planned (see [issue #1570](https://github.com/rysweet/amplihack/issues/1570)):**
 
 - 📋 JavaScript/TypeScript
 - 📋 Go
@@ -154,13 +154,13 @@ See SKILL.md Security section for complete details.
 
 ## Contributing
 
-See [issue #1570](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1570) for planned language extensions.
+See [issue #1570](https://github.com/rysweet/amplihack/issues/1570) for planned language extensions.
 
 ## Issues
 
-- **Parent**: [#1552](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1552) - Dynamic debugger skill
-- **PR**: [#1553](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1553) - Implementation
-- **Future**: [#1570](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1570) - Additional languages
+- **Parent**: [#1552](https://github.com/rysweet/amplihack/issues/1552) - Dynamic debugger skill
+- **PR**: [#1553](https://github.com/rysweet/amplihack/pull/1553) - Implementation
+- **Future**: [#1570](https://github.com/rysweet/amplihack/issues/1570) - Additional languages
 
 ## License
 

@@ -97,7 +97,7 @@ POWER STEERING: Classification blocked 10 times (hard maximum reached)
 Automatically approving to prevent infinite loop.
 
 CRITICAL: This indicates a systematic problem.
-File an issue: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues
+File an issue: https://github.com/rysweet/amplihack/issues
 ```
 
 ### Multi-Path .disabled Check

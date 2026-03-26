@@ -7,7 +7,7 @@ This demonstrates practical usage patterns for the github_issue module.
 
 import sys
 
-sys.path.insert(0, "/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding/.claude/tools")
+sys.path.insert(0, "/Users/ryan/src/hackathon/amplihack/.claude/tools")
 
 from github_issue import create_issue
 

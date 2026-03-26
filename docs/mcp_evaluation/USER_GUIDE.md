@@ -59,7 +59,7 @@ Before you start, ensure you have:
 python --version  # Should be 3.10+
 
 # Navigate to the repository root
-cd /path/to/MicrosoftHackathon2025-AgenticCoding
+cd /path/to/amplihack
 
 # Verify framework files exist
 ls tests/mcp_evaluation/
@@ -109,8 +109,8 @@ Each phase builds on the previous one. You can pause between phases.
 
 ```bash
 # Clone the repository (if not already done)
-git clone https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git
-cd MicrosoftHackathon2025-AgenticCoding
+git clone https://github.com/rysweet/amplihack.git
+cd amplihack
 
 # Navigate to evaluation tests
 cd tests/mcp_evaluation
@@ -919,7 +919,7 @@ python -c "from adapters.your_tool import YourToolAdapter; print(YourToolAdapter
 python test_framework.py
 
 # Report bug if framework issue
-# https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues
+# https://github.com/rysweet/amplihack/issues
 ```
 
 ### Problem: Can't Connect to MCP Server
@@ -953,7 +953,7 @@ python run_evaluation.py --server http://localhost:3001
 
 If you can't resolve the issue:
 
-1. **Check existing issues**: [GitHub Issues](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
+1. **Check existing issues**: [GitHub Issues](https://github.com/rysweet/amplihack/issues)
 2. **Review test logs**: `cat results/*/evaluation_log.txt`
 3. **Create a bug report** with:
    - Command you ran

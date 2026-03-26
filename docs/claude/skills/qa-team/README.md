@@ -646,7 +646,7 @@ The script compares the embedded version against the latest GitHub release and n
 - Review examples in `examples/` directory
 - Check `SKILL.md` for detailed explanations
 - See troubleshooting section in `SKILL.md`
-- Open issues at: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues
+- Open issues at: https://github.com/rysweet/amplihack/issues
 
 ## Quick Reference
 

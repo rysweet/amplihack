@@ -730,8 +730,8 @@ Quick references, guides, and additional resources.
 
 ### GitHub & Community
 
-- [GitHub Repository](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding) - Source code
-- [Issue Tracker](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues) - Report bugs or request features
+- [GitHub Repository](https://github.com/rysweet/amplihack) - Source code
+- [Issue Tracker](https://github.com/rysweet/amplihack/issues) - Report bugs or request features
 - [GitHub Pages](https://rysweet.github.io/amplihack/) - Online documentation
 
 ---
@@ -782,7 +782,7 @@ amplihack excels at:
 - **Start here**: [Prerequisites](PREREQUISITES.md) → [Interactive Installation](INTERACTIVE_INSTALLATION.md) → [Quick Start](README.md)
 - **Common issues**: Check [Discoveries](DISCOVERIES.md) first
 - **Questions**: See [DDD FAQ](document_driven_development/reference/faq.md)
-- **Report issues**: [GitHub Issues](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
+- **Report issues**: [GitHub Issues](https://github.com/rysweet/amplihack/issues)
 
 ---
 

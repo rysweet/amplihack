@@ -6,7 +6,7 @@ role: "Amplihack improvement workflow orchestrator with progressive validation"
 model: inherit
 ---
 
-DO NOT USE IF YOU ARE NOT IMPROVING THE AMPLIHACK PROJECT (https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding)
+DO NOT USE IF YOU ARE NOT IMPROVING THE AMPLIHACK PROJECT (https://github.com/rysweet/amplihack)
 
 # Improvement Workflow Agent
 

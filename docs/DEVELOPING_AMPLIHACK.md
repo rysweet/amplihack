@@ -1401,7 +1401,7 @@ cd /path/to/amplihack-worktree-921-922
 uv pip install -e .
 
 # Or via uvx (no install)
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack
+uvx --from git+https://github.com/rysweet/amplihack amplihack
 ```
 
 ---
@@ -1605,8 +1605,8 @@ ignore-known-secrets: true
 
 ```bash
 # Clone repository
-git clone https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git
-cd MicrosoftHackathon2025-AgenticCoding
+git clone https://github.com/rysweet/amplihack.git
+cd amplihack
 
 # Install dependencies
 uv pip install -e .
@@ -3154,7 +3154,7 @@ pyright src/amplihack
 **Created**: 2025-10-17
 **Authors**: Amplihack Development Team
 **License**: MIT
-**Repository**: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding
+**Repository**: https://github.com/rysweet/amplihack
 
 **Last Updated**: 2025-10-17
 

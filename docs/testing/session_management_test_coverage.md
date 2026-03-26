@@ -4,7 +4,7 @@
 
 This document describes the comprehensive failing tests created for session management functionality in `auto_mode.py`. Following TDD principles, these tests define success criteria BEFORE implementation.
 
-**Test File**: `/home/azureuser/src/MicrosoftHackathon2025-AgenticCoding/worktrees/feat-session-management/tests/test_auto_mode_session_management.py`
+**Test File**: `/home/azureuser/src/amplihack/worktrees/feat-session-management/tests/test_auto_mode_session_management.py`
 
 ## Test Categories
 

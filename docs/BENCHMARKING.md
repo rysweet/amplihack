@@ -102,7 +102,7 @@ To test a specific PR branch:
 2. Update `install.dockerfile`:
    ```dockerfile
    RUN git clone -b BRANCH_NAME --single-branch --depth 1 \
-       https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git /tmp/amplihack && \
+       https://github.com/rysweet/amplihack.git /tmp/amplihack && \
        mkdir -p /project/.claude && \
        cp -r /tmp/amplihack/.claude/* /project/.claude/ && \
        cp /tmp/amplihack/CLAUDE.md /project/ && \

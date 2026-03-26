@@ -203,9 +203,9 @@ Examples for all platforms:
 
 ### Community
 
-- [GitHub Repository](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding)
-- [Issue Tracker](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
-- [Discussions](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/discussions)
+- [GitHub Repository](https://github.com/rysweet/amplihack)
+- [Issue Tracker](https://github.com/rysweet/amplihack/issues)
+- [Discussions](https://github.com/rysweet/amplihack/discussions)
 
 ---
 
@@ -242,7 +242,7 @@ echo $ANTHROPIC_API_KEY
 
 Help us improve tutorials:
 
-**Report Issues**: [Tutorial Feedback](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/new?labels=tutorial-feedback)
+**Report Issues**: [Tutorial Feedback](https://github.com/rysweet/amplihack/issues/new?labels=tutorial-feedback)
 
 **Suggest Topics**: What would you like to learn?
 

@@ -8,7 +8,7 @@ description: |
 version: 1.1.0
 embedded_framework_version: 0.1.0
 github_repo: https://github.com/rysweet/gadugi-agentic-test
-issue: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1356
+issue: https://github.com/rysweet/amplihack/issues/1356
 ---
 
 # QA Team Skill
@@ -1837,7 +1837,7 @@ scenario:
 
 - **GitHub Repository**: https://github.com/rysweet/gadugi-agentic-test
 - **Framework Docs**: See repo README and docs/ folder
-- **Issue Tracker**: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1356
+- **Issue Tracker**: https://github.com/rysweet/amplihack/issues/1356
 
 ## Level 4: Shadow Environment Integration [LEVEL 4]
 

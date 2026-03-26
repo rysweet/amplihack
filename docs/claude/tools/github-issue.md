@@ -6,7 +6,7 @@ Programmatic GitHub issue creation with validation and structured output.
 
 ## Module Location
 
-`/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding/.claude/tools/github_issue.py`
+`/Users/ryan/src/hackathon/amplihack/.claude/tools/github_issue.py`
 
 ## Public Interface
 

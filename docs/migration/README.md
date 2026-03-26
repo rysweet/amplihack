@@ -49,7 +49,7 @@ As amplihack evolves, migration guides will be added here for:
 If you encounter issues during migration:
 
 1. Check the specific guide's troubleshooting section
-2. Search [GitHub Issues](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
+2. Search [GitHub Issues](https://github.com/rysweet/amplihack/issues)
 3. File a new issue with migration context
 
 ---

@@ -420,6 +420,6 @@ python3 test_session_classification.py
 
 ## Related Documentation
 
-- `/Users/ryan/src/MicrosoftHackathon2025-AgenticCoding/worktrees/feat/issue-1492-power-steering-session-classification/.claude/tools/amplihack/hooks/tests/TEST_COVERAGE_ANALYSIS.md` - Coverage details
+- `/Users/ryan/src/amplihack/worktrees/feat/issue-1492-power-steering-session-classification/.claude/tools/amplihack/hooks/tests/TEST_COVERAGE_ANALYSIS.md` - Coverage details
 - Issue #1492 - Original problem statement
 - `power_steering_checker.py` - Implementation target

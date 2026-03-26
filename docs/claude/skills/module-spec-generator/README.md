@@ -21,33 +21,33 @@ Claude Code Skills are modular, reusable capabilities that extend Claude's funct
 
 | Skill                     | Score | Description                                             | Issue                                                                                | PR                                                                                 |
 | ------------------------- | ----- | ------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| **decision-logger**       | 49.5  | Structured decision recording (What\|Why\|Alternatives) | [#1221](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1221) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
-| **email-drafter**         | 47.0  | Professional email generation (formal/casual/technical) | [#1223](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1223) | [#1232](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1232) |
-| **module-spec-generator** | 50.0  | Generate brick module specifications                    | [#1219](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1219) | TBD                                                                                |
-| **meeting-synthesizer**   | 50.0  | Extract action items and decisions from meetings        | [#1220](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1220) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
+| **decision-logger**       | 49.5  | Structured decision recording (What\|Why\|Alternatives) | [#1221](https://github.com/rysweet/amplihack/issues/1221) | [#1231](https://github.com/rysweet/amplihack/pull/1231) |
+| **email-drafter**         | 47.0  | Professional email generation (formal/casual/technical) | [#1223](https://github.com/rysweet/amplihack/issues/1223) | [#1232](https://github.com/rysweet/amplihack/pull/1232) |
+| **module-spec-generator** | 50.0  | Generate brick module specifications                    | [#1219](https://github.com/rysweet/amplihack/issues/1219) | TBD                                                                                |
+| **meeting-synthesizer**   | 50.0  | Extract action items and decisions from meetings        | [#1220](https://github.com/rysweet/amplihack/issues/1220) | [#1231](https://github.com/rysweet/amplihack/pull/1231) |
 
 #### Phase 2: Philosophy Enforcement (3 skills)
 
 | Skill                   | Score | Description                                     | Issue                                                                                | PR                                                                                 |
 | ----------------------- | ----- | ----------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| **philosophy-guardian** | 45.5  | Reviews code against amplihack philosophy       | [#1224](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1224) | [#1235](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1235) |
-| **test-gap-analyzer**   | 44.5  | Identifies untested functions and coverage gaps | [#1225](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1225) | [#1233](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1233) |
-| **code-smell-detector** | 42.5  | Detects anti-patterns and over-engineering      | [#1228](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1228) | [#1234](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1234) |
+| **philosophy-guardian** | 45.5  | Reviews code against amplihack philosophy       | [#1224](https://github.com/rysweet/amplihack/issues/1224) | [#1235](https://github.com/rysweet/amplihack/pull/1235) |
+| **test-gap-analyzer**   | 44.5  | Identifies untested functions and coverage gaps | [#1225](https://github.com/rysweet/amplihack/issues/1225) | [#1233](https://github.com/rysweet/amplihack/pull/1233) |
+| **code-smell-detector** | 42.5  | Detects anti-patterns and over-engineering      | [#1228](https://github.com/rysweet/amplihack/issues/1228) | [#1234](https://github.com/rysweet/amplihack/pull/1234) |
 
 #### Phase 3: Creative (2 skills)
 
 | Skill                         | Score | Description                                          | Issue                                                                                | PR                                                                                 |
 | ----------------------------- | ----- | ---------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| **mermaid-diagram-generator** | 48.0  | Converts descriptions to Mermaid diagrams            | [#1222](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1222) | [#1236](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1236) |
-| **storytelling-synthesizer**  | 44.0  | Transforms technical work into compelling narratives | [#1226](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1226) | [#1236](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1236) |
+| **mermaid-diagram-generator** | 48.0  | Converts descriptions to Mermaid diagrams            | [#1222](https://github.com/rysweet/amplihack/issues/1222) | [#1236](https://github.com/rysweet/amplihack/pull/1236) |
+| **storytelling-synthesizer**  | 44.0  | Transforms technical work into compelling narratives | [#1226](https://github.com/rysweet/amplihack/issues/1226) | [#1236](https://github.com/rysweet/amplihack/pull/1236) |
 
 #### Phase 4: Advanced (3 skills)
 
 | Skill                     | Score | Description                                          | Issue                                                                                | PR                                                                                 |
 | ------------------------- | ----- | ---------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| **learning-path-builder** | 43.5  | Creates personalized technology learning paths       | [#1227](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1227) | [#1237](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1237) |
-| **knowledge-extractor**   | 40.5  | Extracts learnings to DISCOVERIES.md and PATTERNS.md | [#1229](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1229) | [#1238](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1238) |
-| **pr-review-assistant**   | 40.0  | Philosophy-aware PR reviews                          | [#1230](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1230) | TBD                                                                                |
+| **learning-path-builder** | 43.5  | Creates personalized technology learning paths       | [#1227](https://github.com/rysweet/amplihack/issues/1227) | [#1237](https://github.com/rysweet/amplihack/pull/1237) |
+| **knowledge-extractor**   | 40.5  | Extracts learnings to DISCOVERIES.md and PATTERNS.md | [#1229](https://github.com/rysweet/amplihack/issues/1229) | [#1238](https://github.com/rysweet/amplihack/pull/1238) |
+| **pr-review-assistant**   | 40.0  | Philosophy-aware PR reviews                          | [#1230](https://github.com/rysweet/amplihack/issues/1230) | TBD                                                                                |
 
 ### Office Document Skills (4 Skills)
 

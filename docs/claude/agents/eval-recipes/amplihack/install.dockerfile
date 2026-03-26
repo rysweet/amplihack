@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y nodejs npm curl git sudo
 RUN npm install -g @anthropic-ai/claude-code
 
 # Install amplihack from main branch
-RUN git clone https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git /tmp/amplihack && \
+RUN git clone https://github.com/rysweet/amplihack.git /tmp/amplihack && \
     cd /tmp/amplihack && \
     pip install -e .
 

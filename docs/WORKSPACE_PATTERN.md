@@ -6,7 +6,7 @@ Already convinced? Here's how to set it up:
 
 ```bash
 # 1. Create your amplihack workspace
-git clone https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git my-workspace
+git clone https://github.com/rysweet/amplihack.git my-workspace
 cd my-workspace
 
 # 2. Add your project (existing or new)
@@ -120,11 +120,11 @@ Start by creating your personal amplihack workspace:
 
 ```bash
 # Option 1: Fork and clone (recommended if you'll customize amplihack)
-# Fork rysweet/MicrosoftHackathon2025-AgenticCoding on GitHub, then:
+# Fork rysweet/amplihack on GitHub, then:
 git clone https://github.com/yourusername/amplihack.git my-workspace
 
 # Option 2: Direct clone (simpler if you won't customize)
-git clone https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git my-workspace
+git clone https://github.com/rysweet/amplihack.git my-workspace
 ```
 
 Why make it your own? Because you might want to add custom agents, adjust configurations, or experiment with changes without affecting the upstream amplihack repository.

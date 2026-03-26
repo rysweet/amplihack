@@ -113,4 +113,4 @@ If you've written custom hooks that read stdin, see [How to Add Shutdown Detecti
 
 1. Check [Shutdown Detection Reference](../reference/shutdown-detection-api.md) for API details
 2. Review [DISCOVERIES.md](../DISCOVERIES.md) for known issues
-3. [Report a bug](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues) if the issue persists
+3. [Report a bug](https://github.com/rysweet/amplihack/issues) if the issue persists

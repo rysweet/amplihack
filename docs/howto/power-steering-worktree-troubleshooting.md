@@ -197,7 +197,7 @@ rm "$(git rev-parse --git-common-dir)/.claude/runtime/power-steering/workflow_cl
 - Automatic approval despite not wanting it
 - Repeated classification failures
 
-**This is a Bug**: File an issue at https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues
+**This is a Bug**: File an issue at https://github.com/rysweet/amplihack/issues
 
 **Immediate Workaround**:
 
@@ -463,7 +463,7 @@ EOF
 cat /tmp/power-steering-diagnostic.txt
 ```
 
-Include this report when filing issues at: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues
+Include this report when filing issues at: https://github.com/rysweet/amplihack/issues
 
 ## Related Documentation
 

@@ -150,7 +150,7 @@ If ye encounter issues with v0.9.1, ye can rollback:
 pip install amplihack==0.9.0
 
 # Or specific commit
-pip install git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding@v0.9.0
+pip install git+https://github.com/rysweet/amplihack@v0.9.0
 ```
 
 **Please report issues** if ye need to rollback - helps us improve!
@@ -248,7 +248,7 @@ If ye encounter issues during upgrade:
    - Error messages
    - What you were doing when it failed
 
-   Repository: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues
+   Repository: https://github.com/rysweet/amplihack/issues
 
 ## FAQ
 

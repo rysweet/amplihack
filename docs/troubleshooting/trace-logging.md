@@ -727,7 +727,7 @@ EOF
 cat trace_diagnostics.txt
 ```
 
-2. Check existing issues: [GitHub Issues](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
+2. Check existing issues: [GitHub Issues](https://github.com/rysweet/amplihack/issues)
 
 3. File new issue with diagnostics
 
