@@ -45,10 +45,14 @@ Auto mode supports an optional interactive terminal UI that displays real-time p
 The UI feature requires the Rich library. Install it with:
 
 ```bash
-# Install with optional UI dependencies
-pip install 'amplihack[ui]'
+# For uvx / uv tool install users (recommended):
+uv tool install --reinstall 'amplihack[ui]'
+# or, to add Rich to an existing uv tool installation:
+uv tool install --reinstall amplihack --with 'rich>=13.0.0'
 
-# Or install Rich directly
+# For pip users:
+pip install 'amplihack[ui]'
+# or:
 pip install 'rich>=13.0.0'
 ```
 
@@ -68,9 +72,9 @@ If you use the `--ui` flag without Rich installed, auto mode will display a help
    Error: No module named 'rich'
 
    To enable TUI mode, install Rich:
+     uv tool install --reinstall 'amplihack[ui]'
+   or (pip):
      pip install 'amplihack[ui]'
-   or:
-     pip install rich>=13.0.0
 
    Continuing in non-UI mode...
 ```
