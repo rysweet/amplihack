@@ -193,7 +193,7 @@ Cycle 3: SEEK (deepest) → VALIDATE → FIX → decision
 **Run via recipe:**
 
 ```bash
-amplihack recipe execute quality-audit-cycle.yaml --context '{"target_path": "src/amplihack", "min_cycles": "3", "max_cycles": "6"}'
+amplihack recipe run quality-audit-cycle -c target_path=src/amplihack -c min_cycles=3 -c max_cycles=6
 ```
 
 ## Configuration
@@ -221,15 +221,14 @@ Override defaults via recipe context or environment:
 **Example invocation**:
 
 ```bash
-amplihack recipe execute quality-audit-cycle.yaml --context '{
-  "target_path": "src/amplihack/fleet",
-  "min_cycles": "3",
-  "max_cycles": "6",
-  "severity_threshold": "medium",
-  "module_loc_limit": "300",
-  "fix_all_per_cycle": "true",
-  "categories": "security,reliability,dead_code,silent_fallbacks,error_swallowing"
-}'
+amplihack recipe run quality-audit-cycle \
+  -c target_path=src/amplihack/fleet \
+  -c min_cycles=3 \
+  -c max_cycles=6 \
+  -c severity_threshold=medium \
+  -c module_loc_limit=300 \
+  -c fix_all_per_cycle=true \
+  -c categories=security,reliability,dead_code,silent_fallbacks,error_swallowing
 ```
 
 **Core Settings (environment)**:

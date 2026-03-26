@@ -247,7 +247,7 @@ amplihack recipe list
 
 # Execute a workflow recipe
 amplihack recipe run default-workflow \
-  --context '{"task_description": "Add user authentication", "repo_path": "."}'
+  -c task_description="Add user authentication" -c repo_path=.
 
 # Validate recipe YAML
 amplihack recipe validate my-workflow.yaml
