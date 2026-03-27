@@ -475,6 +475,71 @@ amplihack recipe run investigation --context task_description="How does auth wor
 
 ---
 
+## workstream_count Routing Fix & scope Condition Evaluation (PR #3579, Issue #3570)
+
+**Problem**: Two distinct condition evaluation bugs caused task misrouting in the smart-orchestrator:
+
+1. `activate-workflow` used `print(count)` which appends `\n`. The recipe runner stored
+   step output as-is, so downstream conditions comparing `workstream_count == '1'`
+   failed for `"1\n"`, silently misrouting all single-workstream tasks to the parallel
+   path — which produced 0 config entries and a broken recipe run.
+2. `investigation-workflow.yaml` used dot-notation `scope.has_ambiguities` in a
+   `simpleeval` condition. When `parse_json` produced an empty string (e.g. on JSON
+   parse failure), `scope` was `""`, and `"".has_ambiguities` raised `AttributeError`,
+   aborting the step.
+
+**Fix**:
+
+| File | Change |
+|------|--------|
+| `smart-orchestrator.yaml` | `print(count)` → `sys.stdout.write(str(count))` to suppress trailing newline |
+| `smart-orchestrator.yaml` | Added `.strip()` defense-in-depth to all 7 `workstream_count` conditions |
+| `investigation-workflow.yaml` | `scope.has_ambiguities` → `scope and scope['has_ambiguities']` — short-circuits on empty string |
+
+**Why `.strip()` was added on top of the print fix**: Defense-in-depth. Any future
+change that writes via `print()` or appends whitespace will still be handled correctly
+by the condition comparisons without requiring another fix.
+
+**Regression tests**: 6 new assertions in `test_smart_orchestrator_decomposition.py`
+covering `"1\n"`, `"2\n"`, and `" 1 "` whitespace variants for all routing conditions.
+
+**Impact**: Single-workstream tasks now route correctly through `default-workflow` or
+`investigation-workflow` as intended. No user action required — the fix is transparent.
+
+---
+
+## quality-audit Skill: Corrected Recipe CLI References (PR #3569, Issue #3568)
+
+**Problem**: The `quality-audit` skill's SKILL.md documented three invalid CLI patterns:
+
+| Pattern | Problem |
+|---------|---------|
+| `amplihack recipe execute` | `execute` is not a valid subcommand (valid: `run`, `list`, `validate`, `show`) |
+| `--context '{"key": "val"}'` | Wrong context syntax; CLI uses `-c key=value` pairs |
+| `quality-audit-cycle.yaml` | Path-based reference; CLI resolves by recipe name, not filename |
+
+All three copies of SKILL.md were affected: `.claude/skills/`, `amplifier-bundle/skills/`, and `docs/claude/skills/`.
+
+**Fix**: All instances updated to the correct invocation pattern:
+
+```bash
+amplihack recipe run quality-audit-cycle -c target_path=src/amplihack -c min_cycles=3 -c max_cycles=6
+```
+
+**Reference — valid `amplihack recipe` subcommands**:
+
+| Subcommand | Purpose |
+|------------|---------|
+| `run <name>` | Execute a recipe by name |
+| `list` | List all discovered recipes |
+| `validate <name>` | Validate recipe YAML structure |
+| `show <name>` | Display a recipe's step definitions |
+
+**Impact**: Users following the quality-audit skill docs no longer encounter
+`Error: unknown subcommand 'execute'`. No behavior changes — only documentation corrected.
+
+---
+
 ## Version History
 
 All fixes released in **amplihack v0.9.1** (March 2026):
