@@ -164,9 +164,12 @@ steps:
   # ========================================================================
   - id: "validate-agent-1"
     agent: "amplihack:core:analyzer"
+    working_dir: "{{repo_path}}"
     condition: "audit_findings and 'findings' in audit_findings"
     prompt: |
       # Quality Audit — Cycle {{cycle_number}} — VALIDATE (Agent 1 of 3)
+
+      **Repository:** {{repo_path}}
 
       You are an independent validator. You must evaluate EACH finding below
       on its own merits. Do NOT defer to the original auditor — challenge
@@ -207,9 +210,12 @@ steps:
 
   - id: "validate-agent-2"
     agent: "amplihack:core:reviewer"
+    working_dir: "{{repo_path}}"
     condition: "audit_findings and 'findings' in audit_findings"
     prompt: |
       # Quality Audit — Cycle {{cycle_number}} — VALIDATE (Agent 2 of 3)
+
+      **Repository:** {{repo_path}}
 
       You are a second independent validator. Review each finding below.
       Be skeptical — assume findings may be wrong until you verify them
@@ -245,9 +251,12 @@ steps:
 
   - id: "validate-agent-3"
     agent: "amplihack:core:architect"
+    working_dir: "{{repo_path}}"
     condition: "audit_findings and 'findings' in audit_findings"
     prompt: |
       # Quality Audit — Cycle {{cycle_number}} — VALIDATE (Agent 3 of 3)
+
+      **Repository:** {{repo_path}}
 
       You are the third and final validator. Your role is adversarial —
       actively look for reasons each finding might be WRONG. Only confirm

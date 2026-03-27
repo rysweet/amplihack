@@ -216,7 +216,7 @@ Override defaults via recipe context or environment:
 | Input                  | Default         | Description                                     |
 | ---------------------- | --------------- | ----------------------------------------------- |
 | `target_path`          | `src/amplihack` | Directory to audit                              |
-| `repo_path` [PLANNED]  | `.`             | Repository root; sets `working_dir` for agents  |
+| `repo_path`            | `.`             | Repository root; sets `working_dir` for agents  |
 | `min_cycles`           | `3`             | Minimum audit cycles                            |
 | `max_cycles`           | `6`             | Maximum cycles (safety valve)                   |
 | `validation_threshold` | `2`             | Min validators that must agree (out of 3)       |

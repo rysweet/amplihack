@@ -31,7 +31,10 @@ SKILL_PATHS = [
 ]
 
 # Agent steps that need filesystem access (read/write files)
-FILESYSTEM_AGENT_STEPS = ["seek", "fix", "summary", "self-improvement"]
+FILESYSTEM_AGENT_STEPS = [
+    "seek", "validate-agent-1", "validate-agent-2", "validate-agent-3",
+    "fix", "summary", "self-improvement",
+]
 
 # Bash steps that receive multi-line JSON via template variables
 JSON_BASH_STEPS = {
