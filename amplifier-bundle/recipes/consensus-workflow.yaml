@@ -553,7 +553,7 @@ steps:
       {{task_description}}
       EOFTASKDESC
       )
-      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | sed 's/[^a-z0-9-]//g' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-30 | sed 's/-$//')
+      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-' | sed 's/-\{2,\}/-/g;s/^-//;s/-$//' | cut -c1-30 | sed 's/-$//')
       # Guard: empty slug (blank/all-symbol input) produces a trailing-hyphen branch that
       # git check-ref-format accepts as valid but is undesirable. Catch it explicitly first.
       if [ -z "$TASK_SLUG" ]; then
@@ -568,18 +568,55 @@ steps:
       fi
 
       # Create worktree
-      if [ "$HAS_ORIGIN_MAIN" = "true" ]; then
-        git worktree add "{{worktree_dir}}/$BRANCH_NAME" -b "$BRANCH_NAME" origin/main
+      # --- Bootstrap detection (BL-003 / issue #3603) ---
+      # Mirror default-workflow bootstrap logic: detect missing origin/main
+      # and fall back to HEAD with visible messaging.
+      # Guard: HEAD must resolve — a zero-commit repo cannot be used as a base ref.
+      if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+        echo "ERROR: No commits in repository — create an initial commit before running the workflow." >&2
+        exit 1
+      fi
+      BOOTSTRAP=false
+      BASE_REF="HEAD"
+      if ! git remote get-url origin >/dev/null 2>&1; then
+        echo "BOOTSTRAP: No 'origin' remote — creating worktree from HEAD." >&2
+        BOOTSTRAP=true
       else
-        git worktree add "{{worktree_dir}}/$BRANCH_NAME" -b "$BRANCH_NAME"
+        LS_EXIT=0
+        git ls-remote --exit-code origin refs/heads/main >/dev/null 2>&1 || LS_EXIT=$?
+        if [ "$LS_EXIT" -eq 2 ]; then
+          echo "BOOTSTRAP: origin exists but refs/heads/main not found — creating worktree from HEAD." >&2
+          BOOTSTRAP=true
+        elif [ "$LS_EXIT" -ne 0 ]; then
+          echo "ERROR: git ls-remote failed (exit $LS_EXIT) — possible network error." >&2
+          exit 1
+        else
+          BASE_REF="origin/main"
+          git fetch origin main >&2
+        fi
       fi
 
-      # Push with tracking (guarded — skip if no origin remote)
-      cd "{{worktree_dir}}/$BRANCH_NAME"
-      if [ "$HAS_ORIGIN" = "true" ]; then
-        git push -u origin "$BRANCH_NAME" 2>/dev/null || echo "INFO: push failed (remote may not accept pushes yet)" >&2
+      # Idempotency guard (mirrors default-workflow three-state check)
+      WORKTREE_PATH="{{worktree_dir}}/$BRANCH_NAME"
+      BRANCH_EXISTS=$(git branch --list "$BRANCH_NAME")
+      WORKTREE_EXISTS=$(git worktree list --porcelain | grep -Fx "worktree $WORKTREE_PATH" || true)
+
+      if [ -n "$BRANCH_EXISTS" ] && [ -n "$WORKTREE_EXISTS" ]; then
+        echo "INFO: Branch '$BRANCH_NAME' and worktree already exist — reusing." >&2
+      elif [ -n "$BRANCH_EXISTS" ] && [ -z "$WORKTREE_EXISTS" ]; then
+        echo "INFO: Branch '$BRANCH_NAME' exists but worktree missing — adding without -b." >&2
+        git worktree add "$WORKTREE_PATH" "$BRANCH_NAME"
       else
-        echo "BOOTSTRAP: skipping push — no origin remote configured" >&2
+        git worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME" "$BASE_REF"
+      fi
+
+      # Push with tracking (bootstrap-aware)
+      cd "$WORKTREE_PATH"
+      if [ "$BOOTSTRAP" = "true" ]; then
+        echo "BOOTSTRAP: Skipping push — no remote main branch available." >&2
+      else
+        git push -u origin "$BRANCH_NAME" > /dev/null 2>&1 || \
+          echo "WARNING: Initial push of '$BRANCH_NAME' failed — will retry at PR creation." >&2
       fi
       ```
 
