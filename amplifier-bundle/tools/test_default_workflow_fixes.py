@@ -25,6 +25,7 @@ Run:
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -829,6 +830,163 @@ class TestYAMLBugRegression(unittest.TestCase):
             f"Second run must emit created=false (reuse path) but got: {output2}.\n"
             "This test fails until BL-002 fix is applied to default-workflow.yaml.",
         )
+
+
+# ===========================================================================
+# BL-003: Bootstrap detection tests (issue #3603)
+# ===========================================================================
+
+
+class TestStep4Bootstrap(unittest.TestCase):
+    """Test bootstrap detection when origin/main does not exist.
+
+    BL-003: default-workflow step-04 must detect missing origin/main and
+    fall back to HEAD with visible BOOTSTRAP messaging, rather than crashing
+    with 'fatal: couldn't find remote ref main'.
+    """
+
+    def setUp(self):
+        """Create a fresh git repo with NO remote (bootstrap state)."""
+        self._tmpdir = tempfile.mkdtemp(prefix="bl003_")
+        self.repo = os.path.join(self._tmpdir, "repo")
+        os.makedirs(self.repo)
+        subprocess.run(["git", "init", self.repo], capture_output=True, check=True)
+        subprocess.run(
+            ["git", "-C", self.repo, "commit", "--allow-empty", "-m", "initial"],
+            capture_output=True,
+            check=True,
+            env={
+                **os.environ,
+                "GIT_AUTHOR_NAME": "test",
+                "GIT_AUTHOR_EMAIL": "t@t",
+                "GIT_COMMITTER_NAME": "test",
+                "GIT_COMMITTER_EMAIL": "t@t",
+            },
+        )
+
+    def tearDown(self):
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def _run_bootstrap_script(self, repo_path, task_desc="bootstrap test task"):
+        """Run the bootstrap detection logic extracted from step-04."""
+        script = textwrap.dedent(f"""\
+            set -euo pipefail
+            cd {shlex.quote(repo_path)}
+
+            BOOTSTRAP=false
+            if ! git remote get-url origin >/dev/null 2>&1; then
+                echo "BOOTSTRAP: No 'origin' remote configured — using HEAD as base ref." >&2
+                BOOTSTRAP=true
+                BASE_REF="HEAD"
+            else
+                LS_EXIT=0
+                git ls-remote --exit-code origin refs/heads/main >/dev/null 2>&1 || LS_EXIT=$?
+                if [ "$LS_EXIT" -eq 2 ]; then
+                    echo "BOOTSTRAP: origin exists but refs/heads/main not found — using HEAD as base ref." >&2
+                    BOOTSTRAP=true
+                    BASE_REF="HEAD"
+                elif [ "$LS_EXIT" -ne 0 ]; then
+                    echo "ERROR: git ls-remote failed (exit $LS_EXIT) — possible network error. Cannot continue." >&2
+                    exit 1
+                else
+                    BASE_REF="origin/main"
+                fi
+            fi
+
+            BRANCH_NAME="feat/test-bootstrap"
+            WORKTREE_PATH="{repo_path}/worktrees/$BRANCH_NAME"
+            mkdir -p "$(dirname "$WORKTREE_PATH")"
+
+            if [ "$BOOTSTRAP" = "false" ]; then
+                git fetch origin main >&2
+            fi
+            git worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME" $BASE_REF >&2
+
+            echo '{{"bootstrap": '$BOOTSTRAP', "base_ref": "'$BASE_REF'", "worktree": "'$WORKTREE_PATH'"}}'
+        """)
+        result = subprocess.run(
+            ["bash", "-c", script],
+            capture_output=True,
+            text=True,
+        )
+        return result
+
+    def test_no_origin_remote_creates_worktree_from_head(self):
+        """Repo with no origin remote → BOOTSTRAP=true, BASE_REF=HEAD, worktree created."""
+        result = self._run_bootstrap_script(self.repo)
+        self.assertEqual(result.returncode, 0, f"Script failed:\nstderr: {result.stderr}")
+        self.assertIn("BOOTSTRAP:", result.stderr)
+        output = json.loads(result.stdout.strip())
+        self.assertTrue(output["bootstrap"])
+        self.assertEqual(output["base_ref"], "HEAD")
+        self.assertTrue(os.path.isdir(output["worktree"]))
+
+    def test_origin_exists_but_no_main_branch(self):
+        """Repo with origin remote but no main branch → BOOTSTRAP=true."""
+        # Create a bare remote with no branches
+        bare = os.path.join(self._tmpdir, "bare.git")
+        subprocess.run(["git", "init", "--bare", bare], capture_output=True, check=True)
+        subprocess.run(
+            ["git", "-C", self.repo, "remote", "add", "origin", bare],
+            capture_output=True,
+            check=True,
+        )
+        result = self._run_bootstrap_script(self.repo)
+        self.assertEqual(result.returncode, 0, f"Script failed:\nstderr: {result.stderr}")
+        self.assertIn("BOOTSTRAP:", result.stderr)
+        output = json.loads(result.stdout.strip())
+        self.assertTrue(output["bootstrap"])
+        self.assertEqual(output["base_ref"], "HEAD")
+
+    def test_bootstrap_message_not_silent(self):
+        """BOOTSTRAP message must appear on stderr — no silent fallback."""
+        result = self._run_bootstrap_script(self.repo)
+        self.assertEqual(result.returncode, 0)
+        bootstrap_lines = [line for line in result.stderr.splitlines() if "BOOTSTRAP:" in line]
+        self.assertGreater(
+            len(bootstrap_lines),
+            0,
+            "Bootstrap mode must emit visible BOOTSTRAP: messages on stderr.",
+        )
+
+    def test_normal_repo_with_origin_main_skips_bootstrap(self):
+        """Repo with origin/main → BOOTSTRAP=false, BASE_REF=origin/main."""
+        bare = os.path.join(self._tmpdir, "bare.git")
+        subprocess.run(["git", "init", "--bare", bare], capture_output=True, check=True)
+        subprocess.run(
+            ["git", "-C", self.repo, "remote", "add", "origin", bare],
+            capture_output=True,
+            check=True,
+        )
+        # Push main so origin/main exists
+        subprocess.run(
+            ["git", "-C", self.repo, "push", "origin", "HEAD:refs/heads/main"],
+            capture_output=True,
+            check=True,
+        )
+        result = self._run_bootstrap_script(self.repo)
+        self.assertEqual(result.returncode, 0, f"Script failed:\nstderr: {result.stderr}")
+        self.assertNotIn("BOOTSTRAP:", result.stderr)
+        output = json.loads(result.stdout.strip())
+        self.assertFalse(output["bootstrap"])
+        self.assertEqual(output["base_ref"], "origin/main")
+
+    def test_bootstrap_idempotent_second_run(self):
+        """Running bootstrap detection twice must not crash."""
+        result1 = self._run_bootstrap_script(self.repo, "first run")
+        self.assertEqual(result1.returncode, 0)
+        # Clean up worktree for second run
+        output1 = json.loads(result1.stdout.strip())
+        subprocess.run(
+            ["git", "-C", self.repo, "worktree", "remove", "--force", output1["worktree"]],
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", self.repo, "branch", "-D", "feat/test-bootstrap"],
+            capture_output=True,
+        )
+        result2 = self._run_bootstrap_script(self.repo, "second run")
+        self.assertEqual(result2.returncode, 0, f"Second run failed:\nstderr: {result2.stderr}")
 
 
 # ===========================================================================

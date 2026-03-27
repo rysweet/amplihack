@@ -533,7 +533,7 @@ steps:
       {{task_description}}
       EOFTASKDESC
       )
-      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | sed 's/[^a-z0-9-]//g' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-30 | sed 's/-$//')
+      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-' | sed 's/-\{2,\}/-/g;s/^-//;s/-$//' | cut -c1-30 | sed 's/-$//')
       # Guard: empty slug (blank/all-symbol input) produces a trailing-hyphen branch that
       # git check-ref-format accepts as valid but is undesirable. Catch it explicitly first.
       if [ -z "$TASK_SLUG" ]; then
@@ -548,11 +548,36 @@ steps:
       fi
 
       # Create worktree
+      # --- Bootstrap detection (BL-003 / issue #3603) ---
+      # Mirror default-workflow bootstrap logic: detect missing origin/main
+      # and fall back to HEAD with visible messaging.
+      BOOTSTRAP=false
+      if ! git remote get-url origin >/dev/null 2>&1; then
+        echo "BOOTSTRAP: No 'origin' remote — creating worktree from HEAD." >&2
+        BOOTSTRAP=true
+      else
+        LS_EXIT=0
+        git ls-remote --exit-code origin refs/heads/main >/dev/null 2>&1 || LS_EXIT=$?
+        if [ "$LS_EXIT" -eq 2 ]; then
+          echo "BOOTSTRAP: origin exists but refs/heads/main not found — creating worktree from HEAD." >&2
+          BOOTSTRAP=true
+        elif [ "$LS_EXIT" -ne 0 ]; then
+          echo "ERROR: git ls-remote failed (exit $LS_EXIT) — possible network error." >&2
+          exit 1
+        else
+          git fetch origin main >&2
+        fi
+      fi
       git worktree add "{{worktree_dir}}/$BRANCH_NAME" -b "$BRANCH_NAME"
 
-      # Push with tracking
+      # Push with tracking (bootstrap-aware)
       cd "{{worktree_dir}}/$BRANCH_NAME"
-      git push -u origin "$BRANCH_NAME"
+      if [ "$BOOTSTRAP" = "true" ]; then
+        echo "BOOTSTRAP: Skipping push — no remote main branch available." >&2
+      else
+        git push -u origin "$BRANCH_NAME" > /dev/null 2>&1 || \
+          echo "WARNING: Initial push of '$BRANCH_NAME' failed — will retry at PR creation." >&2
+      fi
       ```
 
       Return setup details as JSON:
