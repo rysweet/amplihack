@@ -179,6 +179,14 @@ def _stream_process_output_with_progress(
         for line in process.stdout:
             stdout_chunks.append(line)
 
+    def _emit_step_transition(step_name: str, status: str) -> None:
+        """Emit a machine-readable JSONL step-transition marker to stderr."""
+        print(
+            json.dumps({"type": "step_transition", "step": step_name, "status": status, "ts": time.time()}),
+            file=sys.stderr,
+            flush=True,
+        )
+
     def _drain_stderr() -> None:
         if process.stderr is None:
             return
@@ -197,6 +205,7 @@ def _stream_process_output_with_progress(
                     elapsed_seconds=time.time() - started_at,
                     status="running",
                 )
+                _emit_step_transition(state["step_name"], "start")
             elif stripped.startswith("✓"):
                 _write_progress_file(
                     recipe_name,
@@ -206,6 +215,7 @@ def _stream_process_output_with_progress(
                     elapsed_seconds=time.time() - started_at,
                     status="completed",
                 )
+                _emit_step_transition(state["step_name"], "done")
             elif stripped.startswith("✗"):
                 _write_progress_file(
                     recipe_name,
@@ -215,6 +225,7 @@ def _stream_process_output_with_progress(
                     elapsed_seconds=time.time() - started_at,
                     status="failed",
                 )
+                _emit_step_transition(state["step_name"], "fail")
             elif stripped.startswith("⊘"):
                 _write_progress_file(
                     recipe_name,
@@ -224,6 +235,7 @@ def _stream_process_output_with_progress(
                     elapsed_seconds=time.time() - started_at,
                     status="skipped",
                 )
+                _emit_step_transition(state["step_name"], "skip")
 
     stdout_thread = threading.Thread(target=_drain_stdout)
     stderr_thread = threading.Thread(target=_drain_stderr)
@@ -267,7 +279,7 @@ def _run_rust_process(
 def _meaningful_stderr_tail(stderr: str) -> str:
     lines = stderr.strip().splitlines()
     meaningful = [
-        line for line in lines if not line.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]"))
+        line for line in lines if not line.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]", "{"))
     ]
     return "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
 

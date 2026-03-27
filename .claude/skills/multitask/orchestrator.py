@@ -23,6 +23,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import textwrap
 import threading
 import time
@@ -174,6 +175,27 @@ class ParallelOrchestrator:
         )
         return "amplihack claude"
 
+    def add_workstream(
+        self,
+        issue: int,
+        branch: str,
+        description: str,
+        task: str,
+        recipe: str = "default-workflow",
+    ) -> Workstream:
+        """Create a workstream with its directory without cloning a repository."""
+        ws = Workstream(
+            issue=issue,
+            branch=branch,
+            description=description,
+            task=task,
+            recipe=recipe,
+        )
+        ws.work_dir = self.tmp_base / f"ws-{issue}"
+        ws.log_file = self._safe_log_path(issue)
+        ws.work_dir.mkdir(parents=True, exist_ok=True)
+        return ws
+
     def add(
         self,
         issue: int | str,
@@ -313,6 +335,7 @@ class ParallelOrchestrator:
                     "task_description": {safe_task},
                     "repo_path": ".",
                 }},
+                progress=True,
             )
 
             print()
@@ -514,7 +537,22 @@ class ParallelOrchestrator:
             f"[{ws.issue}] Cleaned up work dir ({freed_mb:.0f}MB freed, log preserved at {ws.log_file})"
         )
 
-    def monitor(self, check_interval: int = 60, max_runtime: int = 7200) -> None:
+    def _read_workstream_progress(self, ws: Workstream) -> str:
+        """Read current step name from a workstream's progress file."""
+        if ws.pid is None:
+            return "unknown"
+        safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", ws.recipe)[:64]
+        progress_path = Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{ws.pid}.json"
+        try:
+            real_path = progress_path.resolve()
+            if not str(real_path).startswith(str(Path(tempfile.gettempdir()).resolve())):
+                return "unknown"
+            data = json.loads(progress_path.read_text(encoding="utf-8"))
+            return data.get("step_name", "unknown")
+        except (OSError, json.JSONDecodeError, KeyError):
+            return "unknown"
+
+    def monitor(self, check_interval: int = 10, max_runtime: int = 7200) -> None:
         """Monitor all workstreams until complete or timeout.
 
         Auto-cleans completed workstream directories to prevent disk exhaustion.
@@ -530,6 +568,29 @@ class ParallelOrchestrator:
             print(f"  Running:   {len(status['running'])} {status['running']}")
             print(f"  Completed: {len(status['completed'])} {status['completed']}")
             print(f"  Failed:    {len(status['failed'])} {status['failed']}")
+
+            # Emit machine-readable JSONL heartbeat
+            ws_summaries = []
+            for ws in self.workstreams:
+                if ws.issue in status["running"]:
+                    ws_status = "running"
+                elif ws.issue in status["completed"]:
+                    ws_status = "completed"
+                elif ws.issue in status["failed"]:
+                    ws_status = "failed"
+                else:
+                    ws_status = "unknown"
+                ws_summaries.append({
+                    "issue": ws.issue,
+                    "status": ws_status,
+                    "step": self._read_workstream_progress(ws),
+                    "elapsed_s": int(ws.runtime_seconds or 0),
+                })
+            print(json.dumps({
+                "type": "heartbeat",
+                "elapsed_s": elapsed,
+                "workstreams": ws_summaries,
+            }), flush=True)
 
             # Auto-cleanup completed and failed workstream directories
             for ws in self.workstreams:
