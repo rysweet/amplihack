@@ -5,43 +5,41 @@ Reference for the `quality-audit-cycle` recipe
 
 ## Context Variables
 
-| Variable                | Default         | Description                                       |
-| ----------------------- | --------------- | ------------------------------------------------- |
-| `target_path`           | `src/amplihack` | Directory to audit                                |
-| `repo_path` [PLANNED]   | `.`             | Repository root; sets `working_dir` for agent steps |
-| `min_cycles`            | `3`             | Minimum audit cycles (always run at least this many) |
-| `max_cycles`            | `6`             | Maximum cycles (safety valve)                     |
-| `validation_threshold`  | `2`             | Minimum validators that must agree (out of 3)     |
-| `severity_threshold`    | `medium`        | Minimum severity to report (`low`/`medium`/`high`/`critical`) |
-| `module_loc_limit`      | `300`           | Flag modules exceeding this LOC count             |
-| `fix_all_per_cycle`     | `true`          | Must fix ALL confirmed findings before next cycle (#2842) |
-| `categories`            | (all)           | Comma-separated category filter                   |
-| `output_dir`            | `./eval_results/quality_audit` | Where to write audit output files   |
-
-> **[PLANNED — #3638]**: `repo_path` is not yet implemented in the recipe
-> context. Once added, agent steps will use it as `working_dir` so that
-> `target_path` resolves relative to the repository root.
+| Variable               | Default                        | Description                                                   |
+| ---------------------- | ------------------------------ | ------------------------------------------------------------- |
+| `target_path`          | `src/amplihack`                | Directory to audit                                            |
+| `repo_path`            | `.`                            | Repository root; sets `working_dir` for agent steps           |
+| `min_cycles`           | `3`                            | Minimum audit cycles (always run at least this many)          |
+| `max_cycles`           | `6`                            | Maximum cycles (safety valve)                                 |
+| `validation_threshold` | `2`                            | Minimum validators that must agree (out of 3)                 |
+| `severity_threshold`   | `medium`                       | Minimum severity to report (`low`/`medium`/`high`/`critical`) |
+| `module_loc_limit`     | `300`                          | Flag modules exceeding this LOC count                         |
+| `fix_all_per_cycle`    | `true`                         | Must fix ALL confirmed findings before next cycle (#2842)     |
+| `categories`           | (all)                          | Comma-separated category filter                               |
+| `output_dir`           | `./eval_results/quality_audit` | Where to write audit output files                             |
 
 ### Internal State Variables
 
 These are managed by the recipe loop and should not be set manually:
 
-`audit_findings`, `validated_findings`, `fix_results`, `fix_verification`,
-`cycle_number`, `cycle_history`, `recurse_decision`, `self_improvement_results`
+`audit_findings`, `validation_agent_1`, `validation_agent_2`, `validation_agent_3`,
+`validated_findings`, `fix_results`, `fix_verification`,
+`cycle_number`, `cycle_history`, `recurse_decision`, `summary`,
+`self_improvement_results`
 
 ## Steps
 
-| Step ID              | Type  | Purpose                                                |
-| -------------------- | ----- | ------------------------------------------------------ |
-| `seek`               | agent | Scan codebase for quality issues (escalating depth)    |
-| `validate-1/2/3`    | agent | Three independent validators confirm/reject findings   |
-| `merge-validations`  | agent | Merge validator outputs, require ≥`validation_threshold` agreement |
-| `fix-confirmed`      | agent | Fix ALL confirmed findings (fix-all-per-cycle rule)    |
-| `verify-fixes`       | bash  | Compare confirmed findings against fix results         |
-| `accumulate-history` | bash  | Append cycle findings to history for next cycle's SEEK |
-| `recurse-decision`   | bash  | Decide CONTINUE or STOP based on cycle count and new findings |
-| `final-summary`      | agent | Produce consolidated audit report                      |
-| `self-improvement`   | agent | Review the audit process itself for workflow improvements |
+| Step ID                | Type  | Purpose                                                            |
+| ---------------------- | ----- | ------------------------------------------------------------------ |
+| `seek`                 | agent | Scan codebase for quality issues (escalating depth)                |
+| `validate-agent-1/2/3` | agent | Three independent validators confirm/reject findings               |
+| `merge-validations`    | bash  | Merge validator outputs, require ≥`validation_threshold` agreement |
+| `fix`                  | agent | Fix ALL confirmed findings (fix-all-per-cycle rule)                |
+| `verify-fixes`         | bash  | Compare confirmed findings against fix results                     |
+| `accumulate-history`   | bash  | Append cycle findings to history for next cycle's SEEK             |
+| `recurse-decision`     | bash  | Decide CONTINUE or STOP based on cycle count and new findings      |
+| `summary`              | agent | Produce consolidated audit report                                  |
+| `self-improvement`     | agent | Review the audit process itself for workflow improvements          |
 
 ### Loop Behavior
 
@@ -58,11 +56,6 @@ Cycle 3+: seek(deepest) → validate(×3) → merge → fix → verify → accum
 
 ## Bash Step Safety
 
-> **[PLANNED — #3638]**: The heredoc safety patterns described below are
-> planned fixes. Until implemented, the `recurse-decision` and
-> `accumulate-history` steps may fail when template variables contain JSON
-> with special characters.
-
 ### The Problem
 
 Bash steps receive context variables via `{{variable}}` template interpolation.
@@ -75,28 +68,41 @@ backticks can be interpreted as bash syntax, causing errors like:
 /bin/bash: line 14: json: command not found
 ```
 
-### Safe Pattern: Environment Variables + Quoted Heredocs
+### Safe Pattern: Temp Files + Quoted Heredocs
 
-Pass JSON via environment variables and use quoted heredocs (`<<'EOF'`) to
-prevent bash expansion:
+Write JSON to temp files via single-quoted heredocs (`<<'EOF'`) so bash never
+interprets the content, then read from the file in Python:
 
 ```yaml
 - id: "verify-fixes"
   type: "bash"
   command: |
-    export VALIDATED={{validated_findings}}
-    export FIX_RESULTS={{fix_results}}
+    _VALIDATED_TMPFILE=$(mktemp)
+    _FIX_RESULTS_TMPFILE=$(mktemp)
+    trap 'rm -f "$_VALIDATED_TMPFILE" "$_FIX_RESULTS_TMPFILE"' EXIT
+    cat > "$_VALIDATED_TMPFILE" <<'__VALIDATED_EOF__'
+    {{validated_findings}}
+    __VALIDATED_EOF__
+    cat > "$_FIX_RESULTS_TMPFILE" <<'__FIX_RESULTS_EOF__'
+    {{fix_results}}
+    __FIX_RESULTS_EOF__
+
+    export VALIDATED_FILE="$_VALIDATED_TMPFILE"
+    export FIX_RESULTS_FILE="$_FIX_RESULTS_TMPFILE"
 
     python3 - <<'PYEOF'
     import json, os
-    validated = json.loads(os.environ.get('VALIDATED', '{}'))
+    with open(os.environ['VALIDATED_FILE']) as f:
+        validated = json.loads(f.read())
     # ... process safely in Python ...
     PYEOF
 ```
 
-**Why this works:** The `<<'PYEOF'` (single-quoted delimiter) prevents bash
-from expanding `$variables` and backticks inside the heredoc. The JSON travels
-via environment variables, which handle special characters correctly.
+**Why this works:** The `<<'__VALIDATED_EOF__'` (single-quoted delimiter) prevents
+bash from expanding `$variables` and backticks inside the heredoc. The JSON is
+written to a temp file — never assigned to a shell variable — so special
+characters like `{`, `}`, `$`, and backticks are inert. The `trap` ensures
+cleanup on exit.
 
 ### Unsafe Pattern: Direct Interpolation in Bash
 
@@ -112,9 +118,9 @@ via environment variables, which handle special characters correctly.
 This fails because `{{validated_findings}}` expands to raw JSON like
 `{"validated": [...]}`, which bash interprets as command groups.
 
-### Safe Pattern: Temp Files for Complex Data
+### Alternative: Inline Python via Quoted Heredoc
 
-For variables too large for environment variables, write to temp files:
+For simpler steps that only need one variable:
 
 ```yaml
 - id: "recurse-decision"
@@ -122,15 +128,20 @@ For variables too large for environment variables, write to temp files:
   command: |
     _TMPFILE=$(mktemp)
     trap 'rm -f "$_TMPFILE"' EXIT
-    cat > "$_TMPFILE" <<__EOF__
+    cat > "$_TMPFILE" <<'__EOF__'
     {{validated_findings}}
     __EOF__
-    python3 -c "
+
+    python3 - <<'PYEOF'
     import json
-    with open('$_TMPFILE') as f:
+    with open("'$_TMPFILE'") as f:
         data = json.loads(f.read())
-    "
+    PYEOF
 ```
+
+> **Note:** The heredoc delimiter **must** be single-quoted (`<<'__EOF__'`).
+> An unquoted delimiter (`<<__EOF__`) allows bash to expand `$` and backticks
+> inside the heredoc, re-introducing the injection vulnerability.
 
 ## Invocation
 

@@ -30,12 +30,7 @@ print(f"Recipe result: {result}")
 > Python API is the canonical invocation path, matching how `dev-orchestrator`
 > and all other recipes are launched.
 
-## [PLANNED — Implementation Pending] Setting `repo_path`
-
-> The `repo_path` context variable and `working_dir` integration described
-> below are planned fixes for [#3638](https://github.com/rysweet/amplihack/issues/3638).
-> Until implemented, agent steps may not resolve relative `target_path` values
-> correctly.
+## Setting `repo_path`
 
 The `repo_path` variable tells agent steps where the repository root is. Set it
 so that `target_path` resolves relative to the repo:
@@ -57,11 +52,11 @@ giving agents file-system access to the target directory.
 
 **Rules:**
 
-| `repo_path`             | `target_path`   | Agent sees                           |
-| ----------------------- | --------------- | ------------------------------------ |
-| `.` (default)           | `src/payments`  | `./src/payments` from CWD            |
-| `/home/user/src/myproj` | `crates/`       | `crates/` relative to `/home/…/myproj` |
-| (omitted)               | absolute path   | Works, but agents may lack CWD context |
+| `repo_path`             | `target_path`  | Agent sees                             |
+| ----------------------- | -------------- | -------------------------------------- |
+| `.` (default)           | `src/payments` | `./src/payments` from CWD              |
+| `/home/user/src/myproj` | `crates/`      | `crates/` relative to `/home/…/myproj` |
+| (omitted)               | absolute path  | Works, but agents may lack CWD context |
 
 ## Targeting a Subdirectory
 
@@ -124,7 +119,7 @@ result = run_recipe_by_name(
 
 The agent cannot find `target_path`. Likely causes:
 
-1. **Missing `repo_path`** — [PLANNED] set `repo_path` to the repo root so
+1. **Missing `repo_path`** — set `repo_path` to the repo root so
    agents resolve relative paths correctly.
 2. **Relative path with wrong CWD** — ensure your shell's CWD is the repo root
    before calling `run_recipe_by_name()`, or use an absolute `target_path`.
