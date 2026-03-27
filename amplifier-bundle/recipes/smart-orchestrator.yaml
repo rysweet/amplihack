@@ -325,8 +325,10 @@ steps:
 
   # ─────────────────────────────────────────────────────────────────────────
   # Phase 2c: Single dev/investigation workstream -- round 1
-  # NOTE: workstream_count is a bash command output and may contain a trailing
-  # newline. The .strip() and `or '1'` are load-bearing — do not remove them.
+  # NOTE: workstream_count is a bash command output. serde_json may parse
+  # bare "1" as Value::Number(1), so str() coercion before .strip() is
+  # required to avoid "method .strip() can only be called on strings"
+  # (fix #3606). The str().strip() and `or '1'` are load-bearing.
   # If workstream_count is empty (step failed), we default to 1 (single workstream).
   # ─────────────────────────────────────────────────────────────────────────
 
@@ -335,10 +337,11 @@ steps:
     # NOTE: force_single_workstream may be Value::Bool(true) when set via CLI
     # --set (parse_context_value coerces "true" -> Bool). The condition evaluator
     # handles Bool/String cross-type coercion (fix #3069 in recipe-runner-rs).
-    # .strip() on workstream_count is load-bearing — bash step output may
-    # contain trailing whitespace/newlines (fix #3570).
+    # str() coercion is required because bash output "1" may be parsed as
+    # Value::Number(1) by serde_json. .strip() handles trailing whitespace.
+    # Both are load-bearing — do not remove (fix #3570, #3606).
     condition: |
-      'Development' in task_type and ((workstream_count.strip() == '1' or workstream_count.strip() == '') or force_single_workstream == 'true')
+      'Development' in task_type and ((str(workstream_count).strip() == '1' or str(workstream_count).strip() == '') or force_single_workstream == 'true')
     recipe: "default-workflow"
     # No explicit context needed: task_description and repo_path flow through
     # from the parent smart-orchestrator context automatically via context merging
@@ -347,9 +350,9 @@ steps:
 
   - id: "execute-single-round-1-investigation"
     type: "recipe"
-    # .strip() on workstream_count is load-bearing (fix #3570).
+    # str() coercion + .strip() are load-bearing (fix #3570, #3606).
     condition: |
-      'Investigation' in task_type and ((workstream_count.strip() == '1' or workstream_count.strip() == '') or force_single_workstream == 'true')
+      'Investigation' in task_type and ((str(workstream_count).strip() == '1' or str(workstream_count).strip() == '') or force_single_workstream == 'true')
     recipe: "investigation-workflow"
     # No explicit context needed: task_description and repo_path flow through
     # from the parent smart-orchestrator context automatically via context merging
@@ -362,9 +365,9 @@ steps:
 
   - id: "create-workstreams-config"
     type: "bash"
-    # .strip() on workstream_count is load-bearing (fix #3570).
+    # str() coercion + .strip() are load-bearing (fix #3570, #3606).
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and workstream_count.strip() != '1' and workstream_count.strip() != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
+      ('Development' in task_type or 'Investigation' in task_type) and str(workstream_count).strip() != '1' and str(workstream_count).strip() != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
       HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
       if [ ! -f "$HELPER_PATH" ]; then
@@ -406,9 +409,9 @@ steps:
 
   - id: "launch-parallel-round-1"
     type: "bash"
-    # .strip() on workstream_count is load-bearing (fix #3570).
+    # str() coercion + .strip() are load-bearing (fix #3570, #3606).
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and workstream_count.strip() != '1' and workstream_count.strip() != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
+      ('Development' in task_type or 'Investigation' in task_type) and str(workstream_count).strip() != '1' and str(workstream_count).strip() != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
       REPO_PATH={{repo_path}}
       WS_FILE={{workstreams_file}}
@@ -475,9 +478,9 @@ steps:
   - id: "execute-single-fallback-blocked-development"
     type: "recipe"
     # Fires when blocked from spawning subworkstreams — adapts to single session
-    # .strip() on workstream_count is load-bearing (fix #3570).
+    # str() coercion + .strip() are load-bearing (fix #3570, #3606).
     condition: |
-      'Development' in task_type and 'BLOCKED' in recursion_guard and workstream_count.strip() != '1' and workstream_count.strip() != ''
+      'Development' in task_type and 'BLOCKED' in recursion_guard and str(workstream_count).strip() != '1' and str(workstream_count).strip() != ''
     recipe: "default-workflow"
     # No explicit context needed: task_description and repo_path flow through
     # from the parent smart-orchestrator context automatically.
@@ -486,9 +489,9 @@ steps:
   - id: "execute-single-fallback-blocked-investigation"
     type: "recipe"
     # Fires when blocked from spawning subworkstreams — adapts to single session
-    # .strip() on workstream_count is load-bearing (fix #3570).
+    # str() coercion + .strip() are load-bearing (fix #3570, #3606).
     condition: |
-      'Investigation' in task_type and 'BLOCKED' in recursion_guard and workstream_count.strip() != '1' and workstream_count.strip() != ''
+      'Investigation' in task_type and 'BLOCKED' in recursion_guard and str(workstream_count).strip() != '1' and str(workstream_count).strip() != ''
     recipe: "investigation-workflow"
     # No explicit context needed: task_description and repo_path flow through
     # from the parent smart-orchestrator context automatically.
