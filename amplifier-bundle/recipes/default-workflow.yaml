@@ -351,7 +351,7 @@ steps:
         echo "ERROR: repo_path '{{repo_path}}' does not exist or is not a directory" >&2
         exit 1
       fi
-      cd {{repo_path}}
+      cd "{{repo_path}}"
 
       echo "=== Step 4: Creating Worktree and Branch ===" >&2
       echo "" >&2
@@ -362,6 +362,11 @@ steps:
       # from network errors which return 128). This prevents silent degradation on
       # network failures — only genuine "ref missing" triggers bootstrap mode.
       # Security: stderr suppressed to avoid leaking credential helper output.
+      # Guard: HEAD must resolve — a zero-commit repo cannot be used as a base ref.
+      if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+        echo "ERROR: No commits in repository — create an initial commit before running the workflow." >&2
+        exit 1
+      fi
       BOOTSTRAP=false
       if ! git remote get-url origin >/dev/null 2>&1; then
         echo "BOOTSTRAP: No 'origin' remote configured — using HEAD as base ref." >&2
@@ -444,7 +449,7 @@ steps:
         if [ "$BOOTSTRAP" = "false" ]; then
           git fetch origin main >&2
         fi
-        git worktree add "${WORKTREE_PATH}" -b "${BRANCH_NAME}" ${BASE_REF} >&2
+        git worktree add "${WORKTREE_PATH}" -b "${BRANCH_NAME}" "${BASE_REF}" >&2
         CREATED=true
       fi
 
@@ -457,7 +462,8 @@ steps:
         else
           git -C "${WORKTREE_PATH}" push origin "${BRANCH_NAME}" > /dev/null 2>&1 || \
             echo "WARNING: Initial push of '${BRANCH_NAME}' failed — will retry at PR creation (step 16)." >&2
-          git -C "${WORKTREE_PATH}" branch --set-upstream-to="origin/${BRANCH_NAME}" "${BRANCH_NAME}" > /dev/null 2>&1 || true
+          git -C "${WORKTREE_PATH}" branch --set-upstream-to="origin/${BRANCH_NAME}" "${BRANCH_NAME}" > /dev/null 2>&1 || \
+            echo "WARNING: set-upstream-to failed — will set at push time." >&2
         fi
       fi
 

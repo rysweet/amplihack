@@ -873,6 +873,12 @@ class TestStep4Bootstrap(unittest.TestCase):
             set -euo pipefail
             cd {shlex.quote(repo_path)}
 
+            # Guard: HEAD must resolve
+            if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+                echo "ERROR: No commits in repository — create an initial commit before running the workflow." >&2
+                exit 1
+            fi
+
             BOOTSTRAP=false
             if ! git remote get-url origin >/dev/null 2>&1; then
                 echo "BOOTSTRAP: No 'origin' remote configured — using HEAD as base ref." >&2
@@ -900,7 +906,7 @@ class TestStep4Bootstrap(unittest.TestCase):
             if [ "$BOOTSTRAP" = "false" ]; then
                 git fetch origin main >&2
             fi
-            git worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME" $BASE_REF >&2
+            git worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME" "$BASE_REF" >&2
 
             echo '{{"bootstrap": '$BOOTSTRAP', "base_ref": "'$BASE_REF'", "worktree": "'$WORKTREE_PATH'"}}'
         """)
@@ -987,6 +993,45 @@ class TestStep4Bootstrap(unittest.TestCase):
         )
         result2 = self._run_bootstrap_script(self.repo, "second run")
         self.assertEqual(result2.returncode, 0, f"Second run failed:\nstderr: {result2.stderr}")
+
+    def test_zero_commit_repo_fails_with_clear_error(self):
+        """Repo with no commits (HEAD invalid) → exit 1 with ERROR message."""
+        empty_repo = os.path.join(self._tmpdir, "empty")
+        os.makedirs(empty_repo)
+        subprocess.run(["git", "init", empty_repo], capture_output=True, check=True)
+        # Do NOT create any commits — HEAD is invalid
+        result = self._run_bootstrap_script(empty_repo)
+        self.assertNotEqual(
+            result.returncode,
+            0,
+            "Zero-commit repo must fail — HEAD is not a valid object.",
+        )
+        self.assertIn(
+            "No commits in repository",
+            result.stderr,
+            "Error message must explain that an initial commit is required.",
+        )
+
+    def test_network_error_exits_nonzero(self):
+        """Origin exists but ls-remote fails (non-2 exit) → exit 1 with ERROR."""
+        # Point origin to a non-existent host to simulate network error
+        subprocess.run(
+            ["git", "-C", self.repo, "remote", "add", "origin",
+             "https://nonexistent.invalid/repo.git"],
+            capture_output=True,
+            check=True,
+        )
+        result = self._run_bootstrap_script(self.repo)
+        self.assertNotEqual(
+            result.returncode,
+            0,
+            "Network error on ls-remote must cause script to exit non-zero.",
+        )
+        self.assertIn(
+            "ERROR:",
+            result.stderr,
+            "Error message must be visible on stderr.",
+        )
 
 
 # ===========================================================================
