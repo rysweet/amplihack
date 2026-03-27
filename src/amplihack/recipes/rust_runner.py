@@ -653,6 +653,7 @@ def _write_progress_file(
     }
     try:
         path.write_text(json.dumps(data), encoding="utf-8")
+        path.chmod(0o600)
     except OSError as exc:
         logger.debug("Could not write progress file %s: %s", path, exc)
     return path
@@ -815,7 +816,7 @@ def _execute_rust_command(
                 meaningful = [
                     ln
                     for ln in lines
-                    if not ln.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]", "{"))
+                    if not ln.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]", '{"type"'))
                 ]
                 stderr_tail = "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
             raise RuntimeError(

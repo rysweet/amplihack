@@ -563,9 +563,10 @@ class ParallelOrchestrator:
             real_path = progress_path.resolve()
             if not str(real_path).startswith(str(Path(tempfile.gettempdir()).resolve())):
                 return "unknown"
-            data = json.loads(progress_path.read_text(encoding="utf-8"))
+            data = json.loads(real_path.read_text(encoding="utf-8"))
             return data.get("step_name", "unknown")
-        except (OSError, json.JSONDecodeError, KeyError):
+        except (OSError, json.JSONDecodeError, KeyError) as exc:
+            print(f"[debug] Could not read progress for {ws.recipe}: {exc}", file=sys.stderr)
             return "unknown"
 
     def monitor(self, check_interval: int = 10, max_runtime: int = 7200) -> None:

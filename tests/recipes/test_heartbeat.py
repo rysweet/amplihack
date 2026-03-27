@@ -231,7 +231,7 @@ class TestHeartbeatSchema:
 
         tmp_orchestrator._processes[ws.issue] = OneIterProcess()
         captured = io.StringIO()
-        with patch.object(sys, "stdout", captured), patch("time.sleep"):
+        with patch.object(sys, "stdout", captured), patch.object(time, "sleep"):
             tmp_orchestrator.monitor(check_interval=1, max_runtime=5)
         heartbeats = _extract_heartbeats(captured.getvalue())
         running_hbs = [

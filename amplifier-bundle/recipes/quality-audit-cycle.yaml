@@ -306,15 +306,17 @@ steps:
       _V3_TMPFILE=$(mktemp)
       chmod 600 "$_V1_TMPFILE" "$_V2_TMPFILE" "$_V3_TMPFILE"
       trap 'rm -f "$_V1_TMPFILE" "$_V2_TMPFILE" "$_V3_TMPFILE"' EXIT
-      cat > "$_V1_TMPFILE" <<'__V1_EOF__'
+      # Single-quoted heredoc delimiters prevent shell expansion.
+      # Long unique delimiters mitigate delimiter-collision injection risk (#3696).
+      cat > "$_V1_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_V1_TMPWRITE__'
       {{validation_agent_1}}
-      __V1_EOF__
-      cat > "$_V2_TMPFILE" <<'__V2_EOF__'
+      __AMPLIHACK_SAFE_HEREDOC_V1_TMPWRITE__
+      cat > "$_V2_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_V2_TMPWRITE__'
       {{validation_agent_2}}
-      __V2_EOF__
-      cat > "$_V3_TMPFILE" <<'__V3_EOF__'
+      __AMPLIHACK_SAFE_HEREDOC_V2_TMPWRITE__
+      cat > "$_V3_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_V3_TMPWRITE__'
       {{validation_agent_3}}
-      __V3_EOF__
+      __AMPLIHACK_SAFE_HEREDOC_V3_TMPWRITE__
 
       export V1_FILE="$_V1_TMPFILE"
       export V2_FILE="$_V2_TMPFILE"
@@ -478,16 +480,17 @@ steps:
     command: |
       # Write multi-line JSON to temp files to avoid bash quoting issues (#3638, #2872).
       # Single-quoted heredoc delimiters prevent shell expansion of adversarial content.
+      # Long unique delimiters mitigate delimiter-collision injection risk (#3696).
       _VALIDATED_TMPFILE=$(mktemp)
       _FIX_RESULTS_TMPFILE=$(mktemp)
       chmod 600 "$_VALIDATED_TMPFILE" "$_FIX_RESULTS_TMPFILE"
       trap 'rm -f "$_VALIDATED_TMPFILE" "$_FIX_RESULTS_TMPFILE"' EXIT
-      cat > "$_VALIDATED_TMPFILE" <<'__VALIDATED_EOF__'
+      cat > "$_VALIDATED_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_VALIDATED_STEP4B__'
       {{validated_findings}}
-      __VALIDATED_EOF__
-      cat > "$_FIX_RESULTS_TMPFILE" <<'__FIX_RESULTS_EOF__'
+      __AMPLIHACK_SAFE_HEREDOC_VALIDATED_STEP4B__
+      cat > "$_FIX_RESULTS_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_FIXRES_STEP4B__'
       {{fix_results}}
-      __FIX_RESULTS_EOF__
+      __AMPLIHACK_SAFE_HEREDOC_FIXRES_STEP4B__
 
       export FIX_ALL="{{fix_all_per_cycle}}"
       export VALIDATED_FILE="$_VALIDATED_TMPFILE"
@@ -553,16 +556,17 @@ steps:
 
       # Write multi-line JSON to temp files to avoid bash quoting issues (#3638).
       # Single-quoted heredoc delimiters prevent shell expansion of adversarial content.
+      # Long unique delimiters mitigate delimiter-collision injection risk (#3696).
       _HISTORY_TMPFILE=$(mktemp)
       _FINDINGS_TMPFILE=$(mktemp)
       chmod 600 "$_HISTORY_TMPFILE" "$_FINDINGS_TMPFILE"
       trap 'rm -f "$_HISTORY_TMPFILE" "$_FINDINGS_TMPFILE"' EXIT
-      cat > "$_HISTORY_TMPFILE" <<'__HISTORY_EOF__'
+      cat > "$_HISTORY_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_HISTORY_STEP4C__'
       {{cycle_history}}
-      __HISTORY_EOF__
-      cat > "$_FINDINGS_TMPFILE" <<'__FINDINGS_EOF__'
+      __AMPLIHACK_SAFE_HEREDOC_HISTORY_STEP4C__
+      cat > "$_FINDINGS_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_FINDINGS_STEP4C__'
       {{validated_findings}}
-      __FINDINGS_EOF__
+      __AMPLIHACK_SAFE_HEREDOC_FINDINGS_STEP4C__
 
       # Stream tmpfile contents directly via cat instead of loading into
       # shell variables — avoids size limits and extra copies for large JSON.
@@ -590,16 +594,17 @@ steps:
 
       # Write validated_findings to a temp file to avoid bash quoting issues
       # with JSON containing spaces, quotes, and special characters (#3046).
+      # Long unique delimiters mitigate delimiter-collision injection risk (#3696).
       _VALIDATED_TMPFILE=$(mktemp)
       _FIX_VERIFY_TMPFILE=$(mktemp)
       chmod 600 "$_VALIDATED_TMPFILE" "$_FIX_VERIFY_TMPFILE"
       trap 'rm -f "$_VALIDATED_TMPFILE" "$_FIX_VERIFY_TMPFILE"' EXIT
-      cat > "$_VALIDATED_TMPFILE" <<'__VALIDATED_EOF__'
+      cat > "$_VALIDATED_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_VALIDATED_STEP5__'
       {{validated_findings}}
-      __VALIDATED_EOF__
-      cat > "$_FIX_VERIFY_TMPFILE" <<'__FIX_VERIFY_EOF__'
+      __AMPLIHACK_SAFE_HEREDOC_VALIDATED_STEP5__
+      cat > "$_FIX_VERIFY_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_FIXVER_STEP5__'
       {{fix_verification}}
-      __FIX_VERIFY_EOF__
+      __AMPLIHACK_SAFE_HEREDOC_FIXVER_STEP5__
 
       FIX_VERIFY=$(cat "$_FIX_VERIFY_TMPFILE")
 

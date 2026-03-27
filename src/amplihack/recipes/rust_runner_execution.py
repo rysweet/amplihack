@@ -292,7 +292,9 @@ def _run_rust_process(
 def _meaningful_stderr_tail(stderr: str) -> str:
     lines = stderr.strip().splitlines()
     meaningful = [
-        line for line in lines if not line.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]", "{"))
+        line
+        for line in lines
+        if not line.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]", '{"type"'))
     ]
     return "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
 

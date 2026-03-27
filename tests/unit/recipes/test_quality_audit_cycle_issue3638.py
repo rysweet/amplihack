@@ -286,7 +286,7 @@ class TestBug2ScalarVarsSafe:
         step = steps_by_id["recurse-decision"]
         command = step.get("command", "")
         assert "mktemp" in command, "recurse-decision should use tmpfile pattern for JSON vars"
-        assert "__VALIDATED_EOF__" in command, (
+        assert "__AMPLIHACK_SAFE_HEREDOC_VALIDATED_" in command, (
             "recurse-decision heredoc for validated_findings not found"
         )
 
