@@ -293,6 +293,22 @@ class TestBug2ScalarVarsSafe:
             "recurse-decision heredoc for validated_findings not found"
         )
 
+    def test_recurse_decision_heredocs_single_quoted(self, steps_by_id):
+        """recurse-decision heredocs for JSON data must be single-quoted (#3638)."""
+        step = steps_by_id["recurse-decision"]
+        command = step.get("command", "")
+        # Match heredocs (<<DELIM) but not here-strings (<<<)
+        heredocs = re.findall(r"(?<!<)<<(?!<)\s*(\S+)", command)
+        for delimiter in heredocs:
+            if delimiter.strip("'\"") == "PYEOF":
+                continue
+            is_quoted = delimiter.startswith("'") or delimiter.startswith('"')
+            assert is_quoted, (
+                f"recurse-decision heredoc delimiter {delimiter} must be "
+                f"single-quoted to prevent shell expansion of adversarial "
+                f"codebase content. (#3638)"
+            )
+
 
 # ============================================================================
 # BUG 3: SKILL.md wrong invocation pattern (#3638 problem 3)
