@@ -304,6 +304,7 @@ steps:
       _V1_TMPFILE=$(mktemp)
       _V2_TMPFILE=$(mktemp)
       _V3_TMPFILE=$(mktemp)
+      chmod 600 "$_V1_TMPFILE" "$_V2_TMPFILE" "$_V3_TMPFILE"
       trap 'rm -f "$_V1_TMPFILE" "$_V2_TMPFILE" "$_V3_TMPFILE"' EXIT
       cat > "$_V1_TMPFILE" <<'__V1_EOF__'
       {{validation_agent_1}}
@@ -318,8 +319,8 @@ steps:
       export V1_FILE="$_V1_TMPFILE"
       export V2_FILE="$_V2_TMPFILE"
       export V3_FILE="$_V3_TMPFILE"
-      export THRESHOLD={{validation_threshold}}
-      export CYCLE={{cycle_number}}
+      export THRESHOLD="{{validation_threshold}}"
+      export CYCLE="{{cycle_number}}"
 
       python3 - <<'PYEOF'
       import json, os, sys
@@ -332,7 +333,8 @@ steps:
           try:
               with open(path) as f:
                   return json.loads(f.read())
-          except (json.JSONDecodeError, FileNotFoundError):
+          except (json.JSONDecodeError, FileNotFoundError) as e:
+              print(f"load_validator: failed to parse {path}: {e}", file=sys.stderr)
               return {'validated': []}
 
       validators = [
@@ -478,6 +480,7 @@ steps:
       # Single-quoted heredoc delimiters prevent shell expansion of adversarial content.
       _VALIDATED_TMPFILE=$(mktemp)
       _FIX_RESULTS_TMPFILE=$(mktemp)
+      chmod 600 "$_VALIDATED_TMPFILE" "$_FIX_RESULTS_TMPFILE"
       trap 'rm -f "$_VALIDATED_TMPFILE" "$_FIX_RESULTS_TMPFILE"' EXIT
       cat > "$_VALIDATED_TMPFILE" <<'__VALIDATED_EOF__'
       {{validated_findings}}
@@ -486,7 +489,7 @@ steps:
       {{fix_results}}
       __FIX_RESULTS_EOF__
 
-      export FIX_ALL={{fix_all_per_cycle}}
+      export FIX_ALL="{{fix_all_per_cycle}}"
       export VALIDATED_FILE="$_VALIDATED_TMPFILE"
       export FIX_RESULTS_FILE="$_FIX_RESULTS_TMPFILE"
 
@@ -546,12 +549,13 @@ steps:
   - id: "accumulate-history"
     type: "bash"
     command: |
-      CYCLE={{cycle_number}}
+      CYCLE="{{cycle_number}}"
 
       # Write multi-line JSON to temp files to avoid bash quoting issues (#3638).
       # Single-quoted heredoc delimiters prevent shell expansion of adversarial content.
       _HISTORY_TMPFILE=$(mktemp)
       _FINDINGS_TMPFILE=$(mktemp)
+      chmod 600 "$_HISTORY_TMPFILE" "$_FINDINGS_TMPFILE"
       trap 'rm -f "$_HISTORY_TMPFILE" "$_FINDINGS_TMPFILE"' EXIT
       cat > "$_HISTORY_TMPFILE" <<'__HISTORY_EOF__'
       {{cycle_history}}
@@ -580,14 +584,15 @@ steps:
   - id: "recurse-decision"
     type: "bash"
     command: |
-      CYCLE={{cycle_number}}
-      MIN_CYCLES={{min_cycles}}
-      MAX_CYCLES={{max_cycles}}
+      CYCLE="{{cycle_number}}"
+      MIN_CYCLES="{{min_cycles}}"
+      MAX_CYCLES="{{max_cycles}}"
 
       # Write validated_findings to a temp file to avoid bash quoting issues
       # with JSON containing spaces, quotes, and special characters (#3046).
       _VALIDATED_TMPFILE=$(mktemp)
       _FIX_VERIFY_TMPFILE=$(mktemp)
+      chmod 600 "$_VALIDATED_TMPFILE" "$_FIX_VERIFY_TMPFILE"
       trap 'rm -f "$_VALIDATED_TMPFILE" "$_FIX_VERIFY_TMPFILE"' EXIT
       cat > "$_VALIDATED_TMPFILE" <<'__VALIDATED_EOF__'
       {{validated_findings}}
@@ -639,7 +644,8 @@ steps:
                   elif sev == 'high': high += 1
                   elif sev == 'medium': medium += 1
           print(f'{high} {critical} {medium} {confirmed}')
-      except Exception:
+      except Exception as e:
+          print(f'recurse-decision: severity counting failed: {e}', file=sys.stderr)
           print('0 0 0 0')
       ")
 

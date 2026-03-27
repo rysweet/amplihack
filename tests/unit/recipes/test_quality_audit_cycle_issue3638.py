@@ -270,16 +270,16 @@ class TestBug2AccumulateHistoryHeredocSafety:
 
 
 class TestBug2ScalarVarsSafe:
-    """Scalar-only vars (cycle_number, min/max_cycles) are safe bare."""
+    """Scalar vars (cycle_number, min/max_cycles) use quoted assignment."""
 
-    def test_recurse_decision_scalars_are_safe(self, steps_by_id):
-        """recurse-decision correctly uses bare assignment for scalar vars."""
+    def test_recurse_decision_scalars_are_quoted(self, steps_by_id):
+        """recurse-decision uses quoted assignment for scalar vars (defense-in-depth)."""
         step = steps_by_id["recurse-decision"]
         command = step.get("command", "")
-        # These scalar assignments should exist and are safe
-        assert "CYCLE={{cycle_number}}" in command
-        assert "MIN_CYCLES={{min_cycles}}" in command
-        assert "MAX_CYCLES={{max_cycles}}" in command
+        # Quoted assignments for defense-in-depth (N5)
+        assert 'CYCLE="{{cycle_number}}"' in command
+        assert 'MIN_CYCLES="{{min_cycles}}"' in command
+        assert 'MAX_CYCLES="{{max_cycles}}"' in command
 
     def test_recurse_decision_json_uses_heredoc(self, steps_by_id):
         """recurse-decision already uses heredoc for JSON — verify it stays."""
@@ -432,10 +432,6 @@ class TestRecipeValidation:
 
 class TestOutputTemplateVersion:
     """Bug 5: Output template version must match recipe header version."""
-
-    @pytest.fixture
-    def recipe(self):
-        return yaml.safe_load(RECIPE_PATH.read_text())
 
     def test_output_template_version_matches_header(self, recipe):
         """The footer version in the output template must match the recipe version."""
