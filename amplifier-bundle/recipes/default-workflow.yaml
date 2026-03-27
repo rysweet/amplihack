@@ -482,6 +482,47 @@ steps:
     output: "worktree_setup"
     parse_json: true
 
+  # --------------------------------------------------------------------------
+  # WORKTREE VALIDATION: Verify step-04 output is usable by subsequent steps.
+  # FIX (#3684): Ensures worktree handoff between steps works correctly.
+  # --------------------------------------------------------------------------
+  - id: "step-04b-validate-worktree"
+    type: "bash"
+    command: |
+      set -euo pipefail
+      WORKTREE_DIR="{{worktree_setup.worktree_path}}"
+      EXPECTED_BRANCH="{{worktree_setup.branch_name}}"
+
+      echo "=== Validating Worktree Setup ===" >&2
+
+      # Check 1: Directory exists
+      if [ ! -d "$WORKTREE_DIR" ]; then
+        echo "ERROR: Worktree directory '$WORKTREE_DIR' does not exist after step-04." >&2
+        exit 1
+      fi
+
+      # Check 2: Is a valid git worktree
+      if ! git -C "$WORKTREE_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        echo "ERROR: '$WORKTREE_DIR' is not a valid git working tree." >&2
+        exit 1
+      fi
+
+      # Check 3: Correct branch checked out
+      ACTUAL_BRANCH=$(git -C "$WORKTREE_DIR" branch --show-current)
+      if [ "$ACTUAL_BRANCH" != "$EXPECTED_BRANCH" ]; then
+        echo "ERROR: Worktree has branch '$ACTUAL_BRANCH' but expected '$EXPECTED_BRANCH'." >&2
+        exit 1
+      fi
+
+      # Check 4: Worktree is registered with git
+      if ! git worktree list --porcelain | grep -Fq "worktree $WORKTREE_DIR"; then
+        echo "WARNING: Worktree exists but is not in 'git worktree list'." >&2
+      fi
+
+      echo "Worktree validated: $WORKTREE_DIR (branch: $ACTUAL_BRANCH)" >&2
+      echo "WORKTREE_VALID"
+    output: "worktree_validation"
+
   # ==========================================================================
   # STEP 5: RESEARCH AND DESIGN
   # ==========================================================================
@@ -723,7 +764,14 @@ steps:
   - id: "checkpoint-after-implementation"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
+      # FIX (#3684/#3673): Fail-loud worktree validation — no silent fallback to repo_path.
+      # Silent fallback caused worktree isolation violations: changes intended for
+      # the workflow worktree were committed in the main checkout instead.
+      if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
+        echo "ERROR: Worktree '{{worktree_setup.worktree_path}}' does not exist. Cannot checkpoint." >&2
+        exit 1
+      fi
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Checkpoint: Staging Implementation ===" && \
       git add -A && \
       STAGED=$(git diff --cached --name-only) && \
@@ -902,7 +950,12 @@ steps:
   - id: "checkpoint-after-review-feedback"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
+      # FIX (#3684/#3673): Fail-loud worktree validation — no silent fallback.
+      if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
+        echo "ERROR: Worktree '{{worktree_setup.worktree_path}}' does not exist. Cannot checkpoint." >&2
+        exit 1
+      fi
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== Checkpoint: Staging Review Feedback ===" && \
       git add -A && \
       STAGED=$(git diff --cached --name-only) && \
@@ -1079,7 +1132,9 @@ steps:
 
       **Commands to execute:**
       ```bash
-      cd {{repo_path}}
+      # FIX (#3684): Use worktree path — version bump must happen in the
+      # workflow worktree, not the base repo_path, to keep changes isolated.
+      cd {{worktree_setup.worktree_path}}
 
       # Show changes
       git diff main...HEAD --stat
@@ -1127,8 +1182,36 @@ steps:
   - id: "step-15-commit-push"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} && \
+      set -euo pipefail
+      # FIX (#3684/#3673): Validate worktree exists and matches expected branch.
+      WORKTREE_DIR="{{worktree_setup.worktree_path}}"
+      if [ ! -d "$WORKTREE_DIR" ]; then
+        echo "ERROR: Worktree path '$WORKTREE_DIR' does not exist." >&2
+        echo "Worktree may have been removed between steps. Cannot commit." >&2
+        exit 1
+      fi
+      cd "$WORKTREE_DIR"
+
+      # FIX (#3673): Clean-worktree invariant — verify git toplevel and branch.
+      # Prevents dirty state from leaking into unrelated commits.
+      ACTUAL_TOPLEVEL=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+      EXPECTED_TOPLEVEL=$(cd "$WORKTREE_DIR" && pwd -P)
+      if [ "$ACTUAL_TOPLEVEL" != "$EXPECTED_TOPLEVEL" ]; then
+        echo "ERROR: Git toplevel '$ACTUAL_TOPLEVEL' != worktree '$EXPECTED_TOPLEVEL'." >&2
+        echo "Refusing to commit — worktree isolation violated." >&2
+        exit 1
+      fi
+      ACTUAL_BRANCH=$(git branch --show-current)
+      EXPECTED_BRANCH="{{worktree_setup.branch_name}}"
+      if [ "$ACTUAL_BRANCH" != "$EXPECTED_BRANCH" ]; then
+        echo "ERROR: Expected branch '$EXPECTED_BRANCH' but found '$ACTUAL_BRANCH'." >&2
+        echo "Refusing to commit — branch mismatch indicates worktree corruption." >&2
+        exit 1
+      fi
+
       echo "=== Step 15: Commit and Push ===" && \
+      echo "Working directory: $(pwd)" && \
+      echo "Branch: $ACTUAL_BRANCH" && \
       echo "" && \
       echo "--- Staging Changes ---" && \
       git add -A && \
@@ -1148,10 +1231,16 @@ steps:
       fi && \
       echo "" && \
       echo "--- Pushing to Remote ---" && \
-      if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
-        git pull --rebase 2>/dev/null && git push ; \
+      HAS_REMOTE=true && \
+      git remote get-url origin >/dev/null 2>&1 || HAS_REMOTE=false && \
+      if [ "$HAS_REMOTE" = "true" ]; then \
+        if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
+          git pull --rebase 2>/dev/null && git push ; \
+        else \
+          echo "WARNING: Nothing to push - branch is up to date with remote" ; \
+        fi ; \
       else \
-        echo "WARNING: Nothing to push - branch is up to date with remote" ; \
+        echo "Skipping push — no remote configured" >&2 ; \
       fi && \
       echo "" && \
       echo "=== Commit and Push Complete ==="
@@ -1166,6 +1255,13 @@ steps:
     command: |
       cd {{worktree_setup.worktree_path}}
       echo "=== Step 16: Creating Draft PR ===" >&2
+
+      # Guard: skip PR creation entirely if no remote is configured (#3668)
+      if ! git remote get-url origin >/dev/null 2>&1; then
+        echo "Skipping PR creation — no remote configured" >&2
+        printf ''
+        exit 0
+      fi
 
       # FIX (#3324): Idempotency guard — detect pre-existing PRs before creating one
       # Prevents: "GraphQL: No commits between main and feat/issue-XXXX" error
@@ -1702,7 +1798,16 @@ steps:
       cd {{worktree_setup.worktree_path}} && \
       echo "=== Pushing Cleanup Changes ===" && \
       git add -A && \
-      git diff --cached --quiet || (git commit -m "final cleanup pass" && git pull --rebase 2>/dev/null && git push) && \
+      if ! git diff --cached --quiet; then \
+        git commit -m "final cleanup pass" && \
+        HAS_REMOTE=true && \
+        git remote get-url origin >/dev/null 2>&1 || HAS_REMOTE=false && \
+        if [ "$HAS_REMOTE" = "true" ]; then \
+          git pull --rebase 2>/dev/null && git push ; \
+        else \
+          echo "Skipping push — no remote configured" >&2 ; \
+        fi ; \
+      fi && \
       echo "=== Cleanup Complete ==="
     output: "cleanup_push_result"
 
@@ -1789,11 +1894,12 @@ steps:
       echo "" && \
       echo "--- Verifying All Steps Complete ---" && \
       echo "" && \
-      echo "--- Converting PR to Ready ---" && \
-      gh pr ready && \
-      echo "" && \
-      echo "--- Adding Ready Comment ---" && \
-      gh pr comment --body "## Ready for Final Review
+      HAS_REMOTE=true && \
+      git remote get-url origin >/dev/null 2>&1 || HAS_REMOTE=false && \
+      PR_URL="{{pr_url}}" && \
+      if [ "$HAS_REMOTE" = "true" ] && [ -n "$PR_URL" ]; then \
+        echo "--- Converting PR to Ready ---" && gh pr ready && \
+        echo "--- Adding Ready Comment ---" && gh pr comment --body "## Ready for Final Review
 
       All workflow steps completed:
       - [x] Requirements clarified
@@ -1805,7 +1911,10 @@ steps:
       - [x] Final cleanup complete
       - [x] Quality audit passed
 
-      Ready for merge approval." && \
+      Ready for merge approval." ; \
+      else \
+        echo "Skipping PR ready/comment — no remote configured or no PR created" >&2 ; \
+      fi && \
       echo "" && \
       echo "=== PR Marked Ready ==="
     output: "pr_ready_result"
@@ -1844,11 +1953,18 @@ steps:
   - id: "step-22b-final-status"
     type: "bash"
     command: |
-      cd {{repo_path}} && \
+      # FIX (#3684): Use worktree path for final status.
+      cd {{worktree_setup.worktree_path}} && \
       echo "=== WORKFLOW COMPLETE ===" && \
       echo "" && \
-      echo "PR Status:" && \
-      gh pr view --json state,mergeable,reviews,statusCheckRollup && \
+      HAS_REMOTE=true && \
+      git remote get-url origin >/dev/null 2>&1 || HAS_REMOTE=false && \
+      PR_URL="{{pr_url}}" && \
+      if [ "$HAS_REMOTE" = "true" ] && [ -n "$PR_URL" ]; then \
+        echo "PR Status:" && gh pr view --json state,mergeable,reviews,statusCheckRollup ; \
+      else \
+        echo "PR Status: No PR created (no remote configured)" ; \
+      fi && \
       echo "" && \
       # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
       TASK_DESC=$(cat <<EOFTASKDESC
