@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-27T16:50:00+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-25T19:30:00.000000+00:00
 </div>
 
 ## Map
@@ -48,11 +48,10 @@ Category: <strong>Structural</strong> | Generated: 2026-03-27T16:50:00+00:00
         F27["exceptions<br/>refs: 17"]
         F28["output_validator<br/>refs: 17"]
         F29["models<br/>refs: 16"]
-        F30["test_default_workflow_fixes<br/>refs: 12"]
         F23 --> F5
         F24 --> F6
         F25 --> F7
-
+    
         click F0 "../ast-lsp-bindings/" "View AST bindings"
     ```
 
@@ -76,10 +75,10 @@ Category: <strong>Structural</strong> | Generated: 2026-03-27T16:50:00+00:00
 
 <div class="atlas-legend" markdown>
 
-| Symbol    | Meaning               |
-| --------- | --------------------- |
-| Rectangle | Source file           |
-| Arrow     | Import dependency     |
+| Symbol | Meaning |
+|--------|---------|
+| Rectangle | Source file |
+| Arrow | Import dependency |
 | `refs: N` | Total reference count |
 
 </div>
@@ -95,7 +94,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-27T16:50:00+00:00
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-
+    
     - **Total Definitions**: 14689
     - **Total Exports**: 2163
     - **Total Imports**: 16682
@@ -110,10 +109,10 @@ Category: <strong>Structural</strong> | Generated: 2026-03-27T16:50:00+00:00
 
 <div class="atlas-crossref" markdown>
 
-- [Layer 1: Repository Surface](../repo-surface/index.md)
-- [Layer 3: Compile-time Dependencies](../compile-deps/index.md)
-- [Layer 7: Service Components](../service-components/index.md)
-- [Layer 8: User Journeys](../user-journeys/index.md)
+- [Layer 1: Repository Surface](../repo-surface/)
+- [Layer 3: Compile-time Dependencies](../compile-deps/)
+- [Layer 7: Service Components](../service-components/)
+- [Layer 8: User Journeys](../user-journeys/)
 
 </div>
 
