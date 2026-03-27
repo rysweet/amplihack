@@ -284,44 +284,109 @@ steps:
   # ========================================================================
   # STEP 3: MERGE VALIDATIONS — Require majority agreement
   # A finding is confirmed only if ≥2 of 3 validators agree.
+  # Deterministic vote counting — no agent needed (perf: saves ~30-120s/cycle).
   # ========================================================================
   - id: "merge-validations"
-    agent: "amplihack:core:architect"
+    type: "bash"
     condition: "validation_agent_1 or validation_agent_2 or validation_agent_3"
-    prompt: |
-      # Quality Audit — Cycle {{cycle_number}} — MERGE VALIDATIONS
+    command: |
+      # Deterministic merge of three validator outputs.
+      # A finding is confirmed if ≥{{validation_threshold}} validators agree.
+      _V1_TMPFILE=$(mktemp)
+      _V2_TMPFILE=$(mktemp)
+      _V3_TMPFILE=$(mktemp)
+      trap 'rm -f "$_V1_TMPFILE" "$_V2_TMPFILE" "$_V3_TMPFILE"' EXIT
+      cat > "$_V1_TMPFILE" <<'__V1_EOF__'
+      {{validation_agent_1}}
+      __V1_EOF__
+      cat > "$_V2_TMPFILE" <<'__V2_EOF__'
+      {{validation_agent_2}}
+      __V2_EOF__
+      cat > "$_V3_TMPFILE" <<'__V3_EOF__'
+      {{validation_agent_3}}
+      __V3_EOF__
 
-      Merge the three independent validation results. A finding is CONFIRMED
-      only if at least {{validation_threshold}} of 3 validators agree it is real
-      (verdict = "confirmed" or "downgraded"). Otherwise it is a FALSE POSITIVE.
+      export V1_FILE="$_V1_TMPFILE"
+      export V2_FILE="$_V2_TMPFILE"
+      export V3_FILE="$_V3_TMPFILE"
+      export THRESHOLD={{validation_threshold}}
+      export CYCLE={{cycle_number}}
 
-      **Validator 1:** {{validation_agent_1}}
-      **Validator 2:** {{validation_agent_2}}
-      **Validator 3:** {{validation_agent_3}}
+      python3 - <<'PYEOF'
+      import json, os, sys
 
-      For each finding:
-      1. Count votes: how many validators said confirmed/downgraded vs false_positive
-      2. If ≥{{validation_threshold}} confirm → CONFIRMED (use lowest severity among confirmers)
-      3. If <{{validation_threshold}} confirm → FALSE POSITIVE (majority ruled it out)
+      SEVERITY_ORDER = {'low': 0, 'medium': 1, 'high': 2, 'critical': 3}
+      threshold = int(os.environ.get('THRESHOLD', '2'))
+      cycle = os.environ.get('CYCLE', '1')
 
-      Output as JSON:
-      ```json
-      {
-        "cycle": {{cycle_number}},
-        "validated": [
-          {
-            "finding_id": 1,
-            "verdict": "confirmed|false_positive",
-            "final_severity": "critical|high|medium|low",
-            "votes": {"confirmed": 2, "false_positive": 1},
-            "reasoning": "majority rationale"
-          }
-        ],
-        "confirmed_count": 0,
-        "false_positive_count": 0,
-        "false_positive_rate": "0%"
+      def load_validator(path):
+          try:
+              with open(path) as f:
+                  return json.loads(f.read())
+          except (json.JSONDecodeError, FileNotFoundError):
+              return {'validated': []}
+
+      validators = [
+          load_validator(os.environ['V1_FILE']),
+          load_validator(os.environ['V2_FILE']),
+          load_validator(os.environ['V3_FILE']),
+      ]
+
+      # Collect votes per finding_id
+      votes = {}
+      for v in validators:
+          for item in v.get('validated', []):
+              fid = item.get('finding_id')
+              if fid is None:
+                  continue
+              votes.setdefault(fid, []).append({
+                  'verdict': item.get('verdict', 'false_positive'),
+                  'new_severity': item.get('new_severity', 'medium'),
+                  'reasoning': item.get('reasoning', ''),
+              })
+
+      # Merge using threshold
+      merged = []
+      confirmed_count = 0
+      fp_count = 0
+      for fid in sorted(votes.keys(), key=lambda x: (isinstance(x, str), x)):
+          vote_list = votes[fid]
+          confirm_votes = [v for v in vote_list if v['verdict'] in ('confirmed', 'downgraded')]
+          fp_votes = [v for v in vote_list if v['verdict'] == 'false_positive']
+
+          if len(confirm_votes) >= threshold:
+              severities = [v['new_severity'] for v in confirm_votes]
+              final_sev = min(severities, key=lambda s: SEVERITY_ORDER.get(s, 1))
+              reasoning = '; '.join(v['reasoning'] for v in confirm_votes if v['reasoning'])
+              merged.append({
+                  'finding_id': fid,
+                  'verdict': 'confirmed',
+                  'final_severity': final_sev,
+                  'votes': {'confirmed': len(confirm_votes), 'false_positive': len(fp_votes)},
+                  'reasoning': reasoning or 'majority confirmed',
+              })
+              confirmed_count += 1
+          else:
+              reasoning = '; '.join(v['reasoning'] for v in fp_votes if v['reasoning'])
+              merged.append({
+                  'finding_id': fid,
+                  'verdict': 'false_positive',
+                  'final_severity': 'n/a',
+                  'votes': {'confirmed': len(confirm_votes), 'false_positive': len(fp_votes)},
+                  'reasoning': reasoning or 'majority ruled false positive',
+              })
+              fp_count += 1
+
+      total = confirmed_count + fp_count
+      result = {
+          'cycle': int(cycle) if cycle.isdigit() else cycle,
+          'validated': merged,
+          'confirmed_count': confirmed_count,
+          'false_positive_count': fp_count,
+          'false_positive_rate': f'{fp_count * 100 // max(total, 1)}%',
       }
-      ```
+      print(json.dumps(result, indent=2))
+      PYEOF
     output: "validated_findings"
 
   # ========================================================================
@@ -516,10 +581,10 @@ steps:
       _VALIDATED_TMPFILE=$(mktemp)
       _FIX_VERIFY_TMPFILE=$(mktemp)
       trap 'rm -f "$_VALIDATED_TMPFILE" "$_FIX_VERIFY_TMPFILE"' EXIT
-      cat > "$_VALIDATED_TMPFILE" <<__VALIDATED_EOF__
+      cat > "$_VALIDATED_TMPFILE" <<'__VALIDATED_EOF__'
       {{validated_findings}}
       __VALIDATED_EOF__
-      cat > "$_FIX_VERIFY_TMPFILE" <<__FIX_VERIFY_EOF__
+      cat > "$_FIX_VERIFY_TMPFILE" <<'__FIX_VERIFY_EOF__'
       {{fix_verification}}
       __FIX_VERIFY_EOF__
 
