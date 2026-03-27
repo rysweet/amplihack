@@ -287,7 +287,7 @@ steps:
       atlas_path: "{{parameters.output_dir}}"
       codebase_path: "{{parameters.codebase_path}}"
       format: "mermaid"
-    condition: "bug_hunt == True"
+    condition: "bug_hunt == 'true'"
     depends_on:
       - "verify-all-layers"
 
@@ -314,7 +314,7 @@ steps:
       atlas_path: "{{parameters.output_dir}}"
       codebase_path: "{{parameters.codebase_path}}"
       format: "dot"
-    condition: "bug_hunt == True"
+    condition: "bug_hunt == 'true'"
     depends_on:
       - "verify-all-layers"
 
@@ -341,7 +341,7 @@ steps:
       mermaid_reports: "{{steps.bug-hunt-mermaid.outputs.bug_report_paths}}"
       graphviz_reports: "{{steps.bug-hunt-graphviz.outputs.bug_report_paths}}"
       codebase_path: "{{parameters.codebase_path}}"
-    condition: "bug_hunt == True"
+    condition: "bug_hunt == 'true'"
     depends_on:
       - "bug-hunt-mermaid"
       - "bug-hunt-graphviz"
@@ -374,7 +374,7 @@ steps:
     inputs:
       merged_findings: "{{steps.merge-bug-findings.outputs}}"
       codebase_path: "{{parameters.codebase_path}}"
-    condition: "bug_hunt == True"
+    condition: "bug_hunt == 'true'"
     depends_on:
       - "merge-bug-findings"
 
@@ -398,7 +398,7 @@ steps:
     inputs:
       merged_findings: "{{steps.merge-bug-findings.outputs}}"
       codebase_path: "{{parameters.codebase_path}}"
-    condition: "bug_hunt == True"
+    condition: "bug_hunt == 'true'"
     depends_on:
       - "merge-bug-findings"
 
@@ -424,7 +424,7 @@ steps:
     inputs:
       merged_findings: "{{steps.merge-bug-findings.outputs}}"
       codebase_path: "{{parameters.codebase_path}}"
-    condition: "bug_hunt == True"
+    condition: "bug_hunt == 'true'"
     depends_on:
       - "merge-bug-findings"
 
@@ -459,7 +459,7 @@ steps:
       architect_verdicts: "{{steps.validate-bugs-architect.outputs}}"
       tester_verdicts: "{{steps.validate-bugs-tester.outputs}}"
       merged_findings: "{{steps.merge-bug-findings.outputs}}"
-    condition: "bug_hunt == True"
+    condition: "bug_hunt == 'true'"
     depends_on:
       - "validate-bugs-security"
       - "validate-bugs-architect"
@@ -484,7 +484,7 @@ steps:
              --description "Finding from /code-atlas that did not pass multi-agent validation" \
              --color "FBCA04") && \
       echo "Labels ensured: code-atlas-bughunt, code-atlas-needs-review"
-    condition: "bug_hunt == True"
+    condition: "bug_hunt == 'true'"
     depends_on:
       - "tally-validation-votes"
 
@@ -539,7 +539,7 @@ steps:
       validated_bugs: "{{steps.tally-validation-votes.outputs}}"
       codebase_path: "{{parameters.codebase_path}}"
       output_dir: "{{parameters.output_dir}}"
-    condition: "bug_hunt == True"
+    condition: "bug_hunt == 'true'"
     depends_on:
       - "ensure-label"
 
