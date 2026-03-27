@@ -75,7 +75,7 @@ steps:
   # Answer directly and clearly (only if classified as Q&A)
   # ==========================================================================
   - id: "provide-response"
-    condition: "classification.is_qa == True"
+    condition: "classification and classification.is_qa == 'true'"
     agent: "amplihack:architect"
     prompt: |
       Answer this question directly and clearly:
@@ -98,7 +98,7 @@ steps:
   # Verify answer fully addresses question or suggest escalation
   # ==========================================================================
   - id: "escalation-check"
-    condition: "classification.is_qa == True"
+    condition: "classification and classification.is_qa == 'true'"
     agent: "amplihack:architect"
     mode: "REVIEW"
     prompt: |
@@ -136,7 +136,7 @@ steps:
   # Compile the response when question was classified as Q&A
   # ==========================================================================
   - id: "compile-output-qa"
-    condition: "classification.is_qa == True"
+    condition: "classification and classification.is_qa == 'true'"
     type: "bash"
     parse_json: true
     command: |
@@ -148,7 +148,7 @@ steps:
   # When question was NOT Q&A, report escalation needed
   # ==========================================================================
   - id: "compile-output-escalation"
-    condition: "classification.is_qa != True"
+    condition: "classification and classification.is_qa != 'true'"
     type: "bash"
     parse_json: true
     command: |
