@@ -173,7 +173,7 @@ steps:
   # ---------------------------------------------------------------------------
 
   - id: "step1-debate-round1-architect"
-    condition: "initial_requirements.requires_debate == True"
+    condition: "initial_requirements.requires_debate == 'true'"
     agent: "amplihack:architect"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (Architect Perspective)
@@ -205,7 +205,7 @@ steps:
     parse_json: true
 
   - id: "step1-debate-round1-security"
-    condition: "initial_requirements.requires_debate == True"
+    condition: "initial_requirements.requires_debate == 'true'"
     agent: "amplihack:security"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (Security Perspective)
@@ -237,7 +237,7 @@ steps:
     parse_json: true
 
   - id: "step1-debate-round1-api"
-    condition: "initial_requirements.requires_debate == True"
+    condition: "initial_requirements.requires_debate == 'true'"
     agent: "amplihack:api-designer"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (API Designer Perspective)
@@ -269,7 +269,7 @@ steps:
     parse_json: true
 
   - id: "step1-debate-round1-database"
-    condition: "initial_requirements.requires_debate == True"
+    condition: "initial_requirements.requires_debate == 'true'"
     agent: "amplihack:database"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (Database Perspective)
@@ -301,7 +301,7 @@ steps:
     parse_json: true
 
   - id: "step1-debate-round1-tester"
-    condition: "initial_requirements.requires_debate == True"
+    condition: "initial_requirements.requires_debate == 'true'"
     agent: "amplihack:tester"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (Tester Perspective)
@@ -333,7 +333,7 @@ steps:
     parse_json: true
 
   - id: "step1-debate-round2-cross-examination"
-    condition: "initial_requirements.requires_debate == True"
+    condition: "initial_requirements.requires_debate == 'true'"
     agent: "amplihack:architect"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 2: Cross-Examination
@@ -382,7 +382,7 @@ steps:
     parse_json: true
 
   - id: "step1-debate-round3-consensus"
-    condition: "initial_requirements.requires_debate == True"
+    condition: "initial_requirements.requires_debate == 'true'"
     agent: "amplihack:architect"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 3: Consensus Building
@@ -528,6 +528,26 @@ steps:
       # NOTE: This pipeline mirrors default-workflow.yaml step-04-setup-worktree with a
       # 30-char limit (vs 50). Keep both in sync on security patches. See Issue #2952.
       # FIX (issue #3041): Use heredoc instead of single-quote wrapping.
+
+      # --- Bootstrap detection (same pattern as #3603 fix in default-workflow) ---
+      # Detect whether origin remote and origin/main exist. New repos (first commit,
+      # no remote, or empty remote) must not crash on git fetch / git push.
+      HAS_ORIGIN=false
+      HAS_ORIGIN_MAIN=false
+      if git remote get-url origin >/dev/null 2>&1; then
+        HAS_ORIGIN=true
+        if git ls-remote --exit-code origin refs/heads/main >/dev/null 2>&1; then
+          HAS_ORIGIN_MAIN=true
+          BASE_REF="origin/main"
+        else
+          echo "BOOTSTRAP: origin exists but has no 'main' branch — using HEAD as base" >&2
+          BASE_REF="HEAD"
+        fi
+      else
+        echo "BOOTSTRAP: no origin remote configured — running in bootstrap mode" >&2
+        BASE_REF="HEAD"
+      fi
+
       # Create branch name
       TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
@@ -1482,7 +1502,7 @@ steps:
     parse_json: true
 
   - id: "step7-fix-issues"
-    condition: "test_results.tests_run == True"
+    condition: "test_results.tests_run == 'true'"
     agent: "amplihack:pre-commit-diagnostic"
     prompt: |
       Diagnose and fix any test or pre-commit failures:
@@ -2010,7 +2030,7 @@ steps:
     parse_json: true
 
   - id: "step14-diagnose-ci"
-    condition: "ci_status.ci_checked == True"
+    condition: "ci_status.ci_checked == 'true'"
     agent: "amplihack:ci-diagnostic-workflow"
     prompt: |
       Diagnose any CI failures:
