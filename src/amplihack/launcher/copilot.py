@@ -698,6 +698,77 @@ def register_copilot_plugin(source_commands: Path, copilot_home: Path) -> bool:
         return False
 
 
+# Required fields for installed_plugins entries in config.json.
+# Copilot CLI validates these on startup — missing fields cause crashes.
+# See issue #3671.
+REQUIRED_PLUGIN_FIELDS: dict[str, str | bool] = {
+    "name": "unknown",
+    "marketplace": "local",
+    "version": "0.0.0",
+    "enabled": True,
+    "cache_path": "",
+    "source": "unknown",
+    "installed_at": "1970-01-01T00:00:00+00:00",
+}
+
+
+def validate_and_repair_copilot_config(copilot_home: Path) -> bool:
+    """Validate and repair installed_plugins entries in config.json.
+
+    Reads config.json, checks each installed_plugins entry for missing
+    required fields, and backfills them with safe defaults.  Only writes
+    the file if changes were actually made (write-only-when-dirty).
+
+    Returns True if config is valid (or was successfully repaired),
+    False if validation failed and could not be repaired.
+    """
+    config_file = copilot_home / "config.json"
+    if not config_file.exists():
+        return True
+
+    try:
+        raw = config_file.read_text()
+        config = json.loads(raw)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"Warning: Could not read Copilot config.json for validation: {e}")
+        return False
+
+    if "installed_plugins" not in config:
+        return True
+
+    plugins = config["installed_plugins"]
+    if not isinstance(plugins, list):
+        return True
+
+    dirty = False
+    repaired_count = 0
+
+    for entry in plugins:
+        if not isinstance(entry, dict):
+            continue
+
+        entry_repaired = False
+        for field, default in REQUIRED_PLUGIN_FIELDS.items():
+            if field not in entry or not isinstance(entry[field], type(default)):
+                entry[field] = default
+                entry_repaired = True
+
+        if entry_repaired:
+            dirty = True
+            repaired_count += 1
+
+    if not dirty:
+        return True
+
+    try:
+        config_file.write_text(json.dumps(config, indent=2) + "\n")
+        print(f"Repaired {repaired_count} installed_plugins entries in config.json (issue #3671)")
+        return True
+    except OSError as e:
+        print(f"Warning: Could not write repaired config.json: {e}")
+        return False
+
+
 def stage_directory(source_dir: Path, copilot_home: Path, dest_name: str) -> int:
     """Stage a directory of .md files to ~/.copilot/<dest_name>/amplihack/.
 
@@ -1346,6 +1417,11 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     except Exception as e:
         # Fail gracefully - Copilot will work without preferences
         print(f"Warning: Could not prepare Copilot environment: {e}")
+
+    # Validate and repair config.json before launching nested agents.
+    # Catches missing plugin metadata fields that cause Copilot CLI to crash.
+    # See issue #3671.
+    validate_and_repair_copilot_config(copilot_home)
 
     # Build command with filesystem access to user directories
     # Model override via COPILOT_MODEL env var. Note: Copilot CLI uses different
