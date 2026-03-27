@@ -20,7 +20,7 @@ scenarios:
   - name: "Manifest counts all git-tracked files"
     description: "Manifest file count matches git ls-files"
     steps:
-      - run: 'python3 -c "import json; m=json.load(open(''/tmp/atlas-test-e2e/manifest.json'')); print(m[''total_files''])"'
+      - run: "python3 -c \"import json; m=json.load(open('/tmp/atlas-test-e2e/manifest.json')); print(m['total_files'])\""
         expect_exit_code: 0
       - run: "cd src/amplihack && git ls-files | wc -l"
         expect_exit_code: 0
@@ -35,14 +35,14 @@ scenarios:
   - name: "Cross-layer checks produce zero FAILures"
     description: "No hard failures in cross-layer validation"
     steps:
-      - run: 'python3 -c "import json; r=json.load(open(''/tmp/atlas-test-e2e/cross_layer_report.json'')); fails=[c for c in r[''checks''] if c[''status'']==''FAIL'']; print(f''failures={len(fails)}''); assert len(fails)==0, f''Failures: {fails}''"'
+      - run: "python3 -c \"import json; r=json.load(open('/tmp/atlas-test-e2e/cross_layer_report.json')); fails=[c for c in r['checks'] if c['status']=='FAIL']; print(f'failures={len(fails)}'); assert len(fails)==0, f'Failures: {fails}'\""
         expect_exit_code: 0
         expect_stdout_contains: "failures=0"
 
   - name: "Pipeline completes in under 60 seconds"
     description: "Performance target for 601 files"
     steps:
-      - run: 'python3 -c "import json, time; start=time.time(); import subprocess; subprocess.run([''python3'', ''scripts/atlas/run_all.py'', ''--root'', ''src/amplihack'', ''--output'', ''/tmp/atlas-perf-test''], check=True, capture_output=True); elapsed=time.time()-start; print(f''elapsed={elapsed:.1f}s''); assert elapsed < 60, f''Too slow: {elapsed}s''"'
+      - run: "python3 -c \"import json, time; start=time.time(); import subprocess; subprocess.run(['python3', 'scripts/atlas/run_all.py', '--root', 'src/amplihack', '--output', '/tmp/atlas-perf-test'], check=True, capture_output=True); elapsed=time.time()-start; print(f'elapsed={elapsed:.1f}s'); assert elapsed < 60, f'Too slow: {elapsed}s'\""
         expect_exit_code: 0
 
   - name: "Renderer produces atlas pages from JSON"

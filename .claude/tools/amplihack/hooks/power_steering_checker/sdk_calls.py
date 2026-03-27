@@ -41,9 +41,7 @@ try:
     _EVIDENCE_IMPORT_OK = True
 except ImportError:
     _EVIDENCE_IMPORT_OK = False
-    print(
-        "WARNING: completion_evidence not available - evidence checking disabled", file=sys.stderr
-    )
+    print("WARNING: completion_evidence not available - evidence checking disabled", file=sys.stderr)
 
 # Public alias
 EVIDENCE_AVAILABLE = _EVIDENCE_IMPORT_OK
@@ -55,10 +53,7 @@ try:
     _TURN_STATE_IMPORT_OK = True
 except ImportError:
     _TURN_STATE_IMPORT_OK = False
-    print(
-        "WARNING: power_steering_state not available - turn state tracking disabled",
-        file=sys.stderr,
-    )
+    print("WARNING: power_steering_state not available - turn state tracking disabled", file=sys.stderr)
 
 
 @contextmanager

@@ -339,6 +339,7 @@ logger = logging.getLogger(__name__)
 
 from amplihack.worktree.git_utils import get_shared_runtime_dir
 
+
 # Timeout duration for user response (seconds)
 TIMEOUT_SECONDS = 30
 

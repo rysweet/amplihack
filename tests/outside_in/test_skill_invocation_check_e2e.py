@@ -8,8 +8,12 @@ slash command but the agent bypasses it and responds directly.
 Tests cover both Claude and Copilot session patterns.
 """
 
+import json
 import sys
+import tempfile
 from pathlib import Path
+
+import pytest
 
 hooks_dir = Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks"
 sys.path.insert(0, str(hooks_dir))

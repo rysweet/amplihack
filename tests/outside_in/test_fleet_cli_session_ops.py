@@ -86,15 +86,10 @@ class TestFleetSessionLifecycle:
         s2 = start_fleet_session("second", FleetConfig(persist=False))
         sessions = list_fleet_sessions(active_only=True)
         # second session created after first so should appear first
-        assert (
-            sessions[0]["session_id"] == s2.session_id
-            or sessions[0]["created_at"] >= sessions[-1]["created_at"]
-        )
+        assert sessions[0]["session_id"] == s2.session_id or sessions[0]["created_at"] >= sessions[-1]["created_at"]
 
     def test_custom_config_respected(self):
-        cfg = FleetConfig(
-            max_scout_agents=5, max_advance_agents=4, timeout_seconds=600, persist=False
-        )
+        cfg = FleetConfig(max_scout_agents=5, max_advance_agents=4, timeout_seconds=600, persist=False)
         session = start_fleet_session("configured", cfg)
         status = get_fleet_session_status(session.session_id)
         assert status["config"]["max_scout_agents"] == 5
@@ -344,13 +339,11 @@ class TestModuleSeparation:
         assert AdvanceResult.__module__ == "amplihack.fleet._cli_formatters"
 
     def test_session_ops_reexports_formatters_from_formatters_module(self):
+        from amplihack.fleet._cli_session_ops import format_advance_report, format_scout_report
         from amplihack.fleet._cli_formatters import (
             format_advance_report as fmt_adv,
-        )
-        from amplihack.fleet._cli_formatters import (
             format_scout_report as fmt_sco,
         )
-        from amplihack.fleet._cli_session_ops import format_advance_report, format_scout_report
 
         # Re-exported functions are the same objects as those defined in _cli_formatters
         assert format_scout_report is fmt_sco

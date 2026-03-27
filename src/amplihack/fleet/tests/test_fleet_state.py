@@ -10,6 +10,7 @@ import pytest
 
 from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
 
+
 # ---------------------------------------------------------------------------
 # _defaults.py tests
 # ---------------------------------------------------------------------------
@@ -20,31 +21,25 @@ class TestGetAzlinPath:
 
     def test_returns_env_var_when_set(self, monkeypatch):
         from amplihack.fleet._defaults import get_azlin_path
-
         monkeypatch.setenv("AZLIN_PATH", "/custom/path/azlin")
         assert get_azlin_path() == "/custom/path/azlin"
 
     def test_returns_which_when_on_path(self, monkeypatch):
         from amplihack.fleet._defaults import get_azlin_path
-
         monkeypatch.delenv("AZLIN_PATH", raising=False)
         with patch("amplihack.fleet._defaults.shutil.which", return_value="/usr/local/bin/azlin"):
             assert get_azlin_path() == "/usr/local/bin/azlin"
 
     def test_raises_when_not_found(self, monkeypatch):
         from amplihack.fleet._defaults import get_azlin_path
-
         monkeypatch.delenv("AZLIN_PATH", raising=False)
-        with (
-            patch("amplihack.fleet._defaults.shutil.which", return_value=None),
-            patch("amplihack.fleet._defaults.os.path.isfile", return_value=False),
-        ):
+        with patch("amplihack.fleet._defaults.shutil.which", return_value=None), \
+             patch("amplihack.fleet._defaults.os.path.isfile", return_value=False):
             with pytest.raises(ValueError, match="azlin not found"):
                 get_azlin_path()
 
     def test_env_var_takes_precedence(self, monkeypatch):
         from amplihack.fleet._defaults import get_azlin_path
-
         monkeypatch.setenv("AZLIN_PATH", "/env/path/azlin")
         with patch("amplihack.fleet._defaults.shutil.which", return_value="/which/path/azlin"):
             assert get_azlin_path() == "/env/path/azlin"
@@ -54,7 +49,6 @@ class TestDefaultExcludeVms:
     def test_is_empty_set(self):
         """DEFAULT_EXCLUDE_VMS is empty — all VMs are fleet-managed."""
         from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS
-
         assert isinstance(DEFAULT_EXCLUDE_VMS, set)
         assert len(DEFAULT_EXCLUDE_VMS) == 0
 
@@ -76,9 +70,7 @@ class TestVMInfo:
             session_name="test",
             status="Running",
             tmux_sessions=[
-                TmuxSessionInfo(
-                    session_name="s1", vm_name="test", agent_status=AgentStatus.RUNNING
-                ),
+                TmuxSessionInfo(session_name="s1", vm_name="test", agent_status=AgentStatus.RUNNING),
                 TmuxSessionInfo(session_name="s2", vm_name="test", agent_status=AgentStatus.IDLE),
                 TmuxSessionInfo(
                     session_name="s3", vm_name="test", agent_status=AgentStatus.WAITING_INPUT
@@ -106,16 +98,9 @@ class TestFleetStateExclude:
     def test_idle_vms(self):
         state = FleetState()
         state.vms = [
-            VMInfo(
-                name="busy",
-                session_name="busy",
-                status="Running",
-                tmux_sessions=[
-                    TmuxSessionInfo(
-                        session_name="s1", vm_name="busy", agent_status=AgentStatus.RUNNING
-                    ),
-                ],
-            ),
+            VMInfo(name="busy", session_name="busy", status="Running", tmux_sessions=[
+                TmuxSessionInfo(session_name="s1", vm_name="busy", agent_status=AgentStatus.RUNNING),
+            ]),
             VMInfo(name="idle", session_name="idle", status="Running", tmux_sessions=[]),
         ]
 
@@ -295,7 +280,7 @@ class TestFleetStateParseVmJsonErrors:
     def test_parse_vm_json_empty_object(self):
         """Object without 'vms' key should return empty list (iterating empty)."""
         state = FleetState()
-        vms = state._parse_vm_json("{}")
+        vms = state._parse_vm_json('{}')
         assert vms == []
 
     def test_parse_vm_json_vms_with_empty_list(self):
@@ -499,21 +484,11 @@ class TestFleetStateSummaryEdgeCases:
                 status="Running",
                 region="westus",
                 tmux_sessions=[
-                    TmuxSessionInfo(
-                        session_name="s1", vm_name="vm-1", agent_status=AgentStatus.COMPLETED
-                    ),
-                    TmuxSessionInfo(
-                        session_name="s2", vm_name="vm-1", agent_status=AgentStatus.STUCK
-                    ),
-                    TmuxSessionInfo(
-                        session_name="s3", vm_name="vm-1", agent_status=AgentStatus.ERROR
-                    ),
-                    TmuxSessionInfo(
-                        session_name="s4", vm_name="vm-1", agent_status=AgentStatus.IDLE
-                    ),
-                    TmuxSessionInfo(
-                        session_name="s5", vm_name="vm-1", agent_status=AgentStatus.UNKNOWN
-                    ),
+                    TmuxSessionInfo(session_name="s1", vm_name="vm-1", agent_status=AgentStatus.COMPLETED),
+                    TmuxSessionInfo(session_name="s2", vm_name="vm-1", agent_status=AgentStatus.STUCK),
+                    TmuxSessionInfo(session_name="s3", vm_name="vm-1", agent_status=AgentStatus.ERROR),
+                    TmuxSessionInfo(session_name="s4", vm_name="vm-1", agent_status=AgentStatus.IDLE),
+                    TmuxSessionInfo(session_name="s5", vm_name="vm-1", agent_status=AgentStatus.UNKNOWN),
                 ],
             ),
         ]

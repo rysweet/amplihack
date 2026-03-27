@@ -40,9 +40,7 @@ if _CLAUDE_HOOKS.exists():
     except ImportError as e:
         _IMPORT_ERROR = str(e)
         logger.warning(f"PreCompactHook: Import failed - {e}")
-        print(
-            "WARNING: pre_compact not available - pre-compact delegation disabled", file=sys.stderr
-        )
+        print(f"WARNING: pre_compact not available - pre-compact delegation disabled", file=sys.stderr)
 else:
     _IMPORT_ERROR = f"Claude hooks directory not found: {_CLAUDE_HOOKS}"
     logger.warning(_IMPORT_ERROR)
@@ -70,10 +68,7 @@ class PreCompactHook(Hook):
                     logger.info("PreCompactHook: Delegating to Claude Code hook")
                 except ImportError as e:
                     logger.warning(f"PreCompactHook: Claude Code delegation failed: {e}")
-                    print(
-                        "WARNING: pre_compact not available - Claude Code delegation disabled",
-                        file=sys.stderr,
-                    )
+                    print(f"WARNING: pre_compact not available - Claude Code delegation disabled", file=sys.stderr)
                     self._claude_hook = None
             else:
                 logger.info(f"PreCompactHook: Using fallback ({_IMPORT_ERROR})")

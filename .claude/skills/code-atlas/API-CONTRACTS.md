@@ -4,7 +4,6 @@
 **Role:** API contract specification for all interfaces the `code-atlas` skill exposes and consumes.
 
 **v1.1.0 additions (backward compatible):**
-
 - Layer 7 (Service Component Architecture) and Layer 8 (AST+LSP Symbol Bindings) contracts
 - `BugReport.pass` extended to `1 | 2 | 3`
 - `JourneyVerdict` schema for Pass 3 per-journey outputs
@@ -90,8 +89,8 @@ The density guard prevents silent table-substitution for large diagrams (FORBIDD
 
 ```typescript
 interface DensityThresholdConfig {
-  nodes: number; // Default: 50  — trigger when node_count > 50
-  edges: number; // Default: 100 — trigger when edge_count > 100
+  nodes: number;  // Default: 50  — trigger when node_count > 50
+  edges: number;  // Default: 100 — trigger when edge_count > 100
   // Trigger condition: (node_count > nodes) OR (edge_count > edges)
   // Override: --density-threshold nodes=N,edges=M on any invocation
 }
@@ -99,13 +98,13 @@ interface DensityThresholdConfig {
 
 ### Trigger Semantics
 
-| Condition                                       | Required Behaviour                                                     |
-| ----------------------------------------------- | ---------------------------------------------------------------------- |
-| `node_count > 50` OR `edge_count > 100`         | Pause execution; present `DENSITY_PROMPT` to user                      |
-| User selects option (a)                         | Render full diagram; continue normally                                 |
-| User selects option (b)                         | Render simplified/clustered diagram; continue                          |
-| User selects option (c)                         | Render table; emit `SkillError` with code `DENSITY_THRESHOLD_EXCEEDED` |
-| No user interaction available (non-interactive) | Default to option (b); log `SkillError`                                |
+| Condition | Required Behaviour |
+|-----------|-------------------|
+| `node_count > 50` OR `edge_count > 100` | Pause execution; present `DENSITY_PROMPT` to user |
+| User selects option (a) | Render full diagram; continue normally |
+| User selects option (b) | Render simplified/clustered diagram; continue |
+| User selects option (c) | Render table; emit `SkillError` with code `DENSITY_THRESHOLD_EXCEEDED` |
+| No user interaction available (non-interactive) | Default to option (b); log `SkillError` |
 
 **NEVER:** Fall back silently to a table without presenting this prompt. Any code path that bypasses the prompt is a contract violation.
 
@@ -336,31 +335,31 @@ LSPQueryType: "symbol-references" | "dead-code" | "interface-mismatches"
 
 ```typescript
 interface LSPSymbolReport {
-  mode: "lsp-assisted"; // Always "lsp-assisted" when this path is taken
+  mode: "lsp-assisted";              // Always "lsp-assisted" when this path is taken
   language: string;
   query_type: LSPQueryType;
   symbols: SymbolEntry[];
-  unreferenced_symbols: string[]; // Dead code candidates (for query_type=dead-code)
-  interface_mismatches: Mismatch[]; // For query_type=interface-mismatches
+  unreferenced_symbols: string[];    // Dead code candidates (for query_type=dead-code)
+  interface_mismatches: Mismatch[];  // For query_type=interface-mismatches
 }
 
 interface SymbolEntry {
-  name: string; // Fully qualified symbol name
-  file: string; // Relative path from codebase root
+  name: string;             // Fully qualified symbol name
+  file: string;             // Relative path from codebase root
   line: number;
-  references: Reference[]; // All call sites
+  references: Reference[];  // All call sites
 }
 
 interface Reference {
   file: string;
   line: number;
-  context: string; // One line of surrounding code
+  context: string;          // One line of surrounding code
 }
 
 interface Mismatch {
   symbol: string;
-  defined_signature: string; // What the definition declares
-  call_signature: string; // What the call site provides
+  defined_signature: string;   // What the definition declares
+  call_signature: string;      // What the call site provides
   definition_file: string;
   call_file: string;
   call_line: number;
@@ -373,13 +372,13 @@ If `lsp-setup` returns `LAYER8_LSP_UNAVAILABLE`, code-atlas switches to **static
 
 ```typescript
 interface StaticSymbolReport {
-  mode: "static-approximation"; // MUST be "static-approximation" — never hidden
+  mode: "static-approximation";  // MUST be "static-approximation" — never hidden
   language: string;
   query_type: LSPQueryType;
-  symbols: SymbolEntry[]; // Best-effort from ripgrep + code-visualizer AST
+  symbols: SymbolEntry[];        // Best-effort from ripgrep + code-visualizer AST
   unreferenced_symbols: string[];
   interface_mismatches: Mismatch[];
-  warning: string; // e.g. "Results are approximate. Install an LSP for verified analysis."
+  warning: string;  // e.g. "Results are approximate. Install an LSP for verified analysis."
 }
 ```
 
@@ -392,7 +391,7 @@ interface LSPSetupDelegation {
   query: LSPQueryType;
   params: { codebase_path: string; language: string };
   output: LSPSymbolReport | StaticSymbolReport;
-  fallback: "static-approximation"; // Declared, communicated to user — never silent
+  fallback: "static-approximation";  // Declared, communicated to user — never silent
 }
 ```
 
@@ -493,14 +492,14 @@ docs/atlas/
 interface Layer7Output {
   directory: "docs/atlas/service-components/";
   files: {
-    readme: "README.md"; // Required; lists services analysed
-    service_diagrams: "{service-name}.mmd"; // One per service; Mermaid graph TD
-    rendered_svgs?: "{service-name}.svg"; // Optional; produced when mmdc available
+    readme: "README.md";                          // Required; lists services analysed
+    service_diagrams: "{service-name}.mmd";       // One per service; Mermaid graph TD
+    rendered_svgs?: "{service-name}.svg";         // Optional; produced when mmdc available
   };
   diagram_content: {
-    type: "graph TD"; // Always top-down flow for component maps
+    type: "graph TD";                             // Always top-down flow for component maps
     shows: "packages → files → key exported symbols";
-    density_guard_applies: true; // >50 nodes OR >100 edges → user prompt
+    density_guard_applies: true;                  // >50 nodes OR >100 edges → user prompt
   };
 }
 ```
@@ -513,14 +512,14 @@ interface Layer7Output {
 interface Layer8Output {
   directory: "docs/atlas/ast-lsp-bindings/";
   files: {
-    readme: "README.md"; // First line MUST state operating mode
-    symbol_refs: "symbol-references.mmd"; // Cross-file reference graph
-    dead_code: "dead-code.md"; // Table of unreferenced symbols
-    mismatched: "mismatched-interfaces.md"; // Table of call-site/definition mismatches
+    readme: "README.md";                          // First line MUST state operating mode
+    symbol_refs: "symbol-references.mmd";         // Cross-file reference graph
+    dead_code: "dead-code.md";                    // Table of unreferenced symbols
+    mismatched: "mismatched-interfaces.md";       // Table of call-site/definition mismatches
   };
   mode: "lsp-assisted" | "static-approximation"; // Set by lsp-setup delegation result
   mode_label_contract: "Mode MUST appear verbatim in README.md line 1 as: '**Mode:** {mode}'";
-  density_guard_applies: true; // Applies to symbol-references.mmd
+  density_guard_applies: true;                    // Applies to symbol-references.mmd
 }
 ```
 
@@ -548,25 +547,24 @@ Every finding from Pass 1, Pass 2, or Pass 3 produces a `BugReport` object and a
 
 ```typescript
 interface BugReport {
-  id: string; // Slug: "route-dto-mismatch-order-customerid"
-  title: string; // One sentence: "POST /api/orders handler reads undeclared field"
+  id: string;           // Slug: "route-dto-mismatch-order-customerid"
+  title: string;        // One sentence: "POST /api/orders handler reads undeclared field"
   severity: "critical" | "major" | "minor" | "info";
-  pass: 1 | 2 | 3; // Which bug-hunt pass found this (v1.1.0: added 3)
-  layers_involved: (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8)[]; // v1.1.0: extended to include 7 and 8
+  pass: 1 | 2 | 3;     // Which bug-hunt pass found this (v1.1.0: added 3)
+  layers_involved: (1|2|3|4|5|6|7|8)[];  // v1.1.0: extended to include 7 and 8
   evidence: Evidence[]; // Minimum 1 required
   recommendation: string; // One actionable sentence
 }
 
 interface Evidence {
   type: "code-quote" | "layer-reference" | "diagram-annotation";
-  file: string; // Relative path from codebase root
-  line?: number; // Specific line number (for code-quote only)
-  content: string; // The actual quoted code or layer data
+  file: string;          // Relative path from codebase root
+  line?: number;         // Specific line number (for code-quote only)
+  content: string;       // The actual quoted code or layer data
 }
 ```
 
 **Pass semantics:**
-
 - `pass: 1` — Comprehensive Build + Hunt (structural contradictions, orphaned env vars, stale docs)
 - `pass: 2` — Fresh-Eyes Cross-Check (re-examination from scratch; validates or overturns Pass 1)
 - `pass: 3` — Scenario Deep-Dive (per-journey trace; emits `JourneyVerdict` objects, see §4b)
@@ -856,23 +854,22 @@ staleness_map:
 
 **Stay at v1.x as long as all changes are additive.**
 
-| Change Type                                | Action                           | Example                               |
-| ------------------------------------------ | -------------------------------- | ------------------------------------- |
-| Add optional invocation parameter          | Backward compatible — minor bump | `--density-threshold` added in v1.1.0 |
-| Add new layer ID (7, 8, …)                 | Backward compatible — minor bump | Layers 7/8 added in v1.1.0            |
-| Add new `ErrorCode` value                  | Backward compatible — minor bump | 3 codes added in v1.1.0               |
-| Add new delegation contract (§2x)          | Backward compatible — minor bump | §2f lsp-setup added in v1.1.0         |
-| Add new BugReport field (optional)         | Backward compatible — minor bump | —                                     |
-| Rename existing `docs/atlas/` subdirectory | **Breaking — bump to v2.0.0**    | —                                     |
-| Remove existing output artifact            | **Breaking — bump to v2.0.0**    | —                                     |
-| Change `BugReport` required field names    | **Breaking — bump to v2.0.0**    | —                                     |
-| Remove delegation contract                 | **Breaking — bump to v2.0.0**    | —                                     |
-| Change `staleness-map.yaml` key names      | **Breaking — bump to v2.0.0**    | —                                     |
+| Change Type                                | Action                                | Example |
+| ------------------------------------------ | ------------------------------------- | ------- |
+| Add optional invocation parameter          | Backward compatible — minor bump      | `--density-threshold` added in v1.1.0 |
+| Add new layer ID (7, 8, …)                 | Backward compatible — minor bump      | Layers 7/8 added in v1.1.0 |
+| Add new `ErrorCode` value                  | Backward compatible — minor bump      | 3 codes added in v1.1.0 |
+| Add new delegation contract (§2x)          | Backward compatible — minor bump      | §2f lsp-setup added in v1.1.0 |
+| Add new BugReport field (optional)         | Backward compatible — minor bump      | — |
+| Rename existing `docs/atlas/` subdirectory | **Breaking — bump to v2.0.0**         | — |
+| Remove existing output artifact            | **Breaking — bump to v2.0.0**         | — |
+| Change `BugReport` required field names    | **Breaking — bump to v2.0.0**         | — |
+| Remove delegation contract                 | **Breaking — bump to v2.0.0**         | — |
+| Change `staleness-map.yaml` key names      | **Breaking — bump to v2.0.0**         | — |
 
 **v2 trigger condition:** Any change to `docs/atlas/` layout or `BugReport` schema that breaks existing CI integrations.
 
 **Version history:**
-
 - `v1.0.0` — Initial release: Layers 1–6, 2-pass bug hunt
 - `v1.1.0` — Layers 7–8, 3-pass bug hunt, density guard, lsp-setup delegation
 
@@ -880,18 +877,18 @@ staleness_map:
 
 ## 8. Contract Stability Guarantees
 
-| Contract                          | Stability    | Notes                                                   |
-| --------------------------------- | ------------ | ------------------------------------------------------- | ---- | ---------------------------------------------- |
-| Skill invocation parameters       | **Stable**   | Additive only in v1.x                                   |
-| `docs/atlas/` directory layout    | **Stable**   | Breaking = v2; new directories are additive             |
-| `staleness-map.yaml` key names    | **Stable**   | `glob`, `layers_affected`, `rebuild_command` guaranteed |
-| `BugReport.id` format             | **Stable**   | `{topic}-{field-slug}` format guaranteed                |
-| `BugReport.pass` values           | **Stable**   | `1                                                      | 2    | 3`guaranteed; adding`4` is additive (no break) |
-| `JourneyVerdict` verdict values   | **Stable**   | `PASS                                                   | FAIL | NEEDS_ATTENTION` guaranteed                    |
-| Layer 7 service diagram filenames | **Stable**   | `service-components/{service-name}.mmd` guaranteed      |
-| Layer 8 README mode label         | **Stable**   | Line 1 format `**Mode:** {mode}` guaranteed             |
-| Density prompt wording            | **Stable**   | Options (a)(b)(c) wording guaranteed; do not reorder    |
-| `DensityThresholdConfig` defaults | **Stable**   | `nodes: 50, edges: 100` defaults guaranteed             |
-| Inventory table column order      | **Unstable** | Consumers MUST use column headers, not position         |
-| Delegation input shapes (§2a–§2f) | **Internal** | May change between minor versions                       |
-| Individual SVG filenames          | **Stable**   | `{layer-slug}/{diagram-name}.svg` guaranteed            |
+| Contract                             | Stability    | Notes                                                          |
+| ------------------------------------ | ------------ | -------------------------------------------------------------- |
+| Skill invocation parameters          | **Stable**   | Additive only in v1.x                                          |
+| `docs/atlas/` directory layout       | **Stable**   | Breaking = v2; new directories are additive                    |
+| `staleness-map.yaml` key names       | **Stable**   | `glob`, `layers_affected`, `rebuild_command` guaranteed        |
+| `BugReport.id` format                | **Stable**   | `{topic}-{field-slug}` format guaranteed                       |
+| `BugReport.pass` values              | **Stable**   | `1 | 2 | 3` guaranteed; adding `4` is additive (no break)      |
+| `JourneyVerdict` verdict values      | **Stable**   | `PASS | FAIL | NEEDS_ATTENTION` guaranteed                     |
+| Layer 7 service diagram filenames    | **Stable**   | `service-components/{service-name}.mmd` guaranteed      |
+| Layer 8 README mode label            | **Stable**   | Line 1 format `**Mode:** {mode}` guaranteed                    |
+| Density prompt wording               | **Stable**   | Options (a)(b)(c) wording guaranteed; do not reorder           |
+| `DensityThresholdConfig` defaults    | **Stable**   | `nodes: 50, edges: 100` defaults guaranteed                    |
+| Inventory table column order         | **Unstable** | Consumers MUST use column headers, not position                |
+| Delegation input shapes (§2a–§2f)    | **Internal** | May change between minor versions                              |
+| Individual SVG filenames             | **Stable**   | `{layer-slug}/{diagram-name}.svg` guaranteed                   |

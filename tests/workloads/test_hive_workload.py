@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -78,7 +79,6 @@ def test_hive_event_factories_without_haymaker() -> None:
     # With agent-haymaker available (from /tmp/agent-haymaker installed path)
     try:
         import sys
-
         sys.path.insert(0, "/tmp/agent-haymaker/src")
 
         evt = make_learn_content_event("dep-001", "test content", 0)
@@ -126,7 +126,6 @@ def test_hive_mind_workload_inherits_workload_base() -> None:
     """HiveMindWorkload must inherit WorkloadBase."""
     try:
         from agent_haymaker.workloads.base import WorkloadBase
-
         from amplihack.workloads.hive import HiveMindWorkload
 
         assert issubclass(HiveMindWorkload, WorkloadBase)
@@ -139,7 +138,6 @@ def test_deploy_returns_deployment_id() -> None:
     try:
         import asyncio
         import sys
-
         sys.path.insert(0, "/tmp/agent-haymaker/src")
         from agent_haymaker.workloads.models import DeploymentConfig
 
@@ -151,9 +149,7 @@ def test_deploy_returns_deployment_id() -> None:
     workload = HiveMindWorkload(platform=platform)
 
     async def _run() -> str:
-        with patch.object(
-            workload, "_deploy_single_container", new_callable=AsyncMock
-        ) as mock_deploy:
+        with patch.object(workload, "_deploy_single_container", new_callable=AsyncMock) as mock_deploy:
             mock_deploy.return_value = {"app_name": "hive-test-c00"}
 
             config = DeploymentConfig(
@@ -185,7 +181,6 @@ def test_stop_updates_state() -> None:
     try:
         import asyncio
         import sys
-
         sys.path.insert(0, "/tmp/agent-haymaker/src")
         from agent_haymaker.workloads.models import (
             DeploymentState,
@@ -237,7 +232,6 @@ def test_cleanup_deletes_apps() -> None:
     try:
         import asyncio
         import sys
-
         sys.path.insert(0, "/tmp/agent-haymaker/src")
         from agent_haymaker.workloads.models import (
             DeploymentState,

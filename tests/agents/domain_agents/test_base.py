@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
 from amplihack.agents.domain_agents.base import (
     DomainAgent,
     EvalLevel,

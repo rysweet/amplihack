@@ -240,9 +240,7 @@ class TestEvaluateAnswerCompleteness:
         """When LLM says complete, returns is_complete=True."""
         mock_llm.return_value = json.dumps({"is_complete": True})
 
-        result = await agent._evaluate_answer_completeness(
-            "What is X?", "X is a thing that does Y."
-        )
+        result = await agent._evaluate_answer_completeness("What is X?", "X is a thing that does Y.")
         assert result["is_complete"] is True
         assert result["gaps"] == []
 
@@ -254,9 +252,7 @@ class TestEvaluateAnswerCompleteness:
             {"is_complete": False, "gaps": ["missing detail about Z", "need info on W"]}
         )
 
-        result = await agent._evaluate_answer_completeness(
-            "What is X?", "X is partially described."
-        )
+        result = await agent._evaluate_answer_completeness("What is X?", "X is partially described.")
         assert result["is_complete"] is False
         assert len(result["gaps"]) == 2
         assert "missing detail about Z" in result["gaps"]

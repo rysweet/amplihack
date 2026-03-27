@@ -149,11 +149,11 @@ Output: layer1_repo_surface.json
     }
   ],
   "entry_points": [
-    { "type": "console_script", "name": "amplihack", "target": "amplihack.cli:main" },
-    { "type": "__main__", "path": "src/amplihack/__main__.py" }
+    {"type": "console_script", "name": "amplihack", "target": "amplihack.cli:main"},
+    {"type": "__main__", "path": "src/amplihack/__main__.py"}
   ],
   "non_python_assets": [
-    { "path": "src/amplihack/amplifier-bundle/recipes/foo.yaml", "type": "yaml" }
+    {"path": "src/amplihack/amplifier-bundle/recipes/foo.yaml", "type": "yaml"}
   ]
 }
 ```
@@ -232,7 +232,9 @@ Output: layer2_ast_bindings.json
       "lineno": 450,
       "is_private": false,
       "is_exported": true,
-      "references": [{ "file": "src/amplihack/__main__.py", "lineno": 3 }],
+      "references": [
+        {"file": "src/amplihack/__main__.py", "lineno": 3}
+      ],
       "reference_count": 1
     }
   ],
@@ -445,7 +447,9 @@ Output: layer4_runtime_topology.json
   "docker_configs": [
     {
       "file": "docker-compose.yml",
-      "services": [{ "name": "app", "image": "...", "ports": ["8080:8080"] }]
+      "services": [
+        {"name": "app", "image": "...", "ports": ["8080:8080"]}
+      ]
     }
   ],
   "env_var_reads": [
@@ -882,16 +886,8 @@ Output: layer8_user_journeys.json
       "trace_depth": 5,
       "functions_reached": 45,
       "outcomes": [
-        {
-          "type": "subprocess",
-          "detail": "claude --resume",
-          "file": "src/amplihack/launcher/core.py"
-        },
-        {
-          "type": "file_io",
-          "detail": "write session log",
-          "file": "src/amplihack/launcher/session_tracker.py"
-        }
+        {"type": "subprocess", "detail": "claude --resume", "file": "src/amplihack/launcher/core.py"},
+        {"type": "file_io", "detail": "write session log", "file": "src/amplihack/launcher/session_tracker.py"}
       ],
       "packages_touched": ["amplihack.cli", "amplihack.launcher", "amplihack.utils"]
     }

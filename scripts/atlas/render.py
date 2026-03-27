@@ -14,7 +14,8 @@ Public API:
 
 import argparse
 import json
-from datetime import UTC, datetime
+import textwrap
+from datetime import datetime, timezone
 from pathlib import Path
 
 __all__ = ["AtlasRenderer", "main"]
@@ -102,7 +103,11 @@ def _mermaid_escape(text: str) -> str:
     Escapes characters that break Mermaid syntax: double quotes, angle brackets,
     and newlines.
     """
-    return text.replace('"', "#quot;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", " ")
+    return (text
+            .replace('"', '#quot;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;')
+            .replace('\n', ' '))
 
 
 class AtlasRenderer:
@@ -117,7 +122,7 @@ class AtlasRenderer:
         self.data_dir = data_dir
         self.output_dir = output_dir
         self.layers: dict[str, dict] = {}
-        self.generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+        self.generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     def load_all_layers(self) -> dict[str, dict]:
         """Load all available layer JSONs from data_dir.
@@ -176,22 +181,21 @@ class AtlasRenderer:
             coverage = self._compute_coverage(layer_def, data)
             icon_class = f"atlas-icon--{layer_def['category']}"
 
-            lines.append(
-                f'-   <span class="{icon_class}">{layer_def["icon"]}</span>'
-                f" **[Layer {layer_def['num']}: {layer_def['name']}]"
-                f"({layer_def['slug']}/)**"
-            )
+            lines.append(f"-   <span class=\"{icon_class}\">{layer_def['icon']}</span>"
+                         f" **[Layer {layer_def['num']}: {layer_def['name']}]"
+                         f"({layer_def['slug']}/)**")
             lines.append("")
-            lines.append("    ---")
+            lines.append(f"    ---")
             lines.append("")
             lines.append(f"    {layer_def['description']}")
             lines.append("")
 
             if coverage is not None:
                 pct = min(100, max(0, int(coverage)))
-                lines.append('    <div class="atlas-coverage">')
-                lines.append(f'    <div class="atlas-coverage__bar" style="width:{pct}%"></div>')
-                lines.append("    </div>")
+                lines.append(f'    <div class="atlas-coverage">')
+                lines.append(f'    <div class="atlas-coverage__bar" '
+                             f'style="width:{pct}%"></div>')
+                lines.append(f"    </div>")
                 coverage_label = self._coverage_label(layer_def, data, pct)
                 lines.append(f"    <small>{coverage_label}</small>")
                 lines.append("")
@@ -200,9 +204,9 @@ class AtlasRenderer:
             if summary:
                 stat_items = self._format_summary_stats(layer_def, summary)
                 if stat_items:
-                    lines.append('    <div class="atlas-scale">')
+                    lines.append(f'    <div class="atlas-scale">')
                     lines.append(f"    {' | '.join(stat_items)}")
-                    lines.append("    </div>")
+                    lines.append(f"    </div>")
                     lines.append("")
 
         lines.append("</div>")
@@ -217,18 +221,16 @@ class AtlasRenderer:
             tools_used = layer1.get("tools_used", [])
             tool_label = ", ".join(tools_used) if tools_used else "extension counting"
 
-            lines.extend(
-                [
-                    "## Languages",
-                    "",
-                    f"Primary language: **{primary.title()}**"
-                    f" | Total code: **{total_code:,}** lines"
-                    f" | Detected via: *{tool_label}*",
-                    "",
-                    "| Language | Files | Code Lines | % | Analysis Available |",
-                    "|----------|------:|-----------:|--:|-------------------|",
-                ]
-            )
+            lines.extend([
+                "## Languages",
+                "",
+                f"Primary language: **{primary.title()}**"
+                f" | Total code: **{total_code:,}** lines"
+                f" | Detected via: *{tool_label}*",
+                "",
+                "| Language | Files | Code Lines | % | Analysis Available |",
+                "|----------|------:|-----------:|--:|-------------------|",
+            ])
 
             # Analysis availability per language
             analysis_levels = {
@@ -243,20 +245,9 @@ class AtlasRenderer:
 
             # Filter out non-code languages for the main table
             _code_languages = {
-                "python",
-                "rust",
-                "typescript",
-                "javascript",
-                "go",
-                "csharp",
-                "java",
-                "ruby",
-                "swift",
-                "kotlin",
-                "c",
-                "cpp",
-                "zig",
-                "lua",
+                "python", "rust", "typescript", "javascript", "go",
+                "csharp", "java", "ruby", "swift", "kotlin", "c", "cpp",
+                "zig", "lua",
             }
 
             for lang, info in languages.items():
@@ -275,57 +266,49 @@ class AtlasRenderer:
             # Show coverage note if primary language is not Python
             if primary != "python":
                 pct_primary = languages.get(primary, {}).get("percentage", 0)
-                lines.extend(
-                    [
-                        f"> **Analysis Coverage**: This codebase is primarily "
-                        f"**{primary.title()}** ({pct_primary}% of code). "
-                        f"Full AST analysis is available for Python files. "
-                        f"{primary.title()} analysis covers dependencies and "
-                        f"file structure. See [issue #3310]"
-                        f"(https://github.com/user/repo/issues/3310) for "
-                        f"expanded language support.",
-                        "",
-                    ]
-                )
+                lines.extend([
+                    f"> **Analysis Coverage**: This codebase is primarily "
+                    f"**{primary.title()}** ({pct_primary}% of code). "
+                    f"Full AST analysis is available for Python files. "
+                    f"{primary.title()} analysis covers dependencies and "
+                    f"file structure. See [issue #3310]"
+                    f"(https://github.com/user/repo/issues/3310) for "
+                    f"expanded language support.",
+                    "",
+                ])
             else:
                 non_python = [l for l in languages if l != "python"]
                 if non_python:
-                    lines.extend(
-                        [
-                            "> **Note**: Full AST analysis is currently available "
-                            "for Python only. Other languages have dependency and "
-                            "file-level analysis.",
-                            "",
-                        ]
-                    )
+                    lines.extend([
+                        "> **Note**: Full AST analysis is currently available "
+                        "for Python only. Other languages have dependency and "
+                        "file-level analysis.",
+                        "",
+                    ])
 
         # Legend
-        lines.extend(
-            [
-                "## Legend",
-                "",
-                '<div class="atlas-legend" markdown>',
-                "",
-                "| Category | Layers | Color |",
-                "|----------|--------|-------|",
-                "| Structural | 1, 2, 3, 4, 7 | Blue |",
-                "| Behavioral | 5, 6, 8 | Orange |",
-                "",
-                "</div>",
-                "",
-            ]
-        )
+        lines.extend([
+            "## Legend",
+            "",
+            '<div class="atlas-legend" markdown>',
+            "",
+            "| Category | Layers | Color |",
+            "|----------|--------|-------|",
+            "| Structural | 1, 2, 3, 4, 7 | Blue |",
+            "| Behavioral | 5, 6, 8 | Orange |",
+            "",
+            "</div>",
+            "",
+        ])
 
         # Cross-references to inventory & health
-        lines.extend(
-            [
-                "## Quick Links",
-                "",
-                "- [Health Dashboard](health.md) -- cross-layer check results",
-                "- [Glossary](glossary.md) -- atlas terminology",
-                "",
-            ]
-        )
+        lines.extend([
+            "## Quick Links",
+            "",
+            "- [Health Dashboard](health.md) -- cross-layer check results",
+            "- [Glossary](glossary.md) -- atlas terminology",
+            "",
+        ])
 
         self._write_page("index.md", "\n".join(lines))
 
@@ -352,80 +335,71 @@ class AtlasRenderer:
 
         lines = [
             "---",
-            f'title: "Layer {layer_def["num"]}: {layer_def["name"]}"',
+            f"title: \"Layer {layer_def['num']}: {layer_def['name']}\"",
             "---",
             "",
             # Breadcrumb
-            '<nav class="atlas-breadcrumb">',
+            f'<nav class="atlas-breadcrumb">',
             f'<a href="../">Atlas</a> &raquo; Layer {layer_def["num"]}: {layer_def["name"]}',
-            "</nav>",
+            f"</nav>",
             "",
             f"# Layer {layer_def['num']}: {layer_def['name']}",
             "",
             # Metadata strip
-            '<div class="atlas-metadata">',
-            f"Category: <strong>{layer_def['category'].title()}</strong> | Generated: {gen_time}",
-            "</div>",
+            f'<div class="atlas-metadata">',
+            f'Category: <strong>{layer_def["category"].title()}</strong> | '
+            f"Generated: {gen_time}",
+            f"</div>",
             "",
         ]
 
         # Map section with content tabs
         mermaid_src = self._generate_mermaid_for_layer(layer_def, data)
-        lines.extend(
-            [
-                "## Map",
-                "",
-                '=== "Interactive (Mermaid)"',
-                "",
-                "    ```mermaid",
-            ]
-        )
+        lines.extend([
+            "## Map",
+            "",
+            '=== "Interactive (Mermaid)"',
+            "",
+            "    ```mermaid",
+        ])
         for mermaid_line in mermaid_src.splitlines():
             lines.append(f"    {mermaid_line}")
-        lines.extend(
-            [
-                "    ```",
-                "",
-                '=== "High-Fidelity (Graphviz)"',
-                "",
-                '    <div class="atlas-diagram-container">',
-                f'    <img src="{slug}-dot.svg" alt="{layer_def["name"]} - Graphviz">',
-                "    </div>",
-                "",
-                '=== "Data Table"',
-                "",
-            ]
-        )
+        lines.extend([
+            "    ```",
+            "",
+            '=== "High-Fidelity (Graphviz)"',
+            "",
+            f'    <div class="atlas-diagram-container">',
+            f'    <img src="{slug}-dot.svg" alt="{layer_def["name"]} - Graphviz">',
+            f"    </div>",
+            "",
+            '=== "Data Table"',
+            "",
+        ])
         table_lines = self._generate_data_table(layer_def, data)
         for tl in table_lines:
             lines.append(f"    {tl}")
         lines.append("")
 
         # Legend
-        lines.extend(
-            [
-                "## Legend",
-                "",
-                '<div class="atlas-legend" markdown>',
-                "",
-            ]
-        )
+        lines.extend([
+            "## Legend",
+            "",
+            '<div class="atlas-legend" markdown>',
+            "",
+        ])
         lines.extend(self._generate_legend(layer_def))
-        lines.extend(
-            [
-                "",
-                "</div>",
-                "",
-            ]
-        )
+        lines.extend([
+            "",
+            "</div>",
+            "",
+        ])
 
         # Key Findings
-        lines.extend(
-            [
-                "## Key Findings",
-                "",
-            ]
-        )
+        lines.extend([
+            "## Key Findings",
+            "",
+        ])
         findings = self._generate_findings(layer_def, data)
         for finding in findings:
             lines.append(f"- {finding}")
@@ -434,50 +408,43 @@ class AtlasRenderer:
         lines.append("")
 
         # Detail (collapsed)
-        lines.extend(
-            [
-                "## Detail",
-                "",
-                '??? info "Full data (click to expand)"',
-                "",
-            ]
-        )
+        lines.extend([
+            "## Detail",
+            "",
+            "??? info \"Full data (click to expand)\"",
+            "",
+        ])
         detail_lines = self._generate_detail_section(layer_def, data)
         for dl in detail_lines:
             lines.append(f"    {dl}")
         lines.append("")
 
         # Cross-references
-        lines.extend(
-            [
-                "## Cross-References",
-                "",
-                '<div class="atlas-crossref" markdown>',
-                "",
-            ]
-        )
+        lines.extend([
+            "## Cross-References",
+            "",
+            '<div class="atlas-crossref" markdown>',
+            "",
+        ])
         xrefs = self._generate_crossrefs(layer_def)
         for xref in xrefs:
             lines.append(f"- {xref}")
-        lines.extend(
-            [
-                "",
-                "</div>",
-                "",
-            ]
-        )
+        lines.extend([
+            "",
+            "</div>",
+            "",
+        ])
 
         # Footer
-        lines.extend(
-            [
-                '<div class="atlas-footer">',
-                "",
-                f"Source: `{layer_def['json_key']}.json` | [Mermaid source]({slug}.mmd)",
-                "",
-                "</div>",
-                "",
-            ]
-        )
+        lines.extend([
+            '<div class="atlas-footer">',
+            "",
+            f"Source: `{layer_def['json_key']}.json`"
+            f" | [Mermaid source]({slug}.mmd)",
+            "",
+            "</div>",
+            "",
+        ])
 
         self._write_page(f"{slug}/index.md", "\n".join(lines))
 
@@ -506,22 +473,20 @@ class AtlasRenderer:
             "",
             "# Health Dashboard",
             "",
-            '<div class="atlas-metadata">',
+            f'<div class="atlas-metadata">',
             f"Overall: {status_icon} **{overall}** | "
             f"Warnings: {warning_count} | Failures: {failure_count}",
-            "</div>",
+            f"</div>",
             "",
         ]
 
         if checks:
-            lines.extend(
-                [
-                    "## Check Results",
-                    "",
-                    "| Check | Status | Details |",
-                    "|-------|--------|---------|",
-                ]
-            )
+            lines.extend([
+                "## Check Results",
+                "",
+                "| Check | Status | Details |",
+                "|-------|--------|---------|",
+            ])
             for check in checks:
                 name = check.get("name", "unknown")
                 status = check.get("status", "UNKNOWN")
@@ -534,27 +499,23 @@ class AtlasRenderer:
                 lines.append(f"| {name} | {status_badge} | {details} |")
             lines.append("")
         else:
-            lines.extend(
-                [
-                    '!!! warning "No cross-layer report available"',
-                    "    Run the extraction pipeline to generate health data:",
-                    "    ```",
-                    "    python -m scripts.atlas.run_all",
-                    "    ```",
-                    "",
-                ]
-            )
+            lines.extend([
+                "!!! warning \"No cross-layer report available\"",
+                "    Run the extraction pipeline to generate health data:",
+                "    ```",
+                "    python -m scripts.atlas.run_all",
+                "    ```",
+                "",
+            ])
 
         # Warnings detail
         if checks:
             warn_checks = [c for c in checks if c.get("status") == "WARN"]
             if warn_checks:
-                lines.extend(
-                    [
-                        "## Warnings",
-                        "",
-                    ]
-                )
+                lines.extend([
+                    "## Warnings",
+                    "",
+                ])
                 for check in warn_checks:
                     name = check.get("name", "unknown")
                     details = check.get("details", "")
@@ -588,21 +549,29 @@ class AtlasRenderer:
             "| Term | Definition |",
             "|------|-----------|",
             "| **Layer** | A distinct analytical view of the codebase (8 total) |",
-            "| **Structural layer** | Layers analyzing static code structure (1, 2, 3, 4, 7) |",
-            "| **Behavioral layer** | Layers analyzing runtime behavior and data flow (5, 6, 8) |",
-            "| **Manifest** | Canonical file list built from `git ls-files` (Layer 0 foundation) |",
+            "| **Structural layer** | Layers analyzing static code structure "
+            "(1, 2, 3, 4, 7) |",
+            "| **Behavioral layer** | Layers analyzing runtime behavior and "
+            "data flow (5, 6, 8) |",
+            "| **Manifest** | Canonical file list built from `git ls-files` "
+            "(Layer 0 foundation) |",
             "| **Coverage** | Percentage of manifest files analyzed by a layer |",
-            "| **Afferent coupling (Ca)** | Number of packages that depend on this package |",
-            "| **Efferent coupling (Ce)** | Number of packages this package depends on |",
-            "| **Instability** | Ce / (Ca + Ce). 0 = maximally stable, 1 = maximally unstable |",
+            "| **Afferent coupling (Ca)** | Number of packages that depend on "
+            "this package |",
+            "| **Efferent coupling (Ce)** | Number of packages this package "
+            "depends on |",
+            "| **Instability** | Ce / (Ca + Ce). 0 = maximally stable, "
+            "1 = maximally unstable |",
             "| **Dead code** | Definitions not exported, not imported, not called "
             "internally (conservative) |",
-            "| **Entry point** | CLI command, HTTP route, or hook that starts a user journey |",
+            "| **Entry point** | CLI command, HTTP route, or hook that starts "
+            "a user journey |",
             "| **Journey** | Trace from entry point through call graph to "
             "outcome (depth-limited) |",
             "| **Outcome** | Terminal action: file I/O, database op, subprocess, "
             "network call, or return |",
-            "| **Cross-layer check** | Validation that data is consistent across multiple layers |",
+            "| **Cross-layer check** | Validation that data is consistent across "
+            "multiple layers |",
             "| **Transformation point** | Function that both reads and writes "
             "data (data flow bridge) |",
             "",
@@ -648,7 +617,10 @@ class AtlasRenderer:
         return generator(layer_def, data)
 
     def _mermaid_placeholder(self, layer_def: dict) -> str:
-        return f'graph TD\n    A["{layer_def["name"]}"] --> B["No data available"]\n'
+        return (
+            f"graph TD\n"
+            f"    A[\"{layer_def['name']}\"] --> B[\"No data available\"]\n"
+        )
 
     def _mermaid_repo_surface(self, layer_def: dict, data: dict) -> str:
         """Layer 1: graph TD showing directory tree with file counts."""
@@ -689,7 +661,7 @@ class AtlasRenderer:
 
         # Click events for cross-layer nav
         lines.append("")
-        lines.append('    click D0 "../" "Back to Atlas index"')
+        lines.append(f'    click D0 "../" "Back to Atlas index"')
 
         return "\n".join(lines)
 
@@ -736,7 +708,7 @@ class AtlasRenderer:
             pass
 
         lines.append("")
-        lines.append('    click F0 "../ast-lsp-bindings/" "View AST bindings"')
+        lines.append(f'    click F0 "../ast-lsp-bindings/" "View AST bindings"')
 
         return "\n".join(lines)
 
@@ -749,7 +721,8 @@ class AtlasRenderer:
 
         if ext_deps:
             # Group external deps by import count (top 20)
-            top_ext = sorted(ext_deps, key=lambda d: d.get("import_count", 0), reverse=True)[:20]
+            top_ext = sorted(ext_deps, key=lambda d: d.get("import_count", 0),
+                             reverse=True)[:20]
             lines.append('    subgraph ext["External Dependencies"]')
             for i, dep in enumerate(top_ext):
                 name = _mermaid_escape(dep.get("name", f"dep{i}"))
@@ -777,7 +750,9 @@ class AtlasRenderer:
                 dst = edge.get("to", "")
                 count = edge.get("import_count", 1)
                 if count > 1 and src in pkg_ids and dst in pkg_ids:
-                    lines.append(f"    {pkg_ids[src]} -->|{count}| {pkg_ids[dst]}")
+                    lines.append(
+                        f"    {pkg_ids[src]} -->|{count}| {pkg_ids[dst]}"
+                    )
 
         lines.append("")
         lines.append('    click P0 "../compile-deps/" "View compile deps"')
@@ -912,11 +887,8 @@ class AtlasRenderer:
             op, fmt = key.split(":", 1)
             nid = f"IO{counter}"
             counter += 1
-            shape = (
-                f'[("{fmt} {op}<br/>n={count}")]'
-                if op == "read"
-                else f'[/"{fmt} {op}<br/>n={count}"/]'
-            )
+            shape = f'[("{fmt} {op}<br/>n={count}")]' if op == "read" else \
+                    f'[/"{fmt} {op}<br/>n={count}"/]'
             lines.append(f"    {nid}{shape}")
 
         # Database ops
@@ -1000,7 +972,7 @@ class AtlasRenderer:
                 node_ids[name] = nid
                 lines.append(
                     f'        {nid}["{_mermaid_escape(short)}<br/>'
-                    f"{file_count} files<br/>"
+                    f'{file_count} files<br/>'
                     f'I={instability:.2f}"]'
                 )
             lines.append("    end")
@@ -1012,9 +984,12 @@ class AtlasRenderer:
         for src, targets in coupling.items():
             if src not in node_ids:
                 continue
-            for dst, count in sorted(targets.items(), key=lambda x: x[1], reverse=True)[:3]:
+            for dst, count in sorted(targets.items(), key=lambda x: x[1],
+                                     reverse=True)[:3]:
                 if dst in node_ids and edge_count < 40:
-                    lines.append(f"    {node_ids[src]} -->|{count}| {node_ids[dst]}")
+                    lines.append(
+                        f"    {node_ids[src]} -->|{count}| {node_ids[dst]}"
+                    )
                     edge_count += 1
 
         lines.append("")
@@ -1030,7 +1005,8 @@ class AtlasRenderer:
 
         # Top 5 by trace depth
         cli_journeys = [j for j in journeys if j.get("entry_type") == "cli"]
-        top = sorted(cli_journeys, key=lambda j: j.get("trace_depth", 0), reverse=True)[:5]
+        top = sorted(cli_journeys, key=lambda j: j.get("trace_depth", 0),
+                     reverse=True)[:5]
         if not top:
             top = journeys[:5]
 
@@ -1046,10 +1022,10 @@ class AtlasRenderer:
             packages = journey.get("packages_touched", [])
 
             if "User" not in declared_participants:
-                lines.append("    participant User")
+                lines.append(f"    participant User")
                 declared_participants.add("User")
             if "CLI" not in declared_participants:
-                lines.append("    participant CLI as cli.py")
+                lines.append(f"    participant CLI as cli.py")
                 declared_participants.add("CLI")
             if handler_file not in declared_participants:
                 lines.append(f"    participant {handler_file}")
@@ -1068,7 +1044,7 @@ class AtlasRenderer:
                 lines.append(f"    {handler_file}->>{ofile}: {otype}: {detail}")
 
             lines.append(f"    {handler_file}-->>CLI: result")
-            lines.append("    CLI-->>User: exit code")
+            lines.append(f"    CLI-->>User: exit code")
             lines.append("")
 
         return "\n".join(lines)
@@ -1087,19 +1063,19 @@ class AtlasRenderer:
 
         if num == 1:
             return self._table_repo_surface(data)
-        if num == 2:
+        elif num == 2:
             return self._table_ast_bindings(data)
-        if num == 3:
+        elif num == 3:
             return self._table_compile_deps(data)
-        if num == 4:
+        elif num == 4:
             return self._table_runtime_topology(data)
-        if num == 5:
+        elif num == 5:
             return self._table_api_contracts(data)
-        if num == 6:
+        elif num == 6:
             return self._table_data_flow(data)
-        if num == 7:
+        elif num == 7:
             return self._table_service_components(data)
-        if num == 8:
+        elif num == 8:
             return self._table_user_journeys(data)
         return ["*No table generator for this layer.*"]
 
@@ -1114,7 +1090,8 @@ class AtlasRenderer:
             role = d.get("role", "")
             counts = d.get("file_counts", {})
             lines.append(
-                f"| `{path}` | {role} | {counts.get('python', 0)} | {counts.get('total', 0)} |"
+                f"| `{path}` | {role} | {counts.get('python', 0)} "
+                f"| {counts.get('total', 0)} |"
             )
         return lines
 
@@ -1137,7 +1114,8 @@ class AtlasRenderer:
             "| Package | Version | Group | Import Count |",
             "|---------|---------|-------|-------------|",
         ]
-        for dep in sorted(ext_deps, key=lambda d: d.get("import_count", 0), reverse=True)[:30]:
+        for dep in sorted(ext_deps, key=lambda d: d.get("import_count", 0),
+                          reverse=True)[:30]:
             lines.append(
                 f"| {dep.get('name', '')} | {dep.get('version_constraint', '')} "
                 f"| {dep.get('group', '')} | {dep.get('import_count', 0)} |"
@@ -1150,7 +1128,8 @@ class AtlasRenderer:
             "| Metric | Value |",
             "|--------|-------|",
             f"| Subprocess calls | {summary.get('subprocess_call_count', 'N/A')} |",
-            f"| Unique files with subprocesses | {summary.get('unique_subprocess_files', 'N/A')} |",
+            f"| Unique files with subprocesses | "
+            f"{summary.get('unique_subprocess_files', 'N/A')} |",
             f"| Port bindings | {summary.get('port_binding_count', 'N/A')} |",
             f"| Docker services | {summary.get('docker_service_count', 'N/A')} |",
             f"| Environment variables | {summary.get('env_var_count', 'N/A')} |",
@@ -1178,7 +1157,8 @@ class AtlasRenderer:
             f"| File I/O operations | {summary.get('file_io_count', 'N/A')} |",
             f"| Database operations | {summary.get('database_op_count', 'N/A')} |",
             f"| Network I/O | {summary.get('network_io_count', 'N/A')} |",
-            f"| Transformation points | {summary.get('transformation_point_count', 'N/A')} |",
+            f"| Transformation points | "
+            f"{summary.get('transformation_point_count', 'N/A')} |",
             f"| Files with I/O | {summary.get('files_with_io', 'N/A')} |",
         ]
         return lines
@@ -1189,7 +1169,8 @@ class AtlasRenderer:
             "| Package | Files | Ca | Ce | Instability | Class |",
             "|---------|-------|----|----|-------------|-------|",
         ]
-        for pkg in sorted(packages, key=lambda p: p.get("file_count", 0), reverse=True)[:30]:
+        for pkg in sorted(packages, key=lambda p: p.get("file_count", 0),
+                          reverse=True)[:30]:
             name = pkg.get("name", "")
             lines.append(
                 f"| `{name}` | {pkg.get('file_count', 0)} "
@@ -1229,7 +1210,7 @@ class AtlasRenderer:
         if num == 1:
             # Directories covered
             return 100.0 if data.get("directories") else None
-        if num == 2:
+        elif num == 2:
             # Files analyzed at AST level vs total code files in the manifest.
             # Python files are counted via files_analyzed; non-Python files
             # analyzed by blarify are counted from unique files in definitions.
@@ -1254,10 +1235,10 @@ class AtlasRenderer:
                 return (effective / total_files) * 100
             # Last fallback: effective/effective (100%)
             return 100.0
-        if num == 7:
+        elif num == 7:
             packages = data.get("packages", [])
             return 100.0 if packages else None
-        if num == 8:
+        elif num == 8:
             journeys = data.get("journeys", [])
             journey_summary = summary.get("total_journeys", 0)
             if journey_summary > 0:
@@ -1407,7 +1388,9 @@ class AtlasRenderer:
                 findings.append(f"{total_defs} total definitions across all files")
             if dead:
                 pct = (dead / max(1, total_defs)) * 100
-                findings.append(f"{dead} potentially dead definitions ({pct:.1f}% of total)")
+                findings.append(
+                    f"{dead} potentially dead definitions ({pct:.1f}% of total)"
+                )
             no_all = summary.get("files_without_all", 0)
             if no_all:
                 findings.append(f"{no_all} files without `__all__` exports")
@@ -1416,7 +1399,9 @@ class AtlasRenderer:
             unused = data.get("unused_dependencies", [])
             cycles = data.get("circular_dependencies", [])
             if unused:
-                findings.append(f"{len(unused)} unused dependencies: {', '.join(unused[:5])}")
+                findings.append(
+                    f"{len(unused)} unused dependencies: {', '.join(unused[:5])}"
+                )
             if cycles:
                 findings.append(f"{len(cycles)} circular dependency chains detected")
             else:
@@ -1426,10 +1411,8 @@ class AtlasRenderer:
             sub_count = summary.get("subprocess_call_count", 0)
             env_count = summary.get("env_var_count", 0)
             if sub_count:
-                findings.append(
-                    f"{sub_count} subprocess calls across "
-                    f"{summary.get('unique_subprocess_files', '?')} files"
-                )
+                findings.append(f"{sub_count} subprocess calls across "
+                                f"{summary.get('unique_subprocess_files', '?')} files")
             if env_count:
                 findings.append(f"{env_count} environment variable reads")
 
@@ -1470,7 +1453,9 @@ class AtlasRenderer:
             if total:
                 findings.append(f"{total} user journeys traced")
             if unreachable:
-                findings.append(f"{unreachable} functions unreachable from any entry point")
+                findings.append(
+                    f"{unreachable} functions unreachable from any entry point"
+                )
 
         return findings
 
@@ -1516,7 +1501,9 @@ class AtlasRenderer:
         for r in related:
             for ld in LAYER_DEFS:
                 if ld["num"] == r:
-                    links.append(f"[Layer {r}: {ld['name']}](../{ld['slug']}/)")
+                    links.append(
+                        f"[Layer {r}: {ld['name']}](../{ld['slug']}/)"
+                    )
                     break
         return links
 

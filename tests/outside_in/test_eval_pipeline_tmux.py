@@ -49,8 +49,9 @@ _BUNDLE_PATH = Path(__file__).parent.parent.parent / "amplifier-bundle"
 if str(_BUNDLE_PATH) not in sys.path:
     sys.path.insert(0, str(_BUNDLE_PATH))
 
-from tools.amplihack.remote.executor import Executor
-from tools.amplihack.remote.orchestrator import VM
+from tools.amplihack.remote.executor import Executor  # noqa: E402
+from tools.amplihack.remote.orchestrator import VM  # noqa: E402
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -103,7 +104,9 @@ class TestScriptFileApproach:
         script = _capture_script(executor, session_id, prompt, api_key)
 
         # The decoded prompt text must NOT appear in any send-keys line
-        send_keys_lines = [line for line in script.splitlines() if "tmux send-keys" in line]
+        send_keys_lines = [
+            line for line in script.splitlines() if "tmux send-keys" in line
+        ]
         for line in send_keys_lines:
             assert prompt not in line, (
                 f"Decoded prompt found in send-keys line (quoting bug): {line!r}"
@@ -123,11 +126,15 @@ class TestScriptFileApproach:
         """The send-keys command must invoke the run script, not embed the command."""
         script = _capture_script(executor, session_id, "Fix something", api_key)
 
-        send_keys_lines = [line for line in script.splitlines() if "tmux send-keys" in line]
+        send_keys_lines = [
+            line for line in script.splitlines() if "tmux send-keys" in line
+        ]
         assert send_keys_lines, "At least one send-keys line must exist"
 
         # The send-keys invocation must reference a script file (bash or sh)
-        has_script_invocation = any("bash " in line or ".sh" in line for line in send_keys_lines)
+        has_script_invocation = any(
+            "bash " in line or ".sh" in line for line in send_keys_lines
+        )
         assert has_script_invocation, (
             "send-keys must invoke a script file, not embed the amplihack command directly"
         )
@@ -158,7 +165,7 @@ class TestSpecialCharacterSafety:
             "Run `git status` and fix issues",
             "Set $PATH and fix the build",
             "Fix this\\nand that",
-            "He said \"hello\" and she said 'world'",
+            'He said "hello" and she said \'world\'',
             "Use $(whoami) to get the user",
             "Fix the & operator",
             "Process |pipes| correctly",
@@ -235,7 +242,9 @@ class TestHeredocPreventsShellExpansion:
     ) -> None:
         """The run script must decode the prompt from base64 at runtime."""
         script = _capture_script(executor, session_id, "Fix something", api_key)
-        assert "base64 -d" in script, "Run script must decode the prompt from base64 at runtime"
+        assert "base64 -d" in script, (
+            "Run script must decode the prompt from base64 at runtime"
+        )
 
     def test_run_script_uses_double_quoted_prompt_variable(
         self, executor: Executor, session_id: str, api_key: str
@@ -261,9 +270,13 @@ class TestApiKeyEncoding:
         """The raw API key must not appear in any tmux send-keys line."""
         script = _capture_script(executor, session_id, "Fix something", api_key)
 
-        send_keys_lines = [line for line in script.splitlines() if "tmux send-keys" in line]
+        send_keys_lines = [
+            line for line in script.splitlines() if "tmux send-keys" in line
+        ]
         for line in send_keys_lines:
-            assert api_key not in line, f"API key found raw in send-keys line: {line!r}"
+            assert api_key not in line, (
+                f"API key found raw in send-keys line: {line!r}"
+            )
 
     def test_api_key_base64_in_run_script(
         self, executor: Executor, session_id: str, api_key: str
@@ -271,14 +284,18 @@ class TestApiKeyEncoding:
         """The base64-encoded API key must appear in the run script heredoc."""
         expected_b64 = base64.b64encode(api_key.encode()).decode()
         script = _capture_script(executor, session_id, "Fix something", api_key)
-        assert expected_b64 in script, "Base64-encoded API key must appear in the run script"
+        assert expected_b64 in script, (
+            "Base64-encoded API key must appear in the run script"
+        )
 
     def test_run_script_exports_api_key(
         self, executor: Executor, session_id: str, api_key: str
     ) -> None:
         """The run script must export ANTHROPIC_API_KEY."""
         script = _capture_script(executor, session_id, "Fix something", api_key)
-        assert "export ANTHROPIC_API_KEY=" in script, "Run script must export ANTHROPIC_API_KEY"
+        assert "export ANTHROPIC_API_KEY=" in script, (
+            "Run script must export ANTHROPIC_API_KEY"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -321,7 +338,9 @@ class TestTmuxSessionCreation:
     ) -> None:
         """The run script must set NODE_OPTIONS for memory."""
         script = _capture_script(executor, session_id, "Fix something", api_key)
-        assert "NODE_OPTIONS" in script, "Run script must set NODE_OPTIONS"
+        assert "NODE_OPTIONS" in script, (
+            "Run script must set NODE_OPTIONS"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -343,7 +362,9 @@ class TestScriptSyntaxValidity:
         prompt = "Fix the 'main' function with \"double quotes\" and $variables"
         script = _capture_script(executor, session_id, prompt, api_key)
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".sh", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".sh", delete=False
+        ) as f:
             f.write(script)
             tmp_path = f.name
 
@@ -371,7 +392,9 @@ class TestScriptSyntaxValidity:
         """Simple prompt also passes bash syntax check."""
         script = _capture_script(executor, session_id, "Fix the bug in main.py", api_key)
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".sh", delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".sh", delete=False
+        ) as f:
             f.write(script)
             tmp_path = f.name
 
@@ -381,7 +404,9 @@ class TestScriptSyntaxValidity:
                 capture_output=True,
                 text=True,
             )
-            assert result.returncode == 0, f"Setup script failed bash syntax check: {result.stderr}"
+            assert result.returncode == 0, (
+                f"Setup script failed bash syntax check: {result.stderr}"
+            )
         finally:
             os.unlink(tmp_path)
 
@@ -402,7 +427,9 @@ class TestOriginalBugGone:
         script = _capture_script(executor, session_id, prompt, api_key)
 
         # The old broken pattern: send-keys with $PROMPT embedded in the command
-        broken_pattern = re.compile(r"tmux\s+send-keys.*amplihack.*\$PROMPT", re.DOTALL)
+        broken_pattern = re.compile(
+            r'tmux\s+send-keys.*amplihack.*\$PROMPT', re.DOTALL
+        )
         assert not broken_pattern.search(script), (
             "Old broken pattern (send-keys with $PROMPT in amplihack command) still present"
         )
@@ -413,9 +440,11 @@ class TestOriginalBugGone:
         """The old \\\"$PROMPT\\\" pattern must not appear in send-keys lines."""
         script = _capture_script(executor, session_id, "Fix the bug", api_key)
 
-        send_keys_lines = [line for line in script.splitlines() if "tmux send-keys" in line]
+        send_keys_lines = [
+            line for line in script.splitlines() if "tmux send-keys" in line
+        ]
         for line in send_keys_lines:
-            assert r"\"$PROMPT\"" not in line, (
+            assert r'\"$PROMPT\"' not in line, (
                 f"Old broken quoting pattern found in send-keys: {line!r}"
             )
             assert '"$PROMPT"' not in line, (

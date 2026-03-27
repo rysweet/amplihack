@@ -379,12 +379,57 @@ steps:
       EOFISSUECREATION
       )
       ISSUE_NUMBER=$(printf '%s' "$ISSUE_CREATION" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
-      if [ -n "$ISSUE_NUMBER" ]; then
-        printf '%s\n' "$ISSUE_NUMBER"
-        exit 0
-      fi
-      printf '%s' "$ISSUE_CREATION" | grep -oE 'LOCAL_TRACKING_ISSUE=[0-9]+' | head -1 | cut -d= -f2
+      printf '%s' "$ISSUE_NUMBER"
     output: "issue_number"
+
+  - id: "step-03c-detect-repo-topology"
+    type: "bash"
+    command: |
+      set -euo pipefail
+      cd {{repo_path}}
+
+      ISSUE_CREATION=$(cat <<'EOFISSUECREATION'
+      {{issue_creation}}
+      EOFISSUECREATION
+      )
+      ISSUE_NUMBER=$(cat <<'EOFISSUENUMBER'
+      {{issue_number}}
+      EOFISSUENUMBER
+      )
+      export ISSUE_CREATION ISSUE_NUMBER
+
+      python3 <<'PYEOF'
+      import json
+      import os
+      import re
+      import subprocess
+
+      remotes = [
+          line.strip()
+          for line in subprocess.check_output(["git", "remote"], text=True).splitlines()
+          if line.strip()
+      ]
+      remote_name = remotes[0] if remotes else ""
+      issue_creation = os.environ.get("ISSUE_CREATION", "")
+      issue_number = os.environ.get("ISSUE_NUMBER", "").strip()
+      local_tracking_match = re.search(r"LOCAL_TRACKING_ISSUE=(\d+)", issue_creation)
+      local_tracking_issue = local_tracking_match.group(1) if local_tracking_match else ""
+
+      print(
+          json.dumps(
+              {
+                  "remote_available": "true" if remote_name else "false",
+                  "remote_name": remote_name,
+                  "base_ref": "main" if remote_name else "HEAD",
+                  "push_enabled": "true" if remote_name else "false",
+                  "issue_creation_available": "true" if issue_number else "false",
+                  "local_tracking_issue": local_tracking_issue,
+              }
+          )
+      )
+      PYEOF
+    output: "repo_topology"
+    parse_json: true
 
   # ==========================================================================
   # STEP 4: SETUP WORKTREE AND BRANCH
@@ -404,8 +449,19 @@ steps:
       echo "=== Step 4: Creating Worktree and Branch ===" >&2
       echo "" >&2
 
-      # Fetch latest refs
-      git fetch origin main >&2
+      REMOTE_AVAILABLE="{{repo_topology.remote_available}}"
+      REMOTE_NAME="{{repo_topology.remote_name}}"
+      BASE_REF="{{repo_topology.base_ref}}"
+      LOCAL_TRACKING_ISSUE="{{repo_topology.local_tracking_issue}}"
+      ISSUE_NUMBER="{{issue_number}}"
+
+      if [ "$REMOTE_AVAILABLE" = "true" ]; then
+        git fetch "$REMOTE_NAME" "$BASE_REF" >&2
+        START_POINT="${REMOTE_NAME}/${BASE_REF}"
+      else
+        echo "INFO: No git remote available; skipping fetch and branching from HEAD." >&2
+        START_POINT="HEAD"
+      fi
 
       # NOTE: This slug pipeline is duplicated in consensus-workflow.yaml step3-setup-worktree
       # with a 30-char limit instead of 50. If you update this pipeline (e.g. security patch),
@@ -433,7 +489,13 @@ steps:
         # the fallback path; configurable prefix only applies when a valid slug exists.
         BRANCH_NAME="feat/task-unnamed-$(date +%s)"
       else
-        BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
+        if [ -n "$ISSUE_NUMBER" ]; then
+          BRANCH_NAME="{{branch_prefix}}/issue-${ISSUE_NUMBER}-${TASK_SLUG}"
+        elif [ -n "$LOCAL_TRACKING_ISSUE" ]; then
+          BRANCH_NAME="{{branch_prefix}}/local-${LOCAL_TRACKING_ISSUE}-${TASK_SLUG}"
+        else
+          BRANCH_NAME="{{branch_prefix}}/task-${TASK_SLUG}"
+        fi
         # Validate with authoritative git ref checker; fall back to safe unique name on failure
         if ! git check-ref-format --branch "${BRANCH_NAME}" >/dev/null 2>&1; then
           echo "WARNING: derived branch name '${BRANCH_NAME}' is invalid — falling back to task-unnamed" >&2
@@ -466,15 +528,19 @@ steps:
         CREATED=true
       else
         echo "INFO: Creating new branch and worktree." >&2
-        git worktree add "${WORKTREE_PATH}" -b "${BRANCH_NAME}" origin/main >&2
+        git worktree add "${WORKTREE_PATH}" -b "${BRANCH_NAME}" "${START_POINT}" >&2
         CREATED=true
       fi
 
-      # Push branch to remote with tracking (idempotent).
-      # NOTE: Push failures are suppressed here and surface at step-16 PR creation.
-      # This allows idempotent re-runs where the remote branch already exists.
-      git -C "${WORKTREE_PATH}" push origin "${BRANCH_NAME}" > /dev/null 2>&1 || true
-      git -C "${WORKTREE_PATH}" branch --set-upstream-to="origin/${BRANCH_NAME}" "${BRANCH_NAME}" > /dev/null 2>&1 || true
+      if [ "$REMOTE_AVAILABLE" = "true" ]; then
+        # Push branch to remote with tracking (idempotent).
+        # NOTE: Push failures are suppressed here and surface at step-16 PR creation.
+        # This allows idempotent re-runs where the remote branch already exists.
+        git -C "${WORKTREE_PATH}" push "$REMOTE_NAME" "${BRANCH_NAME}" > /dev/null 2>&1 || true
+        git -C "${WORKTREE_PATH}" branch --set-upstream-to="${REMOTE_NAME}/${BRANCH_NAME}" "${BRANCH_NAME}" > /dev/null 2>&1 || true
+      else
+        echo "INFO: No git remote available; skipping initial branch push and upstream setup." >&2
+      fi
 
       echo "" >&2
       echo "=== Worktree Setup Complete ===" >&2
@@ -485,7 +551,9 @@ steps:
       {
         "worktree_path": "${WORKTREE_PATH}",
         "branch_name": "${BRANCH_NAME}",
-        "created": ${CREATED}
+        "created": ${CREATED},
+        "remote_available": ${REMOTE_AVAILABLE},
+        "base_ref": "${BASE_REF}"
       }
       EOF
     output: "worktree_setup"
@@ -1148,8 +1216,13 @@ steps:
       {{task_description}}
       EOFTASKDESC
       ) && \
+      ISSUE_CREATION_AVAILABLE="{{repo_topology.issue_creation_available}}" && \
       COMMIT_TITLE=$(printf 'feat: %.72s' "$(printf '%s' "$TASK_DESC" | tr '\n\r' ' ' | head -1)") && \
-      COMMIT_MSG=$(printf '%s\n\nImplements issue #%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated\n\nCloses #%s' "$COMMIT_TITLE" {{issue_number}} {{issue_number}}) && \
+      if [ "$ISSUE_CREATION_AVAILABLE" = "true" ] && [ -n "{{issue_number}}" ]; then \
+        COMMIT_MSG=$(printf '%s\n\nImplements issue #%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated\n\nCloses #%s' "$COMMIT_TITLE" {{issue_number}} {{issue_number}}) ; \
+      else \
+        COMMIT_MSG=$(printf '%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated' "$COMMIT_TITLE") ; \
+      fi && \
       if [ -n "$(git diff --cached --name-only)" ]; then \
         git commit -m "$COMMIT_MSG" ; \
       else \
@@ -1157,10 +1230,14 @@ steps:
       fi && \
       echo "" && \
       echo "--- Pushing to Remote ---" && \
-      if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
-        git pull --rebase 2>/dev/null && git push ; \
+      if [ "{{repo_topology.push_enabled}}" = "true" ]; then \
+        if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
+          git pull --rebase 2>/dev/null && git push ; \
+        else \
+          echo "WARNING: Nothing to push - branch is up to date with remote" ; \
+        fi ; \
       else \
-        echo "WARNING: Nothing to push - branch is up to date with remote" ; \
+        echo "INFO: No git remote available - leaving commit local-only" ; \
       fi && \
       echo "" && \
       echo "=== Commit and Push Complete ==="
@@ -1181,14 +1258,30 @@ steps:
       # Root cause: step-09-refactor may create PR on a different branch, leaving
       # the worktree branch with 0 commits ahead of main.
       CURRENT_BRANCH=$(git branch --show-current)
+      PUSH_ENABLED="{{repo_topology.push_enabled}}"
       ISSUE_NUM="{{issue_number}}"
+      ISSUE_QUERY_ENABLED=false
+
+      if [ "$PUSH_ENABLED" != "true" ]; then
+          echo "INFO: No git remote available — skipping PR creation." >&2
+          printf ''
+          exit 0
+      fi
 
       # SECURITY: Validate ISSUE_NUM is numeric before interpolating into jq regex
       # Without this, a non-numeric value could inject into the jq test() filter.
-      if ! [[ "$ISSUE_NUM" =~ ^[0-9]+$ ]]; then
+      case "$ISSUE_NUM" in
+        '')
+          ISSUE_QUERY_ENABLED=false
+          ;;
+        *[!0-9]*)
           echo "ERROR: issue_number is not numeric: $ISSUE_NUM" >&2
           exit 1
-      fi
+          ;;
+        *)
+          ISSUE_QUERY_ENABLED=true
+          ;;
+      esac
 
       # Check 1: Is there already a PR on the exact current branch?
       # timeout 60: prevents hanging indefinitely if GitHub API is unresponsive
@@ -1196,7 +1289,7 @@ steps:
 
       # Check 2: If not, look for a PR on any branch matching the issue number pattern
       # (handles case where step-09-refactor created PR on fix/issue-XXXX-* branch)
-      if [ -z "$EXISTING_PR" ]; then
+      if [ -z "$EXISTING_PR" ] && [ "$ISSUE_QUERY_ENABLED" = "true" ]; then
           EXISTING_PR=$(timeout 60 gh pr list --json url,headRefName --jq "[.[] | select(.headRefName | test(\"issue-$ISSUE_NUM\"))] | .[0].url // \"\""  2>/dev/null || echo '')
       fi
 
@@ -1214,7 +1307,11 @@ steps:
       COMMITS_AHEAD=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "0")
 
       if [ "$COMMITS_AHEAD" -eq 0 ]; then
-          echo "WARNING: 0 commits ahead of main and no related PR found for issue-$ISSUE_NUM. Work may be on another branch or already merged." >&2
+          if [ "$ISSUE_QUERY_ENABLED" = "true" ]; then
+              echo "WARNING: 0 commits ahead of main and no related PR found for issue-$ISSUE_NUM. Work may be on another branch or already merged." >&2
+          else
+              echo "WARNING: 0 commits ahead of main — skipping PR creation." >&2
+          fi
           printf ''
           exit 0
       fi
@@ -1233,7 +1330,11 @@ steps:
       {{design_spec}}
       EOFDESIGN
       )
-      PR_BODY=$(printf '## Summary\n%s\n\n## Issue\nCloses #%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$TASK_DESC" "$ISSUE_NUM" "$PR_DESIGN")
+      if [ "$ISSUE_QUERY_ENABLED" = "true" ]; then
+          PR_BODY=$(printf '## Summary\n%s\n\n## Issue\nCloses #%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$TASK_DESC" "$ISSUE_NUM" "$PR_DESIGN")
+      else
+          PR_BODY=$(printf '## Summary\n%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$TASK_DESC" "$PR_DESIGN")
+      fi
       # timeout 120: gh pr create contacts GitHub GraphQL API — cap wait to 2 minutes
       # 2>/dev/null: suppress gh stderr to prevent output contract corruption of pr_url
       timeout 120 gh pr create --draft \
@@ -1865,7 +1966,11 @@ steps:
       EOFTASKDESC
       ) && \
       printf '=== Task: %s ===\n' "$TASK_DESC" && \
-      printf '=== Issue: #%s ===\n' {{issue_number}} && \
+      if [ -n "{{issue_number}}" ]; then \
+        printf '=== Issue: #%s ===\n' {{issue_number}} ; \
+      else \
+        printf '=== Issue: (no GitHub issue created) ===\n' ; \
+      fi && \
       printf '=== PR: %s ===\n' {{pr_url}} && \
       echo "" && \
       echo "All 23 workflow steps completed successfully."

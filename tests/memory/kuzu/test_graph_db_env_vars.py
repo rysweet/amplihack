@@ -8,7 +8,6 @@ Verifies that:
 These tests mirror the contract enforced by amplihack-rs
 ``resolve_memory_graph_db_path()`` in graph_db.rs.
 """
-
 from __future__ import annotations
 
 import warnings
@@ -16,6 +15,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -63,9 +63,7 @@ class TestGraphDbEnvVarPrimary:
                 KuzuConnector()
 
         deprecation_warnings = [w for w in caught if issubclass(w.category, DeprecationWarning)]
-        assert deprecation_warnings == [], (
-            "AMPLIHACK_GRAPH_DB_PATH must not emit DeprecationWarning"
-        )
+        assert deprecation_warnings == [], "AMPLIHACK_GRAPH_DB_PATH must not emit DeprecationWarning"
 
     def test_env_var_takes_precedence_over_legacy(self, tmp_path):
         """AMPLIHACK_GRAPH_DB_PATH wins over AMPLIHACK_KUZU_DB_PATH."""
@@ -129,10 +127,7 @@ class TestGraphDbEnvVarLegacy:
 
         env = {"AMPLIHACK_GRAPH_DB_PATH": "", "AMPLIHACK_KUZU_DB_PATH": ""}
         # Point home to tmp_path so we can verify the default
-        with (
-            patch.dict("os.environ", env, clear=False),
-            patch("pathlib.Path.home", return_value=tmp_path),
-        ):
+        with patch.dict("os.environ", env, clear=False), patch("pathlib.Path.home", return_value=tmp_path):
             connector = KuzuConnector()
 
         expected_suffix = Path(".amplihack") / "kuzu_db"

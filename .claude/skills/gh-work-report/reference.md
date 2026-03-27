@@ -4,7 +4,7 @@
 
 Use this structure for every report. Adapt section depth based on the volume of activity.
 
-````markdown
+```markdown
 # GitHub Activity Report: {START_DATE} → {END_DATE}
 
 > **Generated**: {GENERATION_DATE}
@@ -19,13 +19,13 @@ Use this structure for every report. Adapt section depth based on the volume of 
 
 ### Contribution Summary
 
-| Metric             | Count |
-| ------------------ | ----- |
-| Projects active    | {N}   |
-| PRs created        | {N}   |
-| PRs merged         | {N}   |
-| Issues opened      | {N}   |
-| Releases published | {N}   |
+| Metric | Count |
+|--------|-------|
+| Projects active | {N} |
+| PRs created | {N} |
+| PRs merged | {N} |
+| Issues opened | {N} |
+| Releases published | {N} |
 
 ### Activity Timeline
 
@@ -38,7 +38,6 @@ gantt
     section {Project2}
     PR: {title}  :done, {start}, {end}
 ```
-````
 
 ### PR Distribution by Project
 
@@ -83,9 +82,9 @@ xychart-beta
 
 #### Pull Requests
 
-| #                | Title   | Status  | Created | Merged      |
-| ---------------- | ------- | ------- | ------- | ----------- |
-| [#{n}]({pr_url}) | {title} | {state} | {date}  | {date or —} |
+| # | Title | Status | Created | Merged |
+|---|-------|--------|---------|--------|
+| [#{n}]({pr_url}) | {title} | {state} | {date} | {date or —} |
 
 #### Notable Features & Updates
 
@@ -121,17 +120,16 @@ xychart-beta
 
 ### All Repositories ({N} total)
 
-| Repository      | Description | Last Push | Private  |
-| --------------- | ----------- | --------- | -------- |
-| [{repo}]({url}) | {desc}      | {date}    | {yes/no} |
+| Repository | Description | Last Push | Private |
+|-----------|-------------|-----------|---------|
+| [{repo}]({url}) | {desc} | {date} | {yes/no} |
 
 ### Account Summary
 
-| Account | Host       | PRs | Repos |
-| ------- | ---------- | --- | ----- |
-| {user}  | github.com | {n} | {n}   |
-
-````
+| Account | Host | PRs | Repos |
+|---------|------|-----|-------|
+| {user} | github.com | {n} | {n} |
+```
 
 ## Mermaid Chart Guidelines
 
@@ -153,7 +151,7 @@ END_DATE=$(date +%Y-%m-%d)
 
 # macOS fallback
 START_DATE=$(date -v-${DAYS}d +%Y-%m-%d)
-````
+```
 
 ### Multi-account iteration
 

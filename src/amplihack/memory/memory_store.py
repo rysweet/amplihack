@@ -64,7 +64,8 @@ class InMemoryGraphStore:
             table_data.pop(node_id, None)
             # Also remove edges involving this node
             self._edges = [
-                e for e in self._edges if e["from_id"] != node_id and e["to_id"] != node_id
+                e for e in self._edges
+                if e["from_id"] != node_id and e["to_id"] != node_id
             ]
 
     def query_nodes(
@@ -98,9 +99,9 @@ class InMemoryGraphStore:
         with self._lock:
             table_data = self._nodes.get(table, {})
             for node in table_data.values():
-                search_fields = (
-                    fields if fields else [k for k, v in node.items() if isinstance(v, str)]
-                )
+                search_fields = fields if fields else [
+                    k for k, v in node.items() if isinstance(v, str)
+                ]
                 for field in search_fields:
                     val = node.get(field)
                     if isinstance(val, str) and text_lower in val.lower():
@@ -146,13 +147,12 @@ class InMemoryGraphStore:
             for edge in self._edges:
                 if rel_type is not None and edge["rel_type"] != rel_type:
                     continue
-                if (
-                    (direction == "out" and edge["from_id"] == node_id)
-                    or (direction == "in" and edge["to_id"] == node_id)
-                    or (
-                        direction == "both"
-                        and (edge["from_id"] == node_id or edge["to_id"] == node_id)
-                    )
+                if direction == "out" and edge["from_id"] == node_id:
+                    results.append(dict(edge))
+                elif direction == "in" and edge["to_id"] == node_id:
+                    results.append(dict(edge))
+                elif direction == "both" and (
+                    edge["from_id"] == node_id or edge["to_id"] == node_id
                 ):
                     results.append(dict(edge))
         return results
@@ -160,10 +160,11 @@ class InMemoryGraphStore:
     def delete_edge(self, rel_type: str, from_id: str, to_id: str) -> None:
         with self._lock:
             self._edges = [
-                e
-                for e in self._edges
+                e for e in self._edges
                 if not (
-                    e["rel_type"] == rel_type and e["from_id"] == from_id and e["to_id"] == to_id
+                    e["rel_type"] == rel_type
+                    and e["from_id"] == from_id
+                    and e["to_id"] == to_id
                 )
             ]
 
@@ -212,9 +213,7 @@ class InMemoryGraphStore:
                         result.append((table, nid, dict(props)))
         return result
 
-    def export_edges(
-        self, node_ids: list[str] | None = None
-    ) -> list[tuple[str, str, str, str, str, dict]]:
+    def export_edges(self, node_ids: list[str] | None = None) -> list[tuple[str, str, str, str, str, dict]]:
         """Export edges as (rel_type, from_table, from_id, to_table, to_id, properties) tuples."""
         result = []
         with self._lock:
@@ -223,16 +222,14 @@ class InMemoryGraphStore:
                 if id_set is None or edge["from_id"] in id_set or edge["to_id"] in id_set:
                     structural = {"rel_type", "from_table", "from_id", "to_table", "to_id"}
                     props = {k: v for k, v in edge.items() if k not in structural}
-                    result.append(
-                        (
-                            edge["rel_type"],
-                            edge.get("from_table", ""),
-                            edge["from_id"],
-                            edge.get("to_table", ""),
-                            edge["to_id"],
-                            props,
-                        )
-                    )
+                    result.append((
+                        edge["rel_type"],
+                        edge.get("from_table", ""),
+                        edge["from_id"],
+                        edge.get("to_table", ""),
+                        edge["to_id"],
+                        props,
+                    ))
         return result
 
     def import_nodes(self, nodes: list[tuple[str, str, dict]]) -> int:

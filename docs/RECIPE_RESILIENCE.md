@@ -27,12 +27,12 @@ fatal: 'fix login bug\nwith oauth' is not a valid branch name
 
 Other common failure modes:
 
-| Input character     | Git error                                         |
-| ------------------- | ------------------------------------------------- |
-| Uppercase letters   | Branch created but inconsistent with tooling      |
-| `(`, `)`, `/`, `:`  | Branch name parsing failures in some git versions |
-| Names > 60 chars    | Unwieldy; can hit filesystem path-length limits   |
-| Trailing `.` or `-` | `git check-ref-format` rejects them               |
+| Input character | Git error |
+|---|---|
+| Uppercase letters | Branch created but inconsistent with tooling |
+| `(`, `)`, `/`, `:` | Branch name parsing failures in some git versions |
+| Names > 60 chars  | Unwieldy; can hit filesystem path-length limits |
+| Trailing `.` or `-` | `git check-ref-format` rejects them |
 
 ### Solution: Sanitization Pipeline
 
@@ -59,16 +59,16 @@ The resulting slug is inserted into the branch name as:
 
 Example transformations:
 
-| `task_description`                           | Branch slug                                 |
-| -------------------------------------------- | ------------------------------------------- |
-| `Fix login bug`                              | `fix-login-bug`                             |
+| `task_description` | Branch slug |
+|---|---|
+| `Fix login bug` | `fix-login-bug` |
 | `Fix authentication bug\nThis affects oauth` | `fix-authentication-bug-this-affects-oauth` |
-| `Add User Authentication`                    | `add-user-authentication`                   |
-| `fix: auth/login (oauth2)`                   | `fix-auth-login-oauth2`                     |
-| `fix_login_bug`                              | `fix_login_bug` _(underscore preserved)_    |
-| `bump version 1.2.3`                         | `bump-version-1.2.3` _(dot preserved)_      |
-| 120 'a' characters                           | `aaaa...` _(truncated to 60 chars)_         |
-| `!@#$%^&*()`                                 | fallback `{prefix}/issue-{n}-task`          |
+| `Add User Authentication` | `add-user-authentication` |
+| `fix: auth/login (oauth2)` | `fix-auth-login-oauth2` |
+| `fix_login_bug` | `fix_login_bug` *(underscore preserved)* |
+| `bump version 1.2.3` | `bump-version-1.2.3` *(dot preserved)* |
+| 120 'a' characters | `aaaa...` *(truncated to 60 chars)* |
+| `!@#$%^&*()` | fallback `{prefix}/issue-{n}-task` |
 
 ### Fallback Behavior
 
@@ -184,7 +184,6 @@ Executes a sub-recipe step. On failure, attempts agent recovery before raising.
 **Returns:** Output string from the sub-recipe (or recovery agent on recovery).
 
 **Raises:** `StepExecutionError` if:
-
 - Recursion depth exceeds `MAX_RECIPE_DEPTH`
 - The `recipe` field is missing or the recipe file is not found
 - Both the sub-recipe and the recovery agent fail
@@ -195,14 +194,14 @@ Builds a recovery prompt and dispatches to `adapter.execute_agent_step()`.
 
 **Parameters:**
 
-| Parameter           | Type            | Description                                                                                          |
-| ------------------- | --------------- | ---------------------------------------------------------------------------------------------------- |
-| `step`              | `Step`          | The recipe step that triggered the sub-recipe                                                        |
-| `ctx`               | `RecipeContext` | Current recipe execution context                                                                     |
-| `sub_recipe_name`   | `str`           | Name of the failed sub-recipe                                                                        |
-| `error_message`     | `str`           | Error message from the original failure                                                              |
-| `failed_step_names` | `list[str]`     | Names of the failed steps; joined to a comma-separated string internally before prompt construction  |
-| `partial_outputs`   | `str`           | Raw partial output from the failed run; truncated to 500 chars internally before prompt construction |
+| Parameter | Type | Description |
+|---|---|---|
+| `step` | `Step` | The recipe step that triggered the sub-recipe |
+| `ctx` | `RecipeContext` | Current recipe execution context |
+| `sub_recipe_name` | `str` | Name of the failed sub-recipe |
+| `error_message` | `str` | Error message from the original failure |
+| `failed_step_names` | `list[str]` | Names of the failed steps; joined to a comma-separated string internally before prompt construction |
+| `partial_outputs` | `str` | Raw partial output from the failed run; truncated to 500 chars internally before prompt construction |
 
 **Returns:** Agent output string on successful recovery, `None` otherwise.
 
@@ -229,15 +228,15 @@ triggered the sub-recipe:
 
 ### Logging
 
-| Event                                 | Level     | Message                                                                              |
-| ------------------------------------- | --------- | ------------------------------------------------------------------------------------ |
-| Sub-recipe failure, recovery starting | `WARNING` | `"Sub-recipe '{name}' failed (step '{steps}'). Attempting agent recovery."`          |
-| Recovery prompt constructed           | `DEBUG`   | `"Recovery prompt for sub-recipe '{name}': {prompt}"`                                |
-| Recovery succeeded                    | `INFO`    | `"Agent recovery succeeded for sub-recipe '{name}' (step '{step_id}')"`              |
-| No adapter configured                 | `WARNING` | `"Cannot attempt agent recovery: no adapter configured"`                             |
-| Adapter raised during recovery        | `WARNING` | `"Agent recovery invocation failed for sub-recipe '{name}': {exc}"`                  |
-| Empty recovery response               | `WARNING` | `"Agent recovery returned empty output for sub-recipe '{name}'"`                     |
-| UNRECOVERABLE signal                  | `WARNING` | `"Agent recovery reported unrecoverable failure for sub-recipe '{name}': {preview}"` |
+| Event | Level | Message |
+|---|---|---|
+| Sub-recipe failure, recovery starting | `WARNING` | `"Sub-recipe '{name}' failed (step '{steps}'). Attempting agent recovery."` |
+| Recovery prompt constructed | `DEBUG` | `"Recovery prompt for sub-recipe '{name}': {prompt}"` |
+| Recovery succeeded | `INFO` | `"Agent recovery succeeded for sub-recipe '{name}' (step '{step_id}')"` |
+| No adapter configured | `WARNING` | `"Cannot attempt agent recovery: no adapter configured"` |
+| Adapter raised during recovery | `WARNING` | `"Agent recovery invocation failed for sub-recipe '{name}': {exc}"` |
+| Empty recovery response | `WARNING` | `"Agent recovery returned empty output for sub-recipe '{name}'"` |
+| UNRECOVERABLE signal | `WARNING` | `"Agent recovery reported unrecoverable failure for sub-recipe '{name}': {preview}"` |
 
 Recovery prompts are logged at `DEBUG` level only — not `INFO` — to avoid
 partial output content (which may be sensitive) appearing in standard logs.
@@ -268,10 +267,10 @@ via YAML), set `adapter=None` when constructing `RecipeRunner`.
 
 Both features have dedicated test suites in `tests/`:
 
-| File                                     | Tests | Coverage                                                                                                                                                                                            |
-| ---------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/test_branch_name_sanitization.py` | 16    | Newlines, special chars, truncation, trailing chars, fallback, `git check-ref-format` validation                                                                                                    |
-| `tests/test_sub_recipe_recovery.py`      | 21    | Recovery success, UNRECOVERABLE signal (case-insensitive), empty response, adapter exception, no adapter, successful sub-recipe (no recovery invoked), prompt content, working directory resolution |
+| File | Tests | Coverage |
+|---|---|---|
+| `tests/test_branch_name_sanitization.py` | 16 | Newlines, special chars, truncation, trailing chars, fallback, `git check-ref-format` validation |
+| `tests/test_sub_recipe_recovery.py` | 21 | Recovery success, UNRECOVERABLE signal (case-insensitive), empty response, adapter exception, no adapter, successful sub-recipe (no recovery invoked), prompt content, working directory resolution |
 
 Run with:
 

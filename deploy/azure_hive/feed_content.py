@@ -160,6 +160,7 @@ def _send_via_service_bus(
 def _send_via_local_bus(events: list[dict]) -> None:
     """Simulate local event delivery by importing LocalEventBus and publishing."""
     import json
+    import sys
 
     # Try to import from the amplihack package
     try:
@@ -213,6 +214,8 @@ def run(turns: int, topic_name: str, source_agent: str, dry_run: bool) -> None:
         events.append(_build_event(content, source_agent, turn))
 
     if dry_run:
+        import json
+
         for evt in events:
             logger.info(
                 "DRY-RUN turn=%d content='%s...'",

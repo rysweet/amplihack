@@ -8,15 +8,18 @@ Tests the feature from a user's perspective:
 - VMOptions stores tunnel_port correctly
 """
 
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
+from click.testing import CliRunner
+
 from amplihack.remote import cli as cli_module
 from amplihack.remote.cli import remote_cli
 from amplihack.remote.executor import Executor
 from amplihack.remote.orchestrator import VM, VMOptions
-from click.testing import CliRunner
+
 
 # ---------------------------------------------------------------------------
 # Helpers

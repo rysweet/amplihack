@@ -26,11 +26,12 @@ Semantic checks (9-15):
 import argparse
 import json
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
+from scripts.atlas.common import write_layer_json
 
 
 def _load_optional(output_dir: Path, name: str) -> dict | None:
@@ -91,7 +92,7 @@ def run_checks(output_dir: Path) -> dict:
         overall = "PASS"
 
     return {
-        "generated_at": datetime.now(UTC).isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "checks": checks,
         "overall": overall,
         "pass_count": statuses.count("PASS"),
@@ -162,27 +163,20 @@ def _check_cli_command_coverage(layer5, layer8) -> dict:
         return _skip(name, "layer8 not found")
 
     cli_commands = {c.get("command", "") for c in layer5.get("cli_commands", [])}
-    journey_commands = {
-        j.get("command", "") for j in layer8.get("journeys", []) if j.get("entry_type") == "cli"
-    }
+    journey_commands = {j.get("command", "") for j in layer8.get("journeys", [])
+                       if j.get("entry_type") == "cli"}
 
     missing = cli_commands - journey_commands
     if not missing:
         return _pass(name, f"{len(cli_commands)} CLI commands all have journeys")
 
     if len(missing) < len(cli_commands) * 0.2:
-        return _result(
-            name,
-            "WARN",
-            f"{len(cli_commands) - len(missing)}/{len(cli_commands)} covered",
-            sorted(missing),
-        )
-    return _result(
-        name,
-        "FAIL",
-        f"Only {len(cli_commands) - len(missing)}/{len(cli_commands)} covered",
-        sorted(missing),
-    )
+        return _result(name, "WARN",
+                       f"{len(cli_commands) - len(missing)}/{len(cli_commands)} covered",
+                       sorted(missing))
+    return _result(name, "FAIL",
+                   f"Only {len(cli_commands) - len(missing)}/{len(cli_commands)} covered",
+                   sorted(missing))
 
 
 def _check_export_consistency(layer2) -> dict:
@@ -201,9 +195,9 @@ def _check_export_consistency(layer2) -> dict:
         total = sum(len(e.get("all_names", [])) for e in layer2.get("exports", []))
         return _pass(name, f"{total} exported names all resolve to definitions")
 
-    return _result(
-        name, "WARN", f"{len(invalid)} exported names missing definitions", invalid[:20]
-    )  # Cap at 20
+    return _result(name, "WARN",
+                   f"{len(invalid)} exported names missing definitions",
+                   invalid[:20])  # Cap at 20
 
 
 def _check_dependency_consistency(layer2, layer3) -> dict:
@@ -277,12 +271,9 @@ def _check_io_traceability(layer6, layer8) -> dict:
     if not unreachable:
         return _pass(name, f"{len(io_files)} I/O files all in reachable packages")
 
-    return _result(
-        name,
-        "WARN",
-        f"{len(unreachable)}/{len(io_files)} I/O files in unreachable packages",
-        unreachable[:10],
-    )
+    return _result(name, "WARN",
+                   f"{len(unreachable)}/{len(io_files)} I/O files in unreachable packages",
+                   unreachable[:10])
 
 
 def _check_subprocess_traceability(layer4, layer8) -> dict:
@@ -312,12 +303,9 @@ def _check_subprocess_traceability(layer4, layer8) -> dict:
     if not unreachable:
         return _pass(name, f"{total} subprocess call files all in reachable packages")
 
-    return _result(
-        name,
-        "WARN",
-        f"{len(unreachable)}/{total} subprocess files in unreachable packages",
-        unreachable[:10],
-    )
+    return _result(name, "WARN",
+                   f"{len(unreachable)}/{total} subprocess files in unreachable packages",
+                   unreachable[:10])
 
 
 def _check_package_consistency(layer1, layer3, layer7, manifest) -> dict:
@@ -330,11 +318,9 @@ def _check_package_consistency(layer1, layer3, layer7, manifest) -> dict:
     issues = []
 
     if layer1:
-        l1_pkgs = {
-            d.get("rel_path", "").replace("/", ".")
-            for d in layer1.get("directories", [])
-            if d.get("role") == "package"
-        }
+        l1_pkgs = {d.get("rel_path", "").replace("/", ".")
+                   for d in layer1.get("directories", [])
+                   if d.get("role") == "package"}
         diff = manifest_pkgs.symmetric_difference(l1_pkgs)
         if diff:
             issues.append(f"layer1 vs manifest: {len(diff)} differences")
@@ -367,20 +353,18 @@ def _check_route_coverage(layer5, layer8) -> dict:
     if not layer8:
         return _skip(name, "layer8 not found")
 
-    routes = {
-        f"{r.get('method', 'GET')} {r.get('path', '')}" for r in layer5.get("http_routes", [])
-    }
-    journey_routes = {
-        j.get("command", "") for j in layer8.get("journeys", []) if j.get("entry_type") == "http"
-    }
+    routes = {f"{r.get('method', 'GET')} {r.get('path', '')}"
+              for r in layer5.get("http_routes", [])}
+    journey_routes = {j.get("command", "") for j in layer8.get("journeys", [])
+                      if j.get("entry_type") == "http"}
 
     missing = routes - journey_routes
     if not missing:
         return _pass(name, f"{len(routes)} HTTP routes all have journeys")
 
-    return _result(
-        name, "WARN", f"{len(routes) - len(missing)}/{len(routes)} routes covered", sorted(missing)
-    )
+    return _result(name, "WARN",
+                   f"{len(routes) - len(missing)}/{len(routes)} routes covered",
+                   sorted(missing))
 
 
 # ---------------------------------------------------------------------------
@@ -430,7 +414,9 @@ def _check_import_resolution(layer2) -> dict:
     if not unresolved:
         return _pass(name, f"{checked} internal import names all resolve")
 
-    return _result(name, "WARN", f"{len(unresolved)}/{checked} imports unresolved", unresolved[:20])
+    return _result(name, "WARN",
+                   f"{len(unresolved)}/{checked} imports unresolved",
+                   unresolved[:20])
 
 
 def _check_cli_handler_reachability(layer5, layer2) -> dict:
@@ -456,9 +442,9 @@ def _check_cli_handler_reachability(layer5, layer2) -> dict:
         total = len(layer5.get("cli_commands", []))
         return _pass(name, f"{total} CLI commands have reachable handlers")
 
-    return _result(
-        name, "WARN", f"{len(missing_handlers)} handlers not found in definitions", missing_handlers
-    )
+    return _result(name, "WARN",
+                   f"{len(missing_handlers)} handlers not found in definitions",
+                   missing_handlers)
 
 
 def _check_dead_dep_cross_validation(layer2, layer3) -> dict:
@@ -489,12 +475,9 @@ def _check_dead_dep_cross_validation(layer2, layer3) -> dict:
         return _pass(name, f"{len(confirmed_unused)} unused deps confirmed by layer2")
 
     false_positives = unused_in_l3 - set(confirmed_unused)
-    return _result(
-        name,
-        "WARN",
-        f"{len(false_positives)} deps marked unused in layer3 but found in layer2",
-        sorted(false_positives),
-    )
+    return _result(name, "WARN",
+                   f"{len(false_positives)} deps marked unused in layer3 but found in layer2",
+                   sorted(false_positives))
 
 
 def _check_circular_import_severity(layer3) -> dict:
@@ -518,14 +501,13 @@ def _check_circular_import_severity(layer3) -> dict:
             internal_cycles.append(c)
 
     total = len(cycles)
-    details = (
-        f"{total} circular dependency cycles found "
-        f"({len(internal_cycles)} internal, {len(vendor_cycles)} vendor)"
-    )
+    details = (f"{total} circular dependency cycles found "
+               f"({len(internal_cycles)} internal, {len(vendor_cycles)} vendor)")
 
     # Vendor cycles are informational (we don't control vendored code)
     # Internal cycles are warnings (common in Python, usually work at runtime)
-    return _result(name, "WARN", details, [str(c.get("cycle", [])) for c in internal_cycles[:10]])
+    return _result(name, "WARN", details,
+                   [str(c.get("cycle", [])) for c in internal_cycles[:10]])
 
 
 def _check_env_var_completeness(layer4, manifest) -> dict:
@@ -554,19 +536,13 @@ def _check_env_var_completeness(layer4, manifest) -> dict:
         return _pass(name, f"{len(env_vars)} env vars all documented in .env.example")
 
     if not env_example.exists():
-        return _result(
-            name,
-            "WARN",
-            f"{len(env_vars)} env vars found but no .env.example file",
-            sorted(env_vars)[:20],
-        )
+        return _result(name, "WARN",
+                       f"{len(env_vars)} env vars found but no .env.example file",
+                       sorted(env_vars)[:20])
 
-    return _result(
-        name,
-        "WARN",
-        f"{len(undocumented)}/{len(env_vars)} env vars not in .env.example",
-        sorted(undocumented)[:20],
-    )
+    return _result(name, "WARN",
+                   f"{len(undocumented)}/{len(env_vars)} env vars not in .env.example",
+                   sorted(undocumented)[:20])
 
 
 def _check_route_test_coverage(layer5, manifest) -> dict:
@@ -605,9 +581,9 @@ def _check_route_test_coverage(layer5, manifest) -> dict:
     if not untested:
         return _pass(name, f"{len(routes)} HTTP routes all have test references")
 
-    return _result(
-        name, "WARN", f"{len(untested)}/{len(routes)} routes without test references", untested
-    )
+    return _result(name, "WARN",
+                   f"{len(untested)}/{len(routes)} routes without test references",
+                   untested)
 
 
 def _check_reexport_chain_validation(layer2) -> dict:
@@ -617,7 +593,8 @@ def _check_reexport_chain_validation(layer2) -> dict:
         return _skip(name, "layer2 not found")
 
     # Find __init__.py exports that import names from submodules
-    init_exports = [e for e in layer2.get("exports", []) if e["file"].endswith("__init__.py")]
+    init_exports = [e for e in layer2.get("exports", [])
+                    if e["file"].endswith("__init__.py")]
 
     if not init_exports:
         return _pass(name, "No __init__.py re-exports to validate")
@@ -631,9 +608,9 @@ def _check_reexport_chain_validation(layer2) -> dict:
         total = sum(len(e.get("all_names", [])) for e in init_exports)
         return _pass(name, f"{total} __init__.py re-export names all resolve")
 
-    return _result(
-        name, "WARN", f"{len(broken_chains)} broken re-export chains", broken_chains[:20]
-    )
+    return _result(name, "WARN",
+                   f"{len(broken_chains)} broken re-export chains",
+                   broken_chains[:20])
 
 
 # ---------------------------------------------------------------------------
@@ -669,10 +646,8 @@ def main():
 
     # Print summary
     print(f"Cross-layer checks: {report['overall']}")
-    print(
-        f"  PASS: {report['pass_count']}  WARN: {report['warning_count']}  "
-        f"FAIL: {report['failure_count']}  SKIP: {report['skip_count']}"
-    )
+    print(f"  PASS: {report['pass_count']}  WARN: {report['warning_count']}  "
+          f"FAIL: {report['failure_count']}  SKIP: {report['skip_count']}")
     print()
     for check in report["checks"]:
         status_icon = {"PASS": "+", "WARN": "~", "FAIL": "!", "SKIP": "-"}[check["status"]]

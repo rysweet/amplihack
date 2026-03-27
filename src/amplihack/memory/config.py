@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -59,7 +59,7 @@ class MemoryConfig:
     domain_expertise: str = ""  # free-form domain tags for agent expertise routing
 
     @classmethod
-    def from_env(cls) -> MemoryConfig:
+    def from_env(cls) -> "MemoryConfig":
         """Build a MemoryConfig from environment variables.
 
         Only sets fields for which env vars are present; all others remain at
@@ -109,9 +109,7 @@ class MemoryConfig:
             try:
                 kwargs["gossip_rounds"] = int(gossip_rounds)
             except ValueError:
-                logger.warning(
-                    "Invalid value for AMPLIHACK_MEMORY_GOSSIP_ROUNDS: %s", gossip_rounds
-                )
+                logger.warning("Invalid value for AMPLIHACK_MEMORY_GOSSIP_ROUNDS: %s", gossip_rounds)
 
         shard_backend = os.environ.get("AMPLIHACK_MEMORY_SHARD_BACKEND")
         if shard_backend is not None:
@@ -132,7 +130,7 @@ class MemoryConfig:
         return cls(**kwargs)
 
     @classmethod
-    def from_file(cls, path: str | Path | None = None) -> MemoryConfig:
+    def from_file(cls, path: str | Path | None = None) -> "MemoryConfig":
         """Load a MemoryConfig from a YAML file.
 
         Returns a default MemoryConfig if the file does not exist.
@@ -152,16 +150,8 @@ class MemoryConfig:
             data = yaml.safe_load(fh) or {}
 
         kwargs: dict[str, Any] = {}
-        _str_fields = (
-            "backend",
-            "topology",
-            "storage_path",
-            "model",
-            "shard_backend",
-            "memory_transport",
-            "memory_connection_string",
-            "domain_expertise",
-        )
+        _str_fields = ("backend", "topology", "storage_path", "model", "shard_backend",
+                       "memory_transport", "memory_connection_string", "domain_expertise")
         _int_fields = ("kuzu_buffer_pool_mb", "replication_factor", "query_fanout", "gossip_rounds")
         _bool_fields = ("gossip_enabled",)
 
@@ -188,7 +178,7 @@ class MemoryConfig:
         *,
         config_file: str | Path | None = None,
         **kwargs: Any,
-    ) -> MemoryConfig:
+    ) -> "MemoryConfig":
         """Merge all config sources in priority order.
 
         Priority (highest first): explicit kwargs > env vars > file > defaults.
@@ -231,11 +221,7 @@ class MemoryConfig:
 
         # Apply derived defaults
         if cfg.storage_path is None:
-            cfg.storage_path = (
-                f"/tmp/amplihack-memory/{agent_name}"
-                if agent_name
-                else "/tmp/amplihack-memory/default"
-            )
+            cfg.storage_path = f"/tmp/amplihack-memory/{agent_name}" if agent_name else "/tmp/amplihack-memory/default"
 
         return cfg
 

@@ -19,7 +19,7 @@ Key improvements over raw PyYAML-based validators:
 from __future__ import annotations
 
 import difflib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 import yaml
@@ -54,7 +54,11 @@ REQUIRED_FIELDS: frozenset[str] = frozenset({"name", "on"})
 FIELD_VALID_VALUES: dict[str, str] = {
     "name": 'a quoted string, e.g. "My Workflow Name"',
     "on": (
-        "a trigger map, e.g.:\n  on:\n    push:\n      branches: [main]\n    workflow_dispatch:"
+        "a trigger map, e.g.:\n"
+        "  on:\n"
+        "    push:\n"
+        "      branches: [main]\n"
+        "    workflow_dispatch:"
     ),
     "engine": 'one of: "claude", "copilot"',
     "strict": "true or false",
@@ -142,7 +146,10 @@ class GhAwCompiler:
             diagnostics.append(
                 Diagnostic(
                     severity="error",
-                    message=("Missing frontmatter delimiter.  File must start with a --- block."),
+                    message=(
+                        "Missing frontmatter delimiter.  "
+                        "File must start with a --- block."
+                    ),
                     line=1,
                     col=1,
                 )
@@ -187,16 +194,22 @@ class GhAwCompiler:
             keys_present.add(raw_key)
 
             if raw_key not in KNOWN_FIELDS:
-                diagnostics.extend(self._unknown_field_diagnostics(raw_key, line, col))
+                diagnostics.extend(
+                    self._unknown_field_diagnostics(raw_key, line, col)
+                )
 
             # Type-check integer fields
             if raw_key in INT_FIELDS:
-                diagnostics.extend(self._type_check_int(raw_key, val_node, line, col))
+                diagnostics.extend(
+                    self._type_check_int(raw_key, val_node, line, col)
+                )
 
         # Required-field checks
         for req_field in sorted(REQUIRED_FIELDS):
             if req_field not in keys_present:
-                diagnostics.append(self._missing_required_diagnostic(req_field, fm_line_offset))
+                diagnostics.append(
+                    self._missing_required_diagnostic(req_field, fm_line_offset)
+                )
 
         return diagnostics
 
@@ -215,10 +228,14 @@ class GhAwCompiler:
         """
         return key_node.value
 
-    def _unknown_field_diagnostics(self, key: str, line: int, col: int) -> list[Diagnostic]:
+    def _unknown_field_diagnostics(
+        self, key: str, line: int, col: int
+    ) -> list[Diagnostic]:
         """Produce a diagnostic for an unrecognised frontmatter field."""
         suggestions = difflib.get_close_matches(key, KNOWN_FIELDS, n=3, cutoff=0.5)
-        min_dist = min((_edit_distance(key, f) for f in KNOWN_FIELDS), default=999)
+        min_dist = min(
+            (_edit_distance(key, f) for f in KNOWN_FIELDS), default=999
+        )
 
         if suggestions:
             suggestion_text = ", ".join(f"'{s}'" for s in suggestions)
@@ -249,7 +266,8 @@ class GhAwCompiler:
                 Diagnostic(
                     severity="error",
                     message=(
-                        f"Field '{field_name}' must be {example}, got string value '{actual}'."
+                        f"Field '{field_name}' must be {example}, "
+                        f"got string value '{actual}'."
                     ),
                     line=line,
                     col=col,

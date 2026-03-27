@@ -36,6 +36,7 @@ async def run_eval(
     Returns:
         List of {question, query_id, answers: [{agent, answer}]} dicts.
     """
+    from amplihack.workloads.hive.events import HIVE_AGENT_READY, HIVE_QUERY_RESPONSE
 
     if wait_for_ready > 0:
         logger.info(
@@ -141,9 +142,7 @@ async def _wait_for_ready_events(
         for evt in events:
             agent_name = (evt.get("data") or {}).get("agent_name", str(uuid.uuid4()))
             ready_agents.add(agent_name)
-            logger.info(
-                "eval: agent ready: %s (%d/%d)", agent_name, len(ready_agents), expected_count
-            )
+            logger.info("eval: agent ready: %s (%d/%d)", agent_name, len(ready_agents), expected_count)
         if len(ready_agents) < expected_count:
             await asyncio.sleep(2)
 
@@ -268,7 +267,9 @@ def _build_eval_questions(repeats: int) -> list[str]:
 
         gt = generate_dialogue(num_turns=300, seed=42)
         questions = [
-            t.content for t in gt.turns if t.block_name in ("questions", "qa") and t.content
+            t.content
+            for t in gt.turns
+            if t.block_name in ("questions", "qa") and t.content
         ][:repeats]
         if questions:
             return questions
@@ -282,8 +283,4 @@ def _build_eval_questions(repeats: int) -> list[str]:
         "Describe the indicators of compromise from INC-2024-003.",
         "What post-incident actions were taken after INC-2024-001?",
     ]
-    return (
-        fallback[:repeats]
-        if repeats <= len(fallback)
-        else (fallback * ((repeats // len(fallback)) + 1))[:repeats]
-    )
+    return fallback[:repeats] if repeats <= len(fallback) else (fallback * ((repeats // len(fallback)) + 1))[:repeats]

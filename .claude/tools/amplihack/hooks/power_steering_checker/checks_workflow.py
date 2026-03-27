@@ -110,10 +110,7 @@ class ChecksWorkflowMixin:
 
         except ImportError:
             # SDK not available - fail open
-            print(
-                "WARNING: claude_power_steering not available - skipping workflow check",
-                file=sys.stderr,
-            )
+            print("WARNING: claude_power_steering not available - skipping workflow check", file=sys.stderr)
             return True
         except Exception as e:
             # Fail-open on errors
@@ -291,10 +288,11 @@ class ChecksWorkflowMixin:
                             has_file_ops = True
                         elif tool_name == "Bash" and not has_tests:
                             command = block.get("input", {}).get("command", "")
-                            if any(p in command for p in direct_patterns) or (
-                                any(p in command for p in self.INLINE_VALIDATION_PATTERNS)
-                                and self._is_meaningful_validation(command)
-                            ):
+                            if any(p in command for p in direct_patterns):
+                                has_tests = True
+                            elif any(
+                                p in command for p in self.INLINE_VALIDATION_PATTERNS
+                            ) and self._is_meaningful_validation(command):
                                 has_tests = True
             # Early exit once both flags are set
             if has_file_ops and has_tests:

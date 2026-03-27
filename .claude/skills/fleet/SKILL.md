@@ -18,70 +18,70 @@ Invoke as `/fleet <command>` or just describe what you want and Claude will pick
 
 ### Status & Monitoring
 
-| Command                      | What it does                                  |
-| ---------------------------- | --------------------------------------------- |
-| `fleet status`               | Quick text overview of all VMs and sessions   |
-| `fleet scout`                | Discover, adopt, dry-run reason, show report  |
-| `fleet snapshot`             | Point-in-time capture of all managed sessions |
-| `fleet watch <vm> <session>` | Live snapshot of a single session             |
-| `fleet observe <vm>`         | Observe sessions with pattern classification  |
-| `fleet tui`                  | Interactive Textual TUI dashboard             |
+| Command | What it does |
+|---------|-------------|
+| `fleet status` | Quick text overview of all VMs and sessions |
+| `fleet scout` | Discover, adopt, dry-run reason, show report |
+| `fleet snapshot` | Point-in-time capture of all managed sessions |
+| `fleet watch <vm> <session>` | Live snapshot of a single session |
+| `fleet observe <vm>` | Observe sessions with pattern classification |
+| `fleet tui` | Interactive Textual TUI dashboard |
 
 ### Admiral Control
 
-| Command          | What it does                                      |
-| ---------------- | ------------------------------------------------- |
-| `fleet advance`  | **LIVE** — reason and execute actions on sessions |
-| `fleet dry-run`  | Show what the admiral would do (no action)        |
-| `fleet run-once` | Single PERCEIVE->REASON->ACT cycle                |
-| `fleet start`    | Run autonomous admiral loop                       |
+| Command | What it does |
+|---------|-------------|
+| `fleet advance` | **LIVE** — reason and execute actions on sessions |
+| `fleet dry-run` | Show what the admiral would do (no action) |
+| `fleet run-once` | Single PERCEIVE->REASON->ACT cycle |
+| `fleet start` | Run autonomous admiral loop |
 
 ### Session Management
 
-| Command            | What it does                                  |
-| ------------------ | --------------------------------------------- |
+| Command | What it does |
+|---------|-------------|
 | `fleet adopt <vm>` | Bring existing tmux sessions under management |
-| `fleet auth <vm>`  | Propagate auth tokens (GitHub, Azure, Claude) |
+| `fleet auth <vm>` | Propagate auth tokens (GitHub, Azure, Claude) |
 
 ### Task Management
 
-| Command                   | What it does                 |
-| ------------------------- | ---------------------------- |
-| `fleet add-task "prompt"` | Queue work for the fleet     |
-| `fleet queue`             | Show task queue              |
-| `fleet dashboard`         | Project-level tracking       |
-| `fleet report`            | Generate fleet status report |
+| Command | What it does |
+|---------|-------------|
+| `fleet add-task "prompt"` | Queue work for the fleet |
+| `fleet queue` | Show task queue |
+| `fleet dashboard` | Project-level tracking |
+| `fleet report` | Generate fleet status report |
 
 ### Projects & Knowledge
 
-| Command                                | What it does                                |
-| -------------------------------------- | ------------------------------------------- |
-| `fleet project add/list/remove`        | Manage fleet projects                       |
+| Command | What it does |
+|---------|-------------|
+| `fleet project add/list/remove` | Manage fleet projects |
 | `fleet project add-issue <proj> <num>` | Track a GitHub issue as a project objective |
-| `fleet project track-issue <proj>`     | Sync objectives from GitHub issues by label |
-| `fleet graph`                          | Fleet knowledge graph summary               |
+| `fleet project track-issue <proj>` | Sync objectives from GitHub issues by label |
+| `fleet graph` | Fleet knowledge graph summary |
 
 ### Co-Pilot
 
-| Command                | What it does                  |
-| ---------------------- | ----------------------------- |
-| `fleet copilot-status` | Show copilot lock/goal state  |
-| `fleet copilot-log`    | Show copilot decision history |
+| Command | What it does |
+|---------|-------------|
+| `fleet copilot-status` | Show copilot lock/goal state |
+| `fleet copilot-log` | Show copilot decision history |
 
 ## Quick Reference
 
-| User says                          | Command                            |
-| ---------------------------------- | ---------------------------------- |
-| "What are my agents doing?"        | `fleet scout`                      |
-| "Show me the fleet"                | `fleet status`                     |
-| "Send next steps to all sessions"  | `fleet advance`                    |
-| "Advance without confirmation"     | `fleet advance --force`            |
-| "Watch what dev/cybergym is doing" | `fleet watch dev cybergym`         |
-| "Add auth to the new VM"           | `fleet auth <vm>`                  |
-| "Queue this task for the fleet"    | `fleet add-task "prompt"`          |
-| "Track issue #42 for myapp"        | `fleet project add-issue myapp 42` |
-| "Sync objectives from GitHub"      | `fleet project track-issue myapp`  |
-| "Open the dashboard"               | `fleet tui`                        |
+| User says | Command |
+|-----------|---------|
+| "What are my agents doing?" | `fleet scout` |
+| "Show me the fleet" | `fleet status` |
+| "Send next steps to all sessions" | `fleet advance` |
+| "Advance without confirmation" | `fleet advance --force` |
+| "Watch what dev/cybergym is doing" | `fleet watch dev cybergym` |
+| "Add auth to the new VM" | `fleet auth <vm>` |
+| "Queue this task for the fleet" | `fleet add-task "prompt"` |
+| "Track issue #42 for myapp" | `fleet project add-issue myapp 42` |
+| "Sync objectives from GitHub" | `fleet project track-issue myapp` |
+| "Open the dashboard" | `fleet tui` |
 
 ## Key Options
 
@@ -98,10 +98,10 @@ fleet start   [--interval 300] [--max-cycles 10]
 
 ## Environment
 
-| Variable            | Required for                                  |
-| ------------------- | --------------------------------------------- |
-| `AZLIN_PATH`        | All commands (auto-detected if azlin on PATH) |
-| `ANTHROPIC_API_KEY` | scout, advance, dry-run, run-once, start      |
+| Variable | Required for |
+|----------|-------------|
+| `AZLIN_PATH` | All commands (auto-detected if azlin on PATH) |
+| `ANTHROPIC_API_KEY` | scout, advance, dry-run, run-once, start |
 
 ## Admiral Configuration
 
@@ -113,16 +113,16 @@ fleet start   [--interval 300] [--max-cycles 10]
 
 ## Status Icons
 
-| Icon  | Status             | Meaning                                   |
-| ----- | ------------------ | ----------------------------------------- |
-| `[~]` | thinking           | Agent is actively processing              |
-| `[>]` | running            | Agent producing output                    |
-| `[.]` | idle               | Agent at prompt, waiting for direction    |
-| `[X]` | shell (dead agent) | No agent detected in this session         |
-| `[Z]` | suspended          | Agent backgrounded but alive              |
-| `[!]` | error              | Error detected in session output          |
-| `[+]` | completed          | Agent finished its task                   |
-| `[?]` | waiting input      | Agent asked a question, awaiting response |
+| Icon | Status | Meaning |
+|------|--------|---------|
+| `[~]` | thinking | Agent is actively processing |
+| `[>]` | running | Agent producing output |
+| `[.]` | idle | Agent at prompt, waiting for direction |
+| `[X]` | shell (dead agent) | No agent detected in this session |
+| `[Z]` | suspended | Agent backgrounded but alive |
+| `[!]` | error | Error detected in session output |
+| `[+]` | completed | Agent finished its task |
+| `[?]` | waiting input | Agent asked a question, awaiting response |
 
 ## Performance & Architecture
 

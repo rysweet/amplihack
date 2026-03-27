@@ -826,6 +826,7 @@ class TestFirstRunVsReturningUser:
 
     def test_first_run_prompts_user_and_saves_preference(self, tmp_path):
         """First run: no config exists → user is prompted → preference is saved."""
+        import json
         from unittest.mock import patch
 
         from amplihack.launcher.memory_config import get_memory_config
@@ -833,10 +834,7 @@ class TestFirstRunVsReturningUser:
         fake_config = tmp_path / ".amplihack" / "config"
         mock_meminfo = "MemTotal:       32768000 kB\n"  # 32 GB
 
-        with patch(
-            "pathlib.Path.exists",
-            side_effect=lambda self=None: False if str(self) == str(fake_config) else True,
-        ):
+        with patch("pathlib.Path.exists", side_effect=lambda self=None: False if str(self) == str(fake_config) else True):
             pass  # complex mock, use simpler approach below
 
         with (
@@ -921,9 +919,7 @@ class TestFirstRunVsReturningUser:
         assert "saved preference" in captured.out
         assert str(fake_config) in captured.out
 
-    def test_display_memory_config_returning_user_declined_shows_info_message(
-        self, tmp_path, capsys
-    ):
+    def test_display_memory_config_returning_user_declined_shows_info_message(self, tmp_path, capsys):
         """display_memory_config emits info message when returning user had declined."""
         from unittest.mock import patch
 

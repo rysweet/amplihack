@@ -49,7 +49,6 @@ LongHorizonMemoryEval.run(RemoteAgentAdapter)
 ## Code Walkthrough
 
 ### 1. RemoteAgentAdapter.learn_from_content()
-
 **File**: `deploy/azure_hive/remote_agent_adapter.py`
 
 ```python
@@ -62,7 +61,6 @@ self._sender.send_messages(msg)  # → Service Bus topic (all subscriptions rece
 All 100 subscriptions receive the message, but only the targeted agent processes it.
 
 ### 2. ServiceBusInputSource.next() — target filtering
-
 **File**: `src/amplihack/agents/goal_seeking/input_source.py`
 
 ```python
@@ -77,7 +75,6 @@ without processing. This means each agent iterates through all 5000 messages
 but only processes ~50.
 
 ### 3. GoalSeekingAgent.on_answer callback
-
 **File**: `src/amplihack/agents/goal_seeking/goal_seeking_agent.py`
 
 ```python
@@ -89,7 +86,6 @@ if self.on_answer:
 Set by entrypoint via DI: `agent.on_answer = answer_publisher.publish_answer`
 
 ### 4. AnswerPublisher.publish_answer()
-
 **File**: `deploy/azure_hive/agent_entrypoint.py`
 
 ```python
@@ -103,8 +99,7 @@ The `_current_event_id` is set by `_CorrelatingInputSource.next()` which
 reads `event_id` from the incoming Service Bus message metadata before
 the agent's process() call.
 
-### 5. \_CorrelatingInputSource — event_id context setting
-
+### 5. _CorrelatingInputSource — event_id context setting
 **File**: `deploy/azure_hive/agent_entrypoint.py`
 
 ```python
@@ -119,8 +114,7 @@ def next(self):
 
 This runs BEFORE agent.process(text), so the event_id is set when on_answer fires.
 
-### 6. RemoteAgentAdapter.\_listen_for_answers() — background thread
-
+### 6. RemoteAgentAdapter._listen_for_answers() — background thread
 **File**: `deploy/azure_hive/remote_agent_adapter.py`
 
 ```python
@@ -134,7 +128,6 @@ for msg in messages:
 ```
 
 ### 7. RemoteAgentAdapter.answer_question() — waits for signal
-
 **File**: `deploy/azure_hive/remote_agent_adapter.py`
 
 ```python
@@ -148,23 +141,22 @@ return answer
 
 ## Known Failure Modes (from previous attempts)
 
-| #   | Failure                                 | Root Cause                                      | Status                                                 |
-| --- | --------------------------------------- | ----------------------------------------------- | ------------------------------------------------------ |
-| 1   | 0% score — no answers                   | Log Analytics polling found wrong/stale answers | Fixed: on_answer callback via Service Bus              |
-| 2   | Answers truncated to 200 chars          | `logger.info(..., output[:200])`                | Fixed: removed truncation                              |
-| 3   | Wrong answer for wrong question         | No correlation between question and answer      | Fixed: event_id in message, matched in listener        |
-| 4   | All agents answer every question        | Service Bus topic broadcasts to all             | Fixed: target_agent field, ServiceBusInputSource skips |
-| 5   | Timeout waiting for answers             | 5000 messages per agent (broadcast)             | Fixed: partitioned content, 50 per agent               |
-| 6   | AnswerPublisher stdout wrapping failed  | print() not intercepted in all envs             | Fixed: on_answer callback instead                      |
-| 7   | Questions sent before content processed | Fixed time-based wait too short                 | Fixed: poll queue depth until 0, no timeout            |
-| 8   | eval-responses topic name wrong         | AMPLIHACK_HIVE_NAME not set                     | Fixed: env var in Bicep                                |
+| # | Failure | Root Cause | Status |
+|---|---------|-----------|--------|
+| 1 | 0% score — no answers | Log Analytics polling found wrong/stale answers | Fixed: on_answer callback via Service Bus |
+| 2 | Answers truncated to 200 chars | `logger.info(..., output[:200])` | Fixed: removed truncation |
+| 3 | Wrong answer for wrong question | No correlation between question and answer | Fixed: event_id in message, matched in listener |
+| 4 | All agents answer every question | Service Bus topic broadcasts to all | Fixed: target_agent field, ServiceBusInputSource skips |
+| 5 | Timeout waiting for answers | 5000 messages per agent (broadcast) | Fixed: partitioned content, 50 per agent |
+| 6 | AnswerPublisher stdout wrapping failed | print() not intercepted in all envs | Fixed: on_answer callback instead |
+| 7 | Questions sent before content processed | Fixed time-based wait too short | Fixed: poll queue depth until 0, no timeout |
+| 8 | eval-responses topic name wrong | AMPLIHACK_HIVE_NAME not set | Fixed: env var in Bicep |
 
 ## Small-Scale Test Plan
 
 **Test**: 10 turns, 3 questions, 5 agents
 
 This specifically tests all 8 failure modes:
-
 - 10 turns partitioned across 5 agents = 2 per agent (tests partitioning)
 - Each agent receives 10 messages, skips 8, processes 2 (tests targeting)
 - 3 questions to agents 0, 1, 2 (tests targeted question delivery)
@@ -177,7 +169,6 @@ This specifically tests all 8 failure modes:
 **Expected score**: 90%+ (matching single-agent at same scale)
 
 **Validation checks**:
-
 1. Agent-0 queue depth reaches 0 before questions sent
 2. All 3 answers received via Service Bus (not timeout)
 3. Each answer matches its question (not cross-contaminated)

@@ -156,24 +156,22 @@ def extract(manifest: dict, layer2: dict, layer3: dict | None, root: Path) -> di
             ca_count, ce_count, file_count, total_pkg_count, packages_in_manifest
         )
 
-        packages.append(
-            {
-                "name": pkg,
-                "path": _package_to_path(pkg, root_str),
-                "file_count": file_count,
-                "class_count": class_count,
-                "function_count": function_count,
-                "line_count": line_count,
-                "public_api_size": public_api_size,
-                "afferent_coupling": ca_count,
-                "efferent_coupling": ce_count,
-                "instability": instability,
-                "cohesion": cohesion,
-                "classification": classification,
-                "imports_from": sorted(ce.get(pkg, set())),
-                "imported_by": sorted(ca.get(pkg, set())),
-            }
-        )
+        packages.append({
+            "name": pkg,
+            "path": _package_to_path(pkg, root_str),
+            "file_count": file_count,
+            "class_count": class_count,
+            "function_count": function_count,
+            "line_count": line_count,
+            "public_api_size": public_api_size,
+            "afferent_coupling": ca_count,
+            "efferent_coupling": ce_count,
+            "instability": instability,
+            "cohesion": cohesion,
+            "classification": classification,
+            "imports_from": sorted(ce.get(pkg, set())),
+            "imported_by": sorted(ca.get(pkg, set())),
+        })
 
     # --- Coupling matrix ---
     coupling_matrix: dict[str, dict[str, int]] = {}
@@ -198,9 +196,7 @@ def extract(manifest: dict, layer2: dict, layer3: dict | None, root: Path) -> di
     for p in packages:
         classifications[p["classification"]] += 1
 
-    instabilities = [
-        p["instability"] for p in packages if p["afferent_coupling"] + p["efferent_coupling"] > 0
-    ]
+    instabilities = [p["instability"] for p in packages if p["afferent_coupling"] + p["efferent_coupling"] > 0]
     avg_instability = round(sum(instabilities) / len(instabilities), 3) if instabilities else 0.0
 
     # --- Completeness check ---
@@ -240,7 +236,7 @@ def _file_to_package(filepath: str, root_str: str, known_packages: set[str]) -> 
     """
     # Strip root prefix to get relative path
     if filepath.startswith(root_str):
-        rel = filepath[len(root_str) :].lstrip("/")
+        rel = filepath[len(root_str):].lstrip("/")
     else:
         # Try to extract package from path components
         rel = filepath
@@ -313,10 +309,8 @@ def main():
     try:
         layer3 = load_layer_json("layer3_compile_deps", output_dir)
     except FileNotFoundError:
-        print(
-            "Note: layer3_compile_deps.json not found, computing coupling from layer2 only",
-            file=sys.stderr,
-        )
+        print("Note: layer3_compile_deps.json not found, computing coupling from layer2 only",
+              file=sys.stderr)
 
     # Extract
     layer_data = extract(manifest, layer2, layer3, root)

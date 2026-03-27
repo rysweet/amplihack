@@ -6,7 +6,7 @@ scenario:
   timeout: 30s
 
   environment:
-    terminal_size: { width: 120, height: 35 }
+    terminal_size: {width: 120, height: 35}
     variables:
       TERM: "xterm-256color"
 

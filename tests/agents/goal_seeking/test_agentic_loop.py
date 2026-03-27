@@ -9,7 +9,7 @@ Philosophy:
 import shutil
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -87,9 +87,7 @@ class TestAgenticLoop:
     @patch("amplihack.agents.goal_seeking.agentic_loop.completion", new_callable=AsyncMock)
     async def test_reason_calls_llm(self, mock_completion, loop):
         """Test reason phase calls LLM."""
-        mock_completion.return_value = (
-            '{"reasoning": "Test reasoning", "action": "greet", "params": {"name": "Alice"}}'
-        )
+        mock_completion.return_value = '{"reasoning": "Test reasoning", "action": "greet", "params": {"name": "Alice"}}'
 
         perception = "Goal: Greet user\nObservation: User Alice present"
         result = await loop.reason(perception)
@@ -115,9 +113,7 @@ class TestAgenticLoop:
     @patch("amplihack.agents.goal_seeking.agentic_loop.completion", new_callable=AsyncMock)
     async def test_reason_parses_json_from_markdown(self, mock_completion, loop):
         """Test reason phase can parse JSON from markdown code blocks."""
-        mock_completion.return_value = (
-            '```json\n{"reasoning": "Test", "action": "add", "params": {"a": 1, "b": 2}}\n```'
-        )
+        mock_completion.return_value = '```json\n{"reasoning": "Test", "action": "add", "params": {"a": 1, "b": 2}}\n```'
 
         perception = "Goal: Test"
         result = await loop.reason(perception)
@@ -183,9 +179,7 @@ class TestAgenticLoop:
     @patch("amplihack.agents.goal_seeking.agentic_loop.completion", new_callable=AsyncMock)
     async def test_run_iteration_executes_all_phases(self, mock_completion, loop):
         """Test run_iteration executes all four phases."""
-        mock_completion.return_value = (
-            '{"reasoning": "Greet user", "action": "greet", "params": {"name": "Alice"}}'
-        )
+        mock_completion.return_value = '{"reasoning": "Greet user", "action": "greet", "params": {"name": "Alice"}}'
 
         state = await loop.run_iteration(goal="Greet user", observation="User Alice present")
 
@@ -200,9 +194,7 @@ class TestAgenticLoop:
     @patch("amplihack.agents.goal_seeking.agentic_loop.completion", new_callable=AsyncMock)
     async def test_run_iteration_increments_count(self, mock_completion, loop):
         """Test run_iteration increments iteration count."""
-        mock_completion.return_value = (
-            '{"reasoning": "Test", "action": "greet", "params": {"name": "Test"}}'
-        )
+        mock_completion.return_value = '{"reasoning": "Test", "action": "greet", "params": {"name": "Test"}}'
 
         state1 = await loop.run_iteration("Goal", "Observation")
         state2 = await loop.run_iteration("Goal", "Observation")
@@ -214,9 +206,7 @@ class TestAgenticLoop:
     @patch("amplihack.agents.goal_seeking.agentic_loop.completion", new_callable=AsyncMock)
     async def test_run_until_goal_stops_when_achieved(self, mock_completion, loop):
         """Test run_until_goal stops when goal is achieved."""
-        mock_completion.return_value = (
-            '{"reasoning": "Test", "action": "greet", "params": {"name": "Test"}}'
-        )
+        mock_completion.return_value = '{"reasoning": "Test", "action": "greet", "params": {"name": "Test"}}'
 
         def check_goal(state):
             return state.iteration >= 2
@@ -231,9 +221,7 @@ class TestAgenticLoop:
     @patch("amplihack.agents.goal_seeking.agentic_loop.completion", new_callable=AsyncMock)
     async def test_run_until_goal_respects_max_iterations(self, mock_completion, loop):
         """Test run_until_goal respects max iterations."""
-        mock_completion.return_value = (
-            '{"reasoning": "Test", "action": "greet", "params": {"name": "Test"}}'
-        )
+        mock_completion.return_value = '{"reasoning": "Test", "action": "greet", "params": {"name": "Test"}}'
 
         loop.max_iterations = 3
 

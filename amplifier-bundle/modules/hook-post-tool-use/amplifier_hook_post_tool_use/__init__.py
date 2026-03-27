@@ -40,10 +40,7 @@ if _CLAUDE_HOOKS.exists():
     except ImportError as e:
         _IMPORT_ERROR = str(e)
         logger.warning(f"PostToolUseHook: Import failed - {e}")
-        print(
-            "WARNING: post_tool_use not available - post-tool-use delegation disabled",
-            file=sys.stderr,
-        )
+        print(f"WARNING: post_tool_use not available - post-tool-use delegation disabled", file=sys.stderr)
 else:
     _IMPORT_ERROR = f"Claude hooks directory not found: {_CLAUDE_HOOKS}"
     logger.warning(_IMPORT_ERROR)
@@ -72,10 +69,7 @@ class PostToolUseHook(Hook):
                     logger.info("PostToolUseHook: Delegating to Claude Code hook")
                 except ImportError as e:
                     logger.warning(f"PostToolUseHook: Claude Code delegation failed: {e}")
-                    print(
-                        "WARNING: post_tool_use not available - Claude Code delegation disabled",
-                        file=sys.stderr,
-                    )
+                    print(f"WARNING: post_tool_use not available - Claude Code delegation disabled", file=sys.stderr)
                     self._claude_hook = None
             else:
                 logger.info(f"PostToolUseHook: Using fallback ({_IMPORT_ERROR})")
@@ -98,16 +92,11 @@ class PostToolUseHook(Hook):
                     logger.debug("Context management hook registered")
                 except ImportError:
                     logger.debug("context_automation_hook not available")
-                    print(
-                        "WARNING: context_automation_hook not available - context management disabled",
-                        file=sys.stderr,
-                    )
+                    print(f"WARNING: context_automation_hook not available - context management disabled", file=sys.stderr)
 
             except ImportError as e:
                 logger.debug(f"Tool registry not available: {e}")
-                print(
-                    "WARNING: tool_registry not available - tool tracking disabled", file=sys.stderr
-                )
+                print(f"WARNING: tool_registry not available - tool tracking disabled", file=sys.stderr)
                 self._tool_registry = None
         return self._tool_registry
 

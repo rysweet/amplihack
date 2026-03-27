@@ -195,7 +195,7 @@ Based on test dependencies, implement in this order:
    - Callback registration
    - Configuration management
 
-4. **Prerequisites Integration** (`src/amplihack/utils/prerequisites.py`)
+5. **Prerequisites Integration** (`src/amplihack/utils/prerequisites.py`)
    - Native binary detection
    - Trace support reporting
    - Installation guidance

@@ -100,7 +100,10 @@
       "name": "PACKAGE_CONSISTENCY",
       "status": "WARN",
       "details": "layer1 vs manifest: 66 differences; layer3 vs manifest: 0 missing, 2129 extra",
-      "missing": ["layer1 vs manifest: 66 differences", "layer3 vs manifest: 0 missing, 2129 extra"]
+      "missing": [
+        "layer1 vs manifest: 66 differences",
+        "layer3 vs manifest: 0 missing, 2129 extra"
+      ]
     },
     {
       "name": "ROUTE_COVERAGE",
@@ -145,7 +148,9 @@
       "name": "DEAD_DEP_CROSS_VALIDATION",
       "status": "WARN",
       "details": "1 deps marked unused in layer3 but found in layer2",
-      "missing": ["rich"]
+      "missing": [
+        "rich"
+      ]
     },
     {
       "name": "CIRCULAR_IMPORT_SEVERITY",

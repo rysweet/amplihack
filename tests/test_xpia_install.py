@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import platform
 import zipfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -11,10 +12,12 @@ import pytest
 
 from amplihack.security.xpia_install import (
     BINARY_NAME,
+    GITHUB_REPO,
+    INSTALL_DIR,
     XPIAInstallError,
+    _get_target_triple,
     _get_installed_version,
     _get_latest_release_tag,
-    _get_target_triple,
     _safe_zip_extract,
     _verify_checksum,
     ensure_xpia_binary,
@@ -73,9 +76,7 @@ class TestGetInstalledVersion:
     """Test version marker file reading."""
 
     def test_no_version_file(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(
-            "amplihack.security.xpia_install.VERSION_FILE", tmp_path / "nonexistent"
-        )
+        monkeypatch.setattr("amplihack.security.xpia_install.VERSION_FILE", tmp_path / "nonexistent")
         assert _get_installed_version() is None
 
     def test_reads_version(self, tmp_path, monkeypatch):
@@ -234,9 +235,7 @@ class TestVerifyChecksum:
         asset.write_bytes(b"test binary content")
 
         checksums = tmp_path / "SHA256SUMS.txt"
-        checksums.write_text(
-            "0000000000000000000000000000000000000000000000000000000000000000  test-asset.tar.gz\n"
-        )
+        checksums.write_text("0000000000000000000000000000000000000000000000000000000000000000  test-asset.tar.gz\n")
 
         with pytest.raises(XPIAInstallError, match="Checksum mismatch"):
             _verify_checksum(asset, checksums, "test-asset.tar.gz")

@@ -56,21 +56,19 @@ def extract(manifest: dict, root: Path) -> dict:
 
         role = _classify_dir_role(dir_path, dir_file_list)
 
-        directories.append(
-            {
-                "path": abs_dir,
-                "rel_path": dir_path,
-                "depth": depth,
-                "role": role,
-                "parent": parent_dir,
-                "file_counts": {
-                    "total": len(dir_file_list),
-                    "python": py_count,
-                    "test": test_count,
-                    "init": init_count,
-                },
-            }
-        )
+        directories.append({
+            "path": abs_dir,
+            "rel_path": dir_path,
+            "depth": depth,
+            "role": role,
+            "parent": parent_dir,
+            "file_counts": {
+                "total": len(dir_file_list),
+                "python": py_count,
+                "test": test_count,
+                "init": init_count,
+            },
+        })
 
     # Find entry points from pyproject.toml
     entry_points = _find_entry_points(root)
@@ -78,12 +76,10 @@ def extract(manifest: dict, root: Path) -> dict:
     # Find __main__.py files
     for f in files:
         if Path(f["rel_path"]).name == "__main__.py":
-            entry_points.append(
-                {
-                    "type": "__main__",
-                    "path": f["path"],
-                }
-            )
+            entry_points.append({
+                "type": "__main__",
+                "path": f["path"],
+            })
 
     # Non-python assets
     non_python = []
@@ -92,12 +88,10 @@ def extract(manifest: dict, root: Path) -> dict:
             asset_type = f["extension"].lstrip(".")
             if not asset_type:
                 asset_type = "unknown"
-            non_python.append(
-                {
-                    "path": f["path"],
-                    "type": asset_type,
-                }
-            )
+            non_python.append({
+                "path": f["path"],
+                "type": asset_type,
+            })
 
     # Completeness self-check
     file_count_sum = sum(d["file_counts"]["total"] for d in directories)
@@ -127,13 +121,14 @@ def extract(manifest: dict, root: Path) -> dict:
 
     # Determine primary language (most code lines)
     primary_language = (
-        max(lang_info, key=lambda k: lang_info[k].get("code", 0)) if lang_info else "unknown"
+        max(lang_info, key=lambda k: lang_info[k].get("code", 0))
+        if lang_info else "unknown"
     )
 
     # Collect all manifest files found
-    manifest_files = sorted(
-        set(mf for info in lang_info.values() for mf in info.get("manifests", []))
-    )
+    manifest_files = sorted(set(
+        mf for info in lang_info.values() for mf in info.get("manifests", [])
+    ))
 
     return {
         "layer": "repo-surface",
@@ -185,11 +180,8 @@ def _find_entry_points(root: Path) -> list[dict]:
     entry_points = []
 
     # Check pyproject.toml - could be in root or parent dirs
-    for candidate in [
-        root / "pyproject.toml",
-        root.parent / "pyproject.toml",
-        root.parent.parent / "pyproject.toml",
-    ]:
+    for candidate in [root / "pyproject.toml", root.parent / "pyproject.toml",
+                      root.parent.parent / "pyproject.toml"]:
         if candidate.exists():
             try:
                 # Use tomllib (3.11+) or tomli
@@ -203,14 +195,12 @@ def _find_entry_points(root: Path) -> list[dict]:
 
                 scripts = data.get("project", {}).get("scripts", {})
                 for name, target in scripts.items():
-                    entry_points.append(
-                        {
-                            "type": "console_script",
-                            "name": name,
-                            "target": target,
-                            "source": str(candidate),
-                        }
-                    )
+                    entry_points.append({
+                        "type": "console_script",
+                        "name": name,
+                        "target": target,
+                        "source": str(candidate),
+                    })
 
                 if scripts:
                     break  # Found scripts, stop searching
@@ -249,11 +239,9 @@ def main():
 
     # Print summary
     dirs = layer_data["directories"]
-    print(
-        f"Layer 1: {len(dirs)} directories, "
-        f"{len(layer_data['entry_points'])} entry points, "
-        f"{len(layer_data['non_python_assets'])} non-python assets"
-    )
+    print(f"Layer 1: {len(dirs)} directories, "
+          f"{len(layer_data['entry_points'])} entry points, "
+          f"{len(layer_data['non_python_assets'])} non-python assets")
 
     roles = {}
     for d in dirs:
@@ -270,23 +258,17 @@ def main():
         print(f"  Total code lines: {total_code:,}")
         for lang, info in languages.items():
             code = info.get("code", info.get("line_count", 0))
-            print(
-                f"    {lang}: {info['file_count']} files, "
-                f"{code:,} code lines ({info['percentage']}%)"
-            )
+            print(f"    {lang}: {info['file_count']} files, "
+                  f"{code:,} code lines ({info['percentage']}%)")
         manifests = layer_data.get("manifest_files", [])
         if manifests:
             print(f"  Manifest files: {', '.join(manifests)}")
 
     completeness = layer_data["completeness"]
     if completeness["ok"]:
-        print(
-            f"  Completeness: PASS ({completeness['directory_file_sum']}/{completeness['manifest_total']})"
-        )
+        print(f"  Completeness: PASS ({completeness['directory_file_sum']}/{completeness['manifest_total']})")
     else:
-        print(
-            f"  Completeness: FAIL ({completeness['directory_file_sum']}/{completeness['manifest_total']})"
-        )
+        print(f"  Completeness: FAIL ({completeness['directory_file_sum']}/{completeness['manifest_total']})")
         sys.exit(1)
 
     print(f"  Output: {out_path} ({out_path.stat().st_size} bytes)")

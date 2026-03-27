@@ -20,7 +20,8 @@ import logging
 from dataclasses import dataclass
 
 from ..coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
-from ..models import MemoryEntry, MemoryType
+from ..models import MemoryEntry
+from ..models import MemoryType
 
 logger = logging.getLogger(__name__)
 

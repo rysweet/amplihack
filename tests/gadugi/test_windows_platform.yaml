@@ -9,6 +9,7 @@ description: >
   and cli.py changes.
 
 scenarios:
+
   - id: cli-version-runs
     name: "amplihack --version exits successfully"
     description: >
@@ -120,4 +121,4 @@ metadata:
   author: rysweet
   created: 2025-01-01
   framework: gadugi-agentic-test
-  validation: manual # gadugi-test not pip-installable; validated by running commands directly
+  validation: manual  # gadugi-test not pip-installable; validated by running commands directly

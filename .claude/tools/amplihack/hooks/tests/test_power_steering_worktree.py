@@ -273,8 +273,7 @@ class TestPowerSteeringCheckerDisabledCheck(unittest.TestCase):
                 os.chdir(worktree_dir)
 
                 with patch(
-                    "power_steering_checker.main_checker.get_shared_runtime_dir",
-                    return_value=str(main_runtime),
+                    "power_steering_checker.main_checker.get_shared_runtime_dir", return_value=str(main_runtime)
                 ):
                     result = is_disabled()
 
@@ -307,8 +306,7 @@ class TestPowerSteeringCheckerDisabledCheck(unittest.TestCase):
                 os.chdir(worktree_dir)
 
                 with patch(
-                    "power_steering_checker.main_checker.get_shared_runtime_dir",
-                    return_value=str(main_runtime),
+                    "power_steering_checker.main_checker.get_shared_runtime_dir", return_value=str(main_runtime)
                 ):
                     result = is_disabled()
 
@@ -493,8 +491,7 @@ class TestWorktreeDisabledFileIntegration(unittest.TestCase):
             with (
                 patch("os.getcwd", return_value=str(worktree_dir)),
                 patch(
-                    "power_steering_checker.main_checker.get_shared_runtime_dir",
-                    return_value=str(main_runtime),
+                    "power_steering_checker.main_checker.get_shared_runtime_dir", return_value=str(main_runtime)
                 ),
             ):
                 result = is_disabled()
@@ -535,8 +532,7 @@ class TestWorktreeDisabledFileIntegration(unittest.TestCase):
             with (
                 patch("os.getcwd", return_value=str(worktree_dir)),
                 patch(
-                    "power_steering_checker.main_checker.get_shared_runtime_dir",
-                    return_value=str(main_runtime),
+                    "power_steering_checker.main_checker.get_shared_runtime_dir", return_value=str(main_runtime)
                 ),
             ):
                 result = is_disabled()

@@ -22,8 +22,8 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 from amplihack.fleet._transcript_report import (
-    AGENT_RE,
     ALL_EXPECTED_STEPS,
+    AGENT_RE,
     SKILL_INVOKE_RE,
     SKILL_RE,
     STRATEGY_KEYWORDS,
@@ -69,7 +69,6 @@ def gather_remote_transcripts(
     """Gather transcript summaries from remote VMs via azlin."""
     if azlin_path is None:
         from amplihack.fleet._defaults import get_azlin_path
-
         azlin_path = get_azlin_path()
 
     remote_script = _build_remote_summary_script()
@@ -80,9 +79,7 @@ def gather_remote_transcripts(
             validate_vm_name(vm)
             proc = subprocess.run(
                 [azlin_path, "connect", vm, "--no-tmux", "--", "python3", "-c", remote_script],
-                capture_output=True,
-                text=True,
-                timeout=60,
+                capture_output=True, text=True, timeout=60,
             )
             if proc.returncode == 0 and proc.stdout.strip():
                 results[vm] = json.loads(proc.stdout.strip())
@@ -131,9 +128,7 @@ class TranscriptAnalyzer:
         """Find local JSONL transcript files."""
         return gather_local_transcripts()
 
-    def gather_remote(
-        self, vm_names: list[str], azlin_path: str | None = None
-    ) -> dict[str, list[dict]]:
+    def gather_remote(self, vm_names: list[str], azlin_path: str | None = None) -> dict[str, list[dict]]:
         """Gather transcript summaries from remote azlin VMs."""
         return gather_remote_transcripts(vm_names, azlin_path=azlin_path)
 
@@ -196,9 +191,7 @@ class TranscriptAnalyzer:
                 tool_name = block.get("name", "unknown")
                 report.tool_usage[tool_name] += 1
                 tool_input = block.get("input", {})
-                input_str = (
-                    json.dumps(tool_input) if isinstance(tool_input, dict) else str(tool_input)
-                )
+                input_str = json.dumps(tool_input) if isinstance(tool_input, dict) else str(tool_input)
                 self._scan_for_skills(input_str, report)
                 self._scan_for_agents(input_str, report)
             elif block_type == "text":

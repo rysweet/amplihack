@@ -17,6 +17,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
+
 # Add the hooks directory to path
 hooks_dir = Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks"
 sys.path.insert(0, str(hooks_dir))
@@ -146,9 +148,7 @@ def _make_pm_architect_transcript_copilot():
                         "type": "tool_use",
                         "id": "call_01",
                         "name": "Bash",
-                        "input": {
-                            "command": "gh issue list --state open --json number,title,labels"
-                        },
+                        "input": {"command": "gh issue list --state open --json number,title,labels"},
                     },
                 ],
             },
@@ -287,7 +287,8 @@ class TestOperationsSessionE2ECopilot:
             transcript = _make_pm_architect_transcript_copilot()
             session_type = checker.detect_session_type(transcript)
             assert session_type == "OPERATIONS", (
-                f"Copilot backlog triage was classified as {session_type}, expected OPERATIONS"
+                f"Copilot backlog triage was classified as {session_type}, "
+                "expected OPERATIONS"
             )
 
     def test_copilot_backlog_triage_skips_checks(self):
@@ -327,7 +328,8 @@ class TestDevelopmentSessionNotAffected:
             transcript = _make_development_transcript()
             session_type = checker.detect_session_type(transcript)
             assert session_type == "DEVELOPMENT", (
-                f"Development session was classified as {session_type}, expected DEVELOPMENT"
+                f"Development session was classified as {session_type}, "
+                "expected DEVELOPMENT"
             )
 
     def test_development_session_has_considerations(self):
@@ -348,38 +350,14 @@ if __name__ == "__main__":
 
     failures = 0
     tests = [
-        (
-            "Claude /pm-architect → OPERATIONS",
-            TestOperationsSessionE2EClaude().test_pm_architect_session_classified_as_operations,
-        ),
-        (
-            "Claude /pm-architect skips checks",
-            TestOperationsSessionE2EClaude().test_pm_architect_session_skips_all_checks,
-        ),
-        (
-            "Claude full check() flow",
-            TestOperationsSessionE2EClaude().test_pm_architect_full_check_flow,
-        ),
-        (
-            "Copilot backlog triage → OPERATIONS",
-            TestOperationsSessionE2ECopilot().test_copilot_backlog_triage_classified_as_operations,
-        ),
-        (
-            "Copilot backlog triage skips checks",
-            TestOperationsSessionE2ECopilot().test_copilot_backlog_triage_skips_checks,
-        ),
-        (
-            "Copilot full check() flow",
-            TestOperationsSessionE2ECopilot().test_copilot_backlog_full_check_flow,
-        ),
-        (
-            "Dev session still DEVELOPMENT",
-            TestDevelopmentSessionNotAffected().test_development_session_not_classified_as_operations,
-        ),
-        (
-            "Dev session has considerations",
-            TestDevelopmentSessionNotAffected().test_development_session_has_considerations,
-        ),
+        ("Claude /pm-architect → OPERATIONS", TestOperationsSessionE2EClaude().test_pm_architect_session_classified_as_operations),
+        ("Claude /pm-architect skips checks", TestOperationsSessionE2EClaude().test_pm_architect_session_skips_all_checks),
+        ("Claude full check() flow", TestOperationsSessionE2EClaude().test_pm_architect_full_check_flow),
+        ("Copilot backlog triage → OPERATIONS", TestOperationsSessionE2ECopilot().test_copilot_backlog_triage_classified_as_operations),
+        ("Copilot backlog triage skips checks", TestOperationsSessionE2ECopilot().test_copilot_backlog_triage_skips_checks),
+        ("Copilot full check() flow", TestOperationsSessionE2ECopilot().test_copilot_backlog_full_check_flow),
+        ("Dev session still DEVELOPMENT", TestDevelopmentSessionNotAffected().test_development_session_not_classified_as_operations),
+        ("Dev session has considerations", TestDevelopmentSessionNotAffected().test_development_session_has_considerations),
     ]
 
     for name, test_fn in tests:

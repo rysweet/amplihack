@@ -160,7 +160,7 @@ name: Scheduled Atlas Rebuild
 
 on:
   schedule:
-    - cron: "0 6 * * 1" # Every Monday 6am UTC
+    - cron: "0 6 * * 1"   # Every Monday 6am UTC
   workflow_dispatch:
 
 jobs:
@@ -195,7 +195,7 @@ nav:
 
 plugins:
   - search
-  - mermaid2 # pip install mkdocs-mermaid2-plugin
+  - mermaid2   # pip install mkdocs-mermaid2-plugin
 ```
 
 ## GitHub Pages Deployment
@@ -206,7 +206,7 @@ plugins:
   uses: peaceiris/actions-gh-pages@v3
   with:
     github_token: ${{ secrets.GITHUB_TOKEN }}
-    publish_dir: ./site # mkdocs build output
+    publish_dir: ./site   # mkdocs build output
 
 - name: Verify atlas pages
   run: |

@@ -18,6 +18,7 @@ import argparse
 import importlib.util
 import json
 import logging
+import os
 import sys
 import tempfile
 import time
@@ -105,18 +106,12 @@ def run_eval(output_path: str) -> dict:
                 elapsed = time.time() - t0
                 logger.info(
                     "  Progress: %d/%d turns stored (%.1fs elapsed, %.0f turns/s)",
-                    turn + 1,
-                    _TURNS,
-                    elapsed,
-                    (turn + 1) / elapsed,
+                    turn + 1, _TURNS, elapsed, (turn + 1) / elapsed,
                 )
         learn_elapsed = time.time() - t0
         logger.info(
             "Phase 1 complete: %d turns fed, %d errors, %.1fs elapsed (avg %.0f turns/s)",
-            _TURNS,
-            errors_learn,
-            learn_elapsed,
-            _TURNS / learn_elapsed,
+            _TURNS, errors_learn, learn_elapsed, _TURNS / learn_elapsed,
         )
 
         # ----------------------------------------------------------------
@@ -158,9 +153,7 @@ def run_eval(output_path: str) -> dict:
                 entrypoint._handle_event("app-0", query_event, mock_memory, agent)
                 answer = ""
                 if captured.get("results"):
-                    answer = (
-                        captured["results"][0].get("content", "") if captured["results"] else ""
-                    )
+                    answer = captured["results"][0].get("content", "") if captured["results"] else ""
                 passed = bool(answer) and answer.lower() != "error"
                 responses.append({"question": question, "answer": answer, "passed": passed})
                 logger.info("Q%d: %s\n  -> %s...", i + 1, question[:60], answer[:100])

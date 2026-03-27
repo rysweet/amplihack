@@ -11,6 +11,7 @@ and related docs:
 import subprocess
 from pathlib import Path
 
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEV_ORCHESTRATOR_SKILL = REPO_ROOT / ".claude" / "skills" / "dev-orchestrator" / "SKILL.md"
 OXIDIZER_DOC = REPO_ROOT / "docs" / "OXIDIZER.md"
@@ -20,7 +21,7 @@ def test_dev_orchestrator_skill_uses_python3_and_no_stale_adapter_import():
     content = DEV_ORCHESTRATOR_SKILL.read_text()
 
     assert "PYTHONPATH=src python3 -c" in content
-    assert "env -u CLAUDECODE \\" in content
+    assert 'env -u CLAUDECODE \\' in content
     assert "env -u CLAUDECODE -u AMPLIHACK_AGENT_BINARY" not in content
     assert "env -u CLAUDECODE .venv/bin/python -c" not in content
     assert "amplihack.recipes.adapters.cli_subprocess" not in content

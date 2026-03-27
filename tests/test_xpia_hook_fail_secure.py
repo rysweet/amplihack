@@ -11,7 +11,10 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).parents[1]
 AGGREGATOR = REPO_ROOT / ".github" / "hooks" / "pre-tool-use"
@@ -71,8 +74,13 @@ class TestAggregatorFailSecureTerminal:
     def test_fail_secure_terminal_has_deny_decision(self):
         """The fail-secure default must produce a deny payload."""
         result = _run_aggregator_logic({}, {})
-        has_deny = result.get("decision") == "deny" or result.get("permissionDecision") == "deny"
-        assert has_deny, f"R1: fail-secure terminal must produce a deny decision; got {result!r}"
+        has_deny = (
+            result.get("decision") == "deny"
+            or result.get("permissionDecision") == "deny"
+        )
+        assert has_deny, (
+            f"R1: fail-secure terminal must produce a deny decision; got {result!r}"
+        )
 
     def test_xpia_deny_propagates(self):
         """An explicit XPIA deny is forwarded unchanged."""

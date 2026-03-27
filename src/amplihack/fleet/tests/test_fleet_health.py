@@ -16,6 +16,7 @@ import pytest
 
 from amplihack.fleet.fleet_health import HealthChecker, HealthReport, VMHealth
 
+
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — individual parsers
 # ────────────────────────────────────────────
@@ -249,12 +250,8 @@ class TestHealthReport:
     def test_report_counts(self):
         report = HealthReport(
             vm_health=[
-                VMHealth(
-                    vm_name="vm-01", ssh_reachable=True, memory_used_pct=50.0, disk_used_pct=40.0
-                ),
-                VMHealth(
-                    vm_name="vm-02", ssh_reachable=True, memory_used_pct=85.0, disk_used_pct=40.0
-                ),
+                VMHealth(vm_name="vm-01", ssh_reachable=True, memory_used_pct=50.0, disk_used_pct=40.0),
+                VMHealth(vm_name="vm-02", ssh_reachable=True, memory_used_pct=85.0, disk_used_pct=40.0),
                 VMHealth(vm_name="vm-03", ssh_reachable=False),
             ],
             timestamp=datetime(2025, 1, 1, 12, 0, 0),

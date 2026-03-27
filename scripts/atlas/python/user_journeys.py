@@ -17,6 +17,7 @@ Limitations (static analysis):
 
 import argparse
 import ast
+import json
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -31,14 +32,10 @@ from scripts.atlas.common import (
 )
 
 
-def extract(
-    manifest: dict,
-    layer2: dict,
-    root: Path,
-    layer4: dict | None = None,
-    layer5: dict | None = None,
-    layer6: dict | None = None,
-) -> dict:
+def extract(manifest: dict, layer2: dict, root: Path,
+            layer4: dict | None = None,
+            layer5: dict | None = None,
+            layer6: dict | None = None) -> dict:
     """Extract layer 8 user journey data.
 
     Args:
@@ -64,7 +61,9 @@ def extract(
     blarify_rels = layer2.get("blarify_relationships", {})
     blarify_edges_added = 0
     if blarify_rels.get("calls", 0) > 0:
-        blarify_edges_added = _enrich_call_graph_from_blarify(call_graph, all_functions, root)
+        blarify_edges_added = _enrich_call_graph_from_blarify(
+            call_graph, all_functions, root
+        )
 
     # --- Step 2: Get entry points ---
     entry_points = _get_entry_points(layer5, root)
@@ -85,22 +84,20 @@ def extract(
         # Skip out_of_scope entry points (e.g. hooks pointing to .claude/tools/)
         trace_status = ep.get("trace_status")
         if trace_status == "out_of_scope":
-            journeys.append(
-                {
-                    "entry_type": ep["type"],
-                    "command": ep.get("command", ep.get("path", ep.get("name", "unknown"))),
-                    "handler": {
-                        "file": ep.get("file", ""),
-                        "function": ep.get("function", ""),
-                        "lineno": ep.get("lineno"),
-                    },
-                    "trace_status": "out_of_scope",
-                    "trace_depth": 0,
-                    "functions_reached": 0,
-                    "outcomes": [],
-                    "packages_touched": [],
-                }
-            )
+            journeys.append({
+                "entry_type": ep["type"],
+                "command": ep.get("command", ep.get("path", ep.get("name", "unknown"))),
+                "handler": {
+                    "file": ep.get("file", ""),
+                    "function": ep.get("function", ""),
+                    "lineno": ep.get("lineno"),
+                },
+                "trace_status": "out_of_scope",
+                "trace_depth": 0,
+                "functions_reached": 0,
+                "outcomes": [],
+                "packages_touched": [],
+            })
             continue
 
         # If handler_key doesn't exist in call graph, try fuzzy matching:
@@ -112,41 +109,35 @@ def extract(
                 effective_key = fuzzy
 
         trace = _trace_from(effective_key, call_graph, max_depth=5)
-        outcomes = _classify_outcomes(
-            trace["leaves"], all_functions, io_functions, subprocess_functions
-        )
+        outcomes = _classify_outcomes(trace["leaves"], all_functions, io_functions, subprocess_functions)
         packages_touched = _packages_from_keys(trace["visited"], root_str)
 
         all_reached.update(trace["visited"])
 
-        journeys.append(
-            {
-                "entry_type": ep["type"],
-                "command": ep.get("command", ep.get("path", ep.get("name", "unknown"))),
-                "handler": {
-                    "file": ep.get("file", ""),
-                    "function": ep.get("function", ""),
-                    "lineno": ep.get("lineno"),
-                },
-                "trace_depth": trace["max_depth"],
-                "functions_reached": len(trace["visited"]),
-                "outcomes": outcomes,
-                "packages_touched": sorted(packages_touched),
-            }
-        )
+        journeys.append({
+            "entry_type": ep["type"],
+            "command": ep.get("command", ep.get("path", ep.get("name", "unknown"))),
+            "handler": {
+                "file": ep.get("file", ""),
+                "function": ep.get("function", ""),
+                "lineno": ep.get("lineno"),
+            },
+            "trace_depth": trace["max_depth"],
+            "functions_reached": len(trace["visited"]),
+            "outcomes": outcomes,
+            "packages_touched": sorted(packages_touched),
+        })
 
     # --- Step 5: Unreachable functions ---
     unreachable = []
     for func_key, func_info in sorted(all_functions.items()):
         if func_key not in all_reached:
-            unreachable.append(
-                {
-                    "file": func_info["file"],
-                    "function": func_info["name"],
-                    "lineno": func_info.get("lineno"),
-                    "reason": "not reachable from any entry point within depth limit",
-                }
-            )
+            unreachable.append({
+                "file": func_info["file"],
+                "function": func_info["name"],
+                "lineno": func_info.get("lineno"),
+                "reason": "not reachable from any entry point within depth limit",
+            })
 
     # --- Summary ---
     cli_count = sum(1 for j in journeys if j["entry_type"] == "cli")
@@ -154,9 +145,8 @@ def extract(
     hook_count = sum(1 for j in journeys if j["entry_type"] == "hook")
     out_of_scope_count = sum(1 for j in journeys if j.get("trace_status") == "out_of_scope")
     # Exclude out_of_scope journeys from average depth calculation
-    in_scope_depths = [
-        j["trace_depth"] for j in journeys if j.get("trace_status") != "out_of_scope"
-    ]
+    in_scope_depths = [j["trace_depth"] for j in journeys
+                       if j.get("trace_status") != "out_of_scope"]
     avg_depth = round(sum(in_scope_depths) / len(in_scope_depths), 1) if in_scope_depths else 0.0
 
     return {
@@ -259,7 +249,8 @@ def _build_call_graph(
             continue
 
         _extract_calls_from_ast(
-            tree, filepath, defs_by_file, classes_by_file, import_targets, all_functions, call_graph
+            tree, filepath, defs_by_file, classes_by_file,
+            import_targets, all_functions, call_graph
         )
 
     return dict(call_graph), all_functions
@@ -280,9 +271,8 @@ def _enrich_call_graph_from_blarify(
         Number of edges added.
     """
     try:
+        from scripts.atlas.blarify_bridge import BlarifyBridge, EXTENSION_TO_LANGUAGE
         import os
-
-        from scripts.atlas.blarify_bridge import EXTENSION_TO_LANGUAGE, BlarifyBridge
 
         bridge = BlarifyBridge(root)
         bridge.build()
@@ -315,17 +305,13 @@ def _enrich_call_graph_from_blarify(
             # Register functions if not already known
             if src_key not in all_functions:
                 all_functions[src_key] = {
-                    "file": src_file,
-                    "name": src_name,
-                    "lineno": call.get("lineno"),
-                    "type": "function",
+                    "file": src_file, "name": src_name,
+                    "lineno": call.get("lineno"), "type": "function",
                 }
             if tgt_key not in all_functions:
                 all_functions[tgt_key] = {
-                    "file": tgt_file,
-                    "name": tgt_name,
-                    "lineno": None,
-                    "type": "function",
+                    "file": tgt_file, "name": tgt_name,
+                    "lineno": None, "type": "function",
                 }
 
             if tgt_key not in call_graph.get(src_key, set()):
@@ -367,13 +353,8 @@ def _extract_calls_from_ast(
                 continue
 
             callee_keys = _resolve_callee(
-                child.func,
-                filepath,
-                defs_by_file,
-                classes_by_file,
-                import_targets,
-                all_functions,
-                node,
+                child.func, filepath, defs_by_file, classes_by_file,
+                import_targets, all_functions, node
             )
             for ck in callee_keys:
                 call_graph[caller_key].add(ck)
@@ -424,7 +405,9 @@ def _resolve_callee(
 
         # Check same file
         key = f"{filepath}::{name}"
-        if key in all_functions or name in defs_by_file.get(filepath, {}):
+        if key in all_functions:
+            results.append(key)
+        elif name in defs_by_file.get(filepath, {}):
             results.append(key)
 
         # Check imports
@@ -492,33 +475,29 @@ def _get_entry_points(layer5: dict | None, root: Path) -> list[dict]:
             if not handler_func:
                 handler_func = parser_name
             if handler_file and handler_func:
-                entry_points.append(
-                    {
-                        "type": "cli",
-                        "command": cmd.get("command", ""),
-                        "handler_key": f"{handler_file}::{handler_func}",
-                        "file": handler_file,
-                        "function": handler_func,
-                        "lineno": cmd.get("lineno"),
-                    }
-                )
+                entry_points.append({
+                    "type": "cli",
+                    "command": cmd.get("command", ""),
+                    "handler_key": f"{handler_file}::{handler_func}",
+                    "file": handler_file,
+                    "function": handler_func,
+                    "lineno": cmd.get("lineno"),
+                })
 
         # HTTP routes
         for route in layer5.get("http_routes", []):
             handler_file = route.get("file", "")
             handler_func = route.get("function", "")
             if handler_file and handler_func:
-                entry_points.append(
-                    {
-                        "type": "http",
-                        "path": route.get("path", ""),
-                        "command": f"{route.get('method', 'GET')} {route.get('path', '')}",
-                        "handler_key": f"{handler_file}::{handler_func}",
-                        "file": handler_file,
-                        "function": handler_func,
-                        "lineno": route.get("lineno"),
-                    }
-                )
+                entry_points.append({
+                    "type": "http",
+                    "path": route.get("path", ""),
+                    "command": f"{route.get('method', 'GET')} {route.get('path', '')}",
+                    "handler_key": f"{handler_file}::{handler_func}",
+                    "file": handler_file,
+                    "function": handler_func,
+                    "lineno": route.get("lineno"),
+                })
 
         # Hooks
         for hook in layer5.get("hook_events", []):
@@ -527,7 +506,9 @@ def _get_entry_points(layer5: dict | None, root: Path) -> list[dict]:
             if handler_file and handler_func:
                 # Mark hooks pointing to .claude/tools/ as out_of_scope
                 trace_status = None
-                if ".claude/tools/" in handler_file or not handler_file.startswith(root_str):
+                if ".claude/tools/" in handler_file:
+                    trace_status = "out_of_scope"
+                elif not handler_file.startswith(root_str):
                     trace_status = "out_of_scope"
 
                 ep = {
@@ -583,11 +564,9 @@ def _build_set_defaults_map(root: Path) -> dict[str, dict[str, str]]:
                 continue
 
             if node.func.attr == "add_parser":
-                if (
-                    node.args
-                    and isinstance(node.args[0], ast.Constant)
-                    and isinstance(node.args[0].value, str)
-                ):
+                if (node.args
+                        and isinstance(node.args[0], ast.Constant)
+                        and isinstance(node.args[0].value, str)):
                     parser_names.append((node.args[0].value, node.lineno))
 
             elif node.func.attr == "set_defaults":
@@ -617,7 +596,9 @@ def _build_set_defaults_map(root: Path) -> dict[str, dict[str, str]]:
     return result
 
 
-def _fuzzy_resolve_handler(handler_key: str, all_functions: dict[str, dict]) -> str | None:
+def _fuzzy_resolve_handler(
+    handler_key: str, all_functions: dict[str, dict]
+) -> str | None:
     """Fuzzy-match a handler_key against the call graph when exact match fails.
 
     For handler_key "file::parser_name", search for functions in the same file
@@ -686,29 +667,25 @@ def _extract_entry_points_from_codebase(root: Path) -> list[dict]:
 
         # __main__.py -> main()
         if name == "__main__.py" and "main" in top_level_funcs:
-            entry_points.append(
-                {
-                    "type": "cli",
-                    "command": f"python -m {_path_to_module(filepath_str, root_str)}",
-                    "handler_key": f"{filepath_str}::main",
-                    "file": filepath_str,
-                    "function": "main",
-                    "lineno": _find_func_lineno(tree, "main"),
-                }
-            )
+            entry_points.append({
+                "type": "cli",
+                "command": f"python -m {_path_to_module(filepath_str, root_str)}",
+                "handler_key": f"{filepath_str}::main",
+                "file": filepath_str,
+                "function": "main",
+                "lineno": _find_func_lineno(tree, "main"),
+            })
 
         # cli.py or main.py -> main()
         if name in ("cli.py", "main.py") and "main" in top_level_funcs:
-            entry_points.append(
-                {
-                    "type": "cli",
-                    "command": f"cli:{name}",
-                    "handler_key": f"{filepath_str}::main",
-                    "file": filepath_str,
-                    "function": "main",
-                    "lineno": _find_func_lineno(tree, "main"),
-                }
-            )
+            entry_points.append({
+                "type": "cli",
+                "command": f"cli:{name}",
+                "handler_key": f"{filepath_str}::main",
+                "file": filepath_str,
+                "function": "main",
+                "lineno": _find_func_lineno(tree, "main"),
+            })
 
         # Look for set_defaults(func=X) patterns to find CLI handlers
         for node in ast.walk(tree):
@@ -724,16 +701,14 @@ def _extract_entry_points_from_codebase(root: Path) -> list[dict]:
                     # Only add if the handler is a real function defined in this file
                     # or somewhere we can resolve
                     if handler_name in top_level_funcs:
-                        entry_points.append(
-                            {
-                                "type": "cli",
-                                "command": f"subcommand:{handler_name}",
-                                "handler_key": f"{filepath_str}::{handler_name}",
-                                "file": filepath_str,
-                                "function": handler_name,
-                                "lineno": node.lineno,
-                            }
-                        )
+                        entry_points.append({
+                            "type": "cli",
+                            "command": f"subcommand:{handler_name}",
+                            "handler_key": f"{filepath_str}::{handler_name}",
+                            "file": filepath_str,
+                            "function": handler_name,
+                            "lineno": node.lineno,
+                        })
 
     return entry_points
 
@@ -749,7 +724,7 @@ def _find_func_lineno(tree: ast.Module, name: str) -> int | None:
 def _path_to_module(filepath: str, root_str: str) -> str:
     """Convert file path to module name."""
     if filepath.startswith(root_str):
-        rel = filepath[len(root_str) :].lstrip("/")
+        rel = filepath[len(root_str):].lstrip("/")
     else:
         rel = filepath
     return rel.replace("/", ".").removesuffix(".py")
@@ -852,9 +827,7 @@ def _classify_outcomes(
     for leaf_key in sorted(leaves):
         func_info = all_functions.get(leaf_key, {})
         filepath = func_info.get("file", leaf_key.split("::")[0] if "::" in leaf_key else "")
-        func_name = func_info.get(
-            "name", leaf_key.split("::")[-1] if "::" in leaf_key else leaf_key
-        )
+        func_name = func_info.get("name", leaf_key.split("::")[-1] if "::" in leaf_key else leaf_key)
 
         outcome_type = "return_value"  # default
 
@@ -866,18 +839,13 @@ def _classify_outcomes(
         else:
             # Heuristic classification from function name
             name_lower = func_name.lower()
-            if any(kw in name_lower for kw in ("write", "save", "dump", "store", "persist")) or any(
-                kw in name_lower for kw in ("read", "load", "parse_file")
-            ):
+            if any(kw in name_lower for kw in ("write", "save", "dump", "store", "persist")):
                 outcome_type = "file_io"
-            elif any(
-                kw in name_lower for kw in ("exec", "run_command", "subprocess", "popen", "system")
-            ):
+            elif any(kw in name_lower for kw in ("read", "load", "parse_file")):
+                outcome_type = "file_io"
+            elif any(kw in name_lower for kw in ("exec", "run_command", "subprocess", "popen", "system")):
                 outcome_type = "subprocess"
-            elif any(
-                kw in name_lower
-                for kw in ("request", "fetch", "post", "get_url", "http", "api_call")
-            ):
+            elif any(kw in name_lower for kw in ("request", "fetch", "post", "get_url", "http", "api_call")):
                 outcome_type = "network"
             elif any(kw in name_lower for kw in ("query", "execute_sql", "cursor", "connect_db")):
                 outcome_type = "database"
@@ -888,13 +856,11 @@ def _classify_outcomes(
         dedup_key = f"{outcome_type}:{filepath}"
         if dedup_key not in seen_types:
             seen_types.add(dedup_key)
-            outcomes.append(
-                {
-                    "type": outcome_type,
-                    "detail": func_name,
-                    "file": filepath,
-                }
-            )
+            outcomes.append({
+                "type": outcome_type,
+                "detail": func_name,
+                "file": filepath,
+            })
 
     return outcomes
 
@@ -907,7 +873,7 @@ def _packages_from_keys(func_keys: set[str], root_str: str) -> set[str]:
             continue
         filepath = key.split("::")[0]
         if filepath.startswith(root_str):
-            rel = filepath[len(root_str) :].lstrip("/")
+            rel = filepath[len(root_str):].lstrip("/")
         else:
             rel = filepath
         parent = str(Path(rel).parent)
@@ -938,24 +904,22 @@ def main():
     try:
         layer4 = load_layer_json("layer4_runtime_topology", output_dir)
     except FileNotFoundError:
-        print(
-            "Note: layer4 not found, subprocess classification will use heuristics", file=sys.stderr
-        )
+        print("Note: layer4 not found, subprocess classification will use heuristics",
+              file=sys.stderr)
 
     layer5 = None
     try:
         layer5 = load_layer_json("layer5_api_contracts", output_dir)
     except FileNotFoundError:
-        print(
-            "Note: layer5 not found, extracting entry points directly from codebase",
-            file=sys.stderr,
-        )
+        print("Note: layer5 not found, extracting entry points directly from codebase",
+              file=sys.stderr)
 
     layer6 = None
     try:
         layer6 = load_layer_json("layer6_data_flow", output_dir)
     except FileNotFoundError:
-        print("Note: layer6 not found, I/O classification will use heuristics", file=sys.stderr)
+        print("Note: layer6 not found, I/O classification will use heuristics",
+              file=sys.stderr)
 
     # Extract
     layer_data = extract(manifest, layer2, root, layer4, layer5, layer6)
@@ -967,9 +931,7 @@ def main():
     s = layer_data["summary"]
     cg = layer_data["call_graph"]
     print(f"Layer 8: {s['total_journeys']} journeys traced")
-    blarify_extra = (
-        f" (+{cg['blarify_edges_added']} blarify)" if cg.get("blarify_edges_added") else ""
-    )
+    blarify_extra = f" (+{cg['blarify_edges_added']} blarify)" if cg.get('blarify_edges_added') else ""
     print(f"  Call graph: {cg['node_count']} nodes, {cg['edge_count']} edges{blarify_extra}")
     print(f"  CLI journeys: {s['cli_journeys']}")
     print(f"  HTTP journeys: {s['http_journeys']}")

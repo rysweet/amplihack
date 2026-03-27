@@ -45,7 +45,6 @@ def test_bool_string_coercion_in_condition():
     binary = _find_recipe_runner_binary()
     if binary is None:
         import pytest
-
         pytest.skip("recipe-runner-rs binary not found")
 
     recipe_yaml = """\
@@ -121,7 +120,6 @@ def test_bool_string_inequality_coercion():
     binary = _find_recipe_runner_binary()
     if binary is None:
         import pytest
-
         pytest.skip("recipe-runner-rs binary not found")
 
     recipe_yaml = """\

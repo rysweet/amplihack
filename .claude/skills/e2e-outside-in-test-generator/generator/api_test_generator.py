@@ -52,7 +52,7 @@ def _generate_api_smoke_tests(
             sample = _generate_sample_data(endpoint.request_body_schema)
             request_body = f"      body: {json.dumps(sample, indent=8)}"
         elif endpoint.method in ("POST", "PUT", "PATCH"):
-            request_body = "      body: {}"
+            request_body = '      body: {}'
 
         # Build auth header
         auth_header = ""
@@ -141,11 +141,7 @@ def _generate_api_crud_tests(
         post_eps = [ep for ep in endpoints if ep.method == "POST"]
         if post_eps:
             ep = post_eps[0]
-            sample = (
-                _generate_sample_data(ep.request_body_schema)
-                if ep.request_body_schema
-                else {"name": "test"}
-            )
+            sample = _generate_sample_data(ep.request_body_schema) if ep.request_body_schema else {"name": "test"}
             steps.append(f"""    - action: http_request
       method: "POST"
       url: "{config.base_url}{ep.path}"
@@ -223,7 +219,9 @@ def _generate_api_validation_tests(
 
     generated = []
     # Find endpoints that accept request bodies
-    body_endpoints = [ep for ep in config.endpoints if ep.method in ("POST", "PUT", "PATCH")]
+    body_endpoints = [
+        ep for ep in config.endpoints if ep.method in ("POST", "PUT", "PATCH")
+    ]
 
     for ep in body_endpoints:
         path_slug = ep.path.replace("/", "-").strip("-") or "root"
@@ -384,21 +382,19 @@ def _generate_api_workflow_tests(
         for i, ep in enumerate(endpoints):
             body_line = ""
             if ep.method in ("POST", "PUT", "PATCH"):
-                sample = (
-                    _generate_sample_data(ep.request_body_schema) if ep.request_body_schema else {}
-                )
+                sample = _generate_sample_data(ep.request_body_schema) if ep.request_body_schema else {}
                 body_line = f"\n      body: {json.dumps(sample)}"
 
             expected = 201 if ep.method == "POST" else 200
             steps += f"""    - action: http_request
       method: "{ep.method}"
       url: "{config.base_url}{ep.path}"{body_line}
-      description: "Step {i + 1}: {ep.summary or ep.method + " " + ep.path}"
+      description: "Step {i+1}: {ep.summary or ep.method + ' ' + ep.path}"
       timeout: 10s
 
     - action: verify_status_code
       expected: {expected}
-      description: "Step {i + 1} should succeed"
+      description: "Step {i+1} should succeed"
 
 """
 

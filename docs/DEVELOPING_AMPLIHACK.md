@@ -125,12 +125,12 @@ amplihack copilot
 
 #### Key Modules
 
-| Module               | Purpose               | Entry Point                                   |
-| -------------------- | --------------------- | --------------------------------------------- |
-| **Launcher**         | Claude Code execution | `src/amplihack/launcher/core.py`              |
-| **Bundle Generator** | Agent creation        | `src/amplihack/bundle_generator/generator.py` |
-| **Security**         | XPIA defense          | `src/amplihack/security/xpia_defender.py`     |
-| **Memory**           | Session persistence   | `src/amplihack/memory/manager.py`             |
+| Module               | Purpose                  | Entry Point                                   |
+| -------------------- | ------------------------ | --------------------------------------------- |
+| **Launcher**         | Claude Code execution    | `src/amplihack/launcher/core.py`              |
+| **Bundle Generator** | Agent creation           | `src/amplihack/bundle_generator/generator.py` |
+| **Security**         | XPIA defense             | `src/amplihack/security/xpia_defender.py`     |
+| **Memory**           | Session persistence      | `src/amplihack/memory/manager.py`             |
 
 #### Configuration Files
 
@@ -351,16 +351,16 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 
 ### 3.1 Launcher Features
 
-| Feature                 | Description                            | Implementation                       | Status    |
-| ----------------------- | -------------------------------------- | ------------------------------------ | --------- |
-| **Basic Launch**        | Launch Claude Code with .claude config | `launcher/core.py:350-420`           | ✅ Stable |
-| **Repository Checkout** | Clone and launch in GitHub repo        | `launcher/repo_checkout.py:1-100`    | ✅ Stable |
-| **UVX Detection**       | Detect uvx execution mode              | `uvx/manager.py:1-200`               | ✅ Stable |
-| **--add-dir Support**   | Add project directory to Claude        | `launcher/core.py:311-338`           | ✅ Stable |
-| **Prerequisites Check** | Validate Node.js, npm, claude CLI      | `utils/prerequisites.py:1-150`       | ✅ Stable |
-| **Path Caching**        | Cache resolved paths for performance   | `launcher/core.py:510-528`           | ✅ Stable |
-| **Autonomous Mode**     | Multi-turn task execution              | `launcher/auto_mode.py:1-200`        | ✅ Stable |
-| **Settings Backup**     | Backup/restore Claude settings         | `launcher/settings_manager.py:1-150` | ✅ Stable |
+| Feature                 | Description                            | Implementation                       | Status        |
+| ----------------------- | -------------------------------------- | ------------------------------------ | ------------- |
+| **Basic Launch**        | Launch Claude Code with .claude config | `launcher/core.py:350-420`           | ✅ Stable     |
+| **Repository Checkout** | Clone and launch in GitHub repo        | `launcher/repo_checkout.py:1-100`    | ✅ Stable     |
+| **UVX Detection**       | Detect uvx execution mode              | `uvx/manager.py:1-200`               | ✅ Stable     |
+| **--add-dir Support**   | Add project directory to Claude        | `launcher/core.py:311-338`           | ✅ Stable     |
+| **Prerequisites Check** | Validate Node.js, npm, claude CLI      | `utils/prerequisites.py:1-150`       | ✅ Stable     |
+| **Path Caching**        | Cache resolved paths for performance   | `launcher/core.py:510-528`           | ✅ Stable     |
+| **Autonomous Mode**     | Multi-turn task execution              | `launcher/auto_mode.py:1-200`        | ✅ Stable     |
+| **Settings Backup**     | Backup/restore Claude settings         | `launcher/settings_manager.py:1-150` | ✅ Stable     |
 
 **Search Terms**: launch, claude code, execution, repository, uvx
 
@@ -2578,7 +2578,7 @@ time amplihack claude --help
 1. **Use faster path resolution** (automatic):
    - Path caching enabled by default (`launcher/core.py:70-71`)
 
-2. **Skip prerequisites check** (not recommended):
+3. **Skip prerequisites check** (not recommended):
    ```bash
    # Only if absolutely necessary
    export AMPLIHACK_SKIP_PREREQS=1
@@ -2608,7 +2608,7 @@ htop -p $(pgrep -f amplihack)
    rm -rf .claude/runtime/logs/old-sessions/
    ```
 
-2. **Disable extensive logging**:
+3. **Disable extensive logging**:
    ```bash
    # In azure.env
    LOG_LEVEL=WARNING  # Less verbose
@@ -2948,20 +2948,20 @@ python launch_claude.py
 
 #### Core Implementation Files
 
-| File                                          | Purpose              | Lines | Status |
-| --------------------------------------------- | -------------------- | ----- | ------ |
-| `src/amplihack/__main__.py`                   | Package entry point  | ~50   | Stable |
-| `src/amplihack/cli.py`                        | CLI argument parsing | ~300  | Stable |
-| `src/amplihack/launcher/core.py`              | Claude launcher      | 543   | Stable |
-| `src/amplihack/launcher/detector.py`          | .claude detection    | 150   | Stable |
-| `src/amplihack/launcher/repo_checkout.py`     | Repository checkout  | 100   | Stable |
-| `src/amplihack/launcher/auto_mode.py`         | Autonomous mode      | 200   | Stable |
-| `src/amplihack/bundle_generator/generator.py` | Agent generation     | 556   | Stable |
-| `src/amplihack/bundle_generator/parser.py`    | Intent parsing       | 300   | Stable |
-| `src/amplihack/bundle_generator/packager.py`  | Bundle packaging     | 250   | Stable |
-| `src/amplihack/security/xpia_defender.py`     | XPIA defense         | 673   | Stable |
-| `src/amplihack/security/xpia_patterns.py`     | Attack patterns      | 400   | Stable |
-| `src/amplihack/security/xpia_hooks.py`        | Security hooks       | 250   | Stable |
+| File                                           | Purpose                | Lines | Status |
+| ---------------------------------------------- | ---------------------- | ----- | ------ |
+| `src/amplihack/__main__.py`                    | Package entry point    | ~50   | Stable |
+| `src/amplihack/cli.py`                         | CLI argument parsing   | ~300  | Stable |
+| `src/amplihack/launcher/core.py`               | Claude launcher        | 543   | Stable |
+| `src/amplihack/launcher/detector.py`           | .claude detection      | 150   | Stable |
+| `src/amplihack/launcher/repo_checkout.py`      | Repository checkout    | 100   | Stable |
+| `src/amplihack/launcher/auto_mode.py`          | Autonomous mode        | 200   | Stable |
+| `src/amplihack/bundle_generator/generator.py`  | Agent generation       | 556   | Stable |
+| `src/amplihack/bundle_generator/parser.py`     | Intent parsing         | 300   | Stable |
+| `src/amplihack/bundle_generator/packager.py`   | Bundle packaging       | 250   | Stable |
+| `src/amplihack/security/xpia_defender.py`      | XPIA defense           | 673   | Stable |
+| `src/amplihack/security/xpia_patterns.py`      | Attack patterns        | 400   | Stable |
+| `src/amplihack/security/xpia_hooks.py`         | Security hooks         | 250   | Stable |
 
 ---
 

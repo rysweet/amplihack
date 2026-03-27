@@ -233,11 +233,8 @@ class FleetGraph:
             return
         if not self.persist_path:
             return
-        if getattr(self, "_load_failed", False):
-            logger.error(
-                "Refusing to save — load failed for %s. Fix the .bak file manually.",
-                self.persist_path,
-            )
+        if getattr(self, '_load_failed', False):
+            logger.error("Refusing to save — load failed for %s. Fix the .bak file manually.", self.persist_path)
             return
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
         data = {

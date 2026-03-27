@@ -173,7 +173,7 @@ class TestInvestigationRouting:
         fallback_idx = smart_orch_content.find("execute-single-fallback-blocked")
         assert fallback_idx > 0, "Blocked fallback step not found"
         # Look in a reasonable window after the fallback step definition
-        fallback_section = smart_orch_content[fallback_idx : fallback_idx + 2000]
+        fallback_section = smart_orch_content[fallback_idx:fallback_idx + 2000]
         assert "investigation-workflow" in fallback_section, (
             "Blocked fallback must route Investigation to investigation-workflow"
         )

@@ -60,9 +60,7 @@ try:
     COMPACTION_AVAILABLE = True
 except ImportError:
     COMPACTION_AVAILABLE = False
-    print(
-        "WARNING: compaction_validator not available - compaction checks disabled", file=sys.stderr
-    )
+    print("WARNING: compaction_validator not available - compaction checks disabled", file=sys.stderr)
 
     # Create placeholder type for when module is unavailable
     class CompactionContext:  # type: ignore[no-redef]

@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pytest
 
+from amplihack.memory.sqlite_backend import SQLiteBackend, create_backend
 from amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
 from amplihack.memory.models import MemoryEntry, MemoryType
-from amplihack.memory.sqlite_backend import SQLiteBackend, create_backend
 
 
 class TestBackendSelection:

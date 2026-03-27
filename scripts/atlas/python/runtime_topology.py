@@ -6,6 +6,7 @@ and environment variable reads. Produces a complete runtime interaction map.
 
 import argparse
 import ast
+import re
 import sys
 from pathlib import Path
 
@@ -59,7 +60,7 @@ def _extract_literal(node: ast.expr) -> str | list | None:
     """Try to extract a literal string or list of strings from an AST node."""
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
-    if isinstance(node, ast.List):
+    elif isinstance(node, ast.List):
         elements = []
         for elt in node.elts:
             if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
@@ -67,7 +68,7 @@ def _extract_literal(node: ast.expr) -> str | list | None:
             else:
                 elements.append("<dynamic>")
         return elements
-    if isinstance(node, ast.JoinedStr):
+    elif isinstance(node, ast.JoinedStr):
         # f-string: try to extract static parts
         parts = []
         for val in node.values:
@@ -111,15 +112,7 @@ def _extract_subprocess_calls(tree: ast.Module, filepath: str) -> list[dict]:
             # (e.g. `system` can be platform.system, not just os.system).
             if "." not in call_name:
                 for pattern in _SUBPROCESS_PATTERNS:
-                    if bare == pattern.split(".")[-1] and bare in {
-                        "run",
-                        "Popen",
-                        "call",
-                        "check_output",
-                        "check_call",
-                        "system",
-                        "popen",
-                    }:
+                    if bare == pattern.split(".")[-1] and bare in {"run", "Popen", "call", "check_output", "check_call", "system", "popen"}:
                         matched = pattern
                         break
 
@@ -137,16 +130,14 @@ def _extract_subprocess_calls(tree: ast.Module, filepath: str) -> list[dict]:
 
         func_ctx = _find_enclosing_function(tree, node.lineno)
 
-        calls.append(
-            {
-                "file": filepath,
-                "lineno": node.lineno,
-                "function_context": func_ctx,
-                "call_type": matched,
-                "command_literal": command_literal,
-                "command_is_dynamic": command_is_dynamic,
-            }
-        )
+        calls.append({
+            "file": filepath,
+            "lineno": node.lineno,
+            "function_context": func_ctx,
+            "call_type": matched,
+            "command_literal": command_literal,
+            "command_is_dynamic": command_is_dynamic,
+        })
 
     return calls
 
@@ -163,11 +154,13 @@ def _extract_port_bindings(tree: ast.Module, filepath: str) -> list[dict]:
 
         # Check server patterns
         framework = None
-        if "uvicorn.run" in call_name or (call_name == "run" and "uvicorn" in filepath):
+        if "uvicorn.run" in call_name or call_name == "run" and "uvicorn" in filepath:
             framework = "uvicorn"
         elif call_name.endswith("app.run") or call_name == "app.run":
             framework = "flask"
-        elif "socket.bind" in call_name or "socket.connect" in call_name:
+        elif "socket.bind" in call_name:
+            framework = "socket"
+        elif "socket.connect" in call_name:
             framework = "socket"
         else:
             continue
@@ -187,16 +180,14 @@ def _extract_port_bindings(tree: ast.Module, filepath: str) -> list[dict]:
                     port = port_node.value
 
         func_ctx = _find_enclosing_function(tree, node.lineno)
-        bindings.append(
-            {
-                "file": filepath,
-                "lineno": node.lineno,
-                "port": port,
-                "protocol": "http" if framework in ("flask", "uvicorn") else "tcp",
-                "framework": framework,
-                "function_context": func_ctx,
-            }
-        )
+        bindings.append({
+            "file": filepath,
+            "lineno": node.lineno,
+            "port": port,
+            "protocol": "http" if framework in ("flask", "uvicorn") else "tcp",
+            "framework": framework,
+            "function_context": func_ctx,
+        })
 
     return bindings
 
@@ -213,14 +204,12 @@ def _extract_env_var_reads(tree: ast.Module, filepath: str) -> list[dict]:
             var_name = None
             default = None
 
-            if (
-                call_name.endswith("os.environ.get")
-                or call_name == "os.environ.get"
-                or call_name.endswith("environ.get")
-                or call_name.endswith("os.getenv")
-                or call_name == "os.getenv"
-                or call_name == "getenv"
-            ):
+            if call_name.endswith("os.environ.get") or call_name == "os.environ.get" or call_name.endswith("environ.get"):
+                if node.args and isinstance(node.args[0], ast.Constant):
+                    var_name = str(node.args[0].value)
+                if len(node.args) > 1 and isinstance(node.args[1], ast.Constant):
+                    default = str(node.args[1].value)
+            elif call_name.endswith("os.getenv") or call_name == "os.getenv" or call_name == "getenv":
                 if node.args and isinstance(node.args[0], ast.Constant):
                     var_name = str(node.args[0].value)
                 if len(node.args) > 1 and isinstance(node.args[1], ast.Constant):
@@ -230,15 +219,13 @@ def _extract_env_var_reads(tree: ast.Module, filepath: str) -> list[dict]:
 
             if var_name:
                 func_ctx = _find_enclosing_function(tree, node.lineno)
-                reads.append(
-                    {
-                        "file": filepath,
-                        "lineno": node.lineno,
-                        "variable": var_name,
-                        "default": default,
-                        "function_context": func_ctx,
-                    }
-                )
+                reads.append({
+                    "file": filepath,
+                    "lineno": node.lineno,
+                    "variable": var_name,
+                    "default": default,
+                    "function_context": func_ctx,
+                })
 
         elif isinstance(node, ast.Subscript):
             # os.environ["VAR"]
@@ -246,15 +233,13 @@ def _extract_env_var_reads(tree: ast.Module, filepath: str) -> list[dict]:
             if val_name and ("os.environ" in val_name or val_name == "environ"):
                 if isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, str):
                     func_ctx = _find_enclosing_function(tree, node.lineno)
-                    reads.append(
-                        {
-                            "file": filepath,
-                            "lineno": node.lineno,
-                            "variable": node.slice.value,
-                            "default": None,
-                            "function_context": func_ctx,
-                        }
-                    )
+                    reads.append({
+                        "file": filepath,
+                        "lineno": node.lineno,
+                        "variable": node.slice.value,
+                        "default": None,
+                        "function_context": func_ctx,
+                    })
 
     return reads
 
@@ -281,16 +266,14 @@ def _parse_docker_compose(filepath: Path) -> dict | None:
     for name, svc in (data.get("services") or {}).items():
         if not isinstance(svc, dict):
             continue
-        services.append(
-            {
-                "name": name,
-                "image": svc.get("image"),
-                "ports": svc.get("ports", []),
-                "volumes": svc.get("volumes", []),
-                "depends_on": svc.get("depends_on", []),
-                "networks": svc.get("networks", []),
-            }
-        )
+        services.append({
+            "name": name,
+            "image": svc.get("image"),
+            "ports": svc.get("ports", []),
+            "volumes": svc.get("volumes", []),
+            "depends_on": svc.get("depends_on", []),
+            "networks": svc.get("networks", []),
+        })
 
     return {
         "file": str(filepath),
@@ -386,7 +369,9 @@ def extract(manifest: dict, repo_root: Path) -> dict:
         if parsed:
             dockerfiles.append(parsed)
 
-    docker_service_count = sum(len(dc.get("services", [])) for dc in docker_configs)
+    docker_service_count = sum(
+        len(dc.get("services", [])) for dc in docker_configs
+    )
 
     return {
         "layer": "runtime-topology",
@@ -413,7 +398,9 @@ def self_check(data: dict, manifest: dict) -> list[str]:
     # Verify all env var reads have a variable name
     for ev in data.get("env_var_reads", []):
         if not ev.get("variable"):
-            issues.append(f"env_var_read without variable name at {ev['file']}:{ev['lineno']}")
+            issues.append(
+                f"env_var_read without variable name at {ev['file']}:{ev['lineno']}"
+            )
 
     return issues
 
@@ -436,7 +423,7 @@ def main() -> int:
     out_path = write_layer_json("layer4_runtime_topology", data, output)
 
     s = data["summary"]
-    print("Layer 4: runtime-topology")
+    print(f"Layer 4: runtime-topology")
     print(f"  Subprocess calls:      {s['subprocess_call_count']}")
     print(f"  Unique subprocess files: {s['unique_subprocess_files']}")
     print(f"  Port bindings:         {s['port_binding_count']}")

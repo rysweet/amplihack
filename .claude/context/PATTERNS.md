@@ -965,12 +965,12 @@ MSG → detect ALL signals in parallel:
 
 **Empirical Evidence** (PR #3249, 16 agent runs):
 
-| Approach                      | Accuracy                   |
-| ----------------------------- | -------------------------- |
-| Text-only categories          | 12/15 (80%)                |
-| Sequential flowchart          | 12/15 (80%) + ordering bug |
-| Parallel graph only           | 12/15 (80%)                |
-| **Parallel graph + examples** | **15/15 (100%)**           |
+| Approach | Accuracy |
+|----------|----------|
+| Text-only categories | 12/15 (80%) |
+| Sequential flowchart | 12/15 (80%) + ordering bug |
+| Parallel graph only | 12/15 (80%) |
+| **Parallel graph + examples** | **15/15 (100%)** |
 
 **Key Points**:
 

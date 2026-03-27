@@ -26,9 +26,9 @@ _hooks_dir = os.path.dirname(os.path.abspath(__file__))
 if _hooks_dir not in sys.path:
     sys.path.insert(0, _hooks_dir)
 
-from fallback_heuristics import AddressedChecker
-from power_steering_constants import CLAIM_KEYWORDS
 from power_steering_models import DeltaAnalysisResult, FailureEvidence
+from power_steering_constants import CLAIM_KEYWORDS
+from fallback_heuristics import AddressedChecker
 
 __all__ = ["DeltaAnalyzer"]
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from amplihack.fleet._status import infer_agent_status
 
+
 # ---------------------------------------------------------------------------
 # Thinking indicators
 # ---------------------------------------------------------------------------

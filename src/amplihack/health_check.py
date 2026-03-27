@@ -56,7 +56,6 @@ _CRITICAL_PATHS: tuple[str, ...] = (
 # Public contract
 # ---------------------------------------------------------------------------
 
-
 @dataclass(frozen=True)
 class HealthReport:
     """Immutable result of a health check run.
@@ -102,7 +101,7 @@ def check_health() -> HealthReport:
     # Path checks
     try:
         root = _project_root()
-    except Exception:
+    except Exception:  # noqa: BLE001
         root = None
 
     for path_name in _CRITICAL_PATHS:
@@ -137,7 +136,6 @@ def check_health() -> HealthReport:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-
 def _project_root() -> Path:
     """Return the project root directory.
 
@@ -169,7 +167,7 @@ def _check_dependency(pkg: str) -> tuple[bool, str]:
         spec = importlib.util.find_spec(pkg)
     except (ModuleNotFoundError, ImportError, AttributeError, ValueError):
         return False, "not found"
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False, "internal error"
 
     if spec is None:
@@ -193,7 +191,7 @@ def _check_path(path: Path) -> tuple[bool, str]:
     """
     try:
         exists = path.exists()
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False, "internal error"
 
     if exists:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-
 import pytest
 
 
@@ -16,6 +15,4 @@ def mock_anthropic_api_key(monkeypatch):
     without requiring a real API key in CI.
     """
     if not os.environ.get("ANTHROPIC_API_KEY"):
-        monkeypatch.setenv(
-            "ANTHROPIC_API_KEY", "test-key-for-unit-tests"
-        )  # pragma: allowlist secret
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-for-unit-tests")  # pragma: allowlist secret

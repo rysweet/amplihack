@@ -6,20 +6,16 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from amplihack.fleet._transcript import (
-    extract_last_output as _extract_last_output,
-)
-from amplihack.fleet._transcript import (
-    infer_jsonl_status as _infer_jsonl_status,
-)
-from amplihack.fleet._transcript import (
-    summarize_entries as _summarize_entries,
-)
 from amplihack.fleet.fleet_copilot import (
     CopilotSuggestion,
     SessionCopilot,
     build_rich_context,
     read_local_transcript,
+)
+from amplihack.fleet._transcript import (
+    extract_last_output as _extract_last_output,
+    infer_jsonl_status as _infer_jsonl_status,
+    summarize_entries as _summarize_entries,
 )
 
 
@@ -144,13 +140,9 @@ class TestBuildRichContext:
         ]
         # Add 600 tool_use entries in the middle
         for i in range(600):
-            entries.append(
-                json.dumps({"type": "tool_use", "name": "Bash", "message": {"content": f"cmd {i}"}})
-            )
+            entries.append(json.dumps({"type": "tool_use", "name": "Bash", "message": {"content": f"cmd {i}"}}))
         # Add recent entries
-        entries.append(
-            json.dumps({"type": "assistant", "message": {"content": "Done with everything"}})
-        )
+        entries.append(json.dumps({"type": "assistant", "message": {"content": "Done with everything"}}))
 
         result = build_rich_context("\n".join(entries), recent_message_count=100)
         assert "ORIGINAL USER REQUEST" in result
@@ -162,9 +154,7 @@ class TestBuildRichContext:
         """Recent entries should not be truncated."""
         entries = []
         for i in range(200):
-            entries.append(
-                json.dumps({"type": "assistant", "message": {"content": f"message-{i}"}})
-            )
+            entries.append(json.dumps({"type": "assistant", "message": {"content": f"message-{i}"}}))
 
         result = build_rich_context("\n".join(entries), recent_message_count=200)
         assert "message-0" in result
@@ -172,12 +162,10 @@ class TestBuildRichContext:
 
     def test_first_user_message_with_list_content(self):
         entries = [
-            json.dumps(
-                {
-                    "type": "human",
-                    "message": {"content": [{"type": "text", "text": "Build OAuth2 login"}]},
-                }
-            ),
+            json.dumps({
+                "type": "human",
+                "message": {"content": [{"type": "text", "text": "Build OAuth2 login"}]},
+            }),
         ]
         result = build_rich_context("\n".join(entries))
         assert "Build OAuth2 login" in result
@@ -227,9 +215,7 @@ class TestSessionCopilot:
         log = subdir / "session.jsonl"
         entries = [
             json.dumps({"type": "human", "message": {"content": "Fix the bug"}}),
-            json.dumps(
-                {"type": "tool_use", "name": "Bash", "message": {"content": "running tests"}}
-            ),
+            json.dumps({"type": "tool_use", "name": "Bash", "message": {"content": "running tests"}}),
         ]
         log.write_text("\n".join(entries))
 
@@ -361,10 +347,7 @@ class TestInferJsonlStatus:
 
     def test_assistant_idle(self):
         entry = json.dumps(
-            {
-                "type": "assistant",
-                "message": {"content": [{"type": "text", "text": "All done here."}]},
-            }
+            {"type": "assistant", "message": {"content": [{"type": "text", "text": "All done here."}]}}
         )
         assert _infer_jsonl_status(entry) == "idle"
 
@@ -403,33 +386,27 @@ class TestSummarizeEntriesNestedToolName:
     def test_summarize_entries_nested_tool_name(self):
         """Entries with tool name in message.content blocks should be counted."""
         entries = [
-            json.dumps(
-                {
-                    "type": "tool_use",
-                    "message": {
-                        "content": [
-                            {"type": "tool_use", "name": "Read"},
-                        ],
-                    },
-                }
-            ),
-            json.dumps(
-                {
-                    "type": "tool_use",
-                    "message": {
-                        "content": [
-                            {"type": "tool_use", "name": "Read"},
-                        ],
-                    },
-                }
-            ),
-            json.dumps(
-                {
-                    "type": "tool_use",
-                    "name": "Bash",
-                    "message": {"content": ""},
-                }
-            ),
+            json.dumps({
+                "type": "tool_use",
+                "message": {
+                    "content": [
+                        {"type": "tool_use", "name": "Read"},
+                    ],
+                },
+            }),
+            json.dumps({
+                "type": "tool_use",
+                "message": {
+                    "content": [
+                        {"type": "tool_use", "name": "Read"},
+                    ],
+                },
+            }),
+            json.dumps({
+                "type": "tool_use",
+                "name": "Bash",
+                "message": {"content": ""},
+            }),
         ]
         summary = _summarize_entries(entries)
         assert "Read" in summary

@@ -3,17 +3,17 @@ name: Monthly GitHub Work Report
 on:
   schedule:
     # First day of each month at 08:00 UTC
-    - cron: "0 8 1 * *"
+    - cron: '0 8 1 * *'
   workflow_dispatch:
     inputs:
       days:
-        description: "Number of days to cover"
+        description: 'Number of days to cover'
         required: false
-        default: "30"
+        default: '30'
         type: choice
         options:
-          - "30"
-          - "90"
+          - '30'
+          - '90'
 
 permissions:
   contents: write

@@ -20,6 +20,7 @@ from amplihack.workflows.gh_aw_compiler import (
     compile_workflow,
 )
 
+
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
@@ -79,13 +80,17 @@ class TestOnKeyParsing:
         missing_on = [
             d for d in _errors(diags) if "on" in d.message and "Missing required" in d.message
         ]
-        assert len(missing_on) == 1, f"Expected exactly one 'missing on' error, got: {diags}"
+        assert len(missing_on) == 1, (
+            f"Expected exactly one 'missing on' error, got: {diags}"
+        )
 
     def test_no_unrecognised_true_field_warning(self) -> None:
         """'on:' key must NOT produce an 'Unrecognised field True' warning."""
         content = _make_workflow()
         diags = compile_workflow(content)
-        spurious_true = [d for d in diags if "True" in d.message or "'True'" in d.message]
+        spurious_true = [
+            d for d in diags if "True" in d.message or "'True'" in d.message
+        ]
         assert spurious_true == [], (
             f"Spurious 'True' field diagnostic from YAML boolean coercion: {spurious_true}"
         )
@@ -99,7 +104,9 @@ class TestOnKeyParsing:
             spurious = [
                 d
                 for d in diags
-                if "True" in d.message or ("Missing required" in d.message and "'on'" in d.message)
+                if "True" in d.message or (
+                    "Missing required" in d.message and "'on'" in d.message
+                )
             ]
             assert spurious == [], (
                 f"{workflow_name}.md: unexpected false-positive diagnostics: {spurious}"
@@ -273,7 +280,9 @@ class TestValidValueExamples:
         """Missing 'on' error must include a trigger format example."""
         content = _make_workflow(on=None)
         diags = compile_workflow(content)
-        missing_on = [d for d in _errors(diags) if "'on'" in d.message and "Missing" in d.message]
+        missing_on = [
+            d for d in _errors(diags) if "'on'" in d.message and "Missing" in d.message
+        ]
         assert len(missing_on) == 1
         # Should contain some guidance about valid format
         assert any(
@@ -330,11 +339,9 @@ class TestQualityReportScenarios:
         diags = compile_workflow(content, filename="repo-guardian.md")
         # 'engine' is not required so no error; but if it were removed and it's known, no error
         # This test just verifies no false-positives for the on: field
-        false_pos = [
-            d
-            for d in diags
-            if "True" in d.message or ("Missing" in d.message and "'on'" in d.message)
-        ]
+        false_pos = [d for d in diags if "True" in d.message or (
+            "Missing" in d.message and "'on'" in d.message
+        )]
         assert false_pos == [], f"False-positive diagnostics: {false_pos}"
 
     def test_typo_strict_as_stirct(self) -> None:
@@ -393,7 +400,10 @@ class TestRealWorkflowFiles:
         from pathlib import Path
 
         wf_file = (
-            Path(__file__).resolve().parents[3] / ".github" / "workflows" / "code-simplifier.md"
+            Path(__file__).resolve().parents[3]
+            / ".github"
+            / "workflows"
+            / "code-simplifier.md"
         )
         if not wf_file.exists():
             pytest.skip("code-simplifier.md not found")
@@ -403,6 +413,9 @@ class TestRealWorkflowFiles:
         false_pos = [
             d
             for d in diags
-            if "True" in d.message or ("Missing" in d.message and "'on'" in d.message)
+            if "True" in d.message
+            or ("Missing" in d.message and "'on'" in d.message)
         ]
-        assert false_pos == [], f"False-positive diagnostics for code-simplifier.md: {false_pos}"
+        assert false_pos == [], (
+            f"False-positive diagnostics for code-simplifier.md: {false_pos}"
+        )

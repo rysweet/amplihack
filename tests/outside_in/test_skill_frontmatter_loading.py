@@ -4,7 +4,7 @@ Outside-in behavioral tests for skill frontmatter loading.
 
 Verifies that ALL skills in .claude/skills/ have valid YAML frontmatter
 that Copilot CLI can parse without error. Tests the PUBLIC CONTRACT:
-- Frontmatter must match ^---\\s*\n ... \n---
+- Frontmatter must match ^---\s*\n ... \n---
 - Must contain 'name' and 'description' fields
 - No duplicate skill directories via symlinks
 
@@ -55,7 +55,10 @@ def _all_skill_dirs() -> list[Path]:
     """Return all skill directories that contain a SKILL.md."""
     if not SKILLS_DIR.exists():
         return []
-    return sorted(d for d in SKILLS_DIR.iterdir() if d.is_dir() and (d / "SKILL.md").exists())
+    return sorted(
+        d for d in SKILLS_DIR.iterdir()
+        if d.is_dir() and (d / "SKILL.md").exists()
+    )
 
 
 class TestAllSkillsFrontmatterValid:
@@ -92,7 +95,8 @@ class TestAllSkillsFrontmatterValid:
             pytest.skip("frontmatter invalid — covered by other test")
 
         assert fm.get("name") == skill_dir.name, (
-            f"Frontmatter name '{fm.get('name')}' doesn't match directory name '{skill_dir.name}'"
+            f"Frontmatter name '{fm.get('name')}' doesn't match "
+            f"directory name '{skill_dir.name}'"
         )
 
 
@@ -150,5 +154,6 @@ class TestNoDuplicateSkillPaths:
         for d in SKILLS_DIR.iterdir():
             if d.is_dir():
                 assert not d.is_symlink(), (
-                    f".claude/skills/{d.name} is a symlink — this may cause duplicate skill loading"
+                    f".claude/skills/{d.name} is a symlink — "
+                    f"this may cause duplicate skill loading"
                 )

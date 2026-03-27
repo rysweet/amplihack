@@ -16,10 +16,7 @@ from paths import get_project_root
 try:
     from amplihack.utils.paths import FrameworkPathResolver
 except ImportError:
-    print(
-        "WARNING: amplihack.utils.paths not available - FrameworkPathResolver disabled",
-        file=sys.stderr,
-    )
+    print("WARNING: amplihack.utils.paths not available - FrameworkPathResolver disabled", file=sys.stderr)
     FrameworkPathResolver = None
 
 

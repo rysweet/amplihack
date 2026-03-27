@@ -17,6 +17,7 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
+from amplihack.memory.kuzu_store import KuzuGraphStore
 from src.amplihack.memory.models import MemoryEntry, MemoryType
 
 

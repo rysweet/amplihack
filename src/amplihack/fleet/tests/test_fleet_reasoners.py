@@ -9,8 +9,16 @@ Testing pyramid:
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Optional
+from unittest.mock import MagicMock
 
-from amplihack.fleet.fleet_admiral import ActionType
+import pytest
+
+from amplihack.fleet.fleet_admiral import ActionType, DirectorAction
+from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
+from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
 from amplihack.fleet.fleet_reasoners import (
     BatchAssignReasoner,
     CoordinationReasoner,
@@ -18,8 +26,7 @@ from amplihack.fleet.fleet_reasoners import (
     PreemptionReasoner,
     ReasonerChain,
 )
-from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
-from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
+
 
 # ────────────────────────────────────────────
 # Helpers
@@ -212,22 +219,12 @@ class TestPreemptionReasoner:
 
     def test_no_preemption_when_idle_vms_available(self):
         # One idle VM means capacity exists
-        critical = _make_task(
-            task_id="c1",
-            priority=TaskPriority.CRITICAL,
-            status=TaskStatus.QUEUED,
-            vm=None,
-            session=None,
-        )
+        critical = _make_task(task_id="c1", priority=TaskPriority.CRITICAL, status=TaskStatus.QUEUED, vm=None, session=None)
         running = _make_task(task_id="r1", priority=TaskPriority.LOW, status=TaskStatus.RUNNING)
         idle_vm = _make_vm("vm-02", running=True, sessions=[])
-        busy_vm = _make_vm(
-            "vm-01",
-            running=True,
-            sessions=[
-                _make_session("sess-1", status=AgentStatus.RUNNING),
-            ],
-        )
+        busy_vm = _make_vm("vm-01", running=True, sessions=[
+            _make_session("sess-1", status=AgentStatus.RUNNING),
+        ])
         state = _make_state([busy_vm, idle_vm])
 
         queue = _make_queue([critical, running])
@@ -237,20 +234,8 @@ class TestPreemptionReasoner:
         assert len(actions) == 0
 
     def test_preempts_low_priority_for_critical(self):
-        critical = _make_task(
-            task_id="c1",
-            priority=TaskPriority.CRITICAL,
-            status=TaskStatus.QUEUED,
-            vm=None,
-            session=None,
-        )
-        low = _make_task(
-            task_id="low1",
-            priority=TaskPriority.LOW,
-            status=TaskStatus.RUNNING,
-            vm="vm-01",
-            session="sess-1",
-        )
+        critical = _make_task(task_id="c1", priority=TaskPriority.CRITICAL, status=TaskStatus.QUEUED, vm=None, session=None)
+        low = _make_task(task_id="low1", priority=TaskPriority.LOW, status=TaskStatus.RUNNING, vm="vm-01", session="sess-1")
         state = _make_state([])  # No idle VMs (empty list)
 
         queue = _make_queue([critical, low])
@@ -263,20 +248,8 @@ class TestPreemptionReasoner:
         assert actions[0].task.id == "low1"
 
     def test_does_not_preempt_equal_priority(self):
-        critical_queued = _make_task(
-            task_id="c1",
-            priority=TaskPriority.CRITICAL,
-            status=TaskStatus.QUEUED,
-            vm=None,
-            session=None,
-        )
-        critical_running = _make_task(
-            task_id="c2",
-            priority=TaskPriority.CRITICAL,
-            status=TaskStatus.RUNNING,
-            vm="vm-01",
-            session="s",
-        )
+        critical_queued = _make_task(task_id="c1", priority=TaskPriority.CRITICAL, status=TaskStatus.QUEUED, vm=None, session=None)
+        critical_running = _make_task(task_id="c2", priority=TaskPriority.CRITICAL, status=TaskStatus.RUNNING, vm="vm-01", session="s")
         state = _make_state([])
 
         queue = _make_queue([critical_queued, critical_running])
@@ -286,13 +259,7 @@ class TestPreemptionReasoner:
         assert len(actions) == 0
 
     def test_does_not_preempt_protected_tasks(self):
-        critical = _make_task(
-            task_id="c1",
-            priority=TaskPriority.CRITICAL,
-            status=TaskStatus.QUEUED,
-            vm=None,
-            session=None,
-        )
+        critical = _make_task(task_id="c1", priority=TaskPriority.CRITICAL, status=TaskStatus.QUEUED, vm=None, session=None)
         protected = _make_task(task_id="p1", priority=TaskPriority.LOW, status=TaskStatus.RUNNING)
         protected.protected = True  # type: ignore[attr-defined]
         state = _make_state([])
@@ -343,7 +310,9 @@ class TestBatchAssignReasoner:
 
     def test_respects_max_agents_per_vm(self):
         # VM already has 3 agents running (max)
-        sessions = [_make_session(f"s{i}", status=AgentStatus.RUNNING) for i in range(3)]
+        sessions = [
+            _make_session(f"s{i}", status=AgentStatus.RUNNING) for i in range(3)
+        ]
         vm = _make_vm("vm-01", sessions=sessions)
         task = _make_task(task_id="t1", status=TaskStatus.QUEUED, vm=None, session=None)
         state = _make_state([vm])
@@ -369,20 +338,8 @@ class TestBatchAssignReasoner:
         assert actions[0].vm_name == "vm-02"
 
     def test_priority_ordering(self):
-        high = _make_task(
-            task_id="high",
-            status=TaskStatus.QUEUED,
-            priority=TaskPriority.HIGH,
-            vm=None,
-            session=None,
-        )
-        low = _make_task(
-            task_id="low",
-            status=TaskStatus.QUEUED,
-            priority=TaskPriority.LOW,
-            vm=None,
-            session=None,
-        )
+        high = _make_task(task_id="high", status=TaskStatus.QUEUED, priority=TaskPriority.HIGH, vm=None, session=None)
+        low = _make_task(task_id="low", status=TaskStatus.QUEUED, priority=TaskPriority.LOW, vm=None, session=None)
         vm = _make_vm("vm-01")
         state = _make_state([vm])
         # Insert low first, high second — reasoner should sort
@@ -421,9 +378,7 @@ class TestReasonerChain:
         completed_session = _make_session("sess-1", status=AgentStatus.COMPLETED)
         vm = _make_vm("vm-01", sessions=[completed_session])
 
-        running_task = _make_task(
-            task_id="done", status=TaskStatus.RUNNING, vm="vm-01", session="sess-1"
-        )
+        running_task = _make_task(task_id="done", status=TaskStatus.RUNNING, vm="vm-01", session="sess-1")
         queued_task = _make_task(task_id="next", status=TaskStatus.QUEUED, vm=None, session=None)
 
         state = _make_state([vm])
@@ -454,7 +409,9 @@ class TestReasonerChain:
         queue = _make_queue([t1, t2])
 
         # Limit to 1 agent per VM: only 1 assignment should happen
-        chain = ReasonerChain(reasoners=[BatchAssignReasoner(max_agents_per_vm=1)])
+        chain = ReasonerChain(
+            reasoners=[BatchAssignReasoner(max_agents_per_vm=1)]
+        )
         actions = chain.reason(state, queue)
         start_actions = [a for a in actions if a.action_type == ActionType.START_AGENT]
         assert len(start_actions) == 1
@@ -476,23 +433,9 @@ class TestReasonerChainFullScenario:
         running_sess = _make_session("sess-low", vm_name="vm-02", status=AgentStatus.RUNNING)
         vm2 = _make_vm("vm-02", sessions=[running_sess])
 
-        done_task = _make_task(
-            task_id="done", status=TaskStatus.RUNNING, vm="vm-01", session="sess-done"
-        )
-        low_task = _make_task(
-            task_id="low",
-            status=TaskStatus.RUNNING,
-            priority=TaskPriority.LOW,
-            vm="vm-02",
-            session="sess-low",
-        )
-        queued = _make_task(
-            task_id="q1",
-            status=TaskStatus.QUEUED,
-            priority=TaskPriority.MEDIUM,
-            vm=None,
-            session=None,
-        )
+        done_task = _make_task(task_id="done", status=TaskStatus.RUNNING, vm="vm-01", session="sess-done")
+        low_task = _make_task(task_id="low", status=TaskStatus.RUNNING, priority=TaskPriority.LOW, vm="vm-02", session="sess-low")
+        queued = _make_task(task_id="q1", status=TaskStatus.QUEUED, priority=TaskPriority.MEDIUM, vm=None, session=None)
 
         state = _make_state([vm1, vm2])
         queue = _make_queue([done_task, low_task, queued])
@@ -523,9 +466,7 @@ class TestCoordinationReasonerAtomicWrite:
         """After reason(), the .tmp file should NOT exist and .json should be valid."""
         # Two tasks on the same repo triggers coordination file write
         t1 = _make_task(task_id="t1", repo_url="https://github.com/org/myrepo.git")
-        t2 = _make_task(
-            task_id="t2", repo_url="https://github.com/org/myrepo.git", session="sess-2"
-        )
+        t2 = _make_task(task_id="t2", repo_url="https://github.com/org/myrepo.git", session="sess-2")
 
         state = _make_state([])
         queue = _make_queue([t1, t2])

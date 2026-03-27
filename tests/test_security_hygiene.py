@@ -14,7 +14,6 @@ Running::
 
     pytest tests/test_security_hygiene.py -v
 """
-
 from __future__ import annotations
 
 import os
@@ -25,6 +24,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -38,11 +38,11 @@ SAFE_SESSION_ID_RE = re.compile(r"^[a-zA-Z0-9_\-]{1,128}$")
 
 # Patterns that look like hardcoded secrets (matches API key / token formats)
 SECRET_PATTERNS = [
-    re.compile(r"sk-[A-Za-z0-9]{20,}"),  # OpenAI-style API keys
-    re.compile(r"ghp_[A-Za-z0-9]{36,}"),  # GitHub PATs
-    re.compile(r"AKIA[0-9A-Z]{16}"),  # AWS Access Key IDs
+    re.compile(r'sk-[A-Za-z0-9]{20,}'),            # OpenAI-style API keys
+    re.compile(r'ghp_[A-Za-z0-9]{36,}'),            # GitHub PATs
+    re.compile(r'AKIA[0-9A-Z]{16}'),                 # AWS Access Key IDs
     re.compile(r'(?i)api[_\-]?key\s*=\s*["\'][^"\']{16,}["\']'),  # generic
-    re.compile(r'(?i)password\s*=\s*["\'][^"\']{8,}["\']'),  # passwords
+    re.compile(r'(?i)password\s*=\s*["\'][^"\']{8,}["\']'),       # passwords
 ]
 
 # Shell metacharacters that must be rejected when appearing in user-supplied args
@@ -147,8 +147,8 @@ class TestNoShellEqualsTrue:
             text=True,
         )
         matches = [l for l in result.stdout.splitlines() if l.strip()]
-        assert matches == [], "Hooks must not use subprocess with shell=True:\n" + "\n".join(
-            matches
+        assert matches == [], (
+            "Hooks must not use subprocess with shell=True:\n" + "\n".join(matches)
         )
 
     def test_no_sh_c_user_input_pattern_in_launcher(self):
@@ -164,8 +164,8 @@ class TestNoShellEqualsTrue:
             text=True,
         )
         matches = [l for l in result.stdout.splitlines() if l.strip()]
-        assert matches == [], "Launcher must not construct 'sh -c' with user input:\n" + "\n".join(
-            matches
+        assert matches == [], (
+            "Launcher must not construct 'sh -c' with user input:\n" + "\n".join(matches)
         )
 
     def test_subprocess_calls_use_list_not_string(self):
@@ -216,7 +216,9 @@ class TestTempfilePermissions:
         db.close()
 
         mode = stat.S_IMODE(os.stat(db_path).st_mode)
-        assert mode == 0o600, f"memory.db mode is {oct(mode)}, expected 0o600"
+        assert mode == 0o600, (
+            f"memory.db mode is {oct(mode)}, expected 0o600"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -239,28 +241,13 @@ class TestNoHardcodedSecrets:
             for lineno, line in enumerate(text.splitlines(), 1):
                 if pattern.search(line):
                     # Allow lines that are obviously tests / documentation
-                    if any(
-                        kw in line
-                        for kw in (
-                            "# noqa",
-                            "example",
-                            "test",
-                            "dummy",
-                            "placeholder",
-                            "YOUR_",
-                            ">>>",
-                            "sanitize",
-                            "sanitizer",
-                            "redact",
-                            "mask",
-                        )
-                    ):
+                    if any(kw in line for kw in ("# noqa", "example", "test", "dummy", "placeholder", "YOUR_", ">>>", "sanitize", "sanitizer", "redact", "mask")):
                         continue
-                    violations.append(
-                        f"{py_file.relative_to(REPO_ROOT)}:{lineno}: {line.strip()!r}"
-                    )
+                    violations.append(f"{py_file.relative_to(REPO_ROOT)}:{lineno}: {line.strip()!r}")
 
-        assert violations == [], "Potential hardcoded secrets found:\n" + "\n".join(violations[:10])
+        assert violations == [], (
+            f"Potential hardcoded secrets found:\n" + "\n".join(violations[:10])
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -281,7 +268,9 @@ class TestShellMetacharRejection:
 
     def test_empty_session_id_rejected(self):
         """TC-PY-SEC-14: Empty string is rejected as a session ID."""
-        assert not SAFE_SESSION_ID_RE.fullmatch(""), "Empty session ID must be rejected"
+        assert not SAFE_SESSION_ID_RE.fullmatch(""), (
+            "Empty session ID must be rejected"
+        )
 
     def test_session_id_with_null_byte_rejected(self):
         """TC-PY-SEC-15: Session IDs containing null bytes are rejected."""

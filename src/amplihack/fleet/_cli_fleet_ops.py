@@ -31,28 +31,11 @@ def register_fleet_ops(fleet_cli: click.Group) -> None:
 
     @fleet_cli.command("start")
     @click.option("--max-cycles", default=0, help="Max admiral cycles (0 = unlimited)")
-    @click.option(
-        "--interval", default=int(DEFAULT_POLL_INTERVAL_SECONDS), help="Poll interval in seconds"
-    )
+    @click.option("--interval", default=int(DEFAULT_POLL_INTERVAL_SECONDS), help="Poll interval in seconds")
     @click.option("--adopt", is_flag=True, help="Adopt existing sessions at startup")
-    @click.option(
-        "--stuck-threshold",
-        default=DEFAULT_STUCK_THRESHOLD_SECONDS,
-        type=float,
-        help="Seconds without change before session is stuck",
-    )
-    @click.option(
-        "--max-agents-per-vm",
-        default=DEFAULT_MAX_AGENTS_PER_VM,
-        type=int,
-        help="Max concurrent agents per VM",
-    )
-    @click.option(
-        "--capture-lines",
-        default=DEFAULT_CAPTURE_LINES,
-        type=int,
-        help="Terminal scrollback capture depth",
-    )
+    @click.option("--stuck-threshold", default=DEFAULT_STUCK_THRESHOLD_SECONDS, type=float, help="Seconds without change before session is stuck")
+    @click.option("--max-agents-per-vm", default=DEFAULT_MAX_AGENTS_PER_VM, type=int, help="Max concurrent agents per VM")
+    @click.option("--capture-lines", default=DEFAULT_CAPTURE_LINES, type=int, help="Terminal scrollback capture depth")
     def start(max_cycles, interval, adopt, stuck_threshold, max_agents_per_vm, capture_lines):
         """Start autonomous fleet admiral loop."""
         director = _cmd._get_director()

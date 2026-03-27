@@ -6,7 +6,6 @@ then uses fleet APIs to adopt sessions and dry-run admiral reasoning.
 This is an outside-in test: we interact with the TUI as a user would,
 observing screen state through the virtual terminal.
 """
-
 from __future__ import annotations
 
 import asyncio
@@ -22,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 os.environ.setdefault("AZLIN_PATH", "/home/azureuser/src/azlin/.venv/bin/azlin")
 
 from amplihack.fleet._defaults import get_azlin_path
-from amplihack.fleet._tui_data import VMView
+from amplihack.fleet._tui_data import SessionView, VMView
 from amplihack.fleet.fleet_tui import FleetTUI
 
 
@@ -96,7 +95,7 @@ def phase2_adopt_sessions(all_vms: list[VMView]) -> list[tuple[str, str]]:
                 adopted_sessions.append((vm.name, sess_name))
                 print(f"  Adopted: {vm.name}/{sess_name}")
             if not adopted:
-                print("  (all sessions already adopted or no sessions)")
+                print(f"  (all sessions already adopted or no sessions)")
         except Exception as exc:
             print(f"  ERROR adopting on {vm.name}: {exc}")
 
@@ -121,9 +120,7 @@ def phase3_dry_run_reasoning(all_vms: list[VMView]) -> list[dict]:
 
     azlin = get_azlin_path()
     reasoner = SessionReasoner(
-        azlin_path=azlin,
-        backend=AnthropicBackend(),
-        dry_run=True,
+        azlin_path=azlin, backend=AnthropicBackend(), dry_run=True,
     )
 
     decisions: list[dict] = []
@@ -134,8 +131,7 @@ def phase3_dry_run_reasoning(all_vms: list[VMView]) -> list[dict]:
             print(f"\nReasoning about {vm.name}/{sess.session_name} (status={sess.status})...")
             try:
                 decision = reasoner.reason_about_session(
-                    vm_name=vm.name,
-                    session_name=sess.session_name,
+                    vm_name=vm.name, session_name=sess.session_name,
                 )
                 d = {
                     "vm": vm.name,
@@ -155,14 +151,12 @@ def phase3_dry_run_reasoning(all_vms: list[VMView]) -> list[dict]:
                     print(f"  Input: {decision.input_text[:80]}")
             except Exception as exc:
                 print(f"  ERROR: {exc}")
-                decisions.append(
-                    {
-                        "vm": vm.name,
-                        "session": sess.session_name,
-                        "status": sess.status,
-                        "error": str(exc),
-                    }
-                )
+                decisions.append({
+                    "vm": vm.name,
+                    "session": sess.session_name,
+                    "status": sess.status,
+                    "error": str(exc),
+                })
 
     return decisions
 
@@ -174,18 +168,16 @@ def _dry_run_without_llm(all_vms: list[VMView]) -> list[dict]:
         if not vm.is_running or not vm.sessions:
             continue
         for sess in vm.sessions:
-            decisions.append(
-                {
-                    "vm": vm.name,
-                    "session": sess.session_name,
-                    "status": sess.status,
-                    "branch": sess.branch,
-                    "pr": sess.pr,
-                    "action": "N/A (no API key)",
-                    "confidence": 0.0,
-                    "reasoning": "LLM reasoning skipped — no ANTHROPIC_API_KEY",
-                }
-            )
+            decisions.append({
+                "vm": vm.name,
+                "session": sess.session_name,
+                "status": sess.status,
+                "branch": sess.branch,
+                "pr": sess.pr,
+                "action": "N/A (no API key)",
+                "confidence": 0.0,
+                "reasoning": "LLM reasoning skipped — no ANTHROPIC_API_KEY",
+            })
     return decisions
 
 
@@ -212,7 +204,6 @@ async def phase4_headless_tui_test():
 
         # Check if data loaded
         from textual.widgets import DataTable
-
         table = app.query_one("#session-table", DataTable)
         row_count = table.row_count
         print(f"\nSession table rows: {row_count}")
@@ -262,12 +253,12 @@ def phase5_summary_report(all_vms: list[VMView], decisions: list[dict]):
     running_vms = [v for v in all_vms if v.is_running]
     total_sessions = sum(len(v.sessions) for v in running_vms)
     active_sessions = sum(
-        1
-        for v in running_vms
-        for s in v.sessions
+        1 for v in running_vms for s in v.sessions
         if s.status in ("thinking", "working", "running", "waiting_input")
     )
-    idle_sessions = sum(1 for v in running_vms for s in v.sessions if s.status == "idle")
+    idle_sessions = sum(
+        1 for v in running_vms for s in v.sessions if s.status == "idle"
+    )
 
     print(f"\nRunning VMs: {len(running_vms)}")
     print(f"Total sessions: {total_sessions}")

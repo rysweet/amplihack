@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # Ensure hook directory is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -445,7 +447,9 @@ class TestStrategyDelegation:
         mock_strategy = MagicMock()
         mock_strategy.handle_pre_tool_use.return_value = {"custom": True}
         hook._select_strategy = MagicMock(return_value=mock_strategy)
-        result = hook.process({"toolUse": {"name": "Bash", "input": {"command": "echo safe"}}})
+        result = hook.process(
+            {"toolUse": {"name": "Bash", "input": {"command": "echo safe"}}}
+        )
         assert result == {"custom": True}
 
     def test_strategy_returns_none_continues(self):
@@ -453,7 +457,9 @@ class TestStrategyDelegation:
         mock_strategy = MagicMock()
         mock_strategy.handle_pre_tool_use.return_value = None
         hook._select_strategy = MagicMock(return_value=mock_strategy)
-        result = hook.process({"toolUse": {"name": "Bash", "input": {"command": "echo safe"}}})
+        result = hook.process(
+            {"toolUse": {"name": "Bash", "input": {"command": "echo safe"}}}
+        )
         assert result == {}
 
 
@@ -475,7 +481,7 @@ class TestSelectStrategy:
                 try:
                     raise ImportError("not available")
                 except ImportError:
-                    return
+                    return None
 
             hook._select_strategy = mock_strategy
             result = hook._select_strategy()
@@ -493,7 +499,9 @@ class TestNonGitCommands:
     def test_ls_command_allowed(self):
         hook = _make_hook()
         hook._select_strategy = MagicMock(return_value=None)
-        result = hook.process({"toolUse": {"name": "Bash", "input": {"command": "ls -la"}}})
+        result = hook.process(
+            {"toolUse": {"name": "Bash", "input": {"command": "ls -la"}}}
+        )
         assert result == {}
 
     def test_echo_command_allowed(self):
@@ -507,7 +515,9 @@ class TestNonGitCommands:
     def test_empty_command_allowed(self):
         hook = _make_hook()
         hook._select_strategy = MagicMock(return_value=None)
-        result = hook.process({"toolUse": {"name": "Bash", "input": {"command": ""}}})
+        result = hook.process(
+            {"toolUse": {"name": "Bash", "input": {"command": ""}}}
+        )
         assert result == {}
 
     def test_missing_tool_use_key(self):

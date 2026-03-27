@@ -54,17 +54,16 @@ leading indentation, so the delimiter lands at column 0 as required by bash.
 
 ## Locations Fixed
 
-| Step ID                        | Command block context        | Vulnerability pattern                                 |
-| ------------------------------ | ---------------------------- | ----------------------------------------------------- |
-| `step-00-workflow-preparation` | Summary print at end of step | `printf 'Task: %s\n' {{task_description}}`            |
-| `step-03-create-issue`         | GitHub issue creation        | Two bare `printf '%s' {{task_description}}`           |
-| `step-15-commit-push`          | Git commit title             | `{{task_description}}` inside nested `$()` subshell   |
-| `step-16-create-draft-pr`      | Draft PR creation            | Two bare `printf '%s' {{task_description}}`           |
-| `step-22b-final-status`        | Workflow completion summary  | `printf '=== Task: %s ===\n' {{task_description}}`    |
-| `workflow-complete`            | JSON output step             | `export TASK_VAL=$(printf '%s' {{task_description}})` |
+| Step ID | Command block context | Vulnerability pattern |
+|---|---|---|
+| `step-00-workflow-preparation` | Summary print at end of step | `printf 'Task: %s\n' {{task_description}}` |
+| `step-03-create-issue` | GitHub issue creation | Two bare `printf '%s' {{task_description}}` |
+| `step-15-commit-push` | Git commit title | `{{task_description}}` inside nested `$()` subshell |
+| `step-16-create-draft-pr` | Draft PR creation | Two bare `printf '%s' {{task_description}}` |
+| `step-22b-final-status` | Workflow completion summary | `printf '=== Task: %s ===\n' {{task_description}}` |
+| `workflow-complete` | JSON output step | `export TASK_VAL=$(printf '%s' {{task_description}})` |
 
 **Not changed:**
-
 - `step-04-setup-worktree` — already fixed in #3041
 - All `agent:` / `prompt:` steps — `{{task_description}}` there is markdown prose,
   not a shell command argument; no injection risk

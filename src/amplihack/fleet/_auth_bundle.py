@@ -51,7 +51,9 @@ def propagate_all_bundled(
         for file_info in service_files:
             src = Path(file_info["src"]).expanduser()
             if src.exists():
-                files_to_bundle.append((str(src), file_info["dest"], file_info.get("mode", "600")))
+                files_to_bundle.append(
+                    (str(src), file_info["dest"], file_info.get("mode", "600"))
+                )
 
     if not files_to_bundle:
         return AuthResult(

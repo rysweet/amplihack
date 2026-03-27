@@ -21,14 +21,14 @@
 
 **Expected outputs:**
 
-| File                                    | Must contain                            |
-| --------------------------------------- | --------------------------------------- |
+| File                                      | Must contain                            |
+| ----------------------------------------- | --------------------------------------- |
 | `docs/atlas/repo-surface/topology.mmd`  | Node for `api` service, port `8080`     |
-| `docs/atlas/compile-deps/deps.mmd`      | Node for `github.com/gin-gonic/gin`     |
-| `docs/atlas/api-contracts/inventory.md` | Rows for `GET /users` and `POST /users` |
-| `docs/atlas/data-flow/dataflow.mmd`     | `User` struct referenced                |
-| `docs/atlas/inventory/env-vars.md`      | `DATABASE_URL` row, no value shown      |
-| `docs/atlas/inventory/services.md`      | `api-service` row with port `8080`      |
+| `docs/atlas/compile-deps/deps.mmd` | Node for `github.com/gin-gonic/gin`     |
+| `docs/atlas/api-contracts/inventory.md`  | Rows for `GET /users` and `POST /users` |
+| `docs/atlas/data-flow/dataflow.mmd` | `User` struct referenced                |
+| `docs/atlas/inventory/env-vars.md` | `DATABASE_URL` row, no value shown      |
+| `docs/atlas/inventory/services.md` | `api-service` row with port `8080`      |
 
 **Must NOT contain:**
 

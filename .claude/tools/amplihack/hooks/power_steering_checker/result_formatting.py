@@ -25,10 +25,7 @@ try:
     TURN_STATE_AVAILABLE = True
 except ImportError:
     TURN_STATE_AVAILABLE = False
-    print(
-        "WARNING: power_steering_state not available - turn-aware formatting disabled",
-        file=sys.stderr,
-    )
+    print("WARNING: power_steering_state not available - turn-aware formatting disabled", file=sys.stderr)
 
 
 class ResultFormattingMixin:

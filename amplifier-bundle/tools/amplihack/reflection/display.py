@@ -12,10 +12,7 @@ except ImportError:
         from security import create_safe_preview, filter_pattern_suggestion
     except ImportError:
         # Fallback security functions if security module not available
-        print(
-            "WARNING: security module not available - using fallback security functions",
-            file=sys.stderr,
-        )
+        print("WARNING: security module not available - using fallback security functions", file=sys.stderr)
         import re
 
         def filter_pattern_suggestion(suggestion: str) -> str:

@@ -97,11 +97,7 @@ def format_scout_report(
     if isinstance(result_or_all_vms, ScoutResult):
         result = result_or_all_vms
         fmt = format or (format_or_decisions if isinstance(format_or_decisions, str) else "table")
-        verbose_val = (
-            verbose
-            if verbose is not None
-            else (verbose_or_adopted_count if isinstance(verbose_or_adopted_count, bool) else False)
-        )
+        verbose_val = verbose if verbose is not None else (verbose_or_adopted_count if isinstance(verbose_or_adopted_count, bool) else False)
         if fmt not in _VALID_FORMATS:
             raise ValueError(f"Invalid format: {fmt}. Must be one of: {', '.join(_VALID_FORMATS)}")
         if fmt == "json":

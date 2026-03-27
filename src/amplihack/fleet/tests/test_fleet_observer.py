@@ -6,8 +6,11 @@ All unit tests — no external dependencies (subprocess mocked).
 import time
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from amplihack.fleet.fleet_observer import (
     FleetObserver,
+    ObservationResult,
 )
 from amplihack.fleet.fleet_state import AgentStatus, TmuxSessionInfo
 

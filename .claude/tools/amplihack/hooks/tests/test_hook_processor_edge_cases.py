@@ -8,9 +8,10 @@ save_session_data, log rotation, run() error handling, get_session_id.
 import json
 import os
 import sys
+import tempfile
 from io import StringIO
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
 
@@ -368,7 +369,9 @@ class TestRunLifecycle:
         assert output == {"result": "string_result"}
 
     def test_run_generic_exception_fails_open(self, tmp_path):
-        hook = _make_processor(tmp_path, process_side_effect=RuntimeError("unexpected"))
+        hook = _make_processor(
+            tmp_path, process_side_effect=RuntimeError("unexpected")
+        )
         buf = StringIO()
         with patch("sys.stdin", StringIO("{}")):
             with patch("sys.stdout", buf):
@@ -408,7 +411,9 @@ class TestRunLifecycle:
         assert "{}" in buf.getvalue()
 
     def test_run_debug_mode_shows_traceback(self, tmp_path):
-        hook = _make_processor(tmp_path, process_side_effect=RuntimeError("debug error"))
+        hook = _make_processor(
+            tmp_path, process_side_effect=RuntimeError("debug error")
+        )
         buf = StringIO()
         err = StringIO()
         with patch("sys.stdin", StringIO("{}")):

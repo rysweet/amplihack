@@ -32,7 +32,7 @@ from amplihack.fleet._constants import (
     DEFAULT_STUCK_THRESHOLD_SECONDS,
 )
 from amplihack.fleet._defaults import get_azlin_path
-from amplihack.fleet._validation import validate_vm_name
+from amplihack.fleet._validation import validate_session_name, validate_vm_name
 from amplihack.fleet.fleet_state import AgentStatus, TmuxSessionInfo
 
 __all__ = ["FleetObserver", "ObservationResult"]

@@ -52,21 +52,18 @@ Memory is read and written at multiple phases, not just at the end.
 ### Operations Mapped to OODA
 
 **`learn_from_content(content)`** — one iteration:
-
 - OBSERVE: remember the content, recall if we've seen similar before
 - ORIENT: check for duplicates, assess temporal context
 - DECIDE: LLM extracts structured facts
 - ACT: store each fact via `remember()`, record the episode
 
 **`answer_question(question)`** — one iteration:
-
 - OBSERVE: remember the question, recall any prior answers to it
 - ORIENT: recall domain facts, recall similar past questions
 - DECIDE: LLM synthesizes answer from recalled context
 - ACT: return answer, remember the Q&A pair
 
 **`run(goal)`** — multiple iterations:
-
 - Each iteration: observe current state → orient with memory → decide next action → act → observe result
 - Continues until goal is achieved or max iterations
 
@@ -75,12 +72,10 @@ Memory is read and written at multiple phases, not just at the end.
 Memory has two concerns: **storage backend** and **topology**.
 
 **Storage backend** (how facts are persisted per agent):
-
 - `cognitive` (default): 6-type CognitiveMemory backed by Kuzu graph DB. Supports sensory, working, episodic, semantic, procedural, and prospective memory. Each agent gets a 256MB Kuzu instance.
 - `hierarchical`: Simpler flat key-value store. No external dependencies.
 
 **Topology** (how agents share knowledge):
-
 - `single` (default): One agent, local storage only. No network. For development.
 - `distributed`: All agents share a single `DistributedHiveGraph`. Facts are sharded across agents via a consistent hash ring with replication factor R=3.
 
@@ -99,7 +94,7 @@ memory:
   query_fanout: 5
   gossip_enabled: true
   gossip_rounds: 3
-  shard_backend: memory # "memory" (default) or "kuzu"
+  shard_backend: memory  # "memory" (default) or "kuzu"
 ```
 
 Or via env vars for containers:
@@ -112,7 +107,6 @@ AMPLIHACK_MEMORY_SHARD_BACKEND=kuzu
 ```
 
 **Shard backend guidance:**
-
 - `shard_backend: memory` (default) — DHT shards are held in-memory dicts. Fast, zero dependencies, but data is lost on restart. Use for development, testing, and short-lived multi-agent sessions.
 - `shard_backend: kuzu` — DHT shards are persisted to Kuzu databases under `{storage_path}/shards/{agent_id}/`. Survives restarts and supports larger datasets. Use for production distributed deployments where cross-agent facts must persist across process boundaries.
 
@@ -188,7 +182,6 @@ When an agent calls `remember()`, the fact is stored locally in the agent's Kuzu
 ### Query Routing (Semantic)
 
 When an agent calls `recall()`:
-
 1. Embed the question using BAAI/bge-base-en-v1.5
 2. Compute cosine similarity between question embedding and each shard's summary embedding (running average of all stored fact embeddings)
 3. Route to the top K=5 shards by similarity
@@ -244,14 +237,14 @@ An agent's **local CognitiveMemory** contains facts it learned directly. The **D
 
 ## The Two Layers
 
-| Aspect      | CognitiveMemory (local)                          | DistributedHiveGraph (shared)                                 |
-| ----------- | ------------------------------------------------ | ------------------------------------------------------------- |
-| Scope       | One agent's knowledge                            | All agents' knowledge                                         |
-| Storage     | Kuzu graph DB (256MB)                            | In-memory dicts (default) or Kuzu shards (shard_backend=kuzu) |
-| Structure   | 6 typed memory types + relationships             | Flat facts with tags + embeddings                             |
-| Search      | Concept + keyword + similarity graph traversal   | Semantic embed → cosine sim → shard lookup                    |
-| Persistence | Disk (Kuzu files)                                | In-memory (lost on restart) or disk with shard_backend=kuzu   |
-| Purpose     | Deep personal knowledge with reasoning structure | Fast cross-agent fact sharing and routing                     |
+| Aspect | CognitiveMemory (local) | DistributedHiveGraph (shared) |
+|--------|------------------------|-------------------------------|
+| Scope | One agent's knowledge | All agents' knowledge |
+| Storage | Kuzu graph DB (256MB) | In-memory dicts (default) or Kuzu shards (shard_backend=kuzu) |
+| Structure | 6 typed memory types + relationships | Flat facts with tags + embeddings |
+| Search | Concept + keyword + similarity graph traversal | Semantic embed → cosine sim → shard lookup |
+| Persistence | Disk (Kuzu files) | In-memory (lost on restart) or disk with shard_backend=kuzu |
+| Purpose | Deep personal knowledge with reasoning structure | Fast cross-agent fact sharing and routing |
 
 ## Eval Harness
 
@@ -334,12 +327,12 @@ NetworkGraphStore                    NetworkGraphStore
 
 The `GraphStore` protocol has four implementations:
 
-| Backend                 | Use Case                    | Persistence                      | Transport                         |
-| ----------------------- | --------------------------- | -------------------------------- | --------------------------------- |
-| `KuzuGraphStore`        | Single agent, local dev     | Disk (Kuzu DB)                   | None                              |
-| `InMemoryGraphStore`    | Testing, containers         | RAM only                         | None                              |
-| `DistributedGraphStore` | Multi-agent, single process | RAM (DHT shards)                 | In-process                        |
-| `NetworkGraphStore`     | Multi-machine, production   | Local store + Service Bus events | azure_service_bus / redis / local |
+| Backend | Use Case | Persistence | Transport |
+|---------|----------|-------------|-----------|
+| `KuzuGraphStore` | Single agent, local dev | Disk (Kuzu DB) | None |
+| `InMemoryGraphStore` | Testing, containers | RAM only | None |
+| `DistributedGraphStore` | Multi-agent, single process | RAM (DHT shards) | In-process |
+| `NetworkGraphStore` | Multi-machine, production | Local store + Service Bus events | azure_service_bus / redis / local |
 
 `NetworkGraphStore` wraps any local store (typically `InMemoryGraphStore` in containers) and replicates writes/searches over the configured transport. In Azure Container Apps, each agent uses `InMemoryGraphStore` locally, with `azure_service_bus` for cross-container sync.
 
@@ -372,7 +365,7 @@ mem = Memory("agent_0")  # auto-wraps with NetworkGraphStore
 
 ### Environment variables
 
-| Variable                             | Description                                      | Default |
-| ------------------------------------ | ------------------------------------------------ | ------- |
-| `AMPLIHACK_MEMORY_TRANSPORT`         | Transport: `local`, `redis`, `azure_service_bus` | `local` |
-| `AMPLIHACK_MEMORY_CONNECTION_STRING` | Service Bus connection string or Redis URL       | `""`    |
+| Variable | Description | Default |
+|---|---|---|
+| `AMPLIHACK_MEMORY_TRANSPORT` | Transport: `local`, `redis`, `azure_service_bus` | `local` |
+| `AMPLIHACK_MEMORY_CONNECTION_STRING` | Service Bus connection string or Redis URL | `""` |

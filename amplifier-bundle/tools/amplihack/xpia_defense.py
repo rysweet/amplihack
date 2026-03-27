@@ -61,10 +61,7 @@ try:
     )
 except ImportError:
     # Fallback definitions if interface not available
-    print(
-        "WARNING: Specs.xpia_defense_interface not available - using fallback definitions",
-        file=sys.stderr,
-    )
+    print("WARNING: Specs.xpia_defense_interface not available - using fallback definitions", file=sys.stderr)
 
     class SecurityLevel(Enum):
         LOW = "low"

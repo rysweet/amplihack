@@ -275,25 +275,25 @@ Your message passes through 4 classification layers:
 
 The routing prompt evaluates these signals in parallel:
 
-| Signal     | Keywords                                           | Example             |
-| ---------- | -------------------------------------------------- | ------------------- |
+| Signal | Keywords | Example |
+|--------|----------|---------|
 | UNDERSTAND | explain, how does, why, analyze, research, explore | "why is CI failing" |
-| IMPLEMENT  | build, fix, add, create, refactor, update, write   | "fix the login bug" |
-| FILE_EDIT  | any .py/.yaml/.md/.ts/.json will change            | "update the README" |
-| SHELL_ONLY | run tests, git status, check logs                  | "git status"        |
-| QUESTION   | what is, how do I, explain, compare                | "what is OAuth?"    |
+| IMPLEMENT | build, fix, add, create, refactor, update, write | "fix the login bug" |
+| FILE_EDIT | any .py/.yaml/.md/.ts/.json will change | "update the README" |
+| SHELL_ONLY | run tests, git status, check logs | "git status" |
+| QUESTION | what is, how do I, explain, compare | "what is OAuth?" |
 
 Then resolves by priority:
 
-| Signals detected                | Classification  | Action                                  |
-| ------------------------------- | --------------- | --------------------------------------- |
-| UNDERSTAND + IMPLEMENT          | **HYBRID**      | dev-orchestrator (parallel workstreams) |
-| SHELL_ONLY + IMPLEMENT          | **HYBRID**      | dev-orchestrator                        |
-| FILE_EDIT or IMPLEMENT alone    | **DEV**         | dev-orchestrator                        |
-| UNDERSTAND alone                | **INVESTIGATE** | dev-orchestrator                        |
-| SHELL_ONLY alone                | **OPS**         | Execute directly                        |
-| QUESTION alone                  | **Q&A**         | Answer directly                         |
-| "just answer" / "skip workflow" | **SKIP**        | Bypass                                  |
+| Signals detected | Classification | Action |
+|-----------------|---------------|--------|
+| UNDERSTAND + IMPLEMENT | **HYBRID** | dev-orchestrator (parallel workstreams) |
+| SHELL_ONLY + IMPLEMENT | **HYBRID** | dev-orchestrator |
+| FILE_EDIT or IMPLEMENT alone | **DEV** | dev-orchestrator |
+| UNDERSTAND alone | **INVESTIGATE** | dev-orchestrator |
+| SHELL_ONLY alone | **OPS** | Execute directly |
+| QUESTION alone | **Q&A** | Answer directly |
+| "just answer" / "skip workflow" | **SKIP** | Bypass |
 
 The hook itself does NOT classify — it injects the same routing guidance for
 every message. Claude's natural language understanding handles the rest.

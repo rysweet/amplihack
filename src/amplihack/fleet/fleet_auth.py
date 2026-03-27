@@ -144,11 +144,7 @@ class AuthPropagator:
                     timeout=30,
                 )
                 results[service] = result.returncode == 0
-            except (
-                subprocess.TimeoutExpired,
-                subprocess.SubprocessError,
-                FileNotFoundError,
-            ) as exc:
+            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
                 logger.warning("verify_auth %s failed for %s: %s", service, vm_name, exc)
                 results[service] = False
 

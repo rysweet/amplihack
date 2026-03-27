@@ -307,10 +307,7 @@ async def analyze_session_with_claude(
             preferences_file = FrameworkPathResolver.resolve_preferences_file()
         except ImportError:
             # Fallback to default location
-            print(
-                "WARNING: FrameworkPathResolver not available - using default preferences path",
-                file=sys.stderr,
-            )
+            print("WARNING: FrameworkPathResolver not available - using default preferences path", file=sys.stderr)
             preferences_file = project_root / ".claude" / "context" / "USER_PREFERENCES.md"
 
         if preferences_file and preferences_file.exists():

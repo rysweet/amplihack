@@ -16,6 +16,7 @@ from amplihack.launcher.copilot import (
     _compare_versions,
     check_for_update,
     detect_install_method,
+    ensure_latest_copilot,
     launch_copilot,
     prompt_user_to_update,
 )

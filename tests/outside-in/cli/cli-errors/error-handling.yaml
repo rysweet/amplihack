@@ -30,6 +30,7 @@ scenario:
       expected: 1
       description: "Should exit with non-zero code"
 
+
     - action: launch
       target: "src/amplihack/cli.py"
       args: ["list", "--invalid-flag-xyz"]

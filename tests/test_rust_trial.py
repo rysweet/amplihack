@@ -224,9 +224,7 @@ def test_ensure_trial_dependencies_skips_non_copilot(tmp_path, monkeypatch):
         lambda **_kwargs: called.append("install") or True,
     )
 
-    ensure_trial_dependencies(
-        ["recipe", "list"], tmp_path / "trial-home", build_trial_env(tmp_path)
-    )
+    ensure_trial_dependencies(["recipe", "list"], tmp_path / "trial-home", build_trial_env(tmp_path))
 
     assert called == []
 

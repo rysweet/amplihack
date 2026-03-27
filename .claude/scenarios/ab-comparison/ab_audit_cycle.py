@@ -43,9 +43,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -58,10 +59,10 @@ from ab_comparison_harness import (
     run_harness,
 )
 
+
 # ---------------------------------------------------------------------------
 # Audit types
 # ---------------------------------------------------------------------------
-
 
 def categorize_failures(summary: dict[str, Any]) -> dict[str, list[str]]:
     """Categorize divergences into fix workstream buckets."""
@@ -100,37 +101,23 @@ def generate_fix_specs(
     """Generate actionable fix workstream specifications."""
     specs = []
     for cat, cases in sorted(categories.items()):
-        priority = (
-            "critical"
-            if len(cases) >= 5
-            else "high"
-            if len(cases) >= 3
-            else "medium"
-            if len(cases) >= 1
-            else "low"
-        )
-        specs.append(
-            {
-                "workstream_id": f"fix-{cat}",
-                "category": cat,
-                "failing_cases": cases,
-                "case_count": len(cases),
-                "priority": priority,
-                "description": f"Fix {cat} parity: {len(cases)} cases diverge between legacy and candidate",
-                "validation_command": f"python {__file__} --scenario <files> --case "
-                + " --case ".join(cases[:5]),
-            }
-        )
-    specs.sort(
-        key=lambda s: {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(s["priority"], 99)
-    )
+        priority = "critical" if len(cases) >= 5 else "high" if len(cases) >= 3 else "medium" if len(cases) >= 1 else "low"
+        specs.append({
+            "workstream_id": f"fix-{cat}",
+            "category": cat,
+            "failing_cases": cases,
+            "case_count": len(cases),
+            "priority": priority,
+            "description": f"Fix {cat} parity: {len(cases)} cases diverge between legacy and candidate",
+            "validation_command": f"python {__file__} --scenario <files> --case " + " --case ".join(cases[:5]),
+        })
+    specs.sort(key=lambda s: {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(s["priority"], 99))
     return specs
 
 
 # ---------------------------------------------------------------------------
 # Report
 # ---------------------------------------------------------------------------
-
 
 def print_report(
     cycle_id: str,
@@ -143,13 +130,13 @@ def print_report(
     matched = summary["matched"]
     diverged = summary["diverged"]
 
-    print(f"\n{'=' * 70}")
+    print(f"\n{'='*70}")
     print(f"A/B AUDIT CYCLE: {cycle_id}")
-    print(f"{'=' * 70}")
+    print(f"{'='*70}")
     print(f"Total: {total}  Passed: {matched}  Failed: {diverged}  Rate: {summary['parity_rate']}")
 
     if categories:
-        print("\n--- Gap Categories ---")
+        print(f"\n--- Gap Categories ---")
         for cat, cases in sorted(categories.items()):
             print(f"  {cat}: {len(cases)} failures")
             for c in cases[:3]:
@@ -158,24 +145,23 @@ def print_report(
                 print(f"    ... and {len(cases) - 3} more")
 
     if fix_specs:
-        print("\n--- Fix Workstream Specs ---")
+        print(f"\n--- Fix Workstream Specs ---")
         for spec in fix_specs:
             print(f"\n  [{spec['priority'].upper()}] {spec['workstream_id']}")
             print(f"    Cases: {spec['case_count']}")
             print(f"    {spec['description']}")
 
-    print(f"\n{'=' * 70}")
+    print(f"\n{'='*70}")
     if diverged == 0:
         print("ALL TESTS PASS — 100% PARITY ACHIEVED")
     else:
         print(f"GAPS REMAIN: {diverged} failures across {len(categories)} categories")
-    print(f"{'=' * 70}")
+    print(f"{'='*70}")
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Self-improving A/B audit cycle")
@@ -229,19 +215,13 @@ def main() -> int:
     print_report(cycle_id, summary, categories, fix_specs)
 
     output_path = args.output or (args.log_dir / f"{cycle_id}.json")
-    output_path.write_text(
-        json.dumps(
-            {
-                "cycle_id": cycle_id,
-                "timestamp": datetime.now(UTC).isoformat(),
-                **summary,
-                "gap_categories": categories,
-                "fix_specs": fix_specs,
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
+    output_path.write_text(json.dumps({
+        "cycle_id": cycle_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        **summary,
+        "gap_categories": categories,
+        "fix_specs": fix_specs,
+    }, indent=2), encoding="utf-8")
     print(f"\nResult: {output_path}")
 
     return 0 if summary["diverged"] == 0 else 1

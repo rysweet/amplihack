@@ -33,6 +33,8 @@ Private implementation details (not part of the public API):
     WikipediaLearningAgent: Backward-compatible alias for LearningAgent.
 """
 
+from .goal_seeking_agent import GoalSeekingAgent
+from .input_source import InputSource, ListInputSource, ServiceBusInputSource, StdinInputSource
 from .action_executor import ActionExecutor
 from .agentic_loop import (
     AgenticLoop,

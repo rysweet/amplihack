@@ -7,6 +7,8 @@ These tests validate the investigation findings from a user perspective:
 - The output taxonomies are distinct
 """
 
+import pytest
+
 
 class TestWorkflowClassifierExists:
     """WorkflowClassifier is importable and classifies requests."""
@@ -63,7 +65,11 @@ class TestSessionDetectionMixinExists:
         from pathlib import Path
 
         hook_dir = str(
-            Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks"
+            Path(__file__).parent.parent.parent
+            / ".claude"
+            / "tools"
+            / "amplihack"
+            / "hooks"
         )
         if hook_dir not in sys.path:
             sys.path.insert(0, hook_dir)
@@ -78,10 +84,16 @@ class TestSessionDetectionMixinExists:
         from pathlib import Path
 
         hook_dir = str(
-            Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks"
+            Path(__file__).parent.parent.parent
+            / ".claude"
+            / "tools"
+            / "amplihack"
+            / "hooks"
         )
         if hook_dir not in sys.path:
             sys.path.insert(0, hook_dir)
+
+        from power_steering_checker.session_detection import SessionDetectionMixin
 
         # These are the documented session types (from docstring)
         expected_types = {
@@ -119,13 +131,16 @@ class TestKeywordOverlapIsBounded:
         from pathlib import Path
 
         hook_dir = str(
-            Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks"
+            Path(__file__).parent.parent.parent
+            / ".claude"
+            / "tools"
+            / "amplihack"
+            / "hooks"
         )
         if hook_dir not in sys.path:
             sys.path.insert(0, hook_dir)
 
         from power_steering_checker.session_detection import SessionDetectionMixin
-
         from amplihack.workflows.classifier import WorkflowClassifier
 
         mixin_investigation = set(SessionDetectionMixin.INVESTIGATION_KEYWORDS)
@@ -149,13 +164,16 @@ class TestKeywordOverlapIsBounded:
         from pathlib import Path
 
         hook_dir = str(
-            Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks"
+            Path(__file__).parent.parent.parent
+            / ".claude"
+            / "tools"
+            / "amplihack"
+            / "hooks"
         )
         if hook_dir not in sys.path:
             sys.path.insert(0, hook_dir)
 
         from power_steering_checker.session_detection import SessionDetectionMixin
-
         from amplihack.workflows.classifier import WorkflowClassifier
 
         mixin_simple = set(SessionDetectionMixin.SIMPLE_TASK_KEYWORDS)
@@ -191,7 +209,9 @@ class TestClassifiersAreArchitecturallyIndependent:
         )
         tree = ast.parse(src.read_text())
         imports = [
-            node for node in ast.walk(tree) if isinstance(node, (ast.Import, ast.ImportFrom))
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.Import, ast.ImportFrom))
         ]
         import_names = []
         for node in imports:
@@ -202,7 +222,8 @@ class TestClassifiersAreArchitecturallyIndependent:
                     import_names.append(alias.name)
 
         assert not any(
-            "session_detection" in name or "power_steering" in name for name in import_names
+            "session_detection" in name or "power_steering" in name
+            for name in import_names
         ), "WorkflowClassifier must not import from power_steering_checker"
 
     def test_investigation_doc_exists(self):

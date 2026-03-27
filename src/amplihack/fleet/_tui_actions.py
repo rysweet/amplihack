@@ -26,7 +26,7 @@ from amplihack.fleet._validation import DANGEROUS_PATTERNS, is_dangerous_input
 from amplihack.fleet.fleet_session_reasoner import SessionDecision
 
 if TYPE_CHECKING:
-    pass
+    from amplihack.fleet._tui_refresh import _CachedSession
 
 __all__ = ["_ActionsMixin"]
 
@@ -287,12 +287,9 @@ class _ActionsMixin(_WorkersMixin):
         editor = self.query_one("#input-editor", TextArea)
         action_type = str(select.value) if select.value is not Select.BLANK else "wait"
         decision = SessionDecision(
-            session_name=entry.view.session_name,
-            vm_name=entry.view.vm_name,
-            action=action_type,
-            input_text=editor.text.strip(),
-            reasoning="Manually edited by operator",
-            confidence=1.0,
+            session_name=entry.view.session_name, vm_name=entry.view.vm_name,
+            action=action_type, input_text=editor.text.strip(),
+            reasoning="Manually edited by operator", confidence=1.0,
         )
         self._apply_decision(decision)
         self.query_one("#tabs", TabbedContent).active = "detail-tab"
@@ -304,8 +301,7 @@ class _ActionsMixin(_WorkersMixin):
                 self.notify(
                     f"BLOCKED: Input contains dangerous pattern. "
                     f"Matches against: {', '.join(p.pattern for p in DANGEROUS_PATTERNS[:3])}...",
-                    severity="error",
-                    timeout=8,
+                    severity="error", timeout=8,
                 )
                 return
         self._execute_decision_bg(decision)

@@ -8,7 +8,7 @@ are correctly classified as OPERATIONS and skip all power-steering checks.
 import os
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -29,20 +29,16 @@ def _make_transcript(user_messages, assistant_messages=None):
     """Build a minimal transcript from user message strings."""
     transcript = []
     for msg in user_messages:
-        transcript.append(
-            {
-                "type": "user",
-                "message": {"role": "user", "content": msg},
-            }
-        )
+        transcript.append({
+            "type": "user",
+            "message": {"role": "user", "content": msg},
+        })
     if assistant_messages:
         for msg in assistant_messages:
-            transcript.append(
-                {
-                    "type": "assistant",
-                    "message": {"role": "assistant", "content": msg},
-                }
-            )
+            transcript.append({
+                "type": "assistant",
+                "message": {"role": "assistant", "content": msg},
+            })
     return transcript
 
 
@@ -100,21 +96,17 @@ class TestOperationsSessionDetection:
         # Transcript with operations keywords BUT actual code modifications
         transcript = _make_transcript(["prioritize and fix the top bug"])
         # Add tool usage showing code file modification
-        transcript.append(
-            {
-                "type": "assistant",
-                "message": {
-                    "role": "assistant",
-                    "content": [
-                        {
-                            "type": "tool_use",
-                            "name": "Write",
-                            "input": {"file_path": "src/main.py", "content": "..."},
-                        }
-                    ],
-                },
-            }
-        )
+        transcript.append({
+            "type": "assistant",
+            "message": {
+                "role": "assistant",
+                "content": [{
+                    "type": "tool_use",
+                    "name": "Write",
+                    "input": {"file_path": "src/main.py", "content": "..."},
+                }],
+            },
+        })
         # Operations keywords are checked BEFORE tool usage, so this should
         # still be OPERATIONS. The user said "prioritize" first.
         result = checker.detect_session_type(transcript)

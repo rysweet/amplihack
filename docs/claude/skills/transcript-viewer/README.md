@@ -17,9 +17,9 @@ The skill auto-activates on keywords like "transcript", "session log", "copilot 
 
 ## Supported Tools
 
-| Tool                   | Log Location                              | Format                           |
-| ---------------------- | ----------------------------------------- | -------------------------------- |
-| **Claude Code**        | `~/.claude/projects/*/*.jsonl`            | JSONL (one JSON object per line) |
+| Tool | Log Location | Format |
+|------|-------------|--------|
+| **Claude Code** | `~/.claude/projects/*/*.jsonl` | JSONL (one JSON object per line) |
 | **GitHub Copilot CLI** | `~/.copilot/session-state/*/events.jsonl` | JSONL (one JSON object per line) |
 
 Both use JSONL format and are parsed by `claude-code-log`.
@@ -27,7 +27,6 @@ Both use JSONL format and are parsed by `claude-code-log`.
 ## Modes
 
 ### 1. Current Session
-
 View the most recent session transcript.
 
 ```
@@ -36,7 +35,6 @@ Show my current copilot session
 ```
 
 ### 2. Specific Session
-
 View a session by ID (supports partial ID matching).
 
 ```
@@ -45,7 +43,6 @@ View copilot session def456
 ```
 
 ### 3. Agent Output
-
 View background task output files from subagents.
 
 ```
@@ -54,7 +51,6 @@ View background task logs
 ```
 
 ### 4. Browse All Sessions
-
 List all available sessions with date filtering.
 
 ```

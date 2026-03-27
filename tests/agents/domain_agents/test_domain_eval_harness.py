@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from amplihack.agents.domain_agents.code_review.agent import CodeReviewAgent
 from amplihack.agents.domain_agents.meeting_synthesizer.agent import MeetingSynthesizerAgent
-
 from amplihack.eval.domain_eval_harness import DomainEvalHarness, EvalReport
 
 

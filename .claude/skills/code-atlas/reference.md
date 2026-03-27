@@ -7,18 +7,18 @@ Error codes, staleness trigger table, Kuzu ingestion schema, and other reference
 File changes are matched against these patterns (from LAYERS.yaml) to determine which atlas
 layers are stale. Run `git diff --name-only` and match against the patterns below.
 
-| File Change Pattern                                                                                                              | Atlas Layer (slug)   | Rebuild Command                          |
-| -------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ---------------------------------------- |
-| `docker-compose*.yml`, `k8s/**/*.yaml`, `kubernetes/**/*.yaml`, `helm/**/*.yaml`                                                 | `runtime-topology`   | `/code-atlas rebuild runtime-topology`   |
-| `go.mod`, `package.json`, `*.csproj`, `Cargo.toml`, `pyproject.toml`, `requirements*.txt`                                        | `compile-deps`       | `/code-atlas rebuild compile-deps`       |
-| `*route*.ts`, `*controller*.*`, `*handler*.go`, `*.proto`, `*.graphql`, `*openapi*.*`, `*swagger*.*`, `*views*.py`, `*router*.*` | `api-contracts`      | `/code-atlas rebuild api-contracts`      |
-| `*dto*.ts`, `*schema*.py`, `*_request.go`, `*_response.go`, `*model*.go`, `*types*.ts`                                           | `data-flow`          | `/code-atlas rebuild data-flow`          |
-| `*page*.tsx`, `*page*.ts`, `cmd/*.go`, `cli/*.py`                                                                                | `user-journeys`      | `/code-atlas rebuild user-journeys`      |
-| `.env.example`, service `README.md`                                                                                              | inventory tables     | `/code-atlas rebuild inventory`          |
-| `**/__init__.py`, `**/package.json` (workspace), `**/*.mod`, `services/*/*.go`, `services/*/*.ts`                                | `service-components` | `/code-atlas rebuild service-components` |
-| `*.go`, `*.ts`, `*.py`, `*.rs`, `*.cs`, `*.js`, `*.java` (any source file)                                                       | `ast-lsp-bindings`   | `/code-atlas rebuild ast-lsp-bindings`   |
-| `**/*` (any file)                                                                                                                | `repo-surface`       | `/code-atlas rebuild repo-surface`       |
-| Any of the above                                                                                                                 | Full atlas           | `/code-atlas rebuild all`                |
+| File Change Pattern | Atlas Layer (slug) | Rebuild Command |
+|--------------------|--------------------|-----------------|
+| `docker-compose*.yml`, `k8s/**/*.yaml`, `kubernetes/**/*.yaml`, `helm/**/*.yaml` | `runtime-topology` | `/code-atlas rebuild runtime-topology` |
+| `go.mod`, `package.json`, `*.csproj`, `Cargo.toml`, `pyproject.toml`, `requirements*.txt` | `compile-deps` | `/code-atlas rebuild compile-deps` |
+| `*route*.ts`, `*controller*.*`, `*handler*.go`, `*.proto`, `*.graphql`, `*openapi*.*`, `*swagger*.*`, `*views*.py`, `*router*.*` | `api-contracts` | `/code-atlas rebuild api-contracts` |
+| `*dto*.ts`, `*schema*.py`, `*_request.go`, `*_response.go`, `*model*.go`, `*types*.ts` | `data-flow` | `/code-atlas rebuild data-flow` |
+| `*page*.tsx`, `*page*.ts`, `cmd/*.go`, `cli/*.py` | `user-journeys` | `/code-atlas rebuild user-journeys` |
+| `.env.example`, service `README.md` | inventory tables | `/code-atlas rebuild inventory` |
+| `**/__init__.py`, `**/package.json` (workspace), `**/*.mod`, `services/*/*.go`, `services/*/*.ts` | `service-components` | `/code-atlas rebuild service-components` |
+| `*.go`, `*.ts`, `*.py`, `*.rs`, `*.cs`, `*.js`, `*.java` (any source file) | `ast-lsp-bindings` | `/code-atlas rebuild ast-lsp-bindings` |
+| `**/*` (any file) | `repo-surface` | `/code-atlas rebuild repo-surface` |
+| Any of the above | Full atlas | `/code-atlas rebuild all` |
 
 ### Staleness Detection Script
 
@@ -44,17 +44,17 @@ done
 
 ## Error Codes
 
-| Code                          | Description                                          | Resolution                                                                  |
-| ----------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------- |
-| `LAYER8_LSP_UNAVAILABLE`      | No LSP server available for ast-lsp-bindings         | Falls back to static-approximation mode. Install LSP for verified analysis. |
-| `DENSITY_SPLIT_APPLIED`       | Diagram was split into sub-diagrams due to density   | Informational. Review sub-diagrams in the layer directory.                  |
-| `SEC_11_INVALID_SERVICE_NAME` | Service name failed `[a-zA-Z0-9_-]{1,64}` validation | Sanitise the service name before using in file paths.                       |
-| `SEC_13_INVALID_THRESHOLD`    | Density threshold value outside valid range          | Use positive integers only.                                                 |
-| `SEC_14_INVALID_INPUT`        | Unrecognised user input at a prompt                  | Re-prompt the user.                                                         |
-| `SEC_15_CREDENTIAL_REDACTED`  | Credential pattern detected and redacted from output | Review redacted content manually if needed.                                 |
-| `SEC_16_ABSOLUTE_PATH`        | Absolute path detected in bug report evidence        | Convert to relative path before filing.                                     |
-| `STALENESS_DETECTED`          | One or more atlas layers are stale                   | Run rebuild for affected layers.                                            |
-| `SVG_RENDER_SKIPPED`          | Graphviz or Mermaid CLI not installed                | Install `dot` and/or `mmdc` for SVG rendering.                              |
+| Code | Description | Resolution |
+|------|-------------|------------|
+| `LAYER8_LSP_UNAVAILABLE` | No LSP server available for ast-lsp-bindings | Falls back to static-approximation mode. Install LSP for verified analysis. |
+| `DENSITY_SPLIT_APPLIED` | Diagram was split into sub-diagrams due to density | Informational. Review sub-diagrams in the layer directory. |
+| `SEC_11_INVALID_SERVICE_NAME` | Service name failed `[a-zA-Z0-9_-]{1,64}` validation | Sanitise the service name before using in file paths. |
+| `SEC_13_INVALID_THRESHOLD` | Density threshold value outside valid range | Use positive integers only. |
+| `SEC_14_INVALID_INPUT` | Unrecognised user input at a prompt | Re-prompt the user. |
+| `SEC_15_CREDENTIAL_REDACTED` | Credential pattern detected and redacted from output | Review redacted content manually if needed. |
+| `SEC_16_ABSOLUTE_PATH` | Absolute path detected in bug report evidence | Convert to relative path before filing. |
+| `STALENESS_DETECTED` | One or more atlas layers are stale | Run rebuild for affected layers. |
+| `SVG_RENDER_SKIPPED` | Graphviz or Mermaid CLI not installed | Install `dot` and/or `mmdc` for SVG rendering. |
 
 ## Kuzu Ingestion Schema
 
@@ -112,12 +112,12 @@ ORDER BY t.step_order
 
 ## Language Coverage
 
-| Language Feature         | Coverage | Notes                                                               |
-| ------------------------ | -------- | ------------------------------------------------------------------- |
-| Python modules (AST)     | 95%      | Delegates to code-visualizer; dynamic imports missed                |
-| TypeScript/JS routes     | 85%      | Static grep-based; decorated routes (NestJS) require extra patterns |
-| Go routes (chi/gin/echo) | 80%      | Most router patterns covered; generated routes may be missed        |
-| .NET (ASP.NET Core)      | 75%      | Controllers and minimal API both covered; Razor Pages partially     |
-| Rust (axum/actix-web)    | 70%      | Core patterns covered; macro-heavy code harder to parse             |
-| gRPC services            | 60%      | Proto files provide contract; service mesh requires runtime data    |
-| GraphQL APIs             | 40%      | Not a primary target; resolver mapping requires special handling    |
+| Language Feature | Coverage | Notes |
+|-----------------|----------|-------|
+| Python modules (AST) | 95% | Delegates to code-visualizer; dynamic imports missed |
+| TypeScript/JS routes | 85% | Static grep-based; decorated routes (NestJS) require extra patterns |
+| Go routes (chi/gin/echo) | 80% | Most router patterns covered; generated routes may be missed |
+| .NET (ASP.NET Core) | 75% | Controllers and minimal API both covered; Razor Pages partially |
+| Rust (axum/actix-web) | 70% | Core patterns covered; macro-heavy code harder to parse |
+| gRPC services | 60% | Proto files provide contract; service mesh requires runtime data |
+| GraphQL APIs | 40% | Not a primary target; resolver mapping requires special handling |

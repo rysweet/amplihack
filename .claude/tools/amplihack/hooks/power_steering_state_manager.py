@@ -29,7 +29,6 @@ if _hooks_dir not in sys.path:
 
 import file_lock_utils
 from file_lock_utils import acquire_file_lock
-from power_steering_constants import LOCK_TIMEOUT_SECONDS
 from power_steering_models import (
     BlockSnapshot,
     FailureEvidence,
@@ -40,6 +39,7 @@ from power_steering_state_io import (
     save_state_to_file,
     validate_state,
 )
+from power_steering_constants import LOCK_TIMEOUT_SECONDS
 
 # Import git utilities for worktree detection (used by get_state_file_path)
 try:

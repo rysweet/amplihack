@@ -7,7 +7,15 @@ official sources. For the latest versions, see the URLs in SKILL.md.
 
 ## Progressive Disclosure
 
-Skills 3. [YAML Frontmatter Specification](#yaml-frontmatter-specification) 4. [Progressive Disclosure Pattern](#progressive-disclosure-pattern) 5. [File Structure & Organization](#file-structure--organization) 6. [Best Practices](#best-practices) 7. [Validation Guidelines](#validation-guidelines) 8. [Common Patterns](#common-patterns) 9. [Agent SDK Integration](#agent-sdk-integration) 10. [Documentation Sources](#documentation-sources)
+Skills
+3. [YAML Frontmatter Specification](#yaml-frontmatter-specification)
+4. [Progressive Disclosure Pattern](#progressive-disclosure-pattern)
+5. [File Structure & Organization](#file-structure--organization)
+6. [Best Practices](#best-practices)
+7. [Validation Guidelines](#validation-guidelines)
+8. [Common Patterns](#common-patterns)
+9. [Agent SDK Integration](#agent-sdk-integration)
+10. [Documentation Sources](#documentation-sources)
 
 ---
 

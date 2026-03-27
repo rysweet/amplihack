@@ -43,10 +43,7 @@ if _CLAUDE_HOOKS.exists():
     except ImportError as e:
         _IMPORT_ERROR = str(e)
         logger.warning(f"SessionStartHook: Import failed - {e}")
-        print(
-            "WARNING: session_start not available - session start delegation disabled",
-            file=sys.stderr,
-        )
+        print(f"WARNING: session_start not available - session start delegation disabled", file=sys.stderr)
 else:
     _IMPORT_ERROR = f"Claude hooks directory not found: {_CLAUDE_HOOKS}"
     logger.warning(_IMPORT_ERROR)
@@ -256,10 +253,7 @@ class SessionStartHook(Hook):
                     logger.info("SessionStartHook: Delegating to Claude Code hook")
                 except ImportError as e:
                     logger.warning(f"SessionStartHook: Claude Code delegation failed: {e}")
-                    print(
-                        "WARNING: session_start not available - Claude Code delegation disabled",
-                        file=sys.stderr,
-                    )
+                    print(f"WARNING: session_start not available - Claude Code delegation disabled", file=sys.stderr)
                     self._session_start_hook = None
             else:
                 logger.info(f"SessionStartHook: Using fallback ({_IMPORT_ERROR})")

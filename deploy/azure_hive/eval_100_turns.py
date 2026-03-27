@@ -24,6 +24,7 @@ import argparse
 import importlib.util
 import json
 import logging
+import os
 import sys
 import tempfile
 import time
@@ -173,9 +174,7 @@ def run_eval(output_path: str) -> dict:
                 entrypoint._handle_event("app-0", query_event, mock_memory, agent)
                 answer = ""
                 if captured.get("results"):
-                    answer = (
-                        captured["results"][0].get("content", "") if captured["results"] else ""
-                    )
+                    answer = captured["results"][0].get("content", "") if captured["results"] else ""
                 passed = bool(answer) and not answer.lower().startswith("error")
                 responses.append({"question": question, "answer": answer, "passed": passed})
                 logger.info("Q%d: %s\n  -> %s...", i + 1, question[:60], answer[:100])
@@ -258,9 +257,7 @@ def main() -> int:
     print(f"  learn_from_content calls:    {report['learn_from_content_calls']}")
     print(f"  memory.remember calls:       {report['memory_remember_calls']} (must be 0)")
     print(f"  Learn elapsed:               {report['learn_elapsed_s']}s")
-    print(
-        f"  Questions answered:          {report['questions_passed']}/{report['questions_total']}"
-    )
+    print(f"  Questions answered:          {report['questions_passed']}/{report['questions_total']}")
     print(f"  answer_question calls:       {report['answer_question_calls']}")
     print(f"  memory.recall calls:         {report['memory_recall_calls']} (must be 0)")
     print(f"  Query errors:                {report['query_errors']}")

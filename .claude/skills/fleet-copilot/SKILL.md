@@ -64,7 +64,6 @@ Begin immediately. The LockModeHook uses SessionCopilot to monitor and guide.
 ## Auto-disable
 
 Lock mode stops when:
-
 - Goal achieved (`mark_complete`)
 - Human needed (`escalate`)
 - User runs `/amplihack:unlock`

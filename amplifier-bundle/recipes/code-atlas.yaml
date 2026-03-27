@@ -116,6 +116,7 @@ parameters:
 # Steps — 12 named steps
 # ---------------------------------------------------------------------------
 steps:
+
   # ==========================================================================
   # STEP 1: VALIDATE PREREQUISITES
   # ==========================================================================
@@ -138,9 +139,9 @@ steps:
       density_threshold_nodes: "{{parameters.density_threshold_nodes}}"
       density_threshold_edges: "{{parameters.density_threshold_edges}}"
     outputs:
-      - lsp_mode # "lsp-assisted" or "static-approximation"
-      - tools_available # Array: ["graphviz", "mmdc"] or subset
-      - validation_passed # boolean
+      - lsp_mode           # "lsp-assisted" or "static-approximation"
+      - tools_available    # Array: ["graphviz", "mmdc"] or subset
+      - validation_passed  # boolean
 
   # ==========================================================================
   # STEP 2: BUILD LAYERS 1-4 (structural layers)

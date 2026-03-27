@@ -17,8 +17,8 @@ from amplihack.fleet._backends import (
     auto_detect_backend,
 )
 from amplihack.fleet._session_context import SessionContext, SessionDecision
-from amplihack.fleet._session_gather import parse_context_output
 from amplihack.fleet._status import infer_agent_status
+from amplihack.fleet._session_gather import parse_context_output
 from amplihack.fleet.fleet_session_reasoner import SessionReasoner
 
 
@@ -114,16 +114,12 @@ class TestSessionReasonerDecisionParsing:
     """Tests that the reasoner correctly parses LLM responses."""
 
     def test_parse_valid_json_response(self):
-        mock = MockBackend(
-            response=json.dumps(
-                {
-                    "action": "send_input",
-                    "input_text": "2",
-                    "reasoning": "Option 2 is best for performance",
-                    "confidence": 0.85,
-                }
-            )
-        )
+        mock = MockBackend(response=json.dumps({
+            "action": "send_input",
+            "input_text": "2",
+            "reasoning": "Option 2 is best for performance",
+            "confidence": 0.85,
+        }))
 
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(
@@ -139,9 +135,7 @@ class TestSessionReasonerDecisionParsing:
         assert decision.confidence == 0.85
 
     def test_parse_json_with_markdown_wrapping(self):
-        mock = MockBackend(
-            response='```json\n{"action": "wait", "reasoning": "all good", "confidence": 0.9}\n```'
-        )
+        mock = MockBackend(response='```json\n{"action": "wait", "reasoning": "all good", "confidence": 0.9}\n```')
 
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
@@ -445,16 +439,12 @@ class TestSessionReasonerDryRun:
     """Tests for dry-run mode."""
 
     def test_dry_run_does_not_execute(self):
-        mock = MockBackend(
-            response=json.dumps(
-                {
-                    "action": "send_input",
-                    "input_text": "yes",
-                    "reasoning": "Approving",
-                    "confidence": 0.9,
-                }
-            )
-        )
+        mock = MockBackend(response=json.dumps({
+            "action": "send_input",
+            "input_text": "yes",
+            "reasoning": "Approving",
+            "confidence": 0.9,
+        }))
 
         reasoner = SessionReasoner(backend=mock, dry_run=True)
 
@@ -475,26 +465,16 @@ class TestSessionReasonerDryRun:
             assert len(reasoner._decisions) == 1
 
     def test_dry_run_report(self):
-        mock = MockBackend(
-            response=json.dumps(
-                {
-                    "action": "wait",
-                    "reasoning": "Working fine",
-                    "confidence": 0.8,
-                }
-            )
-        )
+        mock = MockBackend(response=json.dumps({
+            "action": "wait",
+            "reasoning": "Working fine",
+            "confidence": 0.8,
+        }))
 
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         reasoner._decisions = [
             SessionDecision(session_name="s1", vm_name="vm-1", action="wait", reasoning="ok"),
-            SessionDecision(
-                session_name="s2",
-                vm_name="vm-1",
-                action="send_input",
-                input_text="1",
-                reasoning="chose 1",
-            ),
+            SessionDecision(session_name="s2", vm_name="vm-1", action="send_input", input_text="1", reasoning="chose 1"),
         ]
 
         report = reasoner.dry_run_report()
@@ -516,7 +496,6 @@ class TestLLMBackends:
     def test_llm_backend_protocol(self):
         """LLMBackend is a Protocol — cannot be instantiated directly."""
         from typing import Protocol
-
         from amplihack.fleet._backends import LLMBackend
 
         assert issubclass(LLMBackend, Protocol)
@@ -594,7 +573,6 @@ class TestAnthropicBackend:
         mock_anthropic_module.Anthropic.return_value = mock_client
 
         import sys
-
         with patch.dict(sys.modules, {"anthropic": mock_anthropic_module}):
             result = backend.complete("system prompt", "user prompt")
 
@@ -622,7 +600,6 @@ class TestAnthropicBackend:
         mock_anthropic_module.Anthropic.return_value = mock_client
 
         import sys
-
         with patch.dict(sys.modules, {"anthropic": mock_anthropic_module}):
             result = backend.complete("sys", "usr")
 
@@ -643,7 +620,6 @@ class TestCopilotBackendComplete:
     def test_copilot_complete_calls_asyncio_run(self):
         """CopilotBackend.complete() should call asyncio.run with _async_complete."""
         import sys
-
         mock_asyncio = MagicMock()
         mock_asyncio.run.return_value = "test response"
         backend = CopilotBackend()
@@ -716,7 +692,15 @@ class TestSessionReasonerGatherContext:
     def test_gather_context_no_session(self):
         """When tmux returns NO_SESSION, status is no_session."""
         mock_output = (
-            "===TMUX===\nNO_SESSION\n===CWD===\n\n===GIT===\n\n===TRANSCRIPT===\n\n===END===\n"
+            "===TMUX===\n"
+            "NO_SESSION\n"
+            "===CWD===\n"
+            "\n"
+            "===GIT===\n"
+            "\n"
+            "===TRANSCRIPT===\n"
+            "\n"
+            "===END===\n"
         )
         mock = MockBackend()
         reasoner = SessionReasoner(backend=mock, dry_run=True)
@@ -741,7 +725,6 @@ class TestSessionReasonerGatherContext:
     def test_gather_context_timeout(self):
         """Timeout results in unreachable status."""
         import subprocess
-
         mock = MockBackend()
         reasoner = SessionReasoner(backend=mock, dry_run=True)
 
@@ -923,7 +906,6 @@ class TestExecuteDecision:
     def test_execute_send_input_timeout(self):
         """send_input timeout should log warning but not crash."""
         import subprocess
-
         mock = MockBackend()
         reasoner = SessionReasoner(backend=mock, dry_run=False)
 
@@ -943,7 +925,6 @@ class TestExecuteDecision:
     def test_execute_restart_timeout(self):
         """restart timeout should log warning but not crash."""
         import subprocess
-
         mock = MockBackend()
         reasoner = SessionReasoner(backend=mock, dry_run=False)
 
@@ -1046,15 +1027,11 @@ class TestSessionReasonerReasonAboutAll:
 
     def test_reason_about_all_multiple_sessions(self):
         """reason_about_all should process all sessions."""
-        mock = MockBackend(
-            response=json.dumps(
-                {
-                    "action": "wait",
-                    "reasoning": "ok",
-                    "confidence": 0.8,
-                }
-            )
-        )
+        mock = MockBackend(response=json.dumps({
+            "action": "wait",
+            "reasoning": "ok",
+            "confidence": 0.8,
+        }))
         reasoner = SessionReasoner(backend=mock, dry_run=True)
 
         sessions = [
@@ -1085,15 +1062,11 @@ class TestSessionReasonerReasonInvalidActions:
 
     def test_invalid_action_defaults_to_wait(self):
         """Invalid action value should default to 'wait'."""
-        mock = MockBackend(
-            response=json.dumps(
-                {
-                    "action": "destroy_everything",
-                    "reasoning": "bad idea",
-                    "confidence": 0.9,
-                }
-            )
-        )
+        mock = MockBackend(response=json.dumps({
+            "action": "destroy_everything",
+            "reasoning": "bad idea",
+            "confidence": 0.9,
+        }))
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
@@ -1101,15 +1074,11 @@ class TestSessionReasonerReasonInvalidActions:
 
     def test_non_string_action_defaults_to_wait(self):
         """Non-string action should default to 'wait'."""
-        mock = MockBackend(
-            response=json.dumps(
-                {
-                    "action": 123,
-                    "reasoning": "numeric action",
-                    "confidence": 0.5,
-                }
-            )
-        )
+        mock = MockBackend(response=json.dumps({
+            "action": 123,
+            "reasoning": "numeric action",
+            "confidence": 0.5,
+        }))
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
@@ -1117,15 +1086,11 @@ class TestSessionReasonerReasonInvalidActions:
 
     def test_invalid_confidence_clamped(self):
         """Confidence values outside 0-1 should be clamped."""
-        mock = MockBackend(
-            response=json.dumps(
-                {
-                    "action": "wait",
-                    "reasoning": "ok",
-                    "confidence": 5.0,  # Way above 1.0
-                }
-            )
-        )
+        mock = MockBackend(response=json.dumps({
+            "action": "wait",
+            "reasoning": "ok",
+            "confidence": 5.0,  # Way above 1.0
+        }))
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
@@ -1133,15 +1098,11 @@ class TestSessionReasonerReasonInvalidActions:
 
     def test_negative_confidence_clamped(self):
         """Negative confidence should be clamped to 0.0."""
-        mock = MockBackend(
-            response=json.dumps(
-                {
-                    "action": "wait",
-                    "reasoning": "ok",
-                    "confidence": -0.5,
-                }
-            )
-        )
+        mock = MockBackend(response=json.dumps({
+            "action": "wait",
+            "reasoning": "ok",
+            "confidence": -0.5,
+        }))
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
@@ -1149,15 +1110,11 @@ class TestSessionReasonerReasonInvalidActions:
 
     def test_non_numeric_confidence_defaults(self):
         """Non-numeric confidence should default to 0.5."""
-        mock = MockBackend(
-            response=json.dumps(
-                {
-                    "action": "wait",
-                    "reasoning": "ok",
-                    "confidence": "high",
-                }
-            )
-        )
+        mock = MockBackend(response=json.dumps({
+            "action": "wait",
+            "reasoning": "ok",
+            "confidence": "high",
+        }))
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
@@ -1165,16 +1122,12 @@ class TestSessionReasonerReasonInvalidActions:
 
     def test_non_string_input_text_defaults_empty(self):
         """Non-string input_text should default to empty string."""
-        mock = MockBackend(
-            response=json.dumps(
-                {
-                    "action": "send_input",
-                    "input_text": 42,
-                    "reasoning": "ok",
-                    "confidence": 0.8,
-                }
-            )
-        )
+        mock = MockBackend(response=json.dumps({
+            "action": "send_input",
+            "input_text": 42,
+            "reasoning": "ok",
+            "confidence": 0.8,
+        }))
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
@@ -1182,15 +1135,11 @@ class TestSessionReasonerReasonInvalidActions:
 
     def test_non_string_reasoning_defaults_empty(self):
         """Non-string reasoning should default to empty string."""
-        mock = MockBackend(
-            response=json.dumps(
-                {
-                    "action": "wait",
-                    "reasoning": ["list", "not", "string"],
-                    "confidence": 0.8,
-                }
-            )
-        )
+        mock = MockBackend(response=json.dumps({
+            "action": "wait",
+            "reasoning": ["list", "not", "string"],
+            "confidence": 0.8,
+        }))
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner._reason(ctx)
@@ -1198,7 +1147,6 @@ class TestSessionReasonerReasonInvalidActions:
 
     def test_not_implemented_backend(self):
         """NotImplementedError from backend should return escalate."""
-
         class NotImplBackend:
             def complete(self, system_prompt, user_prompt):
                 raise NotImplementedError("not implemented")
@@ -1211,15 +1159,11 @@ class TestSessionReasonerReasonInvalidActions:
 
     def test_public_reason_method(self):
         """Public reason() method delegates to _reason()."""
-        mock = MockBackend(
-            response=json.dumps(
-                {
-                    "action": "wait",
-                    "reasoning": "all good",
-                    "confidence": 0.9,
-                }
-            )
-        )
+        mock = MockBackend(response=json.dumps({
+            "action": "wait",
+            "reasoning": "all good",
+            "confidence": 0.9,
+        }))
         reasoner = SessionReasoner(backend=mock, dry_run=True)
         ctx = SessionContext(vm_name="vm-1", session_name="sess-1")
         decision = reasoner.reason(ctx)
@@ -1274,7 +1218,6 @@ class TestLoadStrategyDictionary:
 
     def test_load_when_file_exists(self):
         from amplihack.fleet._system_prompt import _load_strategy_dictionary
-
         # This just tests the function runs without error
         result = _load_strategy_dictionary()
         assert isinstance(result, str)

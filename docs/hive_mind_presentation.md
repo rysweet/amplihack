@@ -5,7 +5,6 @@
 ## Slide 1: Title Slide
 
 ### Distributed Hive Mind
-
 #### Shared Memory for Multi-Agent Systems
 
 **Amplihack Agent Framework**
@@ -58,12 +57,10 @@ A goal-seeking agent is not just an LLM call. It is an autonomous loop. The agen
 - Without memory: agent forgets everything between turns, performance collapses
 
 **The core loop with memory:**
-
 1. **Learn**: Read content, extract facts, store in memory
 2. **Answer**: Retrieve relevant facts from memory, synthesize with LLM
 
 **Key constraint:** Memory quality directly determines answer quality
-
 - Bad storage = facts never found
 - Bad retrieval = wrong facts surface
 - No memory = random guessing
@@ -139,14 +136,14 @@ Graph memory addresses the keyword gap. Instead of isolated text entries, facts 
 
 Modeled after human cognition -- different memory types for different purposes:
 
-| Type            | Purpose                   | Properties                          | Example                        |
-| --------------- | ------------------------- | ----------------------------------- | ------------------------------ |
-| **Sensory**     | Raw input buffering       | TTL-based auto-expiry               | "User said: check the logs"    |
-| **Working**     | Active task state         | 20-slot bounded capacity            | Current goal, constraints      |
-| **Episodic**    | Autobiographical events   | Consolidatable, temporal index      | "Learned about DNA at turn 42" |
-| **Semantic**    | Distilled facts/knowledge | Confidence scores, similarity edges | "DNA stores genetic info"      |
-| **Procedural**  | Step-by-step procedures   | Usage count, prerequisites          | "To deploy: build, test, push" |
-| **Prospective** | Future intentions         | Trigger conditions, status          | "When asked about X, recall Y" |
+| Type | Purpose | Properties | Example |
+|------|---------|-----------|---------|
+| **Sensory** | Raw input buffering | TTL-based auto-expiry | "User said: check the logs" |
+| **Working** | Active task state | 20-slot bounded capacity | Current goal, constraints |
+| **Episodic** | Autobiographical events | Consolidatable, temporal index | "Learned about DNA at turn 42" |
+| **Semantic** | Distilled facts/knowledge | Confidence scores, similarity edges | "DNA stores genetic info" |
+| **Procedural** | Step-by-step procedures | Usage count, prerequisites | "To deploy: build, test, push" |
+| **Prospective** | Future intentions | Trigger conditions, status | "When asked about X, recall Y" |
 
 - Implemented in `CognitiveMemory` (amplihack-memory-lib)
 - `CognitiveAdapter` provides backward-compatible interface
@@ -214,16 +211,15 @@ The hierarchical model shows how information flows through the memory system. Ra
 
 ### Memory Model Comparison
 
-| Model                           | Pros                                            | Cons                                           | Best For                |
-| ------------------------------- | ----------------------------------------------- | ---------------------------------------------- | ----------------------- |
-| **Flat key-value**              | Simple, fast                                    | No relationships, keyword-only                 | Prototypes, < 100 facts |
-| **Vector DB** (embeddings only) | Semantic search                                 | No structure, no reasoning about relationships | Similarity search       |
-| **Knowledge graph**             | Rich relationships, traversal                   | Complex queries, schema overhead               | Structured domains      |
-| **Cognitive 6-type** (ours)     | Psychologically grounded, multi-level retention | More complex storage/retrieval                 | Long-horizon agents     |
-| **RAG (retrieve + generate)**   | Simple pipeline                                 | No persistent learning, stateless              | One-shot Q&A            |
+| Model | Pros | Cons | Best For |
+|-------|------|------|----------|
+| **Flat key-value** | Simple, fast | No relationships, keyword-only | Prototypes, < 100 facts |
+| **Vector DB** (embeddings only) | Semantic search | No structure, no reasoning about relationships | Similarity search |
+| **Knowledge graph** | Rich relationships, traversal | Complex queries, schema overhead | Structured domains |
+| **Cognitive 6-type** (ours) | Psychologically grounded, multi-level retention | More complex storage/retrieval | Long-horizon agents |
+| **RAG (retrieve + generate)** | Simple pipeline | No persistent learning, stateless | One-shot Q&A |
 
 **Our approach combines:**
-
 - Graph storage (Kuzu) for relationships
 - Embeddings for semantic similarity
 - Cognitive types for appropriate retention policies
@@ -252,12 +248,12 @@ graph TD
     P --> N["NetworkGraphStore<br/>Azure Service Bus<br/>Cross-machine"]
 ```
 
-| Implementation          | Use Case                  | Persistence              | Scale                        |
-| ----------------------- | ------------------------- | ------------------------ | ---------------------------- |
-| `KuzuGraphStore`        | Single agent, persistent  | Disk (Kuzu DB)           | 1 agent                      |
-| `InMemoryGraphStore`    | Testing, ephemeral        | RAM only                 | 1 process                    |
-| `DistributedGraphStore` | Multi-agent, same process | RAM (sharded)            | 100s of agents               |
-| `NetworkGraphStore`     | Multi-machine, production | Azure Service Bus + Kuzu | 100s of agents, multi-region |
+| Implementation | Use Case | Persistence | Scale |
+|---------------|----------|-------------|-------|
+| `KuzuGraphStore` | Single agent, persistent | Disk (Kuzu DB) | 1 agent |
+| `InMemoryGraphStore` | Testing, ephemeral | RAM only | 1 process |
+| `DistributedGraphStore` | Multi-agent, same process | RAM (sharded) | 100s of agents |
+| `NetworkGraphStore` | Multi-machine, production | Azure Service Bus + Kuzu | 100s of agents, multi-region |
 
 **Protocol methods:** `ensure_table()`, `create_node()`, `query_nodes()`, `create_relationship()`, `query_relationships()`
 
@@ -289,7 +285,7 @@ graph LR
 2. **Query expansion** -- synonyms and related terms (optional)
 3. **Multi-source search:**
    - Local memory (CognitiveAdapter.search)
-   - Hive memory (HiveIntegrationMixin.\_search_hive)
+   - Hive memory (HiveIntegrationMixin._search_hive)
    - Federated query (query_federated traverses the hive tree)
 4. **Reranking** -- hybrid scoring: `semantic_similarity * 0.5 + confirmation_count * 0.3 + source_trust * 0.2`
 5. **RRF merge** -- Reciprocal Rank Fusion combines keyword and confidence rankings
@@ -310,14 +306,14 @@ Retrieval integrates with the OODA loop at every phase. Observe uses remember an
 
 **Eval: 5000-turn long-horizon memory evaluation (15 categories, seed 42)**
 
-| Metric             | Value                                                   |
-| ------------------ | ------------------------------------------------------- |
-| **Score**          | **90.47%**                                              |
-| **Dataset**        | `5000t-seed42-v1.0` (2026-02-24)                        |
-| **Memory backend** | LearningAgent (CognitiveMemory + KuzuGraphStore)        |
-| **Turns**          | 5000 — 762 facts extracted across 12 information blocks |
-| **Questions**      | 100 across 15 categories (L1 recall → temporal trap)    |
-| **Memory stats**   | 10,854 semantic + 5,000 episodic = 15,854 total nodes   |
+| Metric | Value |
+|--------|-------|
+| **Score** | **90.47%** |
+| **Dataset** | `5000t-seed42-v1.0` (2026-02-24) |
+| **Memory backend** | LearningAgent (CognitiveMemory + KuzuGraphStore) |
+| **Turns** | 5000 — 762 facts extracted across 12 information blocks |
+| **Questions** | 100 across 15 categories (L1 recall → temporal trap) |
+| **Memory stats** | 10,854 semantic + 5,000 episodic = 15,854 total nodes |
 
 - Single agent learns from content, then answers questions
 - Memory stores facts across 6 cognitive types (sensory, working, episodic, semantic, procedural, prospective)
@@ -326,18 +322,17 @@ Retrieval integrates with the OODA loop at every phase. Observe uses remember an
 
 **Category highlights (median-of-3 grading):**
 
-| Category                 | Score           |
-| ------------------------ | --------------- |
-| cross_reference          | 100%            |
-| distractor_resistance    | 100%            |
-| infrastructure_knowledge | 100%            |
-| needle_in_haystack       | 100%            |
-| adversarial_distractor   | 89.6%           |
-| temporal_evolution       | 89.7%           |
-| temporal_trap            | 53.3% ← hardest |
+| Category | Score |
+|---|---|
+| cross_reference | 100% |
+| distractor_resistance | 100% |
+| infrastructure_knowledge | 100% |
+| needle_in_haystack | 100% |
+| adversarial_distractor | 89.6% |
+| temporal_evolution | 89.7% |
+| temporal_trap | 53.3% ← hardest |
 
 **Why 90.47% and not 100%?**
-
 - `temporal_trap` (53.3%) — contradictory time-ordered facts with misleading cues
 - `incident_tracking` (83.8%) — multi-step incident timelines across many turns
 - Retrieval occasionally misses the right fact combination for L10-L12 questions
@@ -364,7 +359,6 @@ Our baseline: a single agent scores 90.47% on the 5000-turn eval (dataset 5000t-
 5. **Collective intelligence** -- agents can confirm, contradict, or refine each other's facts
 
 **The challenge:**
-
 - How to partition knowledge without losing retrieval quality?
 - How to query across agents without O(N) scan?
 - How to handle contradictions between agents?
@@ -381,13 +375,13 @@ The motivation for shared memory is fourfold. First, specialization: different a
 
 ### Shared Memory Approaches
 
-| Approach                            | Mechanism                                          | Trade-offs                                      |
-| ----------------------------------- | -------------------------------------------------- | ----------------------------------------------- |
-| **Centralized** (InMemoryHiveGraph) | All facts in one dict, all agents read/write       | Simple but O(F) memory, single point of failure |
-| **Replicated** (CRDT + Gossip)      | Every agent holds a full copy, merge via ORSet/LWW | Consistent but O(F) per agent, does not scale   |
-| **Sharded** (DistributedHiveGraph)  | DHT partitions facts, agents own keyspace ranges   | O(F/N) per agent, O(K) queries, scales          |
-| **Federated** (tree of hives)       | Groups of agents with own DHT, root aggregates     | Hierarchical scale, cross-group sharing         |
-| **Networked** (NetworkGraphStore)   | Azure Service Bus events, cross-machine            | Production-ready, multi-region                  |
+| Approach | Mechanism | Trade-offs |
+|----------|-----------|-----------|
+| **Centralized** (InMemoryHiveGraph) | All facts in one dict, all agents read/write | Simple but O(F) memory, single point of failure |
+| **Replicated** (CRDT + Gossip) | Every agent holds a full copy, merge via ORSet/LWW | Consistent but O(F) per agent, does not scale |
+| **Sharded** (DistributedHiveGraph) | DHT partitions facts, agents own keyspace ranges | O(F/N) per agent, O(K) queries, scales |
+| **Federated** (tree of hives) | Groups of agents with own DHT, root aggregates | Hierarchical scale, cross-group sharing |
+| **Networked** (NetworkGraphStore) | Azure Service Bus events, cross-machine | Production-ready, multi-region |
 
 ```mermaid
 graph LR
@@ -449,7 +443,6 @@ graph TB
 ```
 
 **Key parameters:**
-
 - **DHT:** Consistent hash ring, 64 virtual nodes per agent, R=3 replication
 - **Gossip:** Bloom filter exchange, O(log N) convergence, 1KB/1000 facts; exchanges full graph nodes (not flat facts), preserving all metadata
 - **Agent join:** Triggers full shard rebuild — existing agents redistribute facts to cover the new ring position
@@ -512,17 +505,16 @@ sequenceDiagram
 
 **Assembly phases:**
 
-| Phase                    | Action                                                                          | Trigger                  |
-| ------------------------ | ------------------------------------------------------------------------------- | ------------------------ |
-| **1. Bootstrap**         | First agent initialises empty local DHT ring                                    | Container start          |
-| **2. Join**              | New agent computes ring position, announces HELLO via gossip                    | Container start          |
-| **3. Rebalance**         | Existing agents transfer shard ownership to newcomer                            | HELLO receipt            |
-| **4. Convergence**       | Bloom filter exchange propagates knowledge of all shards                        | Gossip rounds (O(log N)) |
-| **5. Ready**             | Agent writes `/tmp/.agent_ready` sentinel; coordinator proceeds                 | Ring stable              |
-| **6. Content ingestion** | `feed_content.py` publishes LEARN_CONTENT events; all agents ingest in parallel | External feed            |
+| Phase | Action | Trigger |
+|-------|--------|---------|
+| **1. Bootstrap** | First agent initialises empty local DHT ring | Container start |
+| **2. Join** | New agent computes ring position, announces HELLO via gossip | Container start |
+| **3. Rebalance** | Existing agents transfer shard ownership to newcomer | HELLO receipt |
+| **4. Convergence** | Bloom filter exchange propagates knowledge of all shards | Gossip rounds (O(log N)) |
+| **5. Ready** | Agent writes `/tmp/.agent_ready` sentinel; coordinator proceeds | Ring stable |
+| **6. Content ingestion** | `feed_content.py` publishes LEARN_CONTENT events; all agents ingest in parallel | External feed |
 
 **Key invariants during assembly:**
-
 - No facts are lost during rebalance — shard transfer is copy-then-delete, not move
 - Agents that join mid-ingestion catch up via gossip within O(log N) rounds
 - Service Bus topic subscription is created before the first gossip round completes
@@ -541,37 +533,35 @@ Hive assembly follows a predictable six-phase sequence. The first agent starts a
 **Eval suite:** 5000-turn long-horizon memory evaluation
 
 **Structure:**
-
 1. **Learning phase:** Agent reads content and extracts facts (thousands of turns)
 2. **Question phase:** Agent answers questions at levels L1-L12
 3. **Scoring:** Exact-match + semantic similarity grading
 
 **Configurations tested:**
 
-| Config                             | Description                                          | Score                           |
-| ---------------------------------- | ---------------------------------------------------- | ------------------------------- |
-| Single agent                       | 1 agent, all facts local (baseline)                  | **93.9%**                       |
-| Federated v1 naive                 | Multiple groups, longest-answer-wins merge           | 40.0%                           |
-| Federated broken routing           | Root hive empty, random agent fallback               | 34.9%                           |
-| Federated single DHT               | One DistributedHiveGraph, no federation tree         | 47.2%                           |
-| Federated semantic+OODA            | OODA-integrated retrieval, semantic routing          | 45.8%                           |
-| Smoke test 10 agents               | 10 agents, distributed hive, quick validation        | 58.8%                           |
-| **Distributed final (100 agents)** | **Full distributed eval, production DHT**            | **71–79% (avg 75%)**            |
-| **Live Azure Hive (3-repeat)**     | **query_hive.py --repeats 3, security analyst eval** | **86.5% median ± 10.1% stddev** |
+| Config | Description | Score |
+|--------|-------------|-------|
+| Single agent | 1 agent, all facts local (baseline) | **93.9%** |
+| Federated v1 naive | Multiple groups, longest-answer-wins merge | 40.0% |
+| Federated broken routing | Root hive empty, random agent fallback | 34.9% |
+| Federated single DHT | One DistributedHiveGraph, no federation tree | 47.2% |
+| Federated semantic+OODA | OODA-integrated retrieval, semantic routing | 45.8% |
+| Smoke test 10 agents | 10 agents, distributed hive, quick validation | 58.8% |
+| **Distributed final (100 agents)** | **Full distributed eval, production DHT** | **71–79% (avg 75%)** |
+| **Live Azure Hive (3-repeat)** | **query_hive.py --repeats 3, security analyst eval** | **86.5% median ± 10.1% stddev** |
 
 **Score progression (distributed hive, iteration over eval runs):** 0% → 34.9% → 40% → 47% → 58.8% → **79%**
 
 **3-Repeat Results (query_hive.py --run-eval --repeats 3):**
 
-| Metric        | Value                                  |
-| ------------- | -------------------------------------- |
-| Median score  | **86.5%**                              |
-| Std deviation | **10.1%**                              |
-| Runs          | 3                                      |
-| Eval          | Live Azure Hive — security analyst Q&A |
+| Metric | Value |
+|--------|-------|
+| Median score | **86.5%** |
+| Std deviation | **10.1%** |
+| Runs | 3 |
+| Eval | Live Azure Hive — security analyst Q&A |
 
 **Methodology:**
-
 - 3+ replications per condition (median reported)
 - Standard deviation tracks consistency
 - Same model (claude-sonnet-4-5-20250929) across all conditions
@@ -588,16 +578,16 @@ Our evaluation methodology is rigorous. The 5000-turn eval has a learning phase 
 
 ### Evaluations -- Results
 
-| Condition                          | Median Score | Std Dev | Notes                                        |
-| ---------------------------------- | ------------ | ------- | -------------------------------------------- |
-| **Single agent (latest)**          | **93.1%**    | —       | Latest run, 5000t-seed42-v1.0, median-of-3   |
-| Single agent (prior)               | 90.47%       | —       | Previous baseline                            |
-| **Federated 10 agents (latest)**   | **53.3%**    | —       | Latest 10-agent federated result             |
-| Federated 10 agents (smoke, prior) | 65.7%        | 6.7%    | Prior best multi-agent result, low variance  |
-| Federated 100 agents (full)        | 45.8%        | 21.7%   | Routing precision degrades at scale          |
-| Federated single DHT               | 47.2%        | —       | One DistributedHiveGraph, no federation tree |
-| Federated v1 naive                 | 40.0%        | —       | Longest-answer-wins merge                    |
-| Federated broken routing           | 34.9%        | 31.2%   | Root hive empty, random fallback             |
+| Condition | Median Score | Std Dev | Notes |
+|-----------|-------------|---------|-------|
+| **Single agent (latest)** | **93.1%** | — | Latest run, 5000t-seed42-v1.0, median-of-3 |
+| Single agent (prior) | 90.47% | — | Previous baseline |
+| **Federated 10 agents (latest)** | **53.3%** | — | Latest 10-agent federated result |
+| Federated 10 agents (smoke, prior) | 65.7% | 6.7% | Prior best multi-agent result, low variance |
+| Federated 100 agents (full) | 45.8% | 21.7% | Routing precision degrades at scale |
+| Federated single DHT | 47.2% | — | One DistributedHiveGraph, no federation tree |
+| Federated v1 naive | 40.0% | — | Longest-answer-wins merge |
+| Federated broken routing | 34.9% | 31.2% | Root hive empty, random fallback |
 
 ```mermaid
 graph LR
@@ -615,7 +605,6 @@ graph LR
 ```
 
 **Key findings:**
-
 - **Latest gap:** Best multi-agent (53.3%) vs single agent (93.1%) = 39.8 point gap
 - **Single agent improved:** 90.47% → 93.1% (+2.63 points) with latest run
 - **Federated regression:** 10-agent federated dropped from 65.7% to 53.3% — routing/merge issues under investigation
@@ -638,7 +627,6 @@ Here are all the results. The latest single agent run scores 93.1% on 5000t-seed
 ### Hive Mind -- Behaviors and Skills
 
 **Fact Lifecycle:**
-
 - **Promote:** Agent extracts fact -> quality gate -> store in local shard -> replicate via DHT
 - **Contradict:** Jaccard overlap > 0.4 + same concept = potential contradiction
 - **Confirm:** CONFIRMED_BY edges boost fact score in hybrid reranking
@@ -647,18 +635,15 @@ Here are all the results. The latest single agent run scores 93.1% on 5000t-seed
 - **GC:** Garbage collection removes expired facts
 
 **Agent Trust:**
-
 - Each agent has a trust score (0.0 - 2.0, default 1.0)
 - Trust propagated via LWW (Last-Writer-Wins) CRDT registers
 - Source trust contributes 20% of hybrid reranking score
 
 **Quality Gate:**
-
 - `score_content_quality(fact, context)` filters low-quality facts before promotion
 - Configurable threshold (default from `DEFAULT_QUALITY_THRESHOLD`)
 
 **Query Expansion:**
-
 - Optional synonym and related-term expansion before search
 - `expand_query(query)` adds terms to improve recall
 
@@ -675,15 +660,14 @@ The hive mind supports a full fact lifecycle. Facts enter through promotion -- t
 
 **Final Eval Results:**
 
-| Metric                        | Score        |
-| ----------------------------- | ------------ |
-| Single agent                  | **93.9%**    |
-| Distributed 100-agent (range) | **71–79%**   |
-| Distributed 100-agent (avg)   | **75%**      |
+| Metric | Score |
+|--------|-------|
+| Single agent | **93.9%** |
+| Distributed 100-agent (range) | **71–79%** |
+| Distributed 100-agent (avg) | **75%** |
 | Score progression (0 → final) | **0% → 79%** |
 
 **CLI: `amplihack-hive`**
-
 - `create` -- generate hive config with N agents
 - `add-agent` -- add specialized agent with custom prompt
 - `start` -- launch all agents (local subprocess or Azure)
@@ -692,25 +676,24 @@ The hive mind supports a full fact lifecycle. Facts enter through promotion -- t
 
 **Azure deployment (westus2 / hive-mind-rg):**
 
-| Resource                   | Name / Purpose                                                           |
-| -------------------------- | ------------------------------------------------------------------------ |
-| Azure Container Registry   | `hivacrhivemind.azurecr.io` — agent Docker images                        |
-| Azure Service Bus          | `hive-sb-dj2qo2w7vu5zi`, topic `hive-graph`, 100 subscriptions           |
-| Container Apps Environment | Managed container runtime                                                |
-| Container Apps             | `amplihive-app-0`…`amplihive-app-19` (20 apps × 5 agents = 100 agents)   |
-| Volume type                | Ephemeral (`EmptyDir`) — POSIX lock compatible, Kuzu works in containers |
-| Memory backend             | `cognitive` (Kuzu) — identical to local development                      |
+| Resource | Name / Purpose |
+|----------|----------------|
+| Azure Container Registry | `hivacrhivemind.azurecr.io` — agent Docker images |
+| Azure Service Bus | `hive-sb-dj2qo2w7vu5zi`, topic `hive-graph`, 100 subscriptions |
+| Container Apps Environment | Managed container runtime |
+| Container Apps | `amplihive-app-0`…`amplihive-app-19` (20 apps × 5 agents = 100 agents) |
+| Volume type | Ephemeral (`EmptyDir`) — POSIX lock compatible, Kuzu works in containers |
+| Memory backend | `cognitive` (Kuzu) — identical to local development |
 
 **Transports:**
 
-| Transport           | Latency      | Scale                        |
-| ------------------- | ------------ | ---------------------------- |
-| `local`             | Microseconds | 1 machine                    |
-| `redis`             | <1ms         | 10s of agents                |
-| `azure_service_bus` | 10-100ms     | 100s of agents, multi-region |
+| Transport | Latency | Scale |
+|-----------|---------|-------|
+| `local` | Microseconds | 1 machine |
+| `redis` | <1ms | 10s of agents |
+| `azure_service_bus` | 10-100ms | 100s of agents, multi-region |
 
 **Coordination mechanisms:**
-
 - DHT consistent hashing for fact placement
 - Bloom filter gossip for convergence
 - CRDT merge for consistency (ORSet + LWW)
@@ -738,13 +721,11 @@ Orchestration is managed through the amplihack-hive CLI. You create a hive confi
 6. **Cross-group replication** -- High-confidence facts (>= 0.9) broadcast across all groups automatically
 
 **Scale targets:**
-
 - 1000+ agents with DistributedHiveGraph
 - Azure multi-region deployment
 - Sub-second federated query latency
 
 **Research directions:**
-
 - Active learning -- agents identify and fill knowledge gaps collaboratively
 - Contradiction resolution via multi-agent debate
 - Hierarchical specialization -- auto-assign domains based on learned content
@@ -756,4 +737,4 @@ The 28.4-point gap between our best multi-agent result and the single-agent base
 
 ---
 
-_Generated from the amplihack distributed hive mind codebase. All data points from actual evaluation runs._
+*Generated from the amplihack distributed hive mind codebase. All data points from actual evaluation runs.*

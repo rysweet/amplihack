@@ -176,7 +176,9 @@ class TestNestingDetection:
         from amplihack.cli import _common_launcher_startup
 
         args = _make_args()
-        mock_result = MagicMock(is_nested=False, requires_staging=False, parent_session_id=None)
+        mock_result = MagicMock(
+            is_nested=False, requires_staging=False, parent_session_id=None
+        )
 
         with (
             patch(
@@ -237,14 +239,20 @@ class TestNestingDetection:
         from amplihack.cli import _common_launcher_startup
 
         args = _make_args()
-        mock_nesting = MagicMock(is_nested=False, requires_staging=False, parent_session_id=None)
+        mock_nesting = MagicMock(
+            is_nested=False, requires_staging=False, parent_session_id=None
+        )
 
         with (
             patch(
                 "amplihack.launcher.nesting_detector.NestingDetector",
-                return_value=MagicMock(detect_nesting=MagicMock(return_value=mock_nesting)),
+                return_value=MagicMock(
+                    detect_nesting=MagicMock(return_value=mock_nesting)
+                ),
             ),
-            patch("amplihack.launcher.auto_stager.AutoStager") as mock_stager_cls,
+            patch(
+                "amplihack.launcher.auto_stager.AutoStager"
+            ) as mock_stager_cls,
             patch(_ENSURE_STAGED),
             patch(_ENSURE_RUST),
             patch("amplihack.dep_check.ensure_sdk_deps", side_effect=ImportError),
@@ -267,13 +275,17 @@ class TestStartupStepsOrder:
         args = _make_args()
         call_order = []
 
-        mock_nesting = MagicMock(is_nested=False, requires_staging=False, parent_session_id=None)
+        mock_nesting = MagicMock(
+            is_nested=False, requires_staging=False, parent_session_id=None
+        )
         mock_sdk_result = MagicMock(all_ok=True, missing=[])
 
         with (
             patch(
                 "amplihack.launcher.nesting_detector.NestingDetector",
-                return_value=MagicMock(detect_nesting=MagicMock(return_value=mock_nesting)),
+                return_value=MagicMock(
+                    detect_nesting=MagicMock(return_value=mock_nesting)
+                ),
             ),
             patch(
                 _ENSURE_STAGED,
@@ -374,7 +386,9 @@ class TestEnsureRustRecipeRunner:
         """When binary is available, prints success message."""
         from amplihack.cli import _ensure_rust_recipe_runner
 
-        with patch("amplihack.recipes.rust_runner.ensure_rust_recipe_runner", return_value=True):
+        with patch(
+            "amplihack.recipes.rust_runner.ensure_rust_recipe_runner", return_value=True
+        ):
             _ensure_rust_recipe_runner()
 
         captured = capsys.readouterr()
@@ -384,7 +398,9 @@ class TestEnsureRustRecipeRunner:
         """When binary is missing, prints install instructions."""
         from amplihack.cli import _ensure_rust_recipe_runner
 
-        with patch("amplihack.recipes.rust_runner.ensure_rust_recipe_runner", return_value=False):
+        with patch(
+            "amplihack.recipes.rust_runner.ensure_rust_recipe_runner", return_value=False
+        ):
             _ensure_rust_recipe_runner()
 
         captured = capsys.readouterr()
@@ -422,7 +438,9 @@ class TestAllLauncherPathsCallStartup:
         args = _make_args(command=command, skip_update_check=True, no_proxy=True)
 
         patches = {
-            "amplihack.cli.parse_args_with_passthrough": MagicMock(return_value=(args, [])),
+            "amplihack.cli.parse_args_with_passthrough": MagicMock(
+                return_value=(args, [])
+            ),
             "amplihack.cli._common_launcher_startup": MagicMock(),
             "amplihack.cli.is_uvx_deployment": MagicMock(return_value=False),
             "amplihack.cli.cleanup_legacy_skills": MagicMock(),
@@ -456,7 +474,9 @@ class TestAllLauncherPathsCallStartup:
         args = _make_args(command="RustyClawd", skip_update_check=True, no_proxy=True)
 
         patches = {
-            "amplihack.cli.parse_args_with_passthrough": MagicMock(return_value=(args, [])),
+            "amplihack.cli.parse_args_with_passthrough": MagicMock(
+                return_value=(args, [])
+            ),
             "amplihack.cli._common_launcher_startup": MagicMock(),
             "amplihack.cli.is_uvx_deployment": MagicMock(return_value=False),
             "amplihack.cli.cleanup_legacy_skills": MagicMock(),

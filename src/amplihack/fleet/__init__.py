@@ -33,8 +33,8 @@ from amplihack.fleet._projects import Project, load_projects, save_projects
 from amplihack.fleet.fleet_admiral import FleetAdmiral
 from amplihack.fleet.fleet_adopt import SessionAdopter
 from amplihack.fleet.fleet_auth import AuthPropagator, AuthResult, GitHubIdentity
-from amplihack.fleet.fleet_copilot import CopilotSuggestion, SessionCopilot
 from amplihack.fleet.fleet_dashboard import FleetDashboard, ProjectInfo
+from amplihack.fleet.fleet_copilot import CopilotSuggestion, SessionCopilot
 from amplihack.fleet.fleet_graph import FleetGraph
 from amplihack.fleet.fleet_health import HealthChecker, HealthReport, VMHealth
 from amplihack.fleet.fleet_logs import LogReader, SessionSummary
@@ -44,7 +44,6 @@ from amplihack.fleet.fleet_results import ResultCollector, TaskResult
 from amplihack.fleet.fleet_setup import RepoSetup, SetupResult
 from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
 from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
-
 from ._cli_formatters import AdvanceResult, ScoutResult, format_advance_report, format_scout_report
 from ._session_lifecycle import (
     FleetConfig,

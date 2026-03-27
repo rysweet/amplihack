@@ -54,14 +54,12 @@ def _extract_cli_commands(tree: ast.Module, filepath: str) -> tuple[list[dict], 
             name = _get_string_arg(node, 0)
             help_text = _get_string_arg(node, kw="help")
             if name:
-                parsers.append(
-                    {
-                        "parser_name": name,
-                        "help": help_text,
-                        "file": filepath,
-                        "lineno": node.lineno,
-                    }
-                )
+                parsers.append({
+                    "parser_name": name,
+                    "help": help_text,
+                    "file": filepath,
+                    "lineno": node.lineno,
+                })
 
         elif call_name.endswith("add_argument"):
             # Get argument name(s)
@@ -87,19 +85,17 @@ def _extract_cli_commands(tree: ast.Module, filepath: str) -> tuple[list[dict], 
             # Check action
             action = _get_string_arg(node, kw="action")
 
-            arguments.append(
-                {
-                    "name": arg_name,
-                    "all_names": arg_names,
-                    "type": arg_type,
-                    "required": required,
-                    "default": default,
-                    "help": help_text,
-                    "action": action,
-                    "file": filepath,
-                    "lineno": node.lineno,
-                }
-            )
+            arguments.append({
+                "name": arg_name,
+                "all_names": arg_names,
+                "type": arg_type,
+                "required": required,
+                "default": default,
+                "help": help_text,
+                "action": action,
+                "file": filepath,
+                "lineno": node.lineno,
+            })
 
     return parsers, arguments
 
@@ -123,11 +119,8 @@ def _extract_click_typer_commands(tree: ast.Module, filepath: str) -> list[dict]
                 if isinstance(target, ast.Name) and isinstance(node.value, ast.Call):
                     call_name = _resolve_call_name(node.value.func)
                     if call_name and call_name in (
-                        "click.Group",
-                        "click.group",
-                        "typer.Typer",
-                        "click.MultiCommand",
-                        "click.CommandCollection",
+                        "click.Group", "click.group", "typer.Typer",
+                        "click.MultiCommand", "click.CommandCollection",
                     ):
                         click_typer_vars.add(target.id)
 
@@ -191,11 +184,7 @@ def _extract_click_typer_commands(tree: ast.Module, filepath: str) -> list[dict]
                 help_text = _get_string_arg(dec_call, kw="help")
             if not help_text and node.body:
                 first = node.body[0]
-                if (
-                    isinstance(first, ast.Expr)
-                    and isinstance(first.value, ast.Constant)
-                    and isinstance(first.value.value, str)
-                ):
+                if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(first.value.value, str):
                     help_text = first.value.value.strip().split("\n")[0]
 
             # Extract arguments from function signature
@@ -209,28 +198,24 @@ def _extract_click_typer_commands(tree: ast.Module, filepath: str) -> list[dict]
                         annotation = ast.unparse(arg.annotation)
                     except Exception:
                         pass
-                func_args.append(
-                    {
-                        "name": arg.arg,
-                        "type": annotation,
-                    }
-                )
+                func_args.append({
+                    "name": arg.arg,
+                    "type": annotation,
+                })
 
             framework = "click" if is_click_direct or call_name.startswith("click.") else "typer"
             cmd_type = "group" if "group" in (call_name or "") else "command"
 
-            commands.append(
-                {
-                    "command": cmd_name,
-                    "function": node.name,
-                    "framework": framework,
-                    "type": cmd_type,
-                    "help": help_text,
-                    "arguments": func_args,
-                    "file": filepath,
-                    "lineno": node.lineno,
-                }
-            )
+            commands.append({
+                "command": cmd_name,
+                "function": node.name,
+                "framework": framework,
+                "type": cmd_type,
+                "help": help_text,
+                "arguments": func_args,
+                "file": filepath,
+                "lineno": node.lineno,
+            })
 
     return commands
 
@@ -284,15 +269,13 @@ def _extract_http_routes(tree: ast.Module, filepath: str) -> list[dict]:
                     path = _get_string_arg(dec_call, 0)
 
             if method and path:
-                routes.append(
-                    {
-                        "method": method,
-                        "path": path,
-                        "function": node.name,
-                        "file": filepath,
-                        "lineno": node.lineno,
-                    }
-                )
+                routes.append({
+                    "method": method,
+                    "path": path,
+                    "function": node.name,
+                    "file": filepath,
+                    "lineno": node.lineno,
+                })
 
     return routes
 
@@ -323,14 +306,12 @@ def _extract_hooks(repo_root: Path) -> list[dict]:
             else:
                 event_type = "custom"
 
-            hooks.append(
-                {
-                    "name": hook_name,
-                    "type": event_type,
-                    "handler": hook_name,
-                    "file": str(f),
-                }
-            )
+            hooks.append({
+                "name": hook_name,
+                "type": event_type,
+                "handler": hook_name,
+                "file": str(f),
+            })
 
     return hooks
 
@@ -388,15 +369,13 @@ def _extract_recipes(repo_root: Path) -> list[dict]:
                             if agent:
                                 agents_used.add(str(agent))
 
-                recipes.append(
-                    {
-                        "file": str(f),
-                        "name": name,
-                        "description": str(description)[:200] if description else "",
-                        "step_count": len(steps) if isinstance(steps, list) else 0,
-                        "agents_used": sorted(agents_used),
-                    }
-                )
+                recipes.append({
+                    "file": str(f),
+                    "name": name,
+                    "description": str(description)[:200] if description else "",
+                    "step_count": len(steps) if isinstance(steps, list) else 0,
+                    "agents_used": sorted(agents_used),
+                })
 
     return recipes
 
@@ -419,7 +398,6 @@ def _parse_frontmatter(filepath: Path) -> dict:
     frontmatter_str = content[3:end].strip()
     try:
         import yaml
-
         data = yaml.safe_load(frontmatter_str)
         return data if isinstance(data, dict) else {}
     except Exception as e:
@@ -451,14 +429,12 @@ def _extract_skills(repo_root: Path) -> list[dict]:
             if isinstance(triggers, str):
                 triggers = [triggers]
 
-            skills.append(
-                {
-                    "file": str(f),
-                    "name": name,
-                    "description": str(description)[:200] if description else "",
-                    "triggers": triggers if isinstance(triggers, list) else [],
-                }
-            )
+            skills.append({
+                "file": str(f),
+                "name": name,
+                "description": str(description)[:200] if description else "",
+                "triggers": triggers if isinstance(triggers, list) else [],
+            })
 
     return skills
 
@@ -486,14 +462,12 @@ def _extract_agents(repo_root: Path) -> list[dict]:
             role = fm.get("role", "")
             capabilities = fm.get("capabilities", [])
 
-            agents.append(
-                {
-                    "file": str(f),
-                    "name": name,
-                    "role": str(role)[:200] if role else "",
-                    "capabilities": capabilities if isinstance(capabilities, list) else [],
-                }
-            )
+            agents.append({
+                "file": str(f),
+                "name": name,
+                "role": str(role)[:200] if role else "",
+                "capabilities": capabilities if isinstance(capabilities, list) else [],
+            })
 
     return agents
 
@@ -546,16 +520,14 @@ def _extract_rust_clap_commands(root: Path) -> list[dict]:
                 struct_m = re.match(r"(?:pub\s+)?(?:struct|enum)\s+(\w+)", stripped)
                 if struct_m:
                     cmd_name = pending_command_name or struct_m.group(1).lower()
-                    commands.append(
-                        {
-                            "command": cmd_name,
-                            "struct": struct_m.group(1),
-                            "framework": "clap-derive",
-                            "type": "command",
-                            "file": filepath_str,
-                            "lineno": lineno,
-                        }
-                    )
+                    commands.append({
+                        "command": cmd_name,
+                        "struct": struct_m.group(1),
+                        "framework": "clap-derive",
+                        "type": "command",
+                        "file": filepath_str,
+                        "lineno": lineno,
+                    })
                     has_derive_parser = False
                     pending_command_name = None
                     continue
@@ -564,42 +536,31 @@ def _extract_rust_clap_commands(root: Path) -> list[dict]:
             if re.search(r"#\[subcommand\]", stripped):
                 # The next field line has the subcommand name
                 # e.g. "command: Commands" -- we just record the annotation
-                commands.append(
-                    {
-                        "command": "(subcommand)",
-                        "framework": "clap-derive",
-                        "type": "subcommand",
-                        "file": filepath_str,
-                        "lineno": lineno,
-                    }
-                )
+                commands.append({
+                    "command": "(subcommand)",
+                    "framework": "clap-derive",
+                    "type": "subcommand",
+                    "file": filepath_str,
+                    "lineno": lineno,
+                })
                 continue
 
             # Detect clap::Command::new("...") or Command::new("...")
-            for builder_m in re.finditer(r'(?:clap::)?Command::new\(\s*"([^"]+)"', stripped):
-                commands.append(
-                    {
-                        "command": builder_m.group(1),
-                        "framework": "clap-builder",
-                        "type": "command",
-                        "file": filepath_str,
-                        "lineno": lineno,
-                    }
-                )
+            for builder_m in re.finditer(
+                r'(?:clap::)?Command::new\(\s*"([^"]+)"', stripped
+            ):
+                commands.append({
+                    "command": builder_m.group(1),
+                    "framework": "clap-builder",
+                    "type": "command",
+                    "file": filepath_str,
+                    "lineno": lineno,
+                })
 
             # Reset derive tracking on blank lines or non-attribute/non-comment lines
-            if (
-                has_derive_parser
-                and stripped
-                and not stripped.startswith("#")
-                and not stripped.startswith("//")
-            ):
+            if has_derive_parser and stripped and not stripped.startswith("#") and not stripped.startswith("//"):
                 # If we hit a non-struct definition line, reset
-                if (
-                    not stripped.startswith("pub")
-                    and not stripped.startswith("struct")
-                    and not stripped.startswith("enum")
-                ):
+                if not stripped.startswith("pub") and not stripped.startswith("struct") and not stripped.startswith("enum"):
                     has_derive_parser = False
                     pending_command_name = None
 
@@ -644,17 +605,18 @@ def extract(manifest: dict, repo_root: Path) -> dict:
     cli_commands = []
     for p in all_parsers:
         # Find arguments defined in the same file near this parser
-        file_args = [a for a in all_arguments if a["file"] == p["file"]]
-        cli_commands.append(
-            {
-                "command": p["parser_name"],
-                "parser_name": p["parser_name"],
-                "help": p["help"],
-                "file": p["file"],
-                "lineno": p["lineno"],
-                "argument_count": len(file_args),
-            }
-        )
+        file_args = [
+            a for a in all_arguments
+            if a["file"] == p["file"]
+        ]
+        cli_commands.append({
+            "command": p["parser_name"],
+            "parser_name": p["parser_name"],
+            "help": p["help"],
+            "file": p["file"],
+            "lineno": p["lineno"],
+            "argument_count": len(file_args),
+        })
 
     # Rust CLI commands (clap)
     rust_clap_commands = _extract_rust_clap_commands(repo_root)
@@ -725,7 +687,7 @@ def main() -> int:
     out_path = write_layer_json("layer5_api_contracts", data, output)
 
     s = data["summary"]
-    print("Layer 5: api-contracts")
+    print(f"Layer 5: api-contracts")
     print(f"  CLI commands:     {s['cli_command_count']}")
     print(f"  CLI arguments:    {s['cli_argument_count']}")
     print(f"  Click/Typer:      {s['click_typer_command_count']}")

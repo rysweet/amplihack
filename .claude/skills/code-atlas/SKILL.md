@@ -40,29 +40,29 @@ full execution path without opening the source code.
 Layer definitions are the single source of truth in [LAYERS.yaml](./LAYERS.yaml).
 All references below use slugs from that file.
 
-| Slug                 | Name                           | Description                                                   | Recommended Diagram Type                 |
-| -------------------- | ------------------------------ | ------------------------------------------------------------- | ---------------------------------------- |
-| `repo-surface`       | Repository Surface             | All source files, project structure, build systems            | Mermaid `flowchart TD`                   |
-| `ast-lsp-bindings`   | AST+LSP Symbol Bindings        | Cross-file symbol references, dead code, interface mismatches | Mermaid `flowchart LR` or DOT digraph    |
-| `compile-deps`       | Compile-time Dependencies      | Package imports, dependency trees, circular deps              | DOT digraph (handles large trees better) |
-| `runtime-topology`   | Runtime Topology               | Services, containers, ports, inter-service connections        | DOT digraph with subgraph clusters       |
-| `api-contracts`      | API Contracts                  | HTTP routes, gRPC, GraphQL, middleware chains                 | Mermaid `flowchart TD`                   |
-| `data-flow`          | Data Flow                      | DTO-to-storage chains, transformation steps                   | Mermaid `flowchart LR`                   |
-| `service-components` | Service Component Architecture | Per-service internal module/package structure                 | Mermaid `graph TD` (one per service)     |
-| `user-journeys`      | User Journey Scenarios         | End-to-end paths from entry to outcome                        | Mermaid `sequenceDiagram`                |
+| Slug | Name | Description | Recommended Diagram Type |
+|------|------|-------------|--------------------------|
+| `repo-surface` | Repository Surface | All source files, project structure, build systems | Mermaid `flowchart TD` |
+| `ast-lsp-bindings` | AST+LSP Symbol Bindings | Cross-file symbol references, dead code, interface mismatches | Mermaid `flowchart LR` or DOT digraph |
+| `compile-deps` | Compile-time Dependencies | Package imports, dependency trees, circular deps | DOT digraph (handles large trees better) |
+| `runtime-topology` | Runtime Topology | Services, containers, ports, inter-service connections | DOT digraph with subgraph clusters |
+| `api-contracts` | API Contracts | HTTP routes, gRPC, GraphQL, middleware chains | Mermaid `flowchart TD` |
+| `data-flow` | Data Flow | DTO-to-storage chains, transformation steps | Mermaid `flowchart LR` |
+| `service-components` | Service Component Architecture | Per-service internal module/package structure | Mermaid `graph TD` (one per service) |
+| `user-journeys` | User Journey Scenarios | End-to-end paths from entry to outcome | Mermaid `sequenceDiagram` |
 
 ### Per-Layer Scope Guidance
 
-| Slug                 | Scope Target                                                                       |
-| -------------------- | ---------------------------------------------------------------------------------- |
-| `repo-surface`       | Top-level directories and build entry points. Do not enumerate every file.         |
-| `ast-lsp-bindings`   | Exported symbols and their cross-file references. Focus on public API surface.     |
-| `compile-deps`       | Direct dependencies and one level of transitive. Include version constraints.      |
-| `runtime-topology`   | All deployed services, their ports, and inter-service protocols.                   |
-| `api-contracts`      | Every HTTP/gRPC/GraphQL endpoint with auth, DTOs, and middleware.                  |
-| `data-flow`          | Primary read/write paths per service. Skip internal caching flows unless relevant. |
-| `service-components` | Top-level packages/modules within each service. Show coupling edges.               |
-| `user-journeys`      | Derive from api-contracts routes + pages/CLI entries. Trace 3-8 key journeys.      |
+| Slug | Scope Target |
+|------|-------------|
+| `repo-surface` | Top-level directories and build entry points. Do not enumerate every file. |
+| `ast-lsp-bindings` | Exported symbols and their cross-file references. Focus on public API surface. |
+| `compile-deps` | Direct dependencies and one level of transitive. Include version constraints. |
+| `runtime-topology` | All deployed services, their ports, and inter-service protocols. |
+| `api-contracts` | Every HTTP/gRPC/GraphQL endpoint with auth, DTOs, and middleware. |
+| `data-flow` | Primary read/write paths per service. Skip internal caching flows unless relevant. |
+| `service-components` | Top-level packages/modules within each service. Show coupling edges. |
+| `user-journeys` | Derive from api-contracts routes + pages/CLI entries. Trace 3-8 key journeys. |
 
 ## Skill Delegation Architecture
 
@@ -87,16 +87,16 @@ code-atlas (this skill)
 
 ## When to Use This Skill
 
-| Trigger                                 | Use Case                                         |
-| --------------------------------------- | ------------------------------------------------ |
-| Starting work on an unfamiliar codebase | Full atlas build before coding                   |
-| Onboarding a new engineer               | Share atlas as navigation guide                  |
-| Before a major refactor                 | Map current state; plan changes against topology |
-| Bug hunt stalled                        | Pass 1 + Pass 2 bug-hunting through graphs       |
-| Docs feel stale                         | Staleness check + targeted rebuild               |
-| Adding CI/CD quality gate               | Register atlas freshness checks                  |
-| Publishing documentation site           | GitHub Pages / mkdocs publication workflow       |
-| Reviewing an unfamiliar PR              | PR impact view using diff against current atlas  |
+| Trigger | Use Case |
+|---------|----------|
+| Starting work on an unfamiliar codebase | Full atlas build before coding |
+| Onboarding a new engineer | Share atlas as navigation guide |
+| Before a major refactor | Map current state; plan changes against topology |
+| Bug hunt stalled | Pass 1 + Pass 2 bug-hunting through graphs |
+| Docs feel stale | Staleness check + targeted rebuild |
+| Adding CI/CD quality gate | Register atlas freshness checks |
+| Publishing documentation site | GitHub Pages / mkdocs publication workflow |
+| Reviewing an unfamiliar PR | PR impact view using diff against current atlas |
 
 ## Quick Start
 
@@ -122,7 +122,6 @@ running both finds ~1.7x the bugs of either alone. The different syntax forces d
 reasoning paths through the same code. Evidence is documented in PR #3221.
 
 The user can override to a single format:
-
 ```
 User: Build a code atlas using only Mermaid
 User: Build a code atlas in DOT format only
@@ -184,10 +183,10 @@ Full checklists, templates, and output formats: [bug-hunt-guide.md](./bug-hunt-g
 
 Layer ast-lsp-bindings operates in one of two modes, always labelled on line 1 of its README:
 
-| Mode                   | Trigger                             | Mechanism                       |
-| ---------------------- | ----------------------------------- | ------------------------------- |
-| `lsp-assisted`         | lsp-setup reports active LSP server | Delegates symbol queries to LSP |
-| `static-approximation` | LSP unavailable                     | ripgrep + code-visualizer AST   |
+| Mode | Trigger | Mechanism |
+|------|---------|-----------|
+| `lsp-assisted` | lsp-setup reports active LSP server | Delegates symbol queries to LSP |
+| `static-approximation` | LSP unavailable | ripgrep + code-visualizer AST |
 
 The mode label is never absent, never defaulted silently.
 
@@ -233,7 +232,6 @@ Full trigger table, rebuild commands, and incremental rebuild strategy:
 ## CI Integration
 
 Three GitHub Actions patterns are available:
-
 1. Post-merge staleness gate with auto-commit
 2. PR impact check with layer annotations
 3. Scheduled weekly full rebuild with issue creation on failure
@@ -257,7 +255,6 @@ Per-layer Mermaid and DOT examples with recommended diagram types:
 
 All security controls (SEC-01 through SEC-19) are defined in [SECURITY.md](./SECURITY.md).
 Key controls:
-
 - Secret values never emitted (env files parsed for key names only)
 - Path traversal prevented via realpath() boundary validation
 - Mermaid/DOT/SVG labels sanitized (XSS prevention)

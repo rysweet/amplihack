@@ -6,10 +6,14 @@ AMPLIHACK.md injection, strategy delegation, caching, extract_preferences,
 build_preference_context, find_user_preferences.
 """
 
+import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -271,7 +275,9 @@ class TestFindUserPreferences:
 
     def test_finds_in_src_location(self, tmp_path):
         hook = _make_user_prompt_hook(tmp_path)
-        pref_file = tmp_path / "src" / "amplihack" / ".claude" / "context" / "USER_PREFERENCES.md"
+        pref_file = (
+            tmp_path / "src" / "amplihack" / ".claude" / "context" / "USER_PREFERENCES.md"
+        )
         pref_file.parent.mkdir(parents=True, exist_ok=True)
         pref_file.write_text("# Preferences")
         with patch("user_prompt_submit.FrameworkPathResolver", None):
@@ -334,7 +340,6 @@ class TestGetCachedPreferences:
         hook.get_cached_preferences(pref_file)
         # Modify file (change mtime)
         import time
-
         time.sleep(0.05)
         pref_file.write_text("### Verbosity\nverbose")
         result = hook.get_cached_preferences(pref_file)

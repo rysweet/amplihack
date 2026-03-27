@@ -15,6 +15,7 @@ import pytest
 
 from amplihack.fleet._session_context import SessionContext, SessionDecision
 
+
 # ---------------------------------------------------------------------------
 # SessionContext construction
 # ---------------------------------------------------------------------------
@@ -120,7 +121,9 @@ class TestSessionContextToPromptContext:
 
     def test_includes_status(self):
         """Output always contains the agent status line."""
-        ctx = SessionContext(vm_name="devy", session_name="task-1", agent_status="running")
+        ctx = SessionContext(
+            vm_name="devy", session_name="task-1", agent_status="running"
+        )
         output = ctx.to_prompt_context()
         assert "Status: running" in output
 
@@ -172,7 +175,9 @@ class TestSessionContextToPromptContext:
 
     def test_nonempty_tmux_shows_capture(self):
         """When tmux_capture has content, it appears instead of placeholder."""
-        ctx = SessionContext(vm_name="devy", session_name="task-1", tmux_capture="hello world")
+        ctx = SessionContext(
+            vm_name="devy", session_name="task-1", tmux_capture="hello world"
+        )
         output = ctx.to_prompt_context()
         assert "hello world" in output
         assert "(empty)" not in output

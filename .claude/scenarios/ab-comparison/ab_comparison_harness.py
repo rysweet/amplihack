@@ -62,19 +62,18 @@ import sys
 import tempfile
 import time
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-
 @dataclass
 class HarnessConfig:
     """Configuration for a parity harness run."""
-
     legacy_command: list[str]
     candidate_command: list[str]
     log_dir: Path = Path("/tmp/parity-shadow")
@@ -88,7 +87,6 @@ class HarnessConfig:
 @dataclass
 class EngineResult:
     """Result from running one engine on a test case."""
-
     stdout: str
     stderr: str
     exit_code: int
@@ -98,7 +96,6 @@ class EngineResult:
 @dataclass
 class CaseResult:
     """Comparison result for a single test case."""
-
     case_name: str
     category: str
     match: bool
@@ -112,7 +109,6 @@ class CaseResult:
 # ---------------------------------------------------------------------------
 # Sandbox isolation
 # ---------------------------------------------------------------------------
-
 
 def create_sandbox(run_id: str, engine: str, case_name: str) -> Path:
     """Create an isolated sandbox directory."""
@@ -156,7 +152,6 @@ def build_env(
 # ---------------------------------------------------------------------------
 # Execution
 # ---------------------------------------------------------------------------
-
 
 def run_engine(
     command: list[str],
@@ -223,7 +218,6 @@ def run_setup(script: str | None, sandbox: Path, env: dict[str, str]) -> None:
 # Comparison
 # ---------------------------------------------------------------------------
 
-
 def normalize_text(text: str, sandbox: Path) -> str:
     """Normalize output by replacing sandbox-specific paths."""
     result = text.replace(str(sandbox), "<SANDBOX>")
@@ -279,13 +273,11 @@ def compare_case(
     for target in case.get("compare", ["stdout", "stderr", "exit_code"]):
         if target == "exit_code":
             if legacy.exit_code != candidate.exit_code:
-                divergences.append(
-                    {
-                        "field": "exit_code",
-                        "side_a": legacy.exit_code,
-                        "side_b": candidate.exit_code,
-                    }
-                )
+                divergences.append({
+                    "field": "exit_code",
+                    "side_a": legacy.exit_code,
+                    "side_b": candidate.exit_code,
+                })
                 match = False
 
         elif target == "stdout":
@@ -296,36 +288,26 @@ def compare_case(
             c_json = try_parse_json(c_norm)
             if l_json is not None and c_json is not None:
                 if l_json != c_json:
-                    divergences.append(
-                        {
-                            "field": "stdout",
-                            "mode": "json",
-                            "side_a": l_norm[:500],
-                            "side_b": c_norm[:500],
-                        }
-                    )
+                    divergences.append({
+                        "field": "stdout", "mode": "json",
+                        "side_a": l_norm[:500], "side_b": c_norm[:500],
+                    })
                     match = False
             elif l_norm != c_norm:
-                divergences.append(
-                    {
-                        "field": "stdout",
-                        "side_a": l_norm[:500],
-                        "side_b": c_norm[:500],
-                    }
-                )
+                divergences.append({
+                    "field": "stdout",
+                    "side_a": l_norm[:500], "side_b": c_norm[:500],
+                })
                 match = False
 
         elif target == "stderr":
             l_norm = normalize_text(legacy.stderr, legacy.sandbox_root)
             c_norm = normalize_text(candidate.stderr, candidate.sandbox_root)
             if l_norm != c_norm:
-                divergences.append(
-                    {
-                        "field": "stderr",
-                        "side_a": l_norm[:500],
-                        "side_b": c_norm[:500],
-                    }
-                )
+                divergences.append({
+                    "field": "stderr",
+                    "side_a": l_norm[:500], "side_b": c_norm[:500],
+                })
                 match = False
 
         elif target.startswith("fs:"):
@@ -333,13 +315,11 @@ def compare_case(
             l_snap = snapshot_path(legacy.sandbox_root / rel)
             c_snap = snapshot_path(candidate.sandbox_root / rel)
             if l_snap != c_snap:
-                divergences.append(
-                    {
-                        "field": target,
-                        "side_a": _truncate(l_snap),
-                        "side_b": _truncate(c_snap),
-                    }
-                )
+                divergences.append({
+                    "field": target,
+                    "side_a": _truncate(l_snap),
+                    "side_b": _truncate(c_snap),
+                })
                 match = False
 
         elif target.startswith("jsonfs:"):
@@ -347,13 +327,10 @@ def compare_case(
             l_data = _load_json_file(legacy.sandbox_root / rel)
             c_data = _load_json_file(candidate.sandbox_root / rel)
             if l_data != c_data:
-                divergences.append(
-                    {
-                        "field": target,
-                        "side_a": l_data,
-                        "side_b": c_data,
-                    }
-                )
+                divergences.append({
+                    "field": target,
+                    "side_a": l_data, "side_b": c_data,
+                })
                 match = False
 
     return match, divergences
@@ -379,7 +356,6 @@ def _load_json_file(path: Path) -> Any:
 # Harness runner
 # ---------------------------------------------------------------------------
 
-
 def run_case(config: HarnessConfig, case: dict[str, Any]) -> CaseResult:
     """Run a single test case through both engines and compare."""
     name = case["name"]
@@ -404,7 +380,9 @@ def run_case(config: HarnessConfig, case: dict[str, Any]) -> CaseResult:
             run_setup(setup, l_sandbox, l_env)
             run_setup(setup, c_sandbox, c_env)
 
-        legacy = run_engine(config.legacy_command, argv, l_sandbox, l_env, cwd, stdin_data, timeout)
+        legacy = run_engine(
+            config.legacy_command, argv, l_sandbox, l_env, cwd, stdin_data, timeout
+        )
         candidate = run_engine(
             config.candidate_command, argv, c_sandbox, c_env, cwd, stdin_data, timeout
         )
@@ -413,14 +391,10 @@ def run_case(config: HarnessConfig, case: dict[str, Any]) -> CaseResult:
         elapsed = int((time.monotonic() - start) * 1000)
 
         return CaseResult(
-            case_name=name,
-            category=category,
-            match=match,
-            legacy=legacy,
-            candidate=candidate,
-            divergences=divergences,
-            duration_ms=elapsed,
-            timestamp=datetime.now(UTC).isoformat(),
+            case_name=name, category=category, match=match,
+            legacy=legacy, candidate=candidate,
+            divergences=divergences, duration_ms=elapsed,
+            timestamp=datetime.now(timezone.utc).isoformat(),
         )
     finally:
         if not config.keep_sandboxes:
@@ -446,19 +420,13 @@ def run_harness(
 
         if not result.match and config.shadow_log:
             with open(config.shadow_log, "a", encoding="utf-8") as f:
-                f.write(
-                    json.dumps(
-                        {
-                            "run_id": config.run_id,
-                            "case": name,
-                            "category": result.category,
-                            "divergences": result.divergences,
-                            "timestamp": result.timestamp,
-                        },
-                        sort_keys=True,
-                    )
-                    + "\n"
-                )
+                f.write(json.dumps({
+                    "run_id": config.run_id,
+                    "case": name,
+                    "category": result.category,
+                    "divergences": result.divergences,
+                    "timestamp": result.timestamp,
+                }, sort_keys=True) + "\n")
 
     matched = sum(1 for r in results if r.match)
     total = len(results)
@@ -471,26 +439,25 @@ def run_harness(
 
     summary = {
         "run_id": config.run_id,
-        "timestamp": datetime.now(UTC).isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "total": total,
         "matched": matched,
         "diverged": total - matched,
         "parity_rate": f"{matched / total * 100:.1f}%" if total else "N/A",
         "by_category": by_category,
         "divergence_details": [
-            {"case": r.case_name, "divergences": r.divergences} for r in results if not r.match
+            {"case": r.case_name, "divergences": r.divergences}
+            for r in results if not r.match
         ],
     }
 
     summary_path = config.log_dir / "summary.json"
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
-    print(f"\n{'=' * 60}")
+    print(f"\n{'='*60}")
     print(f"PARITY SUMMARY ({config.run_id})")
-    print(f"{'=' * 60}")
-    print(
-        f"Total: {total}  Matched: {matched}  Diverged: {total - matched}  Rate: {summary['parity_rate']}"
-    )
+    print(f"{'='*60}")
+    print(f"Total: {total}  Matched: {matched}  Diverged: {total - matched}  Rate: {summary['parity_rate']}")
     for cat, counts in sorted(by_category.items()):
         print(f"  {cat}: {counts['matched']} match, {counts['diverged']} diverged")
     print(f"Summary: {summary_path}")
@@ -504,11 +471,9 @@ def run_harness(
 # Scenario loading
 # ---------------------------------------------------------------------------
 
-
 def load_scenarios(paths: list[Path]) -> list[dict[str, Any]]:
     """Load test cases from one or more YAML scenario files."""
     import yaml  # lazy import — only needed when loading files
-
     cases = []
     for path in paths:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -528,25 +493,12 @@ def parse_command(cmd_str: str) -> list[str]:
 # CLI
 # ---------------------------------------------------------------------------
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="A/B comparison harness for CLI side-by-side validation"
     )
-    parser.add_argument(
-        "--a",
-        "--legacy",
-        dest="side_a",
-        required=True,
-        help="Side A command (e.g. 'python -m myapp.cli')",
-    )
-    parser.add_argument(
-        "--b",
-        "--candidate",
-        dest="side_b",
-        required=True,
-        help="Side B command (e.g. './target/debug/myapp')",
-    )
+    parser.add_argument("--a", "--legacy", dest="side_a", required=True, help="Side A command (e.g. 'python -m myapp.cli')")
+    parser.add_argument("--b", "--candidate", dest="side_b", required=True, help="Side B command (e.g. './target/debug/myapp')")
     parser.add_argument("--scenario", nargs="*", type=Path, help="YAML scenario file(s)")
     parser.add_argument("--builtin-cases", help="Inline JSON cases (for quick checks)")
     parser.add_argument("--log-dir", type=Path, default=Path("/tmp/parity-shadow"))

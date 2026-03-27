@@ -40,6 +40,8 @@ WikipediaLearningAgent = LearningAgent
 # ---------------------------------------------------------------------------
 # Memory façade
 # ---------------------------------------------------------------------------
+from amplihack.memory.facade import Memory
+
 # ---------------------------------------------------------------------------
 # Goal-agent-generator pipeline
 # ---------------------------------------------------------------------------
@@ -58,7 +60,6 @@ from amplihack.goal_agent_generator.models import (
     SDKToolConfig,
     SkillDefinition,
 )
-from amplihack.memory.facade import Memory
 
 
 class GoalAgentGenerator:

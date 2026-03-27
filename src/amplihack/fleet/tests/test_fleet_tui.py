@@ -20,19 +20,19 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
 
+from amplihack.fleet.fleet_tui import FleetTUI, VMView, SessionView
 from amplihack.fleet._tui_classify import classify_status
 from amplihack.fleet._tui_parsers import parse_session_output, parse_vm_text
 from amplihack.fleet._vm_discovery import get_vm_list, read_azlin_resource_group
-from amplihack.fleet.fleet_tui import FleetTUI, SessionView, VMView
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
 
 @pytest.fixture
 def tui() -> FleetTUI:
@@ -40,13 +40,11 @@ def tui() -> FleetTUI:
     return FleetTUI(azlin_path="/usr/bin/fake-azlin", exclude_vms={"excluded-vm"})
 
 
-AZ_VM_LIST_JSON = json.dumps(
-    [
-        {"name": "vm-alpha", "location": "westus2", "powerState": "VM running"},
-        {"name": "vm-beta", "location": "eastus", "powerState": "VM deallocated"},
-        {"name": "vm-gamma", "location": "westus2", "powerState": "VM running"},
-    ]
-)
+AZ_VM_LIST_JSON = json.dumps([
+    {"name": "vm-alpha", "location": "westus2", "powerState": "VM running"},
+    {"name": "vm-beta", "location": "eastus", "powerState": "VM deallocated"},
+    {"name": "vm-gamma", "location": "westus2", "powerState": "VM running"},
+])
 
 AZLIN_LIST_TABLE = """\
 Fleet Status
@@ -70,7 +68,9 @@ class TestReadAzlinResourceGroup:
     def test_reads_resource_group_from_config(self) -> None:
         """Should extract default_resource_group value from config.toml."""
         config_content = (
-            '[azure]\ndefault_resource_group = "my-custom-rg"\nsubscription = "abc-123"\n'
+            '[azure]\n'
+            'default_resource_group = "my-custom-rg"\n'
+            'subscription = "abc-123"\n'
         )
         mock_path = MagicMock(spec=Path)
         mock_path.exists.return_value = True
@@ -133,7 +133,7 @@ class TestReadAzlinResourceGroupDefault:
 
     def test_raises_when_no_matching_key(self) -> None:
         """Should raise ValueError when config exists but has no resource_group key."""
-        config_content = '[azure]\nsubscription = "abc"\n'
+        config_content = "[azure]\nsubscription = \"abc\"\n"
         mock_path = MagicMock(spec=Path)
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = config_content
@@ -170,12 +170,8 @@ class TestGetVmListJson:
                 return az_result
             return azlin_result  # azlin list fails
 
-        with (
-            patch("amplihack.fleet._vm_discovery.subprocess.run", side_effect=side_effect),
-            patch(
-                "amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="test-rg"
-            ),
-        ):
+        with patch("amplihack.fleet._vm_discovery.subprocess.run", side_effect=side_effect), \
+             patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="test-rg"):
             vms = get_vm_list("/usr/bin/fake-azlin")
 
         assert len(vms) == 3
@@ -185,12 +181,10 @@ class TestGetVmListJson:
 
     def test_skips_vms_with_empty_name(self) -> None:
         """Should skip VM entries that have an empty name."""
-        data = json.dumps(
-            [
-                {"name": "", "location": "westus2", "powerState": "VM running"},
-                {"name": "good-vm", "location": "eastus", "powerState": "VM running"},
-            ]
-        )
+        data = json.dumps([
+            {"name": "", "location": "westus2", "powerState": "VM running"},
+            {"name": "good-vm", "location": "eastus", "powerState": "VM running"},
+        ])
         az_result = MagicMock()
         az_result.returncode = 0
         az_result.stdout = data
@@ -200,10 +194,8 @@ class TestGetVmListJson:
         def side_effect(cmd, **kwargs):
             return az_result if cmd[0] == "az" else azlin_result
 
-        with (
-            patch("amplihack.fleet._vm_discovery.subprocess.run", side_effect=side_effect),
-            patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="rg"),
-        ):
+        with patch("amplihack.fleet._vm_discovery.subprocess.run", side_effect=side_effect), \
+             patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="rg"):
             vms = get_vm_list("/usr/bin/fake-azlin")
 
         assert len(vms) == 1
@@ -248,10 +240,8 @@ class TestGetVmListFallback:
                 return az_result
             return azlin_result
 
-        with (
-            patch("amplihack.fleet._vm_discovery.subprocess.run", side_effect=side_effect),
-            patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="rg"),
-        ):
+        with patch("amplihack.fleet._vm_discovery.subprocess.run", side_effect=side_effect), \
+             patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="rg"):
             vms = get_vm_list("/usr/bin/fake-azlin")
 
         assert len(vms) == 3
@@ -259,14 +249,11 @@ class TestGetVmListFallback:
 
     def test_returns_empty_when_both_strategies_fail(self) -> None:
         """When both azlin list and az CLI fail, should return empty list."""
-
         def side_effect(cmd, **kwargs):
             raise FileNotFoundError(f"{cmd[0]} not found")
 
-        with (
-            patch("amplihack.fleet._vm_discovery.subprocess.run", side_effect=side_effect),
-            patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="rg"),
-        ):
+        with patch("amplihack.fleet._vm_discovery.subprocess.run", side_effect=side_effect), \
+             patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="rg"):
             vms = get_vm_list("/usr/bin/fake-azlin")
 
         assert vms == []
@@ -505,10 +492,8 @@ class TestRefreshExclude:
             ("another-vm", "westus", False),
         ]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(tui, "_poll_vm", return_value=[]),
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]):
             result = tui.refresh()
 
         names = [v.name for v in result]
@@ -523,10 +508,8 @@ class TestRefreshExclude:
             ("stopped-vm", "eastus", False),
         ]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(tui, "_poll_vm", return_value=[]) as mock_poll,
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]) as mock_poll:
             result = tui.refresh()
 
         # _poll_vm should only be called for running VMs
@@ -540,10 +523,8 @@ class TestRefreshExclude:
             ("middle-vm", "westus", False),
         ]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(tui, "_poll_vm", return_value=[]),
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]):
             result = tui.refresh()
 
         names = [v.name for v in result]
@@ -565,10 +546,8 @@ class TestRefreshAll:
             ("excluded-vm", "eastus", True),  # In tui.exclude_vms
         ]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(tui, "_poll_vm", return_value=[]),
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]):
             result = tui.refresh_all()
 
         names = [v.name for v in result]
@@ -582,10 +561,8 @@ class TestRefreshAll:
             ("normal-vm", "westus", True),
         ]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(tui, "_poll_vm", return_value=[]) as mock_poll,
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]) as mock_poll:
             tui.refresh_all()
 
         mock_poll.assert_called_once_with("normal-vm")
@@ -597,10 +574,8 @@ class TestRefreshAll:
             ("a-vm", "eastus", True),
         ]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(tui, "_poll_vm", return_value=[]),
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]):
             result = tui.refresh_all()
 
         names = [v.name for v in result]
@@ -613,10 +588,8 @@ class TestRefreshAll:
             ("normal-vm", "westus", True),
         ]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(tui, "_poll_vm", return_value=[]),
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]):
             refresh_result = tui.refresh()
             refresh_all_result = tui.refresh_all()
 
@@ -650,14 +623,12 @@ class TestScoutShowsAllVMs:
     def test_refresh_all_exclude_false_includes_excluded_vms(self, tui: FleetTUI) -> None:
         """Scout behavior: refresh_all(exclude=False) returns ALL VMs including excluded ones."""
         vm_list = [
-            ("excluded-vm", "eastus", True),  # In tui.exclude_vms
+            ("excluded-vm", "eastus", True),   # In tui.exclude_vms
             ("normal-vm", "westus", True),
         ]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(tui, "_poll_vm", return_value=[]),
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]):
             result = tui.refresh_all(exclude=False)
 
         names = {v.name for v in result}
@@ -671,10 +642,8 @@ class TestScoutShowsAllVMs:
             ("normal-vm", "westus", True),
         ]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(tui, "_poll_vm", return_value=[]) as mock_poll,
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]) as mock_poll:
             tui.refresh_all(exclude=False)
 
         polled = {call.args[0] for call in mock_poll.call_args_list}
@@ -688,10 +657,8 @@ class TestScoutShowsAllVMs:
             ("normal-vm", "westus", True),
         ]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(tui, "_poll_vm", return_value=[]),
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]):
             result = tui.refresh_all(exclude=True)
 
         names = {v.name for v in result}
@@ -705,10 +672,8 @@ class TestScoutShowsAllVMs:
             ("normal-vm", "westus", True),
         ]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(tui, "_poll_vm", return_value=[]),
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[]):
             scout_result = tui.refresh_all(exclude=False)
             advance_result = tui.refresh_all(exclude=True)
 
@@ -777,7 +742,13 @@ class TestParseSessionOutput:
 
     def test_parses_empty_capture(self) -> None:
         """Empty capture text results in 'empty' status."""
-        output = "===SESSION:work===\n---CAPTURE---\n\n---GIT---\n---END---\n"
+        output = (
+            "===SESSION:work===\n"
+            "---CAPTURE---\n"
+            "\n"
+            "---GIT---\n"
+            "---END---\n"
+        )
         sessions = parse_session_output("vm-1", output)
         assert len(sessions) == 1
         assert sessions[0].status == "empty"
@@ -802,14 +773,26 @@ class TestParseSessionOutput:
     def test_truncates_long_last_line(self) -> None:
         """last_line is truncated to 60 characters."""
         long_line = "A" * 100
-        output = f"===SESSION:work===\n---CAPTURE---\n{long_line}\n---GIT---\n---END---\n"
+        output = (
+            f"===SESSION:work===\n"
+            f"---CAPTURE---\n"
+            f"{long_line}\n"
+            f"---GIT---\n"
+            f"---END---\n"
+        )
         sessions = parse_session_output("vm-1", output)
         assert len(sessions[0].last_line) == 60
 
     def test_handles_missing_end_marker(self) -> None:
         """Git section without ---END--- should still parse."""
         long_output = "output " * 10
-        output = f"===SESSION:work===\n---CAPTURE---\n{long_output}\n---GIT---\nBRANCH:main\n"
+        output = (
+            f"===SESSION:work===\n"
+            f"---CAPTURE---\n"
+            f"{long_output}\n"
+            f"---GIT---\n"
+            f"BRANCH:main\n"
+        )
         sessions = parse_session_output("vm-1", output)
         assert len(sessions) == 1
         assert sessions[0].branch == "main"
@@ -945,13 +928,8 @@ class TestGetVmListNoResourceGroup:
         azlin_result.returncode = 0
         azlin_result.stdout = AZLIN_LIST_TABLE
 
-        with (
-            patch(
-                "amplihack.fleet._vm_discovery.read_azlin_resource_group",
-                side_effect=ValueError("no rg"),
-            ),
-            patch("amplihack.fleet._vm_discovery.subprocess.run", return_value=azlin_result),
-        ):
+        with patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", side_effect=ValueError("no rg")), \
+             patch("amplihack.fleet._vm_discovery.subprocess.run", return_value=azlin_result):
             vms = get_vm_list("/usr/bin/fake-azlin")
 
         assert len(vms) == 2
@@ -962,10 +940,8 @@ class TestGetVmListNoResourceGroup:
         azlin_result.returncode = 0
         azlin_result.stdout = AZLIN_LIST_TABLE
 
-        with (
-            patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="rg"),
-            patch("amplihack.fleet._vm_discovery.subprocess.run", return_value=azlin_result),
-        ):
+        with patch("amplihack.fleet._vm_discovery.read_azlin_resource_group", return_value="rg"), \
+             patch("amplihack.fleet._vm_discovery.subprocess.run", return_value=azlin_result):
             vms = get_vm_list("/usr/bin/fake-azlin")
 
         assert len(vms) == 2
@@ -1096,19 +1072,37 @@ class TestShellMetacharFiltering:
 
     def test_dollar_brace_session_name_filtered(self) -> None:
         """Session name with ${SESS} should be filtered out."""
-        output = "===SESSION:${SESS}===\n---CAPTURE---\nnoise\n---GIT---\n---END---\n"
+        output = (
+            "===SESSION:${SESS}===\n"
+            "---CAPTURE---\n"
+            "noise\n"
+            "---GIT---\n"
+            "---END---\n"
+        )
         sessions = parse_session_output("vm-1", output)
         assert len(sessions) == 0
 
     def test_backslash_session_name_filtered(self) -> None:
         r"""Session name with backslash should be filtered out."""
-        output = "===SESSION:bad\\name===\n---CAPTURE---\nnoise\n---GIT---\n---END---\n"
+        output = (
+            "===SESSION:bad\\name===\n"
+            "---CAPTURE---\n"
+            "noise\n"
+            "---GIT---\n"
+            "---END---\n"
+        )
         sessions = parse_session_output("vm-1", output)
         assert len(sessions) == 0
 
     def test_backtick_session_name_filtered(self) -> None:
         """Session name with backtick should be filtered out."""
-        output = "===SESSION:`cmd`===\n---CAPTURE---\nnoise\n---GIT---\n---END---\n"
+        output = (
+            "===SESSION:`cmd`===\n"
+            "---CAPTURE---\n"
+            "noise\n"
+            "---GIT---\n"
+            "---END---\n"
+        )
         sessions = parse_session_output("vm-1", output)
         assert len(sessions) == 0
 
@@ -1259,10 +1253,8 @@ class TestRefreshAllDedup:
                 SessionView(vm_name=vm_name, session_name="work-2", status="idle"),
             ]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(tui, "_poll_vm", side_effect=poll_side_effect),
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", side_effect=poll_side_effect):
             result = tui.refresh_all()
 
         # One VM keeps sessions, the other gets cleared
@@ -1282,10 +1274,8 @@ class TestRefreshAllDedup:
                 return [SessionView(vm_name=vm_name, session_name="work-1")]
             return [SessionView(vm_name=vm_name, session_name="work-2")]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(tui, "_poll_vm", side_effect=poll_side_effect),
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", side_effect=poll_side_effect):
             result = tui.refresh_all()
 
         assert all(len(v.sessions) == 1 for v in result)
@@ -1297,16 +1287,10 @@ class TestRefreshAllDedup:
             ("vm-b", "eastus", False),
         ]
 
-        with (
-            patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list),
-            patch.object(
-                tui,
-                "_poll_vm",
-                return_value=[
-                    SessionView(vm_name="vm-a", session_name="work-1"),
-                ],
-            ),
-        ):
+        with patch("amplihack.fleet.fleet_tui.get_vm_list", return_value=vm_list), \
+             patch.object(tui, "_poll_vm", return_value=[
+                 SessionView(vm_name="vm-a", session_name="work-1"),
+             ]):
             result = tui.refresh_all()
 
         vm_a = next(v for v in result if v.name == "vm-a")

@@ -6,6 +6,7 @@ Tests the integration between session start hooks and context preservation syste
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -21,14 +22,7 @@ def _get_context(result: dict) -> str:
 
 def _run_session_start_hook(input_data: dict) -> dict:
     """Run session_start.py as a subprocess and return parsed JSON output."""
-    hook_path = (
-        Path(__file__).parent.parent
-        / ".claude"
-        / "tools"
-        / "amplihack"
-        / "hooks"
-        / "session_start.py"
-    )
+    hook_path = Path(__file__).parent.parent / ".claude" / "tools" / "amplihack" / "hooks" / "session_start.py"
     if not hook_path.exists():
         pytest.skip(f"Hook not found: {hook_path}")
 
@@ -61,7 +55,9 @@ class TestSessionStartIntegration:
 
     def test_session_start_extracts_requirements(self):
         """Session start includes requirement-related context."""
-        input_data = {"prompt": "Implement authentication system with ALL authentication methods"}
+        input_data = {
+            "prompt": "Implement authentication system with ALL authentication methods"
+        }
         result = _run_session_start_hook(input_data)
         context = _get_context(result)
 

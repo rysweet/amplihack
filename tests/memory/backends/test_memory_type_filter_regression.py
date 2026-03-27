@@ -8,14 +8,15 @@ the requested type.
 These tests verify the Python ``KuzuBackend.retrieve_memories`` equivalent
 does NOT regress to that behaviour.
 """
-
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -24,7 +25,7 @@ import pytest
 
 def _make_memory(memory_type, session_id="sess-filter", content="test"):
     """Return a MemoryEntry with the given memory_type."""
-    from amplihack.memory.models import MemoryEntry
+    from amplihack.memory.models import MemoryEntry, MemoryType
 
     return MemoryEntry(
         id=str(uuid.uuid4()),
@@ -62,6 +63,8 @@ class TestMemoryTypeFilterRegressionKuzu:
         return db
 
     def _store_sync(self, backend, entry):
+        from amplihack.memory.models import MemoryEntry
+
         backend._store_memory_sync(entry)
 
     def test_episodic_filter_returns_only_episodic(self, backend, tmp_path):

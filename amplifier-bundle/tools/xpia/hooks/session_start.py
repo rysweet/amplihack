@@ -30,10 +30,7 @@ try:
     from amplihack.security.xpia_health import check_xpia_health
 except ImportError:
     # Graceful degradation if XPIA modules not available
-    print(
-        "WARNING: amplihack.security.xpia_health not available - XPIA health check disabled",
-        file=sys.stderr,
-    )
+    print("WARNING: amplihack.security.xpia_health not available - XPIA health check disabled", file=sys.stderr)
 
     def check_xpia_health():
         return {"status": "not_available", "message": "XPIA modules not found"}

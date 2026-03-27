@@ -25,7 +25,6 @@ from amplihack.agents.goal_seeking.hive_mind.learning_agent_bridge import (
     HiveAwareMemoryAdapter,
     HiveBridgeConfig,
 )
-
 from amplihack.agents.goal_seeking.hive_mind.unified import (
     HiveMindConfig,
     UnifiedHiveMind,

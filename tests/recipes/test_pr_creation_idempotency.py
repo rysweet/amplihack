@@ -76,7 +76,7 @@ class TestYamlStructure:
         """Verify all four paths exist: existing-branch-PR, issue-PR, no-commits, create."""
         cmd = workflow_steps["step-16-create-draft-pr"]["command"]
         assert "gh pr list --head" in cmd, "Path 1: check branch PR"
-        assert "gh pr list --search" in cmd, "Path 2: check issue PR"
+        assert "gh pr list --json url,headRefName" in cmd, "Path 2: check issue PR"
         assert "rev-list --count" in cmd, "Path 3: check commits"
         assert "gh pr create --draft" in cmd, "Path 4: create new PR"
 

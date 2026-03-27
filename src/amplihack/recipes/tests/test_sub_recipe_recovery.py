@@ -28,6 +28,7 @@ from amplihack.recipes.models import (
 )
 from amplihack.recipes.runner import RecipeRunner
 
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -90,7 +91,6 @@ def _patch_sub_recipe(recipe_name: str, sub_result: RecipeResult):
     - RecipeParser  → returns a stub Recipe object
     - RecipeRunner.execute → returns sub_result
     """
-
     @contextlib.contextmanager
     def _cm():
         with patch("amplihack.recipes.runner.find_recipe", return_value="/fake/path.yaml"):
@@ -213,14 +213,11 @@ class TestUnrecoverableFailure:
 
         assert "failing-sub" in str(exc_info.value)
 
-    @pytest.mark.parametrize(
-        "response",
-        [
-            "UNRECOVERABLE: missing deps",
-            "unrecoverable: disk full",
-            "This is UNRECOVERABLE due to conflict",
-        ],
-    )
+    @pytest.mark.parametrize("response", [
+        "UNRECOVERABLE: missing deps",
+        "unrecoverable: disk full",
+        "This is UNRECOVERABLE due to conflict",
+    ])
     def test_unrecoverable_token_is_case_insensitive(self, response: str) -> None:
         """UNRECOVERABLE token is matched regardless of case."""
         adapter = MagicMock()

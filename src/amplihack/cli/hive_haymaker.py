@@ -48,20 +48,9 @@ if click is not None:
 
     @hive_group.command("feed")
     @click.option("--deployment-id", required=True, help="Hive deployment ID.")
-    @click.option(
-        "--turns",
-        default=100,
-        show_default=True,
-        type=int,
-        help="Number of LEARN_CONTENT events to send.",
-    )
+    @click.option("--turns", default=100, show_default=True, type=int, help="Number of LEARN_CONTENT events to send.")
     @click.option("--topic", default=None, help="Override Service Bus topic name.")
-    @click.option(
-        "--sb-conn-str",
-        envvar="AMPLIHACK_MEMORY_CONNECTION_STRING",
-        default="",
-        help="Service Bus connection string (env: AMPLIHACK_MEMORY_CONNECTION_STRING).",
-    )
+    @click.option("--sb-conn-str", envvar="AMPLIHACK_MEMORY_CONNECTION_STRING", default="", help="Service Bus connection string (env: AMPLIHACK_MEMORY_CONNECTION_STRING).")
     def hive_feed(deployment_id: str, turns: int, topic: str | None, sb_conn_str: str) -> None:
         """Feed learning content into the hive.
 
@@ -77,9 +66,7 @@ if click is not None:
 
         resolved_topic = topic or os.environ.get("AMPLIHACK_TOPIC_NAME", "hive-graph")
 
-        click.echo(
-            f"Feeding {turns} turns into deployment {deployment_id} (topic={resolved_topic})"
-        )
+        click.echo(f"Feeding {turns} turns into deployment {deployment_id} (topic={resolved_topic})")
         try:
             asyncio.run(
                 run_feed(
@@ -99,33 +86,12 @@ if click is not None:
 
     @hive_group.command("eval")
     @click.option("--deployment-id", required=True, help="Hive deployment ID.")
-    @click.option(
-        "--repeats", default=3, show_default=True, type=int, help="Number of question rounds."
-    )
-    @click.option(
-        "--wait-for-ready",
-        default=0,
-        show_default=True,
-        type=int,
-        help="Number of AGENT_READY events to wait for before starting eval (0 = skip wait).",
-    )
-    @click.option(
-        "--timeout",
-        default=600,
-        show_default=True,
-        type=int,
-        help="Max seconds to wait for agents to become ready.",
-    )
+    @click.option("--repeats", default=3, show_default=True, type=int, help="Number of question rounds.")
+    @click.option("--wait-for-ready", default=0, show_default=True, type=int, help="Number of AGENT_READY events to wait for before starting eval (0 = skip wait).")
+    @click.option("--timeout", default=600, show_default=True, type=int, help="Max seconds to wait for agents to become ready.")
     @click.option("--topic", default=None, help="Override Service Bus topic name.")
-    @click.option(
-        "--sb-conn-str",
-        envvar="AMPLIHACK_MEMORY_CONNECTION_STRING",
-        default="",
-        help="Service Bus connection string (env: AMPLIHACK_MEMORY_CONNECTION_STRING).",
-    )
-    @click.option(
-        "--output", default="text", type=click.Choice(["text", "json"]), help="Output format."
-    )
+    @click.option("--sb-conn-str", envvar="AMPLIHACK_MEMORY_CONNECTION_STRING", default="", help="Service Bus connection string (env: AMPLIHACK_MEMORY_CONNECTION_STRING).")
+    @click.option("--output", default="text", type=click.Choice(["text", "json"]), help="Output format.")
     def hive_eval(
         deployment_id: str,
         repeats: int,
@@ -158,7 +124,8 @@ if click is not None:
 
         if wait_for_ready > 0:
             click.echo(
-                f"Waiting for {wait_for_ready} agents to signal AGENT_READY (timeout={timeout}s)..."
+                f"Waiting for {wait_for_ready} agents to signal AGENT_READY "
+                f"(timeout={timeout}s)..."
             )
         click.echo(f"Running {repeats} eval rounds against deployment {deployment_id}")
 

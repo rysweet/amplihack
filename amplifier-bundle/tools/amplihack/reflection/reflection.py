@@ -65,10 +65,7 @@ try:
 except ImportError:
     try:
         # Try absolute import as fallback
-        print(
-            "WARNING: relative semantic_duplicate_detector import not available - trying absolute import",
-            file=sys.stderr,
-        )
+        print("WARNING: relative semantic_duplicate_detector import not available - trying absolute import", file=sys.stderr)
         import semantic_duplicate_detector
 
         DuplicateDetectionResult = semantic_duplicate_detector.DuplicateDetectionResult
@@ -77,10 +74,7 @@ except ImportError:
         DUPLICATE_DETECTION_AVAILABLE = True
     except ImportError:
         # Fallback if semantic duplicate detection is not available
-        print(
-            "WARNING: semantic_duplicate_detector not available - duplicate detection disabled",
-            file=sys.stderr,
-        )
+        print("WARNING: semantic_duplicate_detector not available - duplicate detection disabled", file=sys.stderr)
         DUPLICATE_DETECTION_AVAILABLE = False
         check_duplicate_issue = fallback_check_duplicate_issue
         store_new_issue = fallback_store_new_issue
@@ -97,10 +91,7 @@ try:
     )
 except ImportError:
     # Fallback security functions if security module not available
-    print(
-        "WARNING: security module not available - using fallback security functions",
-        file=sys.stderr,
-    )
+    print("WARNING: security module not available - using fallback security functions", file=sys.stderr)
 
     def sanitize_messages(messages: list[dict]) -> list[dict]:
         """Fallback sanitizer."""
@@ -147,19 +138,13 @@ def analyze_session_patterns(messages: list[dict]) -> list[dict]:
     except ImportError:
         # Try alternative import paths
         try:
-            print(
-                "WARNING: relative contextual_error_analyzer import not available - trying absolute import",
-                file=sys.stderr,
-            )
+            print("WARNING: relative contextual_error_analyzer import not available - trying absolute import", file=sys.stderr)
             from contextual_error_analyzer import ContextualErrorAnalyzer
 
             CONTEXTUAL_ANALYSIS_AVAILABLE = True
         except ImportError:
             # Contextual analysis not available, fall back to basic detection
-            print(
-                "WARNING: contextual_error_analyzer not available - falling back to basic detection",
-                file=sys.stderr,
-            )
+            print("WARNING: contextual_error_analyzer not available - falling back to basic detection", file=sys.stderr)
             CONTEXTUAL_ANALYSIS_AVAILABLE = False
             ContextualErrorAnalyzer = None
 

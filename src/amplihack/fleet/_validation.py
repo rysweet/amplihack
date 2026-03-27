@@ -34,11 +34,11 @@ SESSION_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$")
 # These are common safe operations that may accidentally trigger blocklist
 # patterns (e.g., "y" matching nothing dangerous, Claude Code commands).
 SAFE_INPUT_PATTERNS = [
-    re.compile(r"^[yYnN]$"),  # Single y/n confirmation
-    re.compile(r"^(yes|no)$", re.IGNORECASE),  # Full yes/no
-    re.compile(r"^/[a-z]"),  # Slash commands (/dev, /help, etc.)
-    re.compile(r"^(exit|quit|q)$", re.IGNORECASE),  # Exit commands
-    re.compile(r"^\d+$"),  # Pure numeric input (menu selection)
+    re.compile(r"^[yYnN]$"),                         # Single y/n confirmation
+    re.compile(r"^(yes|no)$", re.IGNORECASE),         # Full yes/no
+    re.compile(r"^/[a-z]"),                            # Slash commands (/dev, /help, etc.)
+    re.compile(r"^(exit|quit|q)$", re.IGNORECASE),    # Exit commands
+    re.compile(r"^\d+$"),                              # Pure numeric input (menu selection)
     re.compile(r"^(git status|git log|git diff|git branch)"),  # Safe git read-only commands
     re.compile(r"^(ls|pwd|wc|which)\b"),  # Safe read-only shell (no cat/echo — can redirect)
     re.compile(r"^(pytest|make|npm test|npm run|cargo test)"),  # Test/build commands

@@ -21,14 +21,14 @@
 
 ### 1.1 File Inventory
 
-| File                                             | Role                                                                |
-| ------------------------------------------------ | ------------------------------------------------------------------- |
-| `agents/goal_seeking/agentic_loop.py`            | `AgenticLoop` — PERCEIVE→REASON→ACT→LEARN loop (mostly dead code)   |
-| `agents/goal_seeking/learning_agent.py`          | `LearningAgent` — the agent actually used by the eval harness       |
-| `agents/goal_seeking/sdk_adapters/base.py`       | `GoalSeekingAgent` — abstract base for all SDK agents               |
+| File | Role |
+|------|------|
+| `agents/goal_seeking/agentic_loop.py` | `AgenticLoop` — PERCEIVE→REASON→ACT→LEARN loop (mostly dead code) |
+| `agents/goal_seeking/learning_agent.py` | `LearningAgent` — the agent actually used by the eval harness |
+| `agents/goal_seeking/sdk_adapters/base.py` | `GoalSeekingAgent` — abstract base for all SDK agents |
 | `agents/goal_seeking/sdk_adapters/claude_sdk.py` | `ClaudeGoalSeekingAgent` — concrete Claude Agent SDK implementation |
-| `memory/facade.py`                               | `Memory` — new high-level `remember()`/`recall()` facade            |
-| `memory/config.py`                               | `MemoryConfig` — config resolution for the Memory facade            |
+| `memory/facade.py` | `Memory` — new high-level `remember()`/`recall()` facade |
+| `memory/config.py` | `MemoryConfig` — config resolution for the Memory facade |
 
 ### 1.2 Full Call Graph
 
@@ -145,12 +145,12 @@ graph TD
 
 `LearningAgent.__init__` creates `self.loop = AgenticLoop(...)` at line 175. However, **no method of `LearningAgent` ever calls `self.loop`**. The divergence is complete:
 
-| Operation       | What `LearningAgent` actually does                           | What `AgenticLoop` would do                                             |
-| --------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| Learn content   | `_extract_facts_with_llm()` + `memory.store_fact()` directly | `perceive()` → `reason()` → `act(read_content)` → `learn()`             |
-| Answer question | `_detect_intent()` → retrieval → `_synthesize_with_llm()`    | `perceive()` → `reason()` → `act(search_memory+synthesize)` → `learn()` |
-| Memory recall   | `memory.search()` / `memory.get_all_facts()` directly        | `memory_retriever.search()` via `perceive()`                            |
-| Memory store    | `memory.store_fact()` directly                               | `memory_retriever.store_fact()` via `learn()`                           |
+| Operation | What `LearningAgent` actually does | What `AgenticLoop` would do |
+|-----------|-----------------------------------|----------------------------|
+| Learn content | `_extract_facts_with_llm()` + `memory.store_fact()` directly | `perceive()` → `reason()` → `act(read_content)` → `learn()` |
+| Answer question | `_detect_intent()` → retrieval → `_synthesize_with_llm()` | `perceive()` → `reason()` → `act(search_memory+synthesize)` → `learn()` |
+| Memory recall | `memory.search()` / `memory.get_all_facts()` directly | `memory_retriever.search()` via `perceive()` |
+| Memory store | `memory.store_fact()` directly | `memory_retriever.store_fact()` via `learn()` |
 
 **Why `self.loop` is never invoked:**
 `LearningAgent` was optimized for eval performance: a direct intent→retrieve→synthesize pipeline with no action-executor dispatch overhead. The `AgenticLoop` was designed for a general multi-step goal-seeking pattern but was never wired into the eval-facing entry points.
@@ -559,14 +559,14 @@ agent.answer_question(question, "L1")   # → one OODA iteration
 
 ### 5.3 What Changes Under the Hood
 
-| Aspect                   | Current (bypass)             | Unified (OODA)                                                     |
-| ------------------------ | ---------------------------- | ------------------------------------------------------------------ |
-| `learn_from_content()`   | Direct LLM + store           | OBSERVE(remember) → ORIENT(recall) → DECIDE → ACT(store)           |
-| `answer_question()`      | Direct LLM + retrieve        | OBSERVE(recall) → ORIENT(recall deeper) → DECIDE → ACT(synthesize) |
-| Duplicate fact detection | None — duplicates accumulate | ORIENT checks prior knowledge before storing                       |
-| Strategy improvement     | None — no outcome feedback   | ACT stores outcome → recalled in future ORIENTs                    |
-| Prompt changes work      | No — loop never called       | Yes — all reasoning goes through DECIDE                            |
-| Eval score               | Baseline (97.8% reported)    | Expected stable or improved (no info loss)                         |
+| Aspect | Current (bypass) | Unified (OODA) |
+|--------|-----------------|---------------|
+| `learn_from_content()` | Direct LLM + store | OBSERVE(remember) → ORIENT(recall) → DECIDE → ACT(store) |
+| `answer_question()` | Direct LLM + retrieve | OBSERVE(recall) → ORIENT(recall deeper) → DECIDE → ACT(synthesize) |
+| Duplicate fact detection | None — duplicates accumulate | ORIENT checks prior knowledge before storing |
+| Strategy improvement | None — no outcome feedback | ACT stores outcome → recalled in future ORIENTs |
+| Prompt changes work | No — loop never called | Yes — all reasoning goes through DECIDE |
+| Eval score | Baseline (97.8% reported) | Expected stable or improved (no info loss) |
 
 ### 5.4 Eval Trace Compatibility
 
@@ -666,14 +666,14 @@ ReasoningTrace(
 
 ### 6.7 Summary Table
 
-| Phase                              | Files Changed     | Complexity | Risk   | Eval Impact               |
-| ---------------------------------- | ----------------- | ---------- | ------ | ------------------------- |
-| 1: Wire Memory into AgenticLoop    | agentic_loop.py   | Low        | None   | None (not called by eval) |
-| 2: ORIENT recalls in AgenticLoop   | agentic_loop.py   | Medium     | Low    | None                      |
-| 3: learn_from_content via OODA     | learning_agent.py | Medium     | Medium | Possible improvement      |
-| 4: answer_question via OODA        | learning_agent.py | High       | High   | Must validate             |
-| 5: GoalSeekingAgent.run() via OODA | base.py           | Medium     | Low    | None                      |
-| 6: Remove dead code                | learning_agent.py | Low        | None   | None                      |
+| Phase | Files Changed | Complexity | Risk | Eval Impact |
+|-------|-------------|------------|------|-------------|
+| 1: Wire Memory into AgenticLoop | agentic_loop.py | Low | None | None (not called by eval) |
+| 2: ORIENT recalls in AgenticLoop | agentic_loop.py | Medium | Low | None |
+| 3: learn_from_content via OODA | learning_agent.py | Medium | Medium | Possible improvement |
+| 4: answer_question via OODA | learning_agent.py | High | High | Must validate |
+| 5: GoalSeekingAgent.run() via OODA | base.py | Medium | Low | None |
+| 6: Remove dead code | learning_agent.py | Low | None | None |
 
 ### 6.8 Recommended Order
 
@@ -699,7 +699,6 @@ mem.close()
 ```
 
 This maps directly onto the OODA phases:
-
 - `remember()` → OBSERVE phase (store observation) + ACT phase (store outcome)
 - `recall()` → OBSERVE phase (check prior knowledge) + ORIENT phase (retrieve situation + domain facts)
 
@@ -713,11 +712,11 @@ The facade abstracts over `CognitiveAdapter` (6-type memory), `HierarchicalMemor
 
 The `Memory` facade selects transport at construction time via config-driven topology. The transport determines how agents share knowledge:
 
-| Transport           | OODA Integration                                      | Scale          | Latency      |
-| ------------------- | ----------------------------------------------------- | -------------- | ------------ |
-| `local`             | In-process queue; all agents share one Python process | 1 machine      | Microseconds |
-| `redis`             | Redis pub/sub; agents on same network                 | 10s of agents  | <1ms         |
-| `azure_service_bus` | Service Bus topic/subscriptions; cross-machine        | 100s of agents | 10–100ms     |
+| Transport | OODA Integration | Scale | Latency |
+|-----------|-----------------|-------|---------|
+| `local` | In-process queue; all agents share one Python process | 1 machine | Microseconds |
+| `redis` | Redis pub/sub; agents on same network | 10s of agents | <1ms |
+| `azure_service_bus` | Service Bus topic/subscriptions; cross-machine | 100s of agents | 10–100ms |
 
 **Production topology (Azure):** 20 Container Apps (`amplihive-app-0`…`amplihive-app-19`), 100 agents (`agent-0`…`agent-99`, 5 per container). Service Bus namespace `hive-sb-dj2qo2w7vu5zi`, topic `hive-graph`, 100 subscriptions (one per agent). Each agent's `NetworkGraphStore` wraps a local `InMemoryGraphStore` and publishes `create_node` / `search_query` events to the topic. Cross-container OODA memory sharing flows through Service Bus; intra-container agents share in-process.
 
@@ -725,5 +724,5 @@ The `Memory` facade selects transport at construction time via config-driven top
 
 ---
 
-_Investigation only — no code changes were made to agent files._
-_Updated: 2026-03-06_
+*Investigation only — no code changes were made to agent files.*
+*Updated: 2026-03-06*

@@ -118,62 +118,20 @@ _OP_CREATE_NODE = "network_graph.create_node"
 
 _FACT_CORPUS_FALLBACK: list[dict[str, str]] = [
     # Security incidents and CVEs (static fallback when amplihack_eval unavailable)
-    {
-        "concept": "log4shell",
-        "content": "The Log4Shell vulnerability (CVE-2021-44228) had a CVSS score of 10.0.",
-    },
-    {
-        "concept": "solarwinds",
-        "content": "The SolarWinds attack compromised 18,000 organizations in 2020.",
-    },
-    {
-        "concept": "supply_chain",
-        "content": "Supply chain attacks increased 742% between 2019 and 2022.",
-    },
-    {
-        "concept": "brute_force",
-        "content": "Brute force attack detected from 192.168.1.45: 847 failed SSH login attempts targeting admin accounts over 12 minutes.",
-    },
-    {
-        "concept": "c2_traffic",
-        "content": "C2 beacon traffic detected from 172.16.0.100 (svc_backup) to 185.220.101.45 on port 443 using HTTPS tunneling.",
-    },
-    {
-        "concept": "supply_chain_attack",
-        "content": "Supply chain attack detected: malicious npm package event-stream@5.0.0 with crypto-mining payload found in CI pipeline.",
-    },
-    {
-        "concept": "xz_backdoor",
-        "content": "CVE-2024-3094 (xz-utils/sshd backdoor) detected on build servers; attacker used DNS tunneling via *.tunnel.attacker.net.",
-    },
-    {
-        "concept": "insider_threat",
-        "content": "Insider threat indicator: bulk download of 15,234 sensitive documents by user jsmith detected; DLP policy triggered.",
-    },
-    {
-        "concept": "inc_2024_001",
-        "content": "INC-2024-001: Ransomware attack on production database servers; 3 servers encrypted; status: contained; CVE-2024-21626 involved.",
-    },
-    {
-        "concept": "inc_2024_002",
-        "content": "INC-2024-002: Data exfiltration via C2 server 185.220.101.45; 2.3GB exfiltrated; breach notification sent to 15,000 customers; status: remediated.",
-    },
-    {
-        "concept": "inc_2024_003",
-        "content": "INC-2024-003: APT29 (state-sponsored) supply chain attack; TTPs matched APT29; involved event-stream npm package, crypto mining on CI server, DNS tunneling, and xz-utils backdoor (CVE-2024-3094).",
-    },
-    {
-        "concept": "apt29",
-        "content": "APT29 (Cozy Bear) is a Russian state-sponsored threat actor known for supply chain attacks and stealthy long-term persistence.",
-    },
-    {
-        "concept": "ransomware_response",
-        "content": "Ransomware incident response playbook: isolate affected systems, preserve evidence, notify stakeholders, restore from clean backups, patch vulnerabilities.",
-    },
-    {
-        "concept": "ioc_correlation",
-        "content": "IOC correlation links 192.168.1.45 (SSH brute force), 185.220.101.45 (C2 server), event-stream@5.0.0 (malicious npm), and tunnel.attacker.net (DNS C2).",
-    },
+    {"concept": "log4shell", "content": "The Log4Shell vulnerability (CVE-2021-44228) had a CVSS score of 10.0."},
+    {"concept": "solarwinds", "content": "The SolarWinds attack compromised 18,000 organizations in 2020."},
+    {"concept": "supply_chain", "content": "Supply chain attacks increased 742% between 2019 and 2022."},
+    {"concept": "brute_force", "content": "Brute force attack detected from 192.168.1.45: 847 failed SSH login attempts targeting admin accounts over 12 minutes."},
+    {"concept": "c2_traffic", "content": "C2 beacon traffic detected from 172.16.0.100 (svc_backup) to 185.220.101.45 on port 443 using HTTPS tunneling."},
+    {"concept": "supply_chain_attack", "content": "Supply chain attack detected: malicious npm package event-stream@5.0.0 with crypto-mining payload found in CI pipeline."},
+    {"concept": "xz_backdoor", "content": "CVE-2024-3094 (xz-utils/sshd backdoor) detected on build servers; attacker used DNS tunneling via *.tunnel.attacker.net."},
+    {"concept": "insider_threat", "content": "Insider threat indicator: bulk download of 15,234 sensitive documents by user jsmith detected; DLP policy triggered."},
+    {"concept": "inc_2024_001", "content": "INC-2024-001: Ransomware attack on production database servers; 3 servers encrypted; status: contained; CVE-2024-21626 involved."},
+    {"concept": "inc_2024_002", "content": "INC-2024-002: Data exfiltration via C2 server 185.220.101.45; 2.3GB exfiltrated; breach notification sent to 15,000 customers; status: remediated."},
+    {"concept": "inc_2024_003", "content": "INC-2024-003: APT29 (state-sponsored) supply chain attack; TTPs matched APT29; involved event-stream npm package, crypto mining on CI server, DNS tunneling, and xz-utils backdoor (CVE-2024-3094)."},
+    {"concept": "apt29", "content": "APT29 (Cozy Bear) is a Russian state-sponsored threat actor known for supply chain attacks and stealthy long-term persistence."},
+    {"concept": "ransomware_response", "content": "Ransomware incident response playbook: isolate affected systems, preserve evidence, notify stakeholders, restore from clean backups, patch vulnerabilities."},
+    {"concept": "ioc_correlation", "content": "IOC correlation links 192.168.1.45 (SSH brute force), 185.220.101.45 (C2 server), event-stream@5.0.0 (malicious npm), and tunnel.attacker.net (DNS C2)."},
 ]
 
 
@@ -195,8 +153,7 @@ def _build_eval_seed_facts() -> list[dict[str, str]]:
 
     ground_truth = generate_dialogue(num_turns=300, seed=42)
     security_turns = [
-        t
-        for t in ground_truth.turns
+        t for t in ground_truth.turns
         if t.block_name in ("security_logs", "incidents") and t.content
     ]
     if not security_turns:
@@ -207,13 +164,11 @@ def _build_eval_seed_facts() -> list[dict[str, str]]:
     for idx, turn in enumerate(security_turns):
         # Derive a concept key from the block and turn index
         concept = f"{turn.block_name}_{idx:03d}"
-        facts.append(
-            {
-                "concept": concept,
-                "content": turn.content,
-                "confidence": "0.95",
-            }
-        )
+        facts.append({
+            "concept": concept,
+            "content": turn.content,
+            "confidence": "0.95",
+        })
 
     logger.info(
         "Built %d seed facts from amplihack_eval generate_dialogue (security_logs + incidents)",
@@ -233,12 +188,10 @@ def _get_fact_corpus() -> list[dict[str, str]]:
         _FACT_CORPUS = _build_eval_seed_facts()
     return _FACT_CORPUS
 
-
 # ---------------------------------------------------------------------------
 # Security analyst Q&A evaluation dataset
 # Generated dynamically from amplihack_eval.data.generate_dialogue/generate_questions
 # ---------------------------------------------------------------------------
-
 
 def _load_security_questions() -> list[Any]:
     """Load security analyst scenario questions from amplihack_eval.
@@ -263,7 +216,8 @@ def _load_security_questions() -> list[Any]:
     # Filter to security analyst scenario questions
     security_prefixes = ("seclog_", "incident_")
     return [
-        q for q in all_questions if any(q.question_id.startswith(pfx) for pfx in security_prefixes)
+        q for q in all_questions
+        if any(q.question_id.startswith(pfx) for pfx in security_prefixes)
     ]
 
 
@@ -435,15 +389,14 @@ class HiveQueryClient:
             results = self._query_once(text=text, table=table, limit=limit)
             if results or attempt >= max_retries:
                 if attempt > 0 and not results:
-                    logger.warning("Query returned 0 results after %d retries: %r", attempt, text)
+                    logger.warning(
+                        "Query returned 0 results after %d retries: %r", attempt, text
+                    )
                 return results
             attempt += 1
             logger.debug(
                 "Query returned 0 results (attempt %d/%d), retrying in %.1fs: %r",
-                attempt,
-                max_retries,
-                backoff,
-                text,
+                attempt, max_retries, backoff, text,
             )
             time.sleep(backoff)
             backoff *= 2
@@ -541,7 +494,9 @@ class HiveQueryClient:
         """Background thread: drain subscription and dispatch responses."""
         while self._running:
             try:
-                messages = self._receiver.receive_messages(max_message_count=50, max_wait_time=1)
+                messages = self._receiver.receive_messages(
+                    max_message_count=50, max_wait_time=1
+                )
                 for msg in messages:
                     try:
                         self._handle_message(msg)
@@ -680,14 +635,18 @@ def run_demo_eval(output_path: str | None = None) -> dict[str, Any]:
     for q in security_questions:
         facts = hive.query_facts(q.text, limit=10)
         result_dicts = [
-            {"content": f.content, "concept": f.concept, "confidence": f.confidence} for f in facts
+            {"content": f.content, "concept": f.concept, "confidence": f.confidence}
+            for f in facts
         ]
         actual = _format_hive_results(result_dicts)
         grade = _grade_hive_answer(q.text, q.expected_answer, actual)
         score = grade["score"]
         by_category.setdefault(q.category, []).append(score)
 
-        print(f"  {q.category[:18]:18s} {score:.2f}  {len(facts):3d} results | {q.text[:42]}")
+        print(
+            f"  {q.category[:18]:18s} {score:.2f}  {len(facts):3d} results"
+            f" | {q.text[:42]}"
+        )
 
         results.append(
             {
@@ -708,7 +667,8 @@ def run_demo_eval(output_path: str | None = None) -> dict[str, Any]:
     avg_score = sum(r["score"] for r in results) / total if total else 0.0
 
     category_scores = {
-        c: {"avg_score": round(sum(v) / len(v), 3), "count": len(v)} for c, v in by_category.items()
+        c: {"avg_score": round(sum(v) / len(v), 3), "count": len(v)}
+        for c, v in by_category.items()
     }
 
     print("-" * 70)
@@ -783,130 +743,22 @@ def _keyword_fallback_grade(expected: str, actual: str) -> dict[str, Any]:
     import re as _re
 
     _STOP_WORDS = {
-        "the",
-        "a",
-        "an",
-        "is",
-        "are",
-        "was",
-        "were",
-        "be",
-        "been",
-        "being",
-        "have",
-        "has",
-        "had",
-        "do",
-        "does",
-        "did",
-        "will",
-        "would",
-        "could",
-        "should",
-        "may",
-        "might",
-        "must",
-        "shall",
-        "can",
-        "what",
-        "which",
-        "who",
-        "where",
-        "when",
-        "why",
-        "how",
-        "i",
-        "you",
-        "he",
-        "she",
-        "it",
-        "we",
-        "they",
-        "me",
-        "him",
-        "her",
-        "us",
-        "them",
-        "this",
-        "that",
-        "these",
-        "those",
-        "and",
-        "but",
-        "or",
-        "for",
-        "yet",
-        "so",
-        "if",
-        "then",
-        "at",
-        "by",
-        "from",
-        "in",
-        "of",
-        "on",
-        "to",
-        "up",
-        "with",
-        "about",
-        "after",
-        "as",
-        "before",
-        "between",
-        "during",
-        "into",
-        "like",
-        "over",
-        "through",
-        "under",
-        "until",
-        "via",
-        "not",
-        "no",
-        "yes",
-        "any",
-        "all",
-        "some",
-        "each",
-        "every",
-        "more",
-        "most",
-        "other",
-        "than",
-        "too",
-        "very",
-        "just",
-        "also",
-        "back",
-        "once",
-        "out",
-        "there",
-        "here",
-        "detected",
-        "log",
-        "security",
-        "severity",
-        "user",
-        "high",
-        "medium",
-        "critical",
-        "report",
-        "incident",
-        "status",
-        "update",
-        "changed",
-        "detail",
-        "timeline",
-        "affected",
-        "systems",
-        "iocs",
-        "none",
-        "identified",
-        "active",
-        "contained",
-        "investigating",
-        "remediated",
-        "closed",
+        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+        "have", "has", "had", "do", "does", "did", "will", "would", "could",
+        "should", "may", "might", "must", "shall", "can", "what", "which",
+        "who", "where", "when", "why", "how", "i", "you", "he", "she", "it",
+        "we", "they", "me", "him", "her", "us", "them", "this", "that",
+        "these", "those", "and", "but", "or", "for", "yet", "so", "if",
+        "then", "at", "by", "from", "in", "of", "on", "to", "up", "with",
+        "about", "after", "as", "before", "between", "during", "into",
+        "like", "over", "through", "under", "until", "via", "not", "no",
+        "yes", "any", "all", "some", "each", "every", "more", "most",
+        "other", "than", "too", "very", "just", "also", "back", "once",
+        "out", "there", "here", "detected", "log", "security", "severity",
+        "user", "high", "medium", "critical", "report", "incident", "status",
+        "update", "changed", "detail", "timeline", "affected", "systems",
+        "iocs", "none", "identified", "active", "contained", "investigating",
+        "remediated", "closed",
     }
 
     def _extract_entities(text: str) -> set:
@@ -928,11 +780,17 @@ def _keyword_fallback_grade(expected: str, actual: str) -> dict[str, Any]:
 
     exp_entities = _extract_entities(expected)
     act_entities = _extract_entities(actual)
-    entity_score = len(exp_entities & act_entities) / len(exp_entities) if exp_entities else None
+    entity_score = (
+        len(exp_entities & act_entities) / len(exp_entities)
+        if exp_entities else None
+    )
 
     exp_tokens = _tokenize(expected)
     act_tokens = _tokenize(actual)
-    kw_score = len(exp_tokens & act_tokens) / len(exp_tokens) if exp_tokens else 1.0
+    kw_score = (
+        len(exp_tokens & act_tokens) / len(exp_tokens)
+        if exp_tokens else 1.0
+    )
 
     if entity_score is not None:
         score = 0.6 * entity_score + 0.4 * kw_score
@@ -967,7 +825,6 @@ def _grade_hive_answer(question: str, expected: str, actual: str) -> dict[str, A
 
     try:
         from amplihack_eval.core.grader import grade_answer
-
         result = grade_answer(
             question=question,
             expected=expected,
@@ -1039,7 +896,8 @@ def run_eval(
         by_category.setdefault(q.category, []).append(score)
 
         print(
-            f"  {q.category[:18]:18s} {score:.2f}  {len(hive_results):3d} results | {q.text[:42]}"
+            f"  {q.category[:18]:18s} {score:.2f}  {len(hive_results):3d} results"
+            f" | {q.text[:42]}"
         )
         logger.debug(
             "Q: %r → %d results in %.2fs, score=%.2f",
@@ -1069,7 +927,8 @@ def run_eval(
     avg_score = sum(r["score"] for r in results) / total if total else 0.0
 
     category_scores = {
-        c: {"avg_score": round(sum(v) / len(v), 3), "count": len(v)} for c, v in by_category.items()
+        c: {"avg_score": round(sum(v) / len(v), 3), "count": len(v)}
+        for c, v in by_category.items()
     }
 
     print("-" * 70)
@@ -1229,18 +1088,11 @@ def query_log_analytics_cli(
 
     iso_timespan = f"PT{timespan_hours}H"
     cmd = [
-        "az",
-        "monitor",
-        "log-analytics",
-        "query",
-        "--workspace",
-        workspace_id,
-        "--analytics-query",
-        query,
-        "--timespan",
-        iso_timespan,
-        "--output",
-        "json",
+        "az", "monitor", "log-analytics", "query",
+        "--workspace", workspace_id,
+        "--analytics-query", query,
+        "--timespan", iso_timespan,
+        "--output", "json",
     ]
     try:
         result = _subprocess.run(
@@ -1301,8 +1153,8 @@ class LogAnalyticsAnswerReader:
         max_wait: float = 600.0,
     ) -> None:
         try:
-            from azure.identity import DefaultAzureCredential  # noqa: F401
             from azure.monitor.query import LogsQueryClient  # noqa: F401
+            from azure.identity import DefaultAzureCredential  # noqa: F401
         except ImportError as exc:
             raise ImportError(
                 "azure-monitor-query and azure-identity are required.\n"
@@ -1327,29 +1179,23 @@ class LogAnalyticsAnswerReader:
         Returns:
             Answer text if found before timeout, else ``None``.
         """
-        import datetime
-
         from azure.identity import DefaultAzureCredential
         from azure.monitor.query import LogsQueryClient, LogsQueryStatus
+        import datetime
 
         if since_ts is None:
             since_ts = time.time() - 600.0  # 10-min lookback for LA ingestion lag
 
-        start_dt = datetime.datetime.fromtimestamp(since_ts, tz=datetime.UTC)
-        end_dt = datetime.datetime.now(tz=datetime.UTC)
+        start_dt = datetime.datetime.fromtimestamp(since_ts, tz=datetime.timezone.utc)
+        end_dt = datetime.datetime.now(tz=datetime.timezone.utc)
 
         hint_escaped = question_hint.replace("'", "\\'")[:40]
-        app_filter = (
-            f'| where ContainerAppName_s has "{self._container_app_name}"'
-            if self._container_app_name
-            else ""
-        )
+        app_filter = f'| where ContainerAppName_s has "{self._container_app_name}"' if self._container_app_name else ""
 
         # Use AzureCliCredential — DefaultAzureCredential can fail with
         # InsufficientAccessError on Log Analytics scope in some environments.
         try:
             from azure.identity import AzureCliCredential
-
             credential = AzureCliCredential()
         except Exception:
             credential = DefaultAzureCredential()
@@ -1378,7 +1224,7 @@ class LogAnalyticsAnswerReader:
                     timespan=(start_dt, end_dt),
                 )
                 if response.status == LogsQueryStatus.SUCCESS:
-                    for row in response.tables[0].rows if response.tables else []:
+                    for row in (response.tables[0].rows if response.tables else []):
                         log_line = str(row[0]) if row else ""
                         if "ANSWER:" in log_line:
                             answer_start = log_line.index("ANSWER:") + len("ANSWER:")
@@ -1392,7 +1238,7 @@ class LogAnalyticsAnswerReader:
 
             time.sleep(self._poll_interval)
             # Extend end_dt for next poll
-            end_dt = datetime.datetime.now(tz=datetime.UTC)
+            end_dt = datetime.datetime.now(tz=datetime.timezone.utc)
 
         return None
 
@@ -1473,7 +1319,10 @@ def run_ooda_eval(
         by_category.setdefault(q.category, []).append(score)
 
         found_marker = "Y" if actual else "N"
-        print(f"  {q.category[:18]:18s} {score:.2f}  {found_marker:5s} | {q.text[:42]}")
+        print(
+            f"  {q.category[:18]:18s} {score:.2f}  {found_marker:5s}"
+            f" | {q.text[:42]}"
+        )
 
         results.append(
             {
@@ -1494,7 +1343,8 @@ def run_ooda_eval(
     avg_score = sum(r["score"] for r in results) / total if total else 0.0
 
     category_scores = {
-        c: {"avg_score": round(sum(v) / len(v), 3), "count": len(v)} for c, v in by_category.items()
+        c: {"avg_score": round(sum(v) / len(v), 3), "count": len(v)}
+        for c, v in by_category.items()
     }
 
     print("-" * 70)
@@ -1566,8 +1416,7 @@ Examples:
 """,
     )
     p.add_argument(
-        "--query",
-        "-q",
+        "--query", "-q",
         default="",
         help="A single query to send to the hive.",
     )
@@ -1587,8 +1436,7 @@ Examples:
         help="Run eval locally using DistributedHiveGraph (no Azure needed).",
     )
     p.add_argument(
-        "--output",
-        "-o",
+        "--output", "-o",
         default="",
         help="Path to write eval results JSON (with --run-eval or --demo).",
     )
@@ -1660,8 +1508,7 @@ Examples:
         help="Seconds to wait per question for an ANSWER in Log Analytics (default: 600).",
     )
     p.add_argument(
-        "--verbose",
-        "-v",
+        "--verbose", "-v",
         action="store_true",
         help="Enable debug logging.",
     )
@@ -1758,13 +1605,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.verbose:
         logging.getLogger("query_hive").setLevel(logging.DEBUG)
 
-    if (
-        not args.query
-        and not args.run_eval
-        and not args.seed
-        and not args.demo
-        and not args.ooda_eval
-    ):
+    if not args.query and not args.run_eval and not args.seed and not args.demo and not args.ooda_eval:
         _build_parser().print_help()
         return 0
 
@@ -1845,9 +1686,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.seed:
             seed_corpus = _get_fact_corpus()
-            print(
-                f"Seeding {len(seed_corpus)} security analyst facts into live hive (table={args.table})..."
-            )
+            print(f"Seeding {len(seed_corpus)} security analyst facts into live hive (table={args.table})...")
             n = client.seed_facts(facts=seed_corpus, table=args.table)
             print(f"Seeded {n} security facts. Waiting 5s for propagation...")
             time.sleep(5)

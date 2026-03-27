@@ -9,6 +9,7 @@ Testing pyramid:
 from __future__ import annotations
 
 import json
+import textwrap
 from collections import Counter
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -22,6 +23,7 @@ from amplihack.fleet.transcript_analyzer import (
     gather_local_transcripts,
     gather_remote_transcripts,
 )
+
 
 # ── Fixtures ─────────────────────────────────────────────────────────
 
@@ -174,7 +176,9 @@ class TestJSONLParsing:
 
     def test_strategy_pattern_extraction(self, tmp_path: Path):
         jsonl_file = tmp_path / "session.jsonl"
-        jsonl_file.write_text(_make_jsonl([SAMPLE_ASSISTANT_STRATEGY, SAMPLE_USER]))
+        jsonl_file.write_text(
+            _make_jsonl([SAMPLE_ASSISTANT_STRATEGY, SAMPLE_USER])
+        )
 
         analyzer = TranscriptAnalyzer()
         report = analyzer.analyze([jsonl_file])
@@ -211,7 +215,9 @@ class TestJSONLParsing:
 
     def test_non_analyzed_types_ignored(self, tmp_path: Path):
         jsonl_file = tmp_path / "session.jsonl"
-        jsonl_file.write_text(_make_jsonl([SAMPLE_PROGRESS, SAMPLE_SYSTEM]))
+        jsonl_file.write_text(
+            _make_jsonl([SAMPLE_PROGRESS, SAMPLE_SYSTEM])
+        )
 
         analyzer = TranscriptAnalyzer()
         report = analyzer.analyze([jsonl_file])
@@ -221,9 +227,7 @@ class TestJSONLParsing:
 
     def test_malformed_json_skipped(self, tmp_path: Path):
         jsonl_file = tmp_path / "session.jsonl"
-        jsonl_file.write_text(
-            "not json\n{bad json\n" + json.dumps(SAMPLE_ASSISTANT_TOOL_USE) + "\n"
-        )
+        jsonl_file.write_text("not json\n{bad json\n" + json.dumps(SAMPLE_ASSISTANT_TOOL_USE) + "\n")
 
         analyzer = TranscriptAnalyzer()
         report = analyzer.analyze([jsonl_file])
@@ -325,20 +329,16 @@ class TestGatherLocal:
 class TestGatherRemote:
     def test_gather_remote_success(self):
         summary_json = json.dumps(
-            [
-                {
-                    "file": "/home/user/.claude/projects/x/s.jsonl",
-                    "messages": 42,
-                    "tools": {"Bash": 10},
-                }
-            ]
+            [{"file": "/home/user/.claude/projects/x/s.jsonl", "messages": 42, "tools": {"Bash": 10}}]
         )
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = summary_json
 
         with patch("subprocess.run", return_value=mock_result) as mock_run:
-            result = gather_remote_transcripts(["azlin1"], azlin_path="/usr/bin/azlin")
+            result = gather_remote_transcripts(
+                ["azlin1"], azlin_path="/usr/bin/azlin"
+            )
 
         assert "azlin1" in result
         assert len(result["azlin1"]) == 1
@@ -377,7 +377,9 @@ class TestGatherRemote:
 
     def test_gather_remote_command_not_found(self):
         with patch("subprocess.run", side_effect=FileNotFoundError):
-            result = gather_remote_transcripts(["azlin1"], azlin_path="/nonexistent/azlin")
+            result = gather_remote_transcripts(
+                ["azlin1"], azlin_path="/nonexistent/azlin"
+            )
         assert result["azlin1"] == []
 
 
@@ -386,7 +388,9 @@ class TestAnalyzeMultipleFiles:
         f1 = tmp_path / "s1.jsonl"
         f2 = tmp_path / "s2.jsonl"
         f1.write_text(_make_jsonl([SAMPLE_ASSISTANT_TOOL_USE]))
-        f2.write_text(_make_jsonl([SAMPLE_ASSISTANT_TOOL_USE, SAMPLE_ASSISTANT_SKILL]))
+        f2.write_text(
+            _make_jsonl([SAMPLE_ASSISTANT_TOOL_USE, SAMPLE_ASSISTANT_SKILL])
+        )
 
         analyzer = TranscriptAnalyzer()
         report = analyzer.analyze([f1, f2])
@@ -442,7 +446,9 @@ class TestEndToEnd:
 
         # Analyze a transcript with strategies
         jsonl_file = tmp_path / "session.jsonl"
-        jsonl_file.write_text(_make_jsonl([SAMPLE_ASSISTANT_STRATEGY, SAMPLE_USER]))
+        jsonl_file.write_text(
+            _make_jsonl([SAMPLE_ASSISTANT_STRATEGY, SAMPLE_USER])
+        )
 
         analyzer = TranscriptAnalyzer()
         analyzer.analyze([jsonl_file])
@@ -462,7 +468,9 @@ class TestEndToEnd:
         )
 
         jsonl_file = tmp_path / "session.jsonl"
-        jsonl_file.write_text(_make_jsonl([SAMPLE_ASSISTANT_STRATEGY, SAMPLE_USER]))
+        jsonl_file.write_text(
+            _make_jsonl([SAMPLE_ASSISTANT_STRATEGY, SAMPLE_USER])
+        )
 
         analyzer = TranscriptAnalyzer()
         analyzer.analyze([jsonl_file])

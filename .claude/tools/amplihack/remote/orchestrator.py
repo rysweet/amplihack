@@ -387,7 +387,9 @@ class Orchestrator:
         except Exception:
             return "unknown"
 
-    def poll_vm_statuses(self, vm_names: list[str], max_workers: int = 10) -> dict[str, str]:
+    def poll_vm_statuses(
+        self, vm_names: list[str], max_workers: int = 10
+    ) -> dict[str, str]:
         """Poll status of multiple VMs in parallel using ThreadPoolExecutor.
 
         Args:
@@ -405,7 +407,8 @@ class Orchestrator:
 
         with ThreadPoolExecutor(max_workers=workers) as executor:
             future_to_name = {
-                executor.submit(self._poll_single_vm_status, name): name for name in vm_names
+                executor.submit(self._poll_single_vm_status, name): name
+                for name in vm_names
             }
             for future in as_completed(future_to_name):
                 vm_name = future_to_name[future]

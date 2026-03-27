@@ -23,10 +23,9 @@ coupling without removing meaningful duplication.
 ## 1. What Are the Two Classifiers?
 
 ### Classifier A: `WorkflowClassifier`
-
 - **File**: `src/amplihack/workflows/classifier.py`
 - **Class**: `WorkflowClassifier`
-- **Purpose**: Proactive routing — classifies a user's request _before_ work begins
+- **Purpose**: Proactive routing — classifies a user's request *before* work begins
 - **Input**: A single request string (`str`)
 - **Output**: One of four workflow names:
   - `Q&A_WORKFLOW`
@@ -38,20 +37,19 @@ coupling without removing meaningful duplication.
 
 #### Keyword Map
 
-| Workflow                 | Keywords (sample)                                              |
-| ------------------------ | -------------------------------------------------------------- |
-| `Q&A_WORKFLOW`           | `what is`, `explain briefly`, `quick question`, `what does`    |
-| `OPS_WORKFLOW`           | `run command`, `disk cleanup`, `cleanup`, `organize`, `manage` |
-| `INVESTIGATION_WORKFLOW` | `investigate`, `understand`, `analyze`, `how does`             |
-| `DEFAULT_WORKFLOW`       | `implement`, `add`, `fix`, `create`, `refactor`, `update`      |
+| Workflow              | Keywords (sample)                                             |
+|-----------------------|---------------------------------------------------------------|
+| `Q&A_WORKFLOW`        | `what is`, `explain briefly`, `quick question`, `what does`  |
+| `OPS_WORKFLOW`        | `run command`, `disk cleanup`, `cleanup`, `organize`, `manage`|
+| `INVESTIGATION_WORKFLOW` | `investigate`, `understand`, `analyze`, `how does`        |
+| `DEFAULT_WORKFLOW`    | `implement`, `add`, `fix`, `create`, `refactor`, `update`    |
 
 ---
 
 ### Classifier B: `SessionDetectionMixin`
-
 - **File**: `.claude/tools/amplihack/hooks/power_steering_checker/session_detection.py`
 - **Class**: `SessionDetectionMixin` (mixed into `PowerSteeringChecker`)
-- **Purpose**: Retroactive detection — classifies what _type of session actually occurred_
+- **Purpose**: Retroactive detection — classifies what *type of session actually occurred*
 - **Input**: Full conversation transcript (`list[dict]`) including tool call records
 - **Output**: One of six session types:
   - `SIMPLE`
@@ -60,7 +58,7 @@ coupling without removing meaningful duplication.
   - `MAINTENANCE`
   - `INVESTIGATION`
   - `OPERATIONS`
-- **Method**: Hybrid — keyword matching on early user messages _plus_ tool usage pattern analysis (file edits, test runs, PR operations, Read/Grep counts)
+- **Method**: Hybrid — keyword matching on early user messages *plus* tool usage pattern analysis (file edits, test runs, PR operations, Read/Grep counts)
 - **Answers the question**: "What kind of session was this, so we can apply appropriate power-steering enforcement?"
 
 #### Detection Priority
@@ -77,24 +75,24 @@ coupling without removing meaningful duplication.
 
 ### WorkflowClassifier consumers
 
-| File                                                        | Role                                                                                                                          |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `src/amplihack/workflows/session_start_skill.py`            | `SessionStartClassifierSkill.process()` calls `classifier.classify()` at session start, then routes to `ExecutionTierCascade` |
-| `src/amplihack/workflows/__init__.py`                       | Public re-export                                                                                                              |
-| `tests/workflows/test_classifier.py`                        | 60+ unit tests                                                                                                                |
-| `tests/workflows/test_regression.py`, `test_performance.py` | Regression and performance tests                                                                                              |
+| File | Role |
+|------|------|
+| `src/amplihack/workflows/session_start_skill.py` | `SessionStartClassifierSkill.process()` calls `classifier.classify()` at session start, then routes to `ExecutionTierCascade` |
+| `src/amplihack/workflows/__init__.py` | Public re-export |
+| `tests/workflows/test_classifier.py` | 60+ unit tests |
+| `tests/workflows/test_regression.py`, `test_performance.py` | Regression and performance tests |
 
 `WorkflowClassifier` is purely a routing component inside the workflow
 orchestration path. It fires once at session start.
 
 ### SessionDetectionMixin consumers
 
-| File                                                                                 | Role                                                                                          |
-| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `.claude/tools/amplihack/hooks/power_steering_checker/main_checker.py`               | `PowerSteeringChecker` inherits this mixin; calls `detect_session_type()` per hook invocation |
-| `amplifier-bundle/tools/amplihack/hooks/power_steering_checker/session_detection.py` | Bundled copy                                                                                  |
-| `docs/claude/tools/amplihack/hooks/power_steering_checker.py`                        | Documentation copy                                                                            |
-| 15+ test files                                                                       | Session classification tests, PR review classification, operations session tests              |
+| File | Role |
+|------|------|
+| `.claude/tools/amplihack/hooks/power_steering_checker/main_checker.py` | `PowerSteeringChecker` inherits this mixin; calls `detect_session_type()` per hook invocation |
+| `amplifier-bundle/tools/amplihack/hooks/power_steering_checker/session_detection.py` | Bundled copy |
+| `docs/claude/tools/amplihack/hooks/power_steering_checker.py` | Documentation copy |
+| 15+ test files | Session classification tests, PR review classification, operations session tests |
 
 `SessionDetectionMixin` fires on every `PostToolUse` hook invocation for
 power-steering enforcement. Its output gates which workflow checks apply.
@@ -130,7 +128,6 @@ A single `StatusClassifier` that accepts either a `str` or `list[dict]`
 (transcript) and dispatches to the appropriate logic.
 
 **Effort**: High — requires reconciling:
-
 - 4-type vs. 6-type output taxonomy
 - Keyword-only vs. hybrid (keyword + tool usage) logic
 - Different callers, different timing, different contracts
@@ -148,16 +145,16 @@ A single `StatusClassifier` that accepts either a `str` or `list[dict]`
 
 ### Arguments against unification
 
-| Dimension            | WorkflowClassifier        | SessionDetectionMixin               |
-| -------------------- | ------------------------- | ----------------------------------- |
-| Timing               | Session start (proactive) | Every hook invocation (retroactive) |
-| Input                | Single string             | Full transcript + tool calls        |
-| Output taxonomy      | 4 workflow names          | 6 session types                     |
-| Detection method     | Keyword only              | Keyword + tool usage evidence       |
-| Purpose              | Workflow routing          | Power-steering gating               |
-| Size                 | ~200 lines                | ~600 lines                          |
-| Unique session types | —                         | `SIMPLE`, `MAINTENANCE`             |
-| Unique workflows     | `DEFAULT_WORKFLOW`        | —                                   |
+| Dimension | WorkflowClassifier | SessionDetectionMixin |
+|-----------|--------------------|-----------------------|
+| Timing | Session start (proactive) | Every hook invocation (retroactive) |
+| Input | Single string | Full transcript + tool calls |
+| Output taxonomy | 4 workflow names | 6 session types |
+| Detection method | Keyword only | Keyword + tool usage evidence |
+| Purpose | Workflow routing | Power-steering gating |
+| Size | ~200 lines | ~600 lines |
+| Unique session types | — | `SIMPLE`, `MAINTENANCE` |
+| Unique workflows | `DEFAULT_WORKFLOW` | — |
 
 - **Different abstractions**: The two classifiers answer different questions.
   Combining them creates a module that does two unrelated things.
@@ -204,17 +201,17 @@ caused by keyword drift between the two classifiers, not speculative alignment.
 
 Keywords present in **both** classifiers:
 
-| Keyword       | WorkflowClassifier category | SessionDetectionMixin category |
-| ------------- | --------------------------- | ------------------------------ |
-| `investigate` | INVESTIGATION_WORKFLOW      | INVESTIGATION                  |
-| `understand`  | INVESTIGATION_WORKFLOW      | INVESTIGATION                  |
-| `analyze`     | INVESTIGATION_WORKFLOW      | INVESTIGATION                  |
-| `research`    | INVESTIGATION_WORKFLOW      | INVESTIGATION                  |
-| `explore`     | INVESTIGATION_WORKFLOW      | INVESTIGATION                  |
-| `how does`    | INVESTIGATION_WORKFLOW      | INVESTIGATION                  |
-| `cleanup`     | OPS_WORKFLOW                | SIMPLE                         |
-| `clean up`    | OPS_WORKFLOW                | SIMPLE                         |
-| `organize`    | OPS_WORKFLOW                | SIMPLE                         |
+| Keyword | WorkflowClassifier category | SessionDetectionMixin category |
+|---------|-----------------------------|-------------------------------|
+| `investigate` | INVESTIGATION_WORKFLOW | INVESTIGATION |
+| `understand` | INVESTIGATION_WORKFLOW | INVESTIGATION |
+| `analyze` | INVESTIGATION_WORKFLOW | INVESTIGATION |
+| `research` | INVESTIGATION_WORKFLOW | INVESTIGATION |
+| `explore` | INVESTIGATION_WORKFLOW | INVESTIGATION |
+| `how does` | INVESTIGATION_WORKFLOW | INVESTIGATION |
+| `cleanup` | OPS_WORKFLOW | SIMPLE |
+| `clean up` | OPS_WORKFLOW | SIMPLE |
+| `organize` | OPS_WORKFLOW | SIMPLE |
 
 Keywords present in **SessionDetectionMixin only** (no WorkflowClassifier equivalent):
 

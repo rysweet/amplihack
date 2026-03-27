@@ -38,11 +38,6 @@ if _hooks_dir not in sys.path:
     sys.path.insert(0, _hooks_dir)
 
 # Re-export models
-# Re-export LOCKING_AVAILABLE from file_lock_utils
-import file_lock_utils
-
-# Re-export delta analyzer
-from power_steering_delta_analyzer import DeltaAnalyzer
 from power_steering_models import (
     BlockSnapshot,
     DeltaAnalysisResult,
@@ -50,8 +45,14 @@ from power_steering_models import (
     PowerSteeringTurnState,
 )
 
+# Re-export delta analyzer
+from power_steering_delta_analyzer import DeltaAnalyzer
+
 # Re-export state manager
 from power_steering_state_manager import TurnStateManager
+
+# Re-export LOCKING_AVAILABLE from file_lock_utils
+import file_lock_utils
 
 LOCKING_AVAILABLE = file_lock_utils.LOCKING_AVAILABLE
 

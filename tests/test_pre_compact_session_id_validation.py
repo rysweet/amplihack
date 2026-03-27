@@ -70,18 +70,18 @@ class TestValidateSessionIdFunction:
     @pytest.mark.parametrize(
         "bad_id",
         [
-            "../../etc/passwd",  # path traversal
-            "../sessions/other",  # path traversal
-            "not-a-uuid",  # too short
+            "../../etc/passwd",              # path traversal
+            "../sessions/other",             # path traversal
+            "not-a-uuid",                   # too short
             "550e8400e29b41d4a716446655440000",  # missing hyphens
             "550e8400-e29b-31d4-a716-446655440000",  # version 3, not 4
             "550e8400-e29b-41d4-c716-446655440000",  # wrong variant
-            "",  # empty
-            "session_20250923_120000",  # timestamp-style (old format)
-            "'; DROP TABLE sessions; --",  # SQL injection attempt
-            "\x00uuid",  # null byte
-            "a" * 100,  # too long
-            "550e8400-e29b-41d4-a716",  # truncated
+            "",                              # empty
+            "session_20250923_120000",       # timestamp-style (old format)
+            "'; DROP TABLE sessions; --",    # SQL injection attempt
+            "\x00uuid",                      # null byte
+            "a" * 100,                       # too long
+            "550e8400-e29b-41d4-a716",       # truncated
         ],
     )
     def test_invalid_session_id_raises(self, validate, bad_id):

@@ -26,9 +26,7 @@ import yaml
 # Helpers
 # ---------------------------------------------------------------------------
 
-WORKFLOW_PATH = str(
-    Path(__file__).resolve().parents[2] / "amplifier-bundle" / "recipes" / "default-workflow.yaml"
-)
+WORKFLOW_PATH = str(Path(__file__).resolve().parents[2] / "amplifier-bundle" / "recipes" / "default-workflow.yaml")
 
 # Template placeholders used by all scenarios
 DEFAULTS = {

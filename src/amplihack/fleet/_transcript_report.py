@@ -62,7 +62,7 @@ STRATEGY_KEYWORDS: dict[str, str] = {
 WORKFLOW_STEP_RE = re.compile(r"(?:step|workflow)\s+(\d+)", re.I)
 
 # All expected DEFAULT_WORKFLOW steps (0 through 22)
-ALL_EXPECTED_STEPS = list(range(23))
+ALL_EXPECTED_STEPS = list(range(0, 23))
 
 
 @dataclass

@@ -23,6 +23,7 @@ try:
     from amplihack.memory.database import MemoryDatabase
     from amplihack.memory.models import MemoryType
     from amplihack.memory.storage_pipeline import StoragePipeline, StorageRequest
+    from amplihack.memory.models import MemoryType
 except ImportError:
     pytest.skip("Memory system not implemented yet", allow_module_level=True)
 

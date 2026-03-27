@@ -20,6 +20,7 @@ import json
 import os
 from pathlib import Path
 
+
 # --------------------------------------------------------------------------- #
 # Default allow-list
 # --------------------------------------------------------------------------- #
@@ -162,7 +163,9 @@ def validate_send_input(value: str, confirm: bool = False) -> None:
         raise UnsafeInputError(value)
 
 
-def validate_scenario_send_inputs(scenario: dict, confirm: bool = False) -> list[str]:
+def validate_scenario_send_inputs(
+    scenario: dict, confirm: bool = False
+) -> list[str]:
     """Validate all send_input values in a parsed YAML scenario dict.
 
     Walks the ``scenario.steps`` list and checks every step whose

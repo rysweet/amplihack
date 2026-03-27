@@ -242,7 +242,7 @@ scenario:
       description: "Should report unknown tool"
 
     - action: mcp_call_tool
-      tool: "{config.tools[0].name if config.tools else "test"}"
+      tool: "{config.tools[0].name if config.tools else 'test'}"
       input: null
       description: "Call with null input"
       timeout: 10s
@@ -290,12 +290,12 @@ def _generate_mcp_workflow_tests(
         steps += f"""    - action: mcp_call_tool
       tool: "{tool.name}"
       input: {json.dumps(valid_input)}
-      description: "Step {i + 1}: Call {tool.name}"
+      description: "Step {i+1}: Call {tool.name}"
       timeout: 30s
 
     - action: verify_mcp_response
       matches: ".*"
-      description: "Step {i + 1}: {tool.name} should respond"
+      description: "Step {i+1}: {tool.name} should respond"
 
 """
 
@@ -368,4 +368,4 @@ def _wrong_type_value(expected_type: str):
         "array": "not-an-array",
         "object": "not-an-object",
     }
-    return wrong_values.get(expected_type)
+    return wrong_values.get(expected_type, None)

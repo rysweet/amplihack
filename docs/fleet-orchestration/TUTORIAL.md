@@ -109,16 +109,16 @@ amplihack fleet tui --interval 15   # Faster refresh (default: 30s)
 
 ### Navigation
 
-| Key        | Action                                      |
-| ---------- | ------------------------------------------- |
-| Arrow keys | Move between sessions in the fleet table    |
-| Enter      | Dive into Session Detail for selected row   |
-| Escape     | Go back to Fleet Overview                   |
-| e          | Open Action Editor for the selected session |
-| a          | Apply the admiral's proposed action         |
-| d          | Run dry-run reasoning for selected session  |
-| r          | Force refresh all sessions                  |
-| q          | Quit the dashboard                          |
+| Key       | Action                                      |
+|-----------|---------------------------------------------|
+| Arrow keys | Move between sessions in the fleet table   |
+| Enter     | Dive into Session Detail for selected row    |
+| Escape    | Go back to Fleet Overview                    |
+| e         | Open Action Editor for the selected session  |
+| a         | Apply the admiral's proposed action          |
+| d         | Run dry-run reasoning for selected session   |
+| r         | Force refresh all sessions                   |
+| q         | Quit the dashboard                           |
 
 ### Three Tabs
 
@@ -132,14 +132,14 @@ amplihack fleet tui --interval 15   # Faster refresh (default: 30s)
 
 The dashboard uses icons to show session state at a glance:
 
-| Icon         | Status                       | Meaning                                                 |
-| ------------ | ---------------------------- | ------------------------------------------------------- |
-| `◉` (green)  | thinking / working / running | Agent is actively processing                            |
-| `◉` (green)  | waiting_input                | Agent asked a question, awaiting response               |
-| `●` (yellow) | idle                         | Session exists but agent is not actively working        |
-| `○` (dim)    | shell / empty                | No agent detected in this session                       |
-| `✗` (red)    | error                        | Error detected in session output                        |
-| `✓` (blue)   | completed                    | Agent finished its task (PR created, workflow complete) |
+| Icon | Status | Meaning |
+|------|--------|---------|
+| `◉` (green) | thinking / working / running | Agent is actively processing |
+| `◉` (green) | waiting_input | Agent asked a question, awaiting response |
+| `●` (yellow) | idle | Session exists but agent is not actively working |
+| `○` (dim) | shell / empty | No agent detected in this session |
+| `✗` (red) | error | Error detected in session output |
+| `✓` (blue) | completed | Agent finished its task (PR created, workflow complete) |
 
 ## Observing Your Fleet
 
@@ -331,14 +331,14 @@ amplihack fleet add-task "Fix the authentication bug where JWT tokens expire too
 
 Options:
 
-| Flag          | Values                      | Default | Purpose                                    |
-| ------------- | --------------------------- | ------- | ------------------------------------------ |
-| `--priority`  | critical, high, medium, low | medium  | Queue ordering                             |
-| `--repo`      | URL                         | (none)  | Repository to clone on the target VM       |
-| `--agent`     | claude, amplifier, copilot  | claude  | Which agent to use                         |
-| `--mode`      | auto, ultrathink            | auto    | Agent execution mode                       |
-| `--max-turns` | integer                     | 20      | Maximum agent turns                        |
-| `--protected` | flag                        | false   | Deep work mode -- admiral will not preempt |
+| Flag | Values | Default | Purpose |
+|------|--------|---------|---------|
+| `--priority` | critical, high, medium, low | medium | Queue ordering |
+| `--repo` | URL | (none) | Repository to clone on the target VM |
+| `--agent` | claude, amplifier, copilot | claude | Which agent to use |
+| `--mode` | auto, ultrathink | auto | Agent execution mode |
+| `--max-turns` | integer | 20 | Maximum agent turns |
+| `--protected` | flag | false | Deep work mode -- admiral will not preempt |
 
 ### Viewing the Queue
 
@@ -423,10 +423,10 @@ The SSH gather phase also queries `gh issue list --label fleet-objective` on eac
 
 ## Environment Variables
 
-| Variable            | Purpose                                                         | Default                                                                                    |
-| ------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `AZLIN_PATH`        | Path to the azlin binary                                        | Auto-detected via `which azlin`, falls back to `/home/azureuser/src/azlin/.venv/bin/azlin` |
-| `ANTHROPIC_API_KEY` | API key for Claude (required for dry-run and admiral reasoning) | (none -- must be set)                                                                      |
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `AZLIN_PATH` | Path to the azlin binary | Auto-detected via `which azlin`, falls back to `/home/azureuser/src/azlin/.venv/bin/azlin` |
+| `ANTHROPIC_API_KEY` | API key for Claude (required for dry-run and admiral reasoning) | (none -- must be set) |
 
 ## Running in tmux
 
@@ -541,16 +541,15 @@ Status icons: `[~]` thinking, `[>]` running, `[.]` idle, `[X]` shell (dead agent
 
 What happens for each action type:
 
-| Action          | What the admiral does                         |
-| --------------- | --------------------------------------------- |
-| `wait`          | Nothing — agent is working fine               |
-| `send_input`    | Types text into the tmux pane                 |
-| `restart`       | Sends Ctrl-C twice to interrupt stuck process |
-| `escalate`      | Flags for human review, no action taken       |
-| `mark_complete` | Records task as done                          |
+| Action | What the admiral does |
+|--------|---------------------|
+| `wait` | Nothing — agent is working fine |
+| `send_input` | Types text into the tmux pane |
+| `restart` | Sends Ctrl-C twice to interrupt stuck process |
+| `escalate` | Flags for human review, no action taken |
+| `mark_complete` | Records task as done |
 
 Safety is enforced automatically:
-
 - `send_input` requires confidence >= 60%
 - `restart` requires confidence >= 80%
 - Dangerous patterns (rm -rf, force push, etc.) are blocked
@@ -576,7 +575,6 @@ Both scout and advance support `--vm` and `--session` filters:
 ### Typical Workflow
 
 1. **Scout first** to see the fleet state:
-
    ```
    /fleet scout
    ```
@@ -584,13 +582,11 @@ Both scout and advance support `--vm` and `--session` filters:
 2. **Review** the report — check which sessions need action
 
 3. **Advance specific sessions** you agree with:
-
    ```
    /fleet advance --session dev:parallel-deploy-wk
    ```
 
 4. **Or advance all** if the admiral's proposals look good (auto-confirms each):
-
    ```
    /fleet advance --force
    ```
@@ -623,16 +619,16 @@ Both commands support `--save` to write a JSON report:
 
 The fleet system detects eight distinct session states:
 
-| State             | What it means                  | How detected                                        |
-| ----------------- | ------------------------------ | --------------------------------------------------- |
-| **thinking**      | Agent is actively processing   | `●` tool call indicator, streaming output           |
-| **running**       | Agent producing output         | Status bar shows `(running)`                        |
-| **idle**          | Agent at `❯` prompt, waiting   | Claude Code prompt with no input                    |
-| **shell**         | Agent dead, back at `$` prompt | Bare bash prompt, no claude/node process            |
-| **suspended**     | Agent backgrounded but alive   | Bash prompt but claude/node process still running   |
-| **error**         | Error detected in session      | `error:`, `traceback`, `fatal:`, `panic:` in output |
-| **completed**     | Agent finished its task        | `GOAL_STATUS: ACHIEVED`, PR created/merged          |
-| **waiting_input** | Agent needs user input         | `[Y/n]`, `⏵⏵ bypass`, prompt ending in `?`          |
+| State | What it means | How detected |
+|-------|--------------|--------------|
+| **thinking** | Agent is actively processing | `●` tool call indicator, streaming output |
+| **running** | Agent producing output | Status bar shows `(running)` |
+| **idle** | Agent at `❯` prompt, waiting | Claude Code prompt with no input |
+| **shell** | Agent dead, back at `$` prompt | Bare bash prompt, no claude/node process |
+| **suspended** | Agent backgrounded but alive | Bash prompt but claude/node process still running |
+| **error** | Error detected in session | `error:`, `traceback`, `fatal:`, `panic:` in output |
+| **completed** | Agent finished its task | `GOAL_STATUS: ACHIEVED`, PR created/merged |
+| **waiting_input** | Agent needs user input | `[Y/n]`, `⏵⏵ bypass`, prompt ending in `?` |
 
 The suspended state is detected by checking for live `claude` or `node` processes as children of the tmux pane. This catches sessions where the agent was backgrounded with Ctrl-Z or the Claude Code background feature.
 

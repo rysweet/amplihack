@@ -57,9 +57,7 @@ class SessionContext:
         if self.files_modified:
             parts.append(f"Files modified: {', '.join(self.files_modified)}")
         if self.transcript_summary:
-            parts.append(
-                f"\nSession transcript (early + recent messages):\n{self.transcript_summary}"
-            )
+            parts.append(f"\nSession transcript (early + recent messages):\n{self.transcript_summary}")
 
         parts.append("\nCurrent terminal output (full scrollback):")
         parts.append(self.tmux_capture if self.tmux_capture else "(empty)")

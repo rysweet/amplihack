@@ -43,7 +43,7 @@ These skills add NEW capabilities like decision recording, email drafting, meeti
 | **context-management**        | 48.5  | Proactive context window management via token monitoring and intelligent snapshots  | [#1347](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1347) | -                                                                                  |
 | **dynamic-debugger** 🆕       | 92.0  | Interactive debugging for Python/C++/Rust via DAP-MCP (opt-in, disabled by default) | [#1552](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1552) | [#1553](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1553) |
 | **multitask** 🆕              | -     | Parallel workstream execution with Recipe Runner code-enforced workflows            | [#2306](https://github.com/rysweet/amplihack/issues/2306)                            | [#2308](https://github.com/rysweet/amplihack/pull/2308)                            |
-| **workiq-wsl** 🆕             | -     | Access M365 data (emails, calendar, files) from WSL via Windows Copilot CLI bridge  | -                                                                                    | [#3136](https://github.com/rysweet/amplihack/pull/3136)                            |
+| **workiq-wsl** 🆕              | -     | Access M365 data (emails, calendar, files) from WSL via Windows Copilot CLI bridge  | -                                                                                    | [#3136](https://github.com/rysweet/amplihack/pull/3136)                            |
 
 ### Type 2: Domain Expert Analyst Skills (23 skills)
 
@@ -243,6 +243,7 @@ name: example-skill
 description: |
   A clear description of what this skill does.
 ---
+
 # Example Skill
 
 Content starts after the frontmatter...
@@ -252,6 +253,7 @@ Content starts after the frontmatter...
 
 ```yaml
 # Example Skill  ← WRONG: Title before frontmatter
+
 ---
 name: example-skill
 <!-- This is a comment -->  ← WRONG: HTML in YAML

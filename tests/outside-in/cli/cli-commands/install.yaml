@@ -29,6 +29,7 @@ scenario:
       expected: 0
       description: "Command should succeed with valid args"
 
+
   cleanup:
     - action: stop_application
       force: true

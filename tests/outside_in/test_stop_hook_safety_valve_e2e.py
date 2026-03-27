@@ -12,11 +12,14 @@ Usage:
     python3 tests/outside_in/test_stop_hook_safety_valve_e2e.py
 """
 
+import json
 import os
 import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 # Add the hooks directory to path
 hooks_dir = Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks"
@@ -56,9 +59,7 @@ class TestSafetyValveE2EClaude:
             hook = StopHook()
             hook.project_root = tmp_path
             hook.lock_flag = lock_file
-            hook.continuation_prompt_file = (
-                tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
-            )
+            hook.continuation_prompt_file = tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
 
             with patch.object(hook, "_select_strategy", return_value=None):
                 result = hook.process({})
@@ -81,14 +82,10 @@ class TestSafetyValveE2EClaude:
             hook = StopHook()
             hook.project_root = tmp_path
             hook.lock_flag = lock_file
-            hook.continuation_prompt_file = (
-                tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
-            )
+            hook.continuation_prompt_file = tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
 
-            with (
-                patch.object(hook, "_select_strategy", return_value=None),
-                patch.object(hook, "_get_current_session_id", return_value="test-session"),
-            ):
+            with patch.object(hook, "_select_strategy", return_value=None), \
+                 patch.object(hook, "_get_current_session_id", return_value="test-session"):
                 result = hook.process({})
 
             assert result["decision"] == "approve", (
@@ -108,15 +105,11 @@ class TestSafetyValveE2EClaude:
             hook = StopHook()
             hook.project_root = tmp_path
             hook.lock_flag = lock_file
-            hook.continuation_prompt_file = (
-                tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
-            )
+            hook.continuation_prompt_file = tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
 
-            with (
-                patch.dict(os.environ, {"AMPLIHACK_MAX_LOCK_ITERATIONS": "5"}),
-                patch.object(hook, "_select_strategy", return_value=None),
-                patch.object(hook, "_get_current_session_id", return_value="test-session"),
-            ):
+            with patch.dict(os.environ, {"AMPLIHACK_MAX_LOCK_ITERATIONS": "5"}), \
+                 patch.object(hook, "_select_strategy", return_value=None), \
+                 patch.object(hook, "_get_current_session_id", return_value="test-session"):
                 result = hook.process({})
 
             assert result["decision"] == "approve", (
@@ -134,16 +127,13 @@ class TestSafetyValveE2EClaude:
             hook = StopHook()
             hook.project_root = tmp_path
             hook.lock_flag = lock_file
-            hook.continuation_prompt_file = (
-                tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
-            )
+            hook.continuation_prompt_file = tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
 
             # Simulate 5 rapid stop attempts (with low threshold for test speed)
-            with (
-                patch.dict(os.environ, {"AMPLIHACK_MAX_LOCK_ITERATIONS": "3"}),
-                patch.object(hook, "_select_strategy", return_value=None),
-                patch.object(hook, "_get_current_session_id", return_value="loop-session"),
-            ):
+            with patch.dict(os.environ, {"AMPLIHACK_MAX_LOCK_ITERATIONS": "3"}), \
+                 patch.object(hook, "_select_strategy", return_value=None), \
+                 patch.object(hook, "_get_current_session_id", return_value="loop-session"):
+
                 results = []
                 for i in range(5):
                     # Re-check lock file existence (safety valve removes it)
@@ -176,15 +166,11 @@ class TestSafetyValveE2ECopilot:
             hook = StopHook()
             hook.project_root = tmp_path
             hook.lock_flag = lock_file
-            hook.continuation_prompt_file = (
-                tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
-            )
+            hook.continuation_prompt_file = tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
 
             # Simulate Copilot environment
-            with (
-                patch.object(hook, "_select_strategy", return_value=None),
-                patch.dict(os.environ, {"GITHUB_COPILOT_CLI": "1"}, clear=False),
-            ):
+            with patch.object(hook, "_select_strategy", return_value=None), \
+                 patch.dict(os.environ, {"GITHUB_COPILOT_CLI": "1"}, clear=False):
                 result = hook.process({})
 
             assert result["decision"] == "block"
@@ -201,15 +187,11 @@ class TestSafetyValveE2ECopilot:
             hook = StopHook()
             hook.project_root = tmp_path
             hook.lock_flag = lock_file
-            hook.continuation_prompt_file = (
-                tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
-            )
+            hook.continuation_prompt_file = tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
 
-            with (
-                patch.object(hook, "_select_strategy", return_value=None),
-                patch.object(hook, "_get_current_session_id", return_value="copilot-session"),
-                patch.dict(os.environ, {"GITHUB_COPILOT_CLI": "1"}, clear=False),
-            ):
+            with patch.object(hook, "_select_strategy", return_value=None), \
+                 patch.object(hook, "_get_current_session_id", return_value="copilot-session"), \
+                 patch.dict(os.environ, {"GITHUB_COPILOT_CLI": "1"}, clear=False):
                 result = hook.process({})
 
             assert result["decision"] == "approve", (
@@ -232,17 +214,13 @@ class TestNoLockModeUnaffected:
             hook = StopHook()
             hook.project_root = tmp_path
             hook.lock_flag = tmp_path / ".claude" / "runtime" / "locks" / ".lock_active"
-            hook.continuation_prompt_file = (
-                tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
-            )
+            hook.continuation_prompt_file = tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
 
-            with (
-                patch.object(hook, "_select_strategy", return_value=None),
-                patch.object(hook, "_handle_neo4j_cleanup"),
-                patch.object(hook, "_handle_neo4j_learning"),
-                patch.object(hook, "_should_run_power_steering", return_value=False),
-                patch.object(hook, "_should_run_reflection", return_value=False),
-            ):
+            with patch.object(hook, "_select_strategy", return_value=None), \
+                 patch.object(hook, "_handle_neo4j_cleanup"), \
+                 patch.object(hook, "_handle_neo4j_learning"), \
+                 patch.object(hook, "_should_run_power_steering", return_value=False), \
+                 patch.object(hook, "_should_run_reflection", return_value=False):
                 result = hook.process({})
 
             assert result["decision"] == "approve"
@@ -255,30 +233,12 @@ if __name__ == "__main__":
 
     failures = 0
     tests = [
-        (
-            "Claude lock blocks normally",
-            TestSafetyValveE2EClaude().test_lock_blocks_normally_at_low_count,
-        ),
-        (
-            "Claude safety valve at default threshold",
-            TestSafetyValveE2EClaude().test_safety_valve_triggers_at_default_threshold,
-        ),
-        (
-            "Claude custom threshold",
-            TestSafetyValveE2EClaude().test_safety_valve_with_custom_threshold,
-        ),
-        (
-            "Claude simulated infinite loop",
-            TestSafetyValveE2EClaude().test_safety_valve_simulated_infinite_loop,
-        ),
-        (
-            "Copilot lock blocks normally",
-            TestSafetyValveE2ECopilot().test_copilot_lock_mode_blocks_normally,
-        ),
-        (
-            "Copilot safety valve triggers",
-            TestSafetyValveE2ECopilot().test_copilot_safety_valve_triggers,
-        ),
+        ("Claude lock blocks normally", TestSafetyValveE2EClaude().test_lock_blocks_normally_at_low_count),
+        ("Claude safety valve at default threshold", TestSafetyValveE2EClaude().test_safety_valve_triggers_at_default_threshold),
+        ("Claude custom threshold", TestSafetyValveE2EClaude().test_safety_valve_with_custom_threshold),
+        ("Claude simulated infinite loop", TestSafetyValveE2EClaude().test_safety_valve_simulated_infinite_loop),
+        ("Copilot lock blocks normally", TestSafetyValveE2ECopilot().test_copilot_lock_mode_blocks_normally),
+        ("Copilot safety valve triggers", TestSafetyValveE2ECopilot().test_copilot_safety_valve_triggers),
         ("No lock mode unaffected", TestNoLockModeUnaffected().test_no_lock_approves_normally),
     ]
 

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -107,4 +108,6 @@ class TestVersionFlagSubprocess:
         """'amplihack --version' must print 'amplihack <version>' to stdout or stderr."""
         result = self._run_cli("--version")
         combined = result.stdout + result.stderr
-        assert "amplihack" in combined.lower(), f"Expected 'amplihack' in output, got: {combined!r}"
+        assert "amplihack" in combined.lower(), (
+            f"Expected 'amplihack' in output, got: {combined!r}"
+        )

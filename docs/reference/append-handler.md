@@ -38,12 +38,12 @@ class AppendResult:
 
 **Attributes**
 
-| Attribute       | Type          | Description                                                        |
-| --------------- | ------------- | ------------------------------------------------------------------ |
-| `success`       | `bool`        | `True` if the file was written without error.                      |
-| `file_path`     | `str \| None` | Absolute path of the written file. `None` if `success` is `False`. |
-| `bytes_written` | `int`         | Number of bytes written. `0` on failure.                           |
-| `error`         | `str \| None` | Human-readable error description. `None` on success.               |
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `success` | `bool` | `True` if the file was written without error. |
+| `file_path` | `str \| None` | Absolute path of the written file. `None` if `success` is `False`. |
+| `bytes_written` | `int` | Number of bytes written. `0` on failure. |
+| `error` | `str \| None` | Human-readable error description. `None` on success. |
 
 **Checking the result:**
 
@@ -148,12 +148,12 @@ if not result.success:
 
 `append()` never raises. All errors are captured in the returned `AppendResult`:
 
-| Condition                       | `result.success` | `result.error`                               |
-| ------------------------------- | ---------------- | -------------------------------------------- |
-| Write succeeded                 | `True`           | `None`                                       |
-| Output directory does not exist | `False`          | `"[Errno 2] No such file or directory: '…'"` |
-| Permission denied               | `False`          | `"[Errno 13] Permission denied: '…'"`        |
-| Disk full                       | `False`          | `"[Errno 28] No space left on device"`       |
+| Condition | `result.success` | `result.error` |
+|-----------|-----------------|---------------|
+| Write succeeded | `True` | `None` |
+| Output directory does not exist | `False` | `"[Errno 2] No such file or directory: '…'"` |
+| Permission denied | `False` | `"[Errno 13] Permission denied: '…'"` |
+| Disk full | `False` | `"[Errno 28] No space left on device"` |
 
 ---
 
@@ -169,8 +169,8 @@ Writes `content` to a new timestamped file in `output_dir`. Uses `os.open()` wit
 
 **Parameters**
 
-| Name      | Type  | Description                      |
-| --------- | ----- | -------------------------------- |
+| Name | Type | Description |
+|------|------|-------------|
 | `content` | `str` | Text to write. Encoded as UTF-8. |
 
 **Returns** `AppendResult` — always. Never raises.

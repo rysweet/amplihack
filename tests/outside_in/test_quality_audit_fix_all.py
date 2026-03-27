@@ -95,7 +95,9 @@ class TestStructuredInputs:
             "test_gaps",
         ]
         for cat in required_categories:
-            assert cat in categories, f"Missing category '{cat}' in default categories list."
+            assert cat in categories, (
+                f"Missing category '{cat}' in default categories list."
+            )
 
     def test_seek_step_references_structured_inputs(self, recipe_text):
         """SEEK step should reference severity_threshold, module_loc_limit, categories."""
@@ -134,7 +136,9 @@ class TestFixAllPerCycleEnforcement:
         step_ids = [s["id"] for s in recipe["steps"]]
         fix_idx = step_ids.index("fix")
         verify_idx = step_ids.index("verify-fixes")
-        assert verify_idx > fix_idx, "verify-fixes step must come after fix step."
+        assert verify_idx > fix_idx, (
+            "verify-fixes step must come after fix step."
+        )
 
     def test_verify_fixes_step_is_bash_type(self, recipe):
         """verify-fixes should be a bash step for deterministic checking."""
@@ -199,7 +203,9 @@ class TestRecipeVersion:
         """Version should be bumped to 4.x for these changes."""
         version = recipe.get("version", "0.0.0")
         major = int(version.split(".")[0])
-        assert major >= 4, f"Recipe version {version} should be >= 4.0.0 for #2842/#2843 changes."
+        assert major >= 4, (
+            f"Recipe version {version} should be >= 4.0.0 for #2842/#2843 changes."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -283,26 +289,22 @@ class TestVerifyFixesLogic:
 
     def test_all_fixed_passes(self):
         """When all confirmed findings are fixed, verification passes."""
-        validated = json.dumps(
-            {
-                "validated": [
-                    {"finding_id": 1, "verdict": "confirmed"},
-                    {"finding_id": 2, "verdict": "confirmed"},
-                    {"finding_id": 3, "verdict": "false_positive"},
-                ]
-            }
-        )
-        fixes = json.dumps(
-            {
-                "fixes_applied": [
-                    {"finding_id": 1},
-                    {"finding_id": 2},
-                ],
-                "fixes_skipped": [
-                    {"finding_id": 3, "reason": "false positive"},
-                ],
-            }
-        )
+        validated = json.dumps({
+            "validated": [
+                {"finding_id": 1, "verdict": "confirmed"},
+                {"finding_id": 2, "verdict": "confirmed"},
+                {"finding_id": 3, "verdict": "false_positive"},
+            ]
+        })
+        fixes = json.dumps({
+            "fixes_applied": [
+                {"finding_id": 1},
+                {"finding_id": 2},
+            ],
+            "fixes_skipped": [
+                {"finding_id": 3, "reason": "false positive"},
+            ],
+        })
         result = self._run_verify_logic(validated, fixes)
         assert result["pass"] is True
         assert result["unfixed"] == 0
@@ -311,61 +313,49 @@ class TestVerifyFixesLogic:
 
     def test_unfixed_finding_fails(self):
         """When a confirmed finding is not fixed, verification fails."""
-        validated = json.dumps(
-            {
-                "validated": [
-                    {"finding_id": 1, "verdict": "confirmed"},
-                    {"finding_id": 2, "verdict": "confirmed"},
-                ]
-            }
-        )
-        fixes = json.dumps(
-            {
-                "fixes_applied": [
-                    {"finding_id": 1},
-                ],
-                "fixes_skipped": [],
-            }
-        )
+        validated = json.dumps({
+            "validated": [
+                {"finding_id": 1, "verdict": "confirmed"},
+                {"finding_id": 2, "verdict": "confirmed"},
+            ]
+        })
+        fixes = json.dumps({
+            "fixes_applied": [
+                {"finding_id": 1},
+            ],
+            "fixes_skipped": [],
+        })
         result = self._run_verify_logic(validated, fixes)
         assert result["pass"] is False
         assert result["unfixed"] == 1
 
     def test_unfixed_passes_when_fix_all_disabled(self):
         """When fix_all_per_cycle is false, unfixed findings don't fail."""
-        validated = json.dumps(
-            {
-                "validated": [
-                    {"finding_id": 1, "verdict": "confirmed"},
-                    {"finding_id": 2, "verdict": "confirmed"},
-                ]
-            }
-        )
-        fixes = json.dumps(
-            {
-                "fixes_applied": [{"finding_id": 1}],
-                "fixes_skipped": [],
-            }
-        )
+        validated = json.dumps({
+            "validated": [
+                {"finding_id": 1, "verdict": "confirmed"},
+                {"finding_id": 2, "verdict": "confirmed"},
+            ]
+        })
+        fixes = json.dumps({
+            "fixes_applied": [{"finding_id": 1}],
+            "fixes_skipped": [],
+        })
         result = self._run_verify_logic(validated, fixes, fix_all="false")
         assert result["pass"] is True
         assert result["unfixed"] == 1
 
     def test_empty_findings_passes(self):
         """When there are no confirmed findings, verification passes."""
-        validated = json.dumps(
-            {
-                "validated": [
-                    {"finding_id": 1, "verdict": "false_positive"},
-                ]
-            }
-        )
-        fixes = json.dumps(
-            {
-                "fixes_applied": [],
-                "fixes_skipped": [{"finding_id": 1}],
-            }
-        )
+        validated = json.dumps({
+            "validated": [
+                {"finding_id": 1, "verdict": "false_positive"},
+            ]
+        })
+        fixes = json.dumps({
+            "fixes_applied": [],
+            "fixes_skipped": [{"finding_id": 1}],
+        })
         result = self._run_verify_logic(validated, fixes)
         assert result["pass"] is True
         assert result["confirmed"] == 0

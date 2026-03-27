@@ -39,11 +39,7 @@ scenario:
     # Step 3: Write the goal file
     - action: launch
       target: "bash"
-      args:
-        [
-          "-c",
-          "mkdir -p .claude/runtime/locks && echo 'Create a file called /tmp/copilot-test-goal.txt with the text hello world' > .claude/runtime/locks/.lock_goal",
-        ]
+      args: ["-c", "mkdir -p .claude/runtime/locks && echo 'Create a file called /tmp/copilot-test-goal.txt with the text hello world' > .claude/runtime/locks/.lock_goal"]
       description: "Write goal file for copilot"
 
     - action: verify_exit_code
@@ -61,11 +57,7 @@ scenario:
     # Step 5: Run copilot suggest directly (simulates stop hook)
     - action: launch
       target: ".venv/bin/python"
-      args:
-        [
-          "-c",
-          "from amplihack.fleet.fleet_copilot import SessionCopilot; c = SessionCopilot(goal='Create a file called /tmp/copilot-test-goal.txt'); s = c.suggest(); print(f'ACTION:{s.action}'); print(f'CONFIDENCE:{s.confidence}'); print(f'REASONING:{s.reasoning}')",
-        ]
+      args: ["-c", "from amplihack.fleet.fleet_copilot import SessionCopilot; c = SessionCopilot(goal='Create a file called /tmp/copilot-test-goal.txt'); s = c.suggest(); print(f'ACTION:{s.action}'); print(f'CONFIDENCE:{s.confidence}'); print(f'REASONING:{s.reasoning}')"]
       description: "Invoke SessionCopilot.suggest() with real LLM"
       timeout: 60s
 
@@ -113,8 +105,4 @@ scenario:
   cleanup:
     - action: launch
       target: "bash"
-      args:
-        [
-          "-c",
-          "rm -f .claude/runtime/locks/.lock_active .claude/runtime/locks/.lock_goal /tmp/copilot-test-goal.txt",
-        ]
+      args: ["-c", "rm -f .claude/runtime/locks/.lock_active .claude/runtime/locks/.lock_goal /tmp/copilot-test-goal.txt"]

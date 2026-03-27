@@ -11,7 +11,9 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, mock_open
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -209,7 +211,7 @@ class TestContinuationPrompt:
         assert result == prompt
         # Should have logged a warning about length
         hook.log.assert_any_call(
-            "Custom prompt is long (700 chars) - consider shortening for clarity",
+            f"Custom prompt is long (700 chars) - consider shortening for clarity",
             "WARNING",
         )
 

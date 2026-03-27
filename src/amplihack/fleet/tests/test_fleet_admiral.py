@@ -9,7 +9,10 @@ Testing pyramid: 100% unit (all external I/O mocked).
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Optional
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -23,10 +26,10 @@ from amplihack.fleet.fleet_admiral import (
 from amplihack.fleet.fleet_state import AgentStatus, FleetState, TmuxSessionInfo, VMInfo
 from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
 
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
 
 def _make_queue(*tasks: FleetTask, persist_path=None) -> TaskQueue:
     """Build a TaskQueue without triggering persistence."""
@@ -60,11 +63,9 @@ def _make_vm(name: str, status: str = "Running", sessions=None) -> VMInfo:
 def _make_admiral(queue: TaskQueue | None = None, **kw) -> FleetAdmiral:
     """Build a FleetAdmiral with all heavy imports mocked."""
     q = queue or _make_queue()
-    with (
-        patch("amplihack.fleet.fleet_admiral.FleetState") as MockFS,
-        patch("amplihack.fleet.fleet_admiral.FleetObserver") as MockObs,
-        patch("amplihack.fleet.fleet_admiral.AuthPropagator") as MockAuth,
-    ):
+    with patch("amplihack.fleet.fleet_admiral.FleetState") as MockFS, \
+         patch("amplihack.fleet.fleet_admiral.FleetObserver") as MockObs, \
+         patch("amplihack.fleet.fleet_admiral.AuthPropagator") as MockAuth:
         # Provide real FleetState by default so .managed_vms() etc. work
         MockFS.return_value = FleetState()
         MockObs.return_value = MagicMock()
@@ -178,7 +179,9 @@ class TestRunOnce:
 
     def test_returns_actions_from_reason(self):
         admiral = _make_admiral()
-        expected_actions = [DirectorAction(action_type=ActionType.REPORT, reason="test")]
+        expected_actions = [
+            DirectorAction(action_type=ActionType.REPORT, reason="test")
+        ]
         admiral.perceive = MagicMock(return_value=admiral._fleet_state)
         admiral.reason = MagicMock(return_value=expected_actions)
         admiral.act = MagicMock(return_value=[])
@@ -482,7 +485,9 @@ class TestLearn:
 
     def test_failure_calls_store_discovery(self):
         admiral = _make_admiral()
-        action = DirectorAction(action_type=ActionType.START_AGENT, vm_name="vm-1")
+        action = DirectorAction(
+            action_type=ActionType.START_AGENT, vm_name="vm-1"
+        )
 
         with patch(
             "amplihack.fleet.fleet_admiral.store_discovery",
@@ -501,7 +506,9 @@ class TestLearn:
 
     def test_success_calls_store_discovery_for_high_value_actions(self):
         admiral = _make_admiral()
-        action = DirectorAction(action_type=ActionType.START_AGENT, vm_name="vm-1")
+        action = DirectorAction(
+            action_type=ActionType.START_AGENT, vm_name="vm-1"
+        )
 
         mock_store = MagicMock()
         with patch.dict(
@@ -515,7 +522,9 @@ class TestLearn:
 
     def test_success_skips_store_for_low_value_actions(self):
         admiral = _make_admiral()
-        action = DirectorAction(action_type=ActionType.REPORT, vm_name="vm-1")
+        action = DirectorAction(
+            action_type=ActionType.REPORT, vm_name="vm-1"
+        )
 
         mock_store = MagicMock()
         with patch.dict(
@@ -604,7 +613,9 @@ class TestExecuteAction:
 
     def test_start_agent_no_task_returns_error(self):
         admiral = _make_admiral()
-        action = DirectorAction(action_type=ActionType.START_AGENT, task=None, vm_name="vm-1")
+        action = DirectorAction(
+            action_type=ActionType.START_AGENT, task=None, vm_name="vm-1"
+        )
         result = admiral._execute_action(action)
         assert "ERROR" in result
 
@@ -621,7 +632,9 @@ class TestExecuteAction:
     def test_mark_failed(self):
         admiral = _make_admiral()
         task = _make_task()
-        action = DirectorAction(action_type=ActionType.MARK_FAILED, task=task, reason="stuck")
+        action = DirectorAction(
+            action_type=ActionType.MARK_FAILED, task=task, reason="stuck"
+        )
 
         result = admiral._execute_action(action)
 
@@ -702,7 +715,6 @@ class TestExecuteAction:
     @patch("subprocess.run")
     def test_start_agent_timeout(self, mock_run):
         import subprocess as sp
-
         admiral = _make_admiral()
         task = _make_task()
         action = DirectorAction(
@@ -723,7 +735,9 @@ class TestExecuteAction:
         mock_result = MagicMock(success=True)
         admiral._auth.propagate_all.return_value = [mock_result]
 
-        action = DirectorAction(action_type=ActionType.PROPAGATE_AUTH, vm_name="vm-1")
+        action = DirectorAction(
+            action_type=ActionType.PROPAGATE_AUTH, vm_name="vm-1"
+        )
         result = admiral._execute_action(action)
 
         assert "Auth propagated" in result
@@ -731,7 +745,9 @@ class TestExecuteAction:
 
     def test_propagate_auth_no_vm(self):
         admiral = _make_admiral()
-        action = DirectorAction(action_type=ActionType.PROPAGATE_AUTH, vm_name=None)
+        action = DirectorAction(
+            action_type=ActionType.PROPAGATE_AUTH, vm_name=None
+        )
         result = admiral._execute_action(action)
         assert "ERROR" in result
 
@@ -771,7 +787,9 @@ class TestDirectorLog:
 
     def test_record_appends(self):
         log = DirectorLog()
-        action = DirectorAction(action_type=ActionType.REPORT, vm_name="vm-1", reason="test")
+        action = DirectorAction(
+            action_type=ActionType.REPORT, vm_name="vm-1", reason="test"
+        )
         log.record(action, "ok")
         assert len(log.actions) == 1
         assert log.actions[0]["outcome"] == "ok"
@@ -784,7 +802,6 @@ class TestDirectorLog:
         log.record(action, "ok")
 
         import json
-
         data = json.loads(path.read_text())
         assert len(data) == 1
         assert data[0]["outcome"] == "ok"

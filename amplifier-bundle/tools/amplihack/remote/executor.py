@@ -267,13 +267,7 @@ amplihack claude --{command} --max-turns {max_turns} -- -p "$PROMPT"
             # Try to terminate remote process
             try:
                 subprocess.run(
-                    [
-                        "azlin",
-                        "connect",
-                        *self._azlin_port_args(),
-                        self.vm.name,
-                        "pkill -TERM -f amplihack",
-                    ],
+                    ["azlin", "connect", *self._azlin_port_args(), self.vm.name, "pkill -TERM -f amplihack"],
                     timeout=30,
                     capture_output=True,
                 )
@@ -338,13 +332,7 @@ fi
             # Download archive (azlin cp requires relative paths)
             local_archive = local_dest / "logs.tar.gz"
             subprocess.run(
-                [
-                    "azlin",
-                    "cp",
-                    *self._azlin_port_args(),
-                    f"{self.vm.name}:~/logs.tar.gz",
-                    "logs.tar.gz",
-                ],
+                ["azlin", "cp", *self._azlin_port_args(), f"{self.vm.name}:~/logs.tar.gz", "logs.tar.gz"],
                 cwd=str(local_dest),  # Run from destination directory
                 capture_output=True,
                 text=True,
@@ -407,13 +395,7 @@ echo "Bundle created"
             # Download bundle (azlin cp requires relative paths)
             local_bundle = local_dest / "results.bundle"
             subprocess.run(
-                [
-                    "azlin",
-                    "cp",
-                    *self._azlin_port_args(),
-                    f"{self.vm.name}:~/results.bundle",
-                    "results.bundle",
-                ],
+                ["azlin", "cp", *self._azlin_port_args(), f"{self.vm.name}:~/results.bundle", "results.bundle"],
                 cwd=str(local_dest),  # Run from destination directory
                 capture_output=True,
                 text=True,

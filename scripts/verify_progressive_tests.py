@@ -20,9 +20,7 @@ def test_basic_functionality():
     print("Testing LearningAgent basic functionality...")
 
     # Test 1: Backward compatibility
-    from amplihack.agents.goal_seeking import (
-        WikipediaLearningAgent,  # type: ignore[import-not-found]
-    )
+    from amplihack.agents.goal_seeking import WikipediaLearningAgent  # type: ignore[import-not-found]
 
     print(
         f"✓ Backward compatibility: LearningAgent is WikipediaLearningAgent = {LearningAgent is WikipediaLearningAgent}"

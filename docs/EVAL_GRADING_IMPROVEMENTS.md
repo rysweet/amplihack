@@ -96,7 +96,6 @@ def _deterministic_grade(answer: str, rubric: GradingRubric) -> float:
 Questions about structured entities (incident IDs, CVE numbers, etc.) often fail because facts are stored under different context tags:
 
 **Example**:
-
 - Question: "What was the impact of INC-2024-089?"
 - Facts stored under: "incidents", "security_logs", "post_mortems"
 - Standard retrieval: Only searches "incidents" context
@@ -152,7 +151,7 @@ def _entity_linked_retrieval(self, question: str) -> list[Fact]:
 
 Use entity-linked retrieval when:
 
-1. Questions contain structured identifiers (INC-_, CVE-_, PROJ-\*)
+1. Questions contain structured identifiers (INC-*, CVE-*, PROJ-*)
 2. Related facts are stored across multiple context tags
 3. Standard context-based retrieval misses relevant information
 
@@ -170,7 +169,6 @@ Multi-hop reasoning questions ask about relationships between multiple entities:
 **Example**: "How did the Snowfall incident affect the Alpine Lodge project?"
 
 This question involves:
-
 1. The "Snowfall incident" entity
 2. The "Alpine Lodge project" entity
 3. The relationship/impact between them
@@ -359,13 +357,13 @@ python -m amplihack.eval.progressive_test_suite --grader-votes 3 --sdk mini
 
 Applying these three improvements to the amplihack eval system:
 
-| Category              | Before    | After     | Improvement |
-| --------------------- | --------- | --------- | ----------- |
-| temporal_evolution    | 86.6%     | 99.8%     | +13.2%      |
-| security_log_analysis | 88.0%     | 100.0%    | +12.0%      |
-| incident_tracking     | ~85%      | ~95%      | +10.0%      |
-| multi_hop_reasoning   | ~90%      | ~95%      | +5.0%       |
-| **Overall**           | **96.0%** | **97.8%** | **+1.8%**   |
+| Category               | Before  | After   | Improvement |
+|------------------------|---------|---------|-------------|
+| temporal_evolution     | 86.6%   | 99.8%   | +13.2%      |
+| security_log_analysis  | 88.0%   | 100.0%  | +12.0%      |
+| incident_tracking      | ~85%    | ~95%    | +10.0%      |
+| multi_hop_reasoning    | ~90%    | ~95%    | +5.0%       |
+| **Overall**            | **96.0%** | **97.8%** | **+1.8%** |
 
 ## Next Steps
 

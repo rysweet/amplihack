@@ -26,16 +26,16 @@ Publish the atlas to GitHub Pages
 A complete atlas has eight layers plus a bug report. Layer definitions are in
 [LAYERS.yaml](./LAYERS.yaml).
 
-| Slug                 | Name                           | Description                                                   |
-| -------------------- | ------------------------------ | ------------------------------------------------------------- |
-| `repo-surface`       | Repository Surface             | All source files, project structure, build systems            |
-| `ast-lsp-bindings`   | AST+LSP Symbol Bindings        | Cross-file symbol references, dead code, interface mismatches |
-| `compile-deps`       | Compile-time Dependencies      | Package imports, dependency trees, circular deps              |
-| `runtime-topology`   | Runtime Topology               | Services, containers, ports, inter-service connections        |
-| `api-contracts`      | API Contracts                  | HTTP routes, gRPC, GraphQL, middleware chains                 |
-| `data-flow`          | Data Flow                      | DTO-to-storage chains, transformation steps                   |
-| `service-components` | Service Component Architecture | Per-service internal module/package structure                 |
-| `user-journeys`      | User Journey Scenarios         | End-to-end paths from entry to outcome                        |
+| Slug | Name | Description |
+|------|------|-------------|
+| `repo-surface` | Repository Surface | All source files, project structure, build systems |
+| `ast-lsp-bindings` | AST+LSP Symbol Bindings | Cross-file symbol references, dead code, interface mismatches |
+| `compile-deps` | Compile-time Dependencies | Package imports, dependency trees, circular deps |
+| `runtime-topology` | Runtime Topology | Services, containers, ports, inter-service connections |
+| `api-contracts` | API Contracts | HTTP routes, gRPC, GraphQL, middleware chains |
+| `data-flow` | Data Flow | DTO-to-storage chains, transformation steps |
+| `service-components` | Service Component Architecture | Per-service internal module/package structure |
+| `user-journeys` | User Journey Scenarios | End-to-end paths from entry to outcome |
 
 Every layer is committed to `docs/atlas/{slug}/` with `.mmd`, `.dot`, `.svg`, and a
 `README.md` narrative. The atlas is regeneratable at any time from code alone.
@@ -92,8 +92,8 @@ See [SKILL.md](./SKILL.md) for complete details.
 
 ## Philosophy Alignment
 
-| Principle               | How This Skill Follows It                                       |
-| ----------------------- | --------------------------------------------------------------- |
-| **Ruthless Simplicity** | Code is truth; every diagram regeneratable from one command     |
-| **Zero-BS**             | Real parsing, no invented topology, honest about limits         |
-| **Modular Design**      | One brick (atlas orchestration), delegates to specialist bricks |
+| Principle | How This Skill Follows It |
+|-----------|--------------------------|
+| **Ruthless Simplicity** | Code is truth; every diagram regeneratable from one command |
+| **Zero-BS** | Real parsing, no invented topology, honest about limits |
+| **Modular Design** | One brick (atlas orchestration), delegates to specialist bricks |

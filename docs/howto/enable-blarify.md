@@ -107,10 +107,10 @@ AMPLIHACK_ENABLE_BLARIFY=1 amplihack launch
 
 Before prompting, amplihack calls `check_index_status()` to determine whether the existing Kuzu index matches the current codebase state. The returned status has an `is_stale` flag:
 
-| `is_stale` | Behavior                                          |
-| ---------- | ------------------------------------------------- |
-| `True`     | Prompt is shown; user can choose to re-index.     |
-| `False`    | Prompt is skipped; the fresh index is used as-is. |
+| `is_stale` | Behavior |
+|-----------|---------|
+| `True` | Prompt is shown; user can choose to re-index. |
+| `False` | Prompt is skipped; the fresh index is used as-is. |
 
 Staleness is based on file modification times and content hashes stored in the index. A newly created project always reports `is_stale = True`.
 

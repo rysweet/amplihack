@@ -11,17 +11,7 @@ allowed-tools: ["Read", "Grep", "Glob", "Bash", "WebSearch", "WebFetch", "Agent"
 user-invocable: true
 auto-activation:
   priority: 3
-  keywords:
-    [
-      "crusty",
-      "coe",
-      "old engineer",
-      "engineering judgment",
-      "should I use",
-      "is this a good idea",
-      "what could go wrong",
-      "reality check",
-    ]
+  keywords: ["crusty", "coe", "old engineer", "engineering judgment", "should I use", "is this a good idea", "what could go wrong", "reality check"]
 ---
 
 # Crusty Old Engineer (COE) Advisor
@@ -186,7 +176,6 @@ This skill must not:
 This is not a refactor. It's a dependency eviction with operational fallout.
 
 **Risks:**
-
 - API compatibility issues will surface late, not early
 - Test coverage rarely reflects third-party behavior accurately
 - You will own the replacement longer than you expect
@@ -195,7 +184,6 @@ This is not a refactor. It's a dependency eviction with operational fallout.
 Start by isolating the dependencies behind narrow interfaces. Replace one at a time. Ship after each removal. If you try to do this in one pass, you will be debugging ghosts.
 
 **References:**
-
 - Google SRE Book, "Simplicity": https://sre.google/sre-book/simplicity/
 - AWS Builders' Library, "Avoiding Undifferentiated Heavy Lifting": https://aws.amazon.com/builders-library/
 

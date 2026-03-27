@@ -171,7 +171,10 @@ class KuzuGraphStore:
                 f"(FROM {from_table} TO {to_table}, {cols})"
             )
         else:
-            query = f"CREATE REL TABLE IF NOT EXISTS {rel_type} (FROM {from_table} TO {to_table})"
+            query = (
+                f"CREATE REL TABLE IF NOT EXISTS {rel_type} "
+                f"(FROM {from_table} TO {to_table})"
+            )
         self._execute(query)
         self._known_rel_tables.add(rel_type)
         self._rel_table_map[rel_type] = (from_table, to_table)
@@ -247,7 +250,8 @@ class KuzuGraphStore:
         _validate_identifier(table)
         schema = self._schemas.get(table, {})
         search_fields = fields or [
-            col for col, dtype in schema.items() if dtype.upper() in ("STRING", "VARCHAR")
+            col for col, dtype in schema.items()
+            if dtype.upper() in ("STRING", "VARCHAR")
         ]
         if not search_fields:
             # No schema info — fall back to node_id search
@@ -258,49 +262,16 @@ class KuzuGraphStore:
         # when no node contains the entire question as a literal substring.
         # This mirrors SemanticMemory.search_facts keyword tokenisation.
         _STOP = frozenset(
-            {
-                "what",
-                "was",
-                "the",
-                "did",
-                "how",
-                "who",
-                "why",
-                "are",
-                "is",
-                "it",
-                "in",
-                "on",
-                "at",
-                "of",
-                "to",
-                "and",
-                "or",
-                "not",
-                "for",
-                "with",
-                "from",
-                "that",
-                "this",
-                "a",
-                "an",
-                "by",
-                "be",
-                "has",
-                "had",
-                "have",
-                "does",
-                "were",
-                "been",
-                "being",
-                "do",
-                "its",
-            }
+            {"what", "was", "the", "did", "how", "who", "why", "are", "is",
+             "it", "in", "on", "at", "of", "to", "and", "or", "not", "for",
+             "with", "from", "that", "this", "a", "an", "by", "be", "has",
+             "had", "have", "does", "were", "been", "being", "do", "its"}
         )
         tokens = [
             w.strip("?.,!;:'\"").lower()
             for w in text.split()
-            if len(w.strip("?.,!;:'\"")) >= 3 and w.strip("?.,!;:'\"").lower() not in _STOP
+            if len(w.strip("?.,!;:'\"")) >= 3
+            and w.strip("?.,!;:'\"").lower() not in _STOP
         ][:6]
 
         if tokens:
@@ -449,9 +420,7 @@ class KuzuGraphStore:
                     result.append((tbl, nid, dict(node)))
         return result
 
-    def export_edges(
-        self, node_ids: list[str] | None = None
-    ) -> list[tuple[str, str, str, str, str, dict]]:
+    def export_edges(self, node_ids: list[str] | None = None) -> list[tuple[str, str, str, str, str, dict]]:
         """Export edges as (rel_type, from_table, from_id, to_table, to_id, properties) tuples."""
         result = []
         id_set = set(node_ids) if node_ids is not None else None

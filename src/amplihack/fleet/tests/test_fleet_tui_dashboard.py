@@ -15,9 +15,10 @@ Public API tested:
 from __future__ import annotations
 
 import os
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from textual.widgets import (
     Button,
     DataTable,
@@ -30,17 +31,17 @@ from textual.widgets import (
     TextArea,
 )
 
-from amplihack.fleet.fleet_session_reasoner import SessionDecision
-from amplihack.fleet.fleet_tui import SessionView, VMView
 from amplihack.fleet.fleet_tui_dashboard import (
     FleetDashboardApp,
     _CachedSession,
 )
+from amplihack.fleet.fleet_tui import SessionView, VMView
+from amplihack.fleet.fleet_session_reasoner import SessionDecision
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
-
 
 def _make_mock_vms() -> list[VMView]:
     """Build a small fleet of mock VMs with sessions."""
@@ -122,12 +123,7 @@ def _inject_mock_data(app: FleetDashboardApp, vms: list[VMView]) -> None:
         if not vm.sessions:
             key = f"{vm.name}/(no sessions)"
             table.add_row(
-                "[dim]\u25cb[/]",
-                vm.name,
-                "(none)",
-                "stopped",
-                "",
-                "",
+                "[dim]\u25cb[/]", vm.name, "(none)", "stopped", "", "",
                 key=key,
             )
             new_cache[key] = _CachedSession(

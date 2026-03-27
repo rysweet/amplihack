@@ -23,11 +23,12 @@ import argparse
 import importlib.util
 import json
 import logging
+import os
 import sys
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 logging.basicConfig(
     level=logging.INFO,
@@ -164,9 +165,7 @@ def run_eval(output_path: str) -> dict:
                 entrypoint._handle_event("app-0", query_event, mock_memory, agent)
                 answer = ""
                 if captured.get("results"):
-                    answer = (
-                        captured["results"][0].get("content", "") if captured["results"] else ""
-                    )
+                    answer = captured["results"][0].get("content", "") if captured["results"] else ""
                 passed = bool(answer) and answer.lower() != "error"
                 responses.append({"question": question, "answer": answer, "passed": passed})
                 logger.info("Q%d: %s\n  -> %s...", i + 1, question[:60], answer[:100])

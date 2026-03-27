@@ -55,7 +55,7 @@ def check_mcp_config(path: Path) -> list[str]:
         if not server_cfg.get("disabled", False):
             errors.append(
                 f"{path}: MCP server '{server_name}' is enabled but CI-incompatible "
-                f'({reason}). Add `"disabled": true` to disable it for CI, or '
+                f"({reason}). Add `\"disabled\": true` to disable it for CI, or "
                 f"remove it entirely."
             )
 
@@ -75,7 +75,7 @@ def main() -> int:
         for error in all_errors:
             print(f"  ✗ {error}", file=sys.stderr)
         print(
-            '\nFix: add `"disabled": true` to the server config or remove it.\n'
+            "\nFix: add `\"disabled\": true` to the server config or remove it.\n"
             "See .claude/skills/gh-aw-adoption/reference.md for details.",
             file=sys.stderr,
         )

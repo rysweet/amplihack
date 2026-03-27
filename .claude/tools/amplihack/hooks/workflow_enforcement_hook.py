@@ -30,9 +30,7 @@ try:
     REGISTRY_AVAILABLE = True
 except ImportError as e:
     REGISTRY_AVAILABLE = False
-    print(
-        f"WARNING: tool_registry not available - hook registration disabled: {e}", file=sys.stderr
-    )
+    print(f"WARNING: tool_registry not available - hook registration disabled: {e}", file=sys.stderr)
 
     # Stub so the module can still be imported for testing
     class HookResult:  # type: ignore[no-redef]

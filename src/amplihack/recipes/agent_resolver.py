@@ -90,15 +90,13 @@ class AgentResolver:
         if category:
             candidates.append(Path(namespace) / category / f"{name}.md")
             candidates.append(Path(category) / f"{name}.md")
-        candidates.extend(
-            [
-                Path(namespace) / "core" / f"{name}.md",
-                Path(namespace) / "specialized" / f"{name}.md",
-                Path("core") / f"{name}.md",
-                Path("specialized") / f"{name}.md",
-                Path(f"{name}.md"),
-            ]
-        )
+        candidates.extend([
+            Path(namespace) / "core" / f"{name}.md",
+            Path(namespace) / "specialized" / f"{name}.md",
+            Path("core") / f"{name}.md",
+            Path("specialized") / f"{name}.md",
+            Path(f"{name}.md"),
+        ])
 
         searched: list[str] = []
         for base in self._search_paths:

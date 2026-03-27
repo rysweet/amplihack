@@ -50,17 +50,16 @@ write one sentence:
 > based on a configurable policy.
 
 Everything in the module either:
-
 - **Fulfills** that responsibility, or
 - **Is removed**
 
 To make the single responsibility concrete, answer these three questions:
 
-| Question                           | Answer                                                                         |
-| ---------------------------------- | ------------------------------------------------------------------------------ |
-| What does this module **take in**? | A fact (concept + content + confidence) or a query                             |
+| Question | Answer |
+|---|---|
+| What does this module **take in**? | A fact (concept + content + confidence) or a query |
 | What does this module **produce**? | A result dict (promoted, event_published, gossip_triggered) or a list of facts |
-| What does this module **NOT do**?  | Store facts itself, own the event bus, run background threads                  |
+| What does this module **NOT do**? | Store facts itself, own the event bus, run background threads |
 
 ---
 
@@ -102,7 +101,6 @@ This pattern appears throughout the codebase (see `distributed.py`, `controller.
 ## 4. Implementing (No Stubs)
 
 A "stub" is any function that:
-
 - Returns a hardcoded value (`return {}`)
 - Has only `...` in the body
 - Raises `NotImplementedError`
@@ -151,11 +149,11 @@ This pattern appears in every module in `hive_mind/`.
 
 The orchestrator connects to three existing interfaces:
 
-| Interface                  | How It Connects                                                       |
-| -------------------------- | --------------------------------------------------------------------- |
-| `HiveGraph` (Layer 1)      | `hive_graph.promote_fact()` and `query_facts()` / `query_federated()` |
-| `EventBus` (Layer 2)       | `event_bus.publish()`, `event_bus.poll()`, `event_bus.unsubscribe()`  |
-| `GossipProtocol` (Layer 3) | `run_gossip_round(hive_graph, peers, protocol)`                       |
+| Interface | How It Connects |
+|---|---|
+| `HiveGraph` (Layer 1) | `hive_graph.promote_fact()` and `query_facts()` / `query_federated()` |
+| `EventBus` (Layer 2) | `event_bus.publish()`, `event_bus.poll()`, `event_bus.unsubscribe()` |
+| `GossipProtocol` (Layer 3) | `run_gossip_round(hive_graph, peers, protocol)` |
 
 The orchestrator is injected with these at construction time — it does not create them.
 This is the **dependency injection** pattern: let callers compose the system.
@@ -205,14 +203,14 @@ This keeps the package importable even if an optional dependency is missing.
 
 Tests should validate **the contract, not the implementation**:
 
-| Test category        | What to test                                            |
-| -------------------- | ------------------------------------------------------- |
-| Protocol compliance  | `isinstance(DefaultPromotionPolicy(), PromotionPolicy)` |
-| Happy path           | High-confidence fact is promoted, event published       |
-| Negative path        | Low-confidence fact is not promoted, no event           |
-| Edge cases           | Confidence clamping, duplicate content deduplication    |
-| Graceful degradation | No peers → gossip skipped with reason                   |
-| Lifecycle            | `close()` does not raise, is idempotent                 |
+| Test category | What to test |
+|---|---|
+| Protocol compliance | `isinstance(DefaultPromotionPolicy(), PromotionPolicy)` |
+| Happy path | High-confidence fact is promoted, event published |
+| Negative path | Low-confidence fact is not promoted, no event |
+| Edge cases | Confidence clamping, duplicate content deduplication |
+| Graceful degradation | No peers → gossip skipped with reason |
+| Lifecycle | `close()` does not raise, is idempotent |
 
 Use pytest fixtures for repeated setup. Never test internal `_` attributes.
 
@@ -240,8 +238,8 @@ If you can't delete the module and recreate it from its interface alone, it's no
 
 ## Files Created
 
-| File                                                          | Purpose                     |
-| ------------------------------------------------------------- | --------------------------- |
-| `src/amplihack/agents/goal_seeking/hive_mind/orchestrator.py` | The new module              |
-| `tests/hive_mind/test_orchestrator.py`                        | Contract tests (29 passing) |
-| `docs/hive_mind/MODULE_CREATION_GUIDE.md`                     | This document               |
+| File | Purpose |
+|---|---|
+| `src/amplihack/agents/goal_seeking/hive_mind/orchestrator.py` | The new module |
+| `tests/hive_mind/test_orchestrator.py` | Contract tests (29 passing) |
+| `docs/hive_mind/MODULE_CREATION_GUIDE.md` | This document |

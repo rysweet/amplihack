@@ -62,7 +62,8 @@ class TestAcceptanceCriteriaScenario1:
             recipe_name="default-workflow",
             success=True,
             step_results=[
-                StepResult(step_id=f"step-{i}", status=StepStatus.COMPLETED) for i in range(23)
+                StepResult(step_id=f"step-{i}", status=StepStatus.COMPLETED)
+                for i in range(23)
             ],
         )
 

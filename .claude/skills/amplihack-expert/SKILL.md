@@ -67,13 +67,13 @@ Engineering system for coding CLIs (Claude, Copilot, Amplifier): 5 mechanisms, 2
 
 ### Top Commands
 
-| Command           | Purpose        | Use When              |
-| ----------------- | -------------- | --------------------- |
-| /dev              | Orchestrate    | Any non-trivial task  |
-| /analyze          | Review         | Check compliance      |
-| /fix              | Fix errors     | Common error patterns |
-| /amplihack:ddd:\* | Doc-driven dev | 10+ file features     |
-| /multitask        | Parallel tasks | Sprint/batch work     |
+| Command             | Purpose          | Use When               |
+| ------------------- | ---------------- | ---------------------- |
+| /dev                | Orchestrate      | Any non-trivial task   |
+| /analyze            | Review           | Check compliance       |
+| /fix                | Fix errors       | Common error patterns  |
+| /amplihack:ddd:*    | Doc-driven dev   | 10+ file features      |
+| /multitask          | Parallel tasks   | Sprint/batch work      |
 
 ### Top Agents
 
@@ -111,13 +111,11 @@ Engineering system for coding CLIs (Claude, Copilot, Amplifier): 5 mechanisms, 2
 **Entry point**: `/dev <task>` or any non-trivial prompt
 
 **Routing:**
-
 - Q&A → `amplihack:core:analyzer` responds directly
 - Operations → bash (simple) or `amplihack:core:builder` (complex)
 - Development/Investigation → smart-orchestrator recipe (full orchestration)
 
 **Execution flow:**
-
 1. Classify task (architect agent → JSON decomposition)
 2. Detect workstreams (1 = single session, 2-5 = parallel via multitask)
 3. Register session in tree (depth/capacity enforcement)
@@ -125,12 +123,10 @@ Engineering system for coding CLIs (Claude, Copilot, Amplifier): 5 mechanisms, 2
 5. Summarize results with PR links and GOAL_STATUS
 
 **Session tree**: Prevents infinite recursion
-
 - `AMPLIHACK_MAX_DEPTH=3` (default) — increase to 5 for deep orchestration
 - `AMPLIHACK_MAX_SESSIONS=10` (default) — max concurrent sessions per tree
 
 **Status signals:**
-
 - `GOAL_STATUS: ACHIEVED` — all criteria met
 - `GOAL_STATUS: PARTIAL -- [gaps]` — another round will run
 - `GOAL_STATUS: NOT_ACHIEVED -- [reason]` — final failure status

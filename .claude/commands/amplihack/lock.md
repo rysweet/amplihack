@@ -64,7 +64,6 @@ Immediately start working toward the goal. Do not ask for confirmation. The Lock
 ## Disabling
 
 Lock mode auto-disables when:
-
 - Goal is achieved (`mark_complete`)
 - Co-pilot needs human help (`escalate`)
 - User runs `/amplihack:unlock`

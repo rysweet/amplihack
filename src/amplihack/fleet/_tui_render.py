@@ -12,6 +12,7 @@ Public API:
 from __future__ import annotations
 
 import shutil
+import sys
 from datetime import datetime
 
 __all__ = ["render_dashboard", "boxline", "format_session"]
@@ -219,7 +220,9 @@ def render_dashboard(vms: list, refresh_interval: int, cols: int = 0) -> str:
 
         if not vm.sessions:
             empty_line = f"    {DIM}(no sessions){RESET}"
-            lines.append(boxline(empty_line, inner, width, raw_len=len("    (no sessions)")))
+            lines.append(
+                boxline(empty_line, inner, width, raw_len=len("    (no sessions)"))
+            )
         else:
             for sess in vm.sessions:
                 sess_line, raw_len = format_session(sess, inner)
@@ -259,9 +262,7 @@ def render_dashboard(vms: list, refresh_interval: int, cols: int = 0) -> str:
     lines.append(boxline(summary, inner, width, raw_len=raw_summary_len))
 
     # Footer: controls
-    controls = (
-        f"  {DIM}Next refresh in {refresh_interval}s    Press q to quit, r to refresh now{RESET}"
-    )
+    controls = f"  {DIM}Next refresh in {refresh_interval}s    Press q to quit, r to refresh now{RESET}"
     raw_controls_len = len(
         f"  Next refresh in {refresh_interval}s    Press q to quit, r to refresh now"
     )

@@ -35,6 +35,8 @@ Configuration keys (via DeploymentConfig.workload_config):
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import time
 import uuid
@@ -62,6 +64,13 @@ except ImportError:  # pragma: no cover
     _HAYMAKER_AVAILABLE = False
     WorkloadBase = object  # type: ignore[assignment,misc]
 
+from amplihack.workloads.hive.events import (
+    HIVE_AGENT_READY,
+    HIVE_FEED_COMPLETE,
+    HIVE_LEARN_CONTENT,
+    HIVE_QUERY,
+    HIVE_QUERY_RESPONSE,
+)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -106,7 +115,7 @@ class HiveMindWorkload(WorkloadBase):  # type: ignore[misc]
     # REQUIRED: WorkloadBase abstract methods
     # =========================================================================
 
-    async def deploy(self, config: DeploymentConfig) -> str:
+    async def deploy(self, config: "DeploymentConfig") -> str:
         """Deploy N container apps, each running M LearningAgents.
 
         Returns:
@@ -215,7 +224,7 @@ class HiveMindWorkload(WorkloadBase):  # type: ignore[misc]
         )
         return deployment_id
 
-    async def get_status(self, deployment_id: str) -> DeploymentState:
+    async def get_status(self, deployment_id: str) -> "DeploymentState":
         """Query status of all container apps for a deployment."""
         if not _HAYMAKER_AVAILABLE:
             raise RuntimeError("agent-haymaker not installed")
@@ -303,7 +312,9 @@ class HiveMindWorkload(WorkloadBase):  # type: ignore[misc]
 
         stopped = 0
         for app_name in app_names:
-            if await self._scale_app(app_name, resource_group, subscription_id, min_replicas=0):
+            if await self._scale_app(
+                app_name, resource_group, subscription_id, min_replicas=0
+            ):
                 stopped += 1
 
         state.status = DeploymentStatus.STOPPED
@@ -319,7 +330,7 @@ class HiveMindWorkload(WorkloadBase):  # type: ignore[misc]
         self.log(f"Stopped {stopped}/{len(app_names)} container apps for {deployment_id}")
         return stopped > 0 or len(app_names) == 0
 
-    async def cleanup(self, deployment_id: str) -> CleanupReport:
+    async def cleanup(self, deployment_id: str) -> "CleanupReport":
         """Delete all container apps for this deployment."""
         if not _HAYMAKER_AVAILABLE:
             return None  # type: ignore[return-value]
@@ -357,7 +368,8 @@ class HiveMindWorkload(WorkloadBase):  # type: ignore[misc]
         await self.save_state(state)
 
         self.log(
-            f"Cleanup complete: deleted={deleted} failed={failed} deployment_id={deployment_id}"
+            f"Cleanup complete: deleted={deleted} failed={failed} "
+            f"deployment_id={deployment_id}"
         )
         return CleanupReport(
             deployment_id=deployment_id,
@@ -394,7 +406,9 @@ class HiveMindWorkload(WorkloadBase):  # type: ignore[misc]
             (state.metadata or {}).get("topic_name", _DEFAULT_TOPIC) if state else _DEFAULT_TOPIC
         )
         sb_conn_str = (
-            (state.metadata or {}).get("service_bus_connection_string", "") if state else ""
+            (state.metadata or {}).get("service_bus_connection_string", "")
+            if state
+            else ""
         )
         await run_feed(
             deployment_id=deployment_id,
@@ -462,8 +476,8 @@ class HiveMindWorkload(WorkloadBase):  # type: ignore[misc]
     ) -> dict[str, Any]:
         """Deploy a single container app via az CLI."""
         try:
-            from agent_haymaker.azure.config import AzureConfig
             from agent_haymaker.azure.container_apps import deploy_container_app
+            from agent_haymaker.azure.config import AzureConfig
 
             config = AzureConfig(
                 resource_group=resource_group,
@@ -493,8 +507,8 @@ class HiveMindWorkload(WorkloadBase):  # type: ignore[misc]
         """Return {app_name: provisioning_state} for each app."""
         statuses: dict[str, str] = {}
         try:
-            from agent_haymaker.azure.config import AzureConfig
             from agent_haymaker.azure.container_apps import get_container_app_status
+            from agent_haymaker.azure.config import AzureConfig
 
             config = AzureConfig(
                 resource_group=resource_group,
@@ -505,7 +519,7 @@ class HiveMindWorkload(WorkloadBase):  # type: ignore[misc]
                 info = await get_container_app_status(config, app_name)
                 statuses[app_name] = info.get("status", "Unknown")
         except ImportError:
-            statuses = dict.fromkeys(app_names, "Unknown")
+            statuses = {n: "Unknown" for n in app_names}
         return statuses
 
     async def _stream_app_logs(
@@ -524,14 +538,10 @@ class HiveMindWorkload(WorkloadBase):  # type: ignore[misc]
                 "containerapp",
                 "logs",
                 "show",
-                "--name",
-                app_name,
-                "--resource-group",
-                resource_group,
-                "--subscription",
-                subscription_id,
-                "--tail",
-                str(lines),
+                "--name", app_name,
+                "--resource-group", resource_group,
+                "--subscription", subscription_id,
+                "--tail", str(lines),
             ]
             if follow:
                 cmd.append("--follow")
@@ -560,16 +570,11 @@ class HiveMindWorkload(WorkloadBase):  # type: ignore[misc]
                 [
                     "containerapp",
                     "update",
-                    "--name",
-                    app_name,
-                    "--resource-group",
-                    resource_group,
-                    "--subscription",
-                    subscription_id,
-                    "--min-replicas",
-                    str(min_replicas),
-                    "--max-replicas",
-                    str(min_replicas),
+                    "--name", app_name,
+                    "--resource-group", resource_group,
+                    "--subscription", subscription_id,
+                    "--min-replicas", str(min_replicas),
+                    "--max-replicas", str(min_replicas),
                 ]
             )
             if rc != 0:
@@ -587,8 +592,8 @@ class HiveMindWorkload(WorkloadBase):  # type: ignore[misc]
     ) -> bool:
         """Delete a container app."""
         try:
-            from agent_haymaker.azure.config import AzureConfig
             from agent_haymaker.azure.container_apps import delete_container_app
+            from agent_haymaker.azure.config import AzureConfig
 
             config = AzureConfig(
                 resource_group=resource_group,
@@ -606,7 +611,6 @@ class HiveMindWorkload(WorkloadBase):  # type: ignore[misc]
             self._platform.log(message, level=level, workload=self.name)
         else:
             import logging as _logging
-
             _logging.getLogger(f"workload.{self.name}").log(
                 getattr(_logging, level.upper(), _logging.INFO), message
             )
