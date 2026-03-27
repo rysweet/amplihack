@@ -16,6 +16,9 @@ from simpleeval import EvalWithCompoundTypes  # type: ignore[import-untyped]
 
 log = logging.getLogger(__name__)
 
+# Pre-compiled regex for normalising Python True/False literals in step conditions.
+_BOOL_RE = re.compile(r"\bTrue\b|\bFalse\b")
+
 
 class StepType(enum.Enum):
     """Type of recipe step."""
@@ -76,7 +79,6 @@ class Step:
         # was coerced to ``"true"`` above.  simpleeval resolves ``True`` as an
         # ast.Constant (bool), not a name lookup, so injecting into the
         # namespace doesn't help — we rewrite the condition text instead.
-        _BOOL_RE = re.compile(r"\bTrue\b|\bFalse\b")
         normalised = _BOOL_RE.sub(
             lambda m: "'true'" if m.group() == "True" else "'false'",
             self.condition.strip(),

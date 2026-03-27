@@ -614,11 +614,15 @@ def _write_progress_file(
     elapsed_seconds: float,
     status: str,
     pid: int | None = None,
+    _cached_path: Path | None = None,
 ) -> Path:
     """Write machine-readable JSON step status to a deterministic temp file.
 
     The file is keyed by *recipe_name* + PID so concurrent runs do not
     overwrite each other.
+
+    Pass ``_cached_path`` to skip recomputing the progress file path on
+    repeated calls with the same recipe name / PID (hot-path optimisation).
 
     Schema::
 
@@ -636,7 +640,7 @@ def _write_progress_file(
     """
     if pid is None:
         pid = os.getpid()
-    path = _progress_file_path(recipe_name, pid)
+    path = _cached_path or _progress_file_path(recipe_name, pid)
     data: dict[str, Any] = {
         "recipe_name": recipe_name,
         "current_step": current_step,
@@ -649,6 +653,7 @@ def _write_progress_file(
     }
     try:
         path.write_text(json.dumps(data), encoding="utf-8")
+        path.chmod(0o600)
     except OSError as exc:
         logger.debug("Could not write progress file %s: %s", path, exc)
     return path
@@ -673,12 +678,24 @@ def _stream_process_output_with_progress(
     stderr_chunks: list[str] = []
     # Mutable state shared with the stderr drain thread.
     state: dict[str, Any] = {"current_step": 0, "step_name": ""}
+    # Pre-compute once — avoids regex + Path construction on every marker line.
+    cached_progress_path = _progress_file_path(recipe_name)
 
     def _drain_stdout() -> None:
         if process.stdout is None:
             return
         for line in process.stdout:
             stdout_chunks.append(line)
+
+    def _emit_step_transition(step_name: str, status: str) -> None:
+        """Emit a machine-readable JSONL step-transition marker to stderr."""
+        print(
+            json.dumps(
+                {"type": "step_transition", "step": step_name, "status": status, "ts": time.time()}
+            ),
+            file=sys.stderr,
+            flush=True,
+        )
 
     def _drain_stderr() -> None:
         if process.stderr is None:
@@ -698,7 +715,9 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="running",
+                    _cached_path=cached_progress_path,
                 )
+                _emit_step_transition(state["step_name"], "start")
             elif stripped.startswith("✓"):
                 _write_progress_file(
                     recipe_name,
@@ -707,7 +726,9 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="completed",
+                    _cached_path=cached_progress_path,
                 )
+                _emit_step_transition(state["step_name"], "done")
             elif stripped.startswith("✗"):
                 _write_progress_file(
                     recipe_name,
@@ -716,7 +737,9 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="failed",
+                    _cached_path=cached_progress_path,
                 )
+                _emit_step_transition(state["step_name"], "fail")
             elif stripped.startswith("⊘"):
                 _write_progress_file(
                     recipe_name,
@@ -725,7 +748,9 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="skipped",
+                    _cached_path=cached_progress_path,
                 )
+                _emit_step_transition(state["step_name"], "skip")
 
     stdout_thread = threading.Thread(target=_drain_stdout)
     stderr_thread = threading.Thread(target=_drain_stderr)
@@ -787,9 +812,11 @@ def _execute_rust_command(
             stderr_tail = ""
             if stderr:
                 lines = stderr.strip().splitlines()
-                # Skip progress/heartbeat lines, show last 5 meaningful lines
+                # Skip progress/heartbeat/JSONL lines, show last 5 meaningful lines
                 meaningful = [
-                    ln for ln in lines if not ln.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]"))
+                    ln
+                    for ln in lines
+                    if not ln.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]", '{"type"'))
                 ]
                 stderr_tail = "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
             raise RuntimeError(

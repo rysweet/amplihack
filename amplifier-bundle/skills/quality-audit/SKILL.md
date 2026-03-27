@@ -192,8 +192,19 @@ Cycle 3: SEEK (deepest) → VALIDATE → FIX → decision
 
 **Run via recipe:**
 
-```bash
-amplihack recipe execute quality-audit-cycle.yaml --context '{"target_path": "src/amplihack", "min_cycles": "3", "max_cycles": "6"}'
+```python
+from amplihack.recipes import run_recipe_by_name
+
+result = run_recipe_by_name(
+    "quality-audit-cycle",
+    user_context={
+        "target_path": "src/amplihack",
+        "repo_path": ".",
+        "min_cycles": "3",
+        "max_cycles": "6",
+    },
+    progress=True,
+)
 ```
 
 ## Configuration
@@ -205,6 +216,7 @@ Override defaults via recipe context or environment:
 | Input                  | Default         | Description                                     |
 | ---------------------- | --------------- | ----------------------------------------------- |
 | `target_path`          | `src/amplihack` | Directory to audit                              |
+| `repo_path`            | `.`             | Repository root; sets `working_dir` for agents  |
 | `min_cycles`           | `3`             | Minimum audit cycles                            |
 | `max_cycles`           | `6`             | Maximum cycles (safety valve)                   |
 | `validation_threshold` | `2`             | Min validators that must agree (out of 3)       |
@@ -220,16 +232,23 @@ Override defaults via recipe context or environment:
 
 **Example invocation**:
 
-```bash
-amplihack recipe execute quality-audit-cycle.yaml --context '{
-  "target_path": "src/amplihack/fleet",
-  "min_cycles": "3",
-  "max_cycles": "6",
-  "severity_threshold": "medium",
-  "module_loc_limit": "300",
-  "fix_all_per_cycle": "true",
-  "categories": "security,reliability,dead_code,silent_fallbacks,error_swallowing"
-}'
+```python
+from amplihack.recipes import run_recipe_by_name
+
+result = run_recipe_by_name(
+    "quality-audit-cycle",
+    user_context={
+        "target_path": "src/amplihack/fleet",
+        "repo_path": ".",
+        "min_cycles": "3",
+        "max_cycles": "6",
+        "severity_threshold": "medium",
+        "module_loc_limit": "300",
+        "fix_all_per_cycle": "true",
+        "categories": "security,reliability,dead_code,silent_fallbacks,error_swallowing",
+    },
+    progress=True,
+)
 ```
 
 **Core Settings (environment)**:

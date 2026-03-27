@@ -17,6 +17,9 @@ recursion:
   max_total_steps: 60
 
 context:
+  # Repository root — working directory for agent steps (#3638)
+  repo_path: "."
+
   # Path to audit (structured input per #2843)
   target_path: "src/amplihack"
 
@@ -35,11 +38,15 @@ context:
   # Internal state
   audit_findings: ""
   validated_findings: ""
+  validation_agent_1: ""
+  validation_agent_2: ""
+  validation_agent_3: ""
   fix_results: ""
   fix_verification: ""
   cycle_number: "1"
   cycle_history: ""
   recurse_decision: ""
+  summary: ""
   self_improvement_results: ""
 
 steps:
@@ -49,9 +56,11 @@ steps:
   # ========================================================================
   - id: "seek"
     agent: "amplihack:core:reviewer"
+    working_dir: "{{repo_path}}"
     prompt: |
       # Quality Audit — Cycle {{cycle_number}} — SEEK
 
+      **Repository:** {{repo_path}}
       **Target Path:** {{target_path}}
       **Cycle:** {{cycle_number}} (escalating depth — look with fresh eyes)
       **Severity Threshold:** {{severity_threshold}} (only report findings at or above this severity)
@@ -155,9 +164,12 @@ steps:
   # ========================================================================
   - id: "validate-agent-1"
     agent: "amplihack:core:analyzer"
+    working_dir: "{{repo_path}}"
     condition: "audit_findings and 'findings' in audit_findings"
     prompt: |
       # Quality Audit — Cycle {{cycle_number}} — VALIDATE (Agent 1 of 3)
+
+      **Repository:** {{repo_path}}
 
       You are an independent validator. You must evaluate EACH finding below
       on its own merits. Do NOT defer to the original auditor — challenge
@@ -198,9 +210,12 @@ steps:
 
   - id: "validate-agent-2"
     agent: "amplihack:core:reviewer"
+    working_dir: "{{repo_path}}"
     condition: "audit_findings and 'findings' in audit_findings"
     prompt: |
       # Quality Audit — Cycle {{cycle_number}} — VALIDATE (Agent 2 of 3)
+
+      **Repository:** {{repo_path}}
 
       You are a second independent validator. Review each finding below.
       Be skeptical — assume findings may be wrong until you verify them
@@ -236,9 +251,12 @@ steps:
 
   - id: "validate-agent-3"
     agent: "amplihack:core:architect"
+    working_dir: "{{repo_path}}"
     condition: "audit_findings and 'findings' in audit_findings"
     prompt: |
       # Quality Audit — Cycle {{cycle_number}} — VALIDATE (Agent 3 of 3)
+
+      **Repository:** {{repo_path}}
 
       You are the third and final validator. Your role is adversarial —
       actively look for reasons each finding might be WRONG. Only confirm
@@ -275,44 +293,113 @@ steps:
   # ========================================================================
   # STEP 3: MERGE VALIDATIONS — Require majority agreement
   # A finding is confirmed only if ≥2 of 3 validators agree.
+  # Deterministic vote counting — no agent needed (perf: saves ~30-120s/cycle).
   # ========================================================================
   - id: "merge-validations"
-    agent: "amplihack:core:architect"
+    type: "bash"
     condition: "validation_agent_1 or validation_agent_2 or validation_agent_3"
-    prompt: |
-      # Quality Audit — Cycle {{cycle_number}} — MERGE VALIDATIONS
+    command: |
+      # Deterministic merge of three validator outputs.
+      # A finding is confirmed if ≥{{validation_threshold}} validators agree.
+      _V1_TMPFILE=$(mktemp)
+      _V2_TMPFILE=$(mktemp)
+      _V3_TMPFILE=$(mktemp)
+      chmod 600 "$_V1_TMPFILE" "$_V2_TMPFILE" "$_V3_TMPFILE"
+      trap 'rm -f "$_V1_TMPFILE" "$_V2_TMPFILE" "$_V3_TMPFILE"' EXIT
+      # Single-quoted heredoc delimiters prevent shell expansion.
+      # Long unique delimiters mitigate delimiter-collision injection risk (#3696).
+      cat > "$_V1_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_V1_TMPWRITE__'
+      {{validation_agent_1}}
+      __AMPLIHACK_SAFE_HEREDOC_V1_TMPWRITE__
+      cat > "$_V2_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_V2_TMPWRITE__'
+      {{validation_agent_2}}
+      __AMPLIHACK_SAFE_HEREDOC_V2_TMPWRITE__
+      cat > "$_V3_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_V3_TMPWRITE__'
+      {{validation_agent_3}}
+      __AMPLIHACK_SAFE_HEREDOC_V3_TMPWRITE__
 
-      Merge the three independent validation results. A finding is CONFIRMED
-      only if at least {{validation_threshold}} of 3 validators agree it is real
-      (verdict = "confirmed" or "downgraded"). Otherwise it is a FALSE POSITIVE.
+      export V1_FILE="$_V1_TMPFILE"
+      export V2_FILE="$_V2_TMPFILE"
+      export V3_FILE="$_V3_TMPFILE"
+      export THRESHOLD="{{validation_threshold}}"
+      export CYCLE="{{cycle_number}}"
 
-      **Validator 1:** {{validation_agent_1}}
-      **Validator 2:** {{validation_agent_2}}
-      **Validator 3:** {{validation_agent_3}}
+      python3 - <<'PYEOF'
+      import json, os, sys
 
-      For each finding:
-      1. Count votes: how many validators said confirmed/downgraded vs false_positive
-      2. If ≥{{validation_threshold}} confirm → CONFIRMED (use lowest severity among confirmers)
-      3. If <{{validation_threshold}} confirm → FALSE POSITIVE (majority ruled it out)
+      SEVERITY_ORDER = {'low': 0, 'medium': 1, 'high': 2, 'critical': 3}
+      threshold = int(os.environ.get('THRESHOLD', '2'))
+      cycle = os.environ.get('CYCLE', '1')
 
-      Output as JSON:
-      ```json
-      {
-        "cycle": {{cycle_number}},
-        "validated": [
-          {
-            "finding_id": 1,
-            "verdict": "confirmed|false_positive",
-            "final_severity": "critical|high|medium|low",
-            "votes": {"confirmed": 2, "false_positive": 1},
-            "reasoning": "majority rationale"
-          }
-        ],
-        "confirmed_count": 0,
-        "false_positive_count": 0,
-        "false_positive_rate": "0%"
+      def load_validator(path):
+          try:
+              with open(path) as f:
+                  return json.loads(f.read())
+          except (json.JSONDecodeError, FileNotFoundError) as e:
+              print(f"load_validator: failed to parse {path}: {e}", file=sys.stderr)
+              return {'validated': []}
+
+      validators = [
+          load_validator(os.environ['V1_FILE']),
+          load_validator(os.environ['V2_FILE']),
+          load_validator(os.environ['V3_FILE']),
+      ]
+
+      # Collect votes per finding_id
+      votes = {}
+      for v in validators:
+          for item in v.get('validated', []):
+              fid = item.get('finding_id')
+              if fid is None:
+                  continue
+              votes.setdefault(fid, []).append({
+                  'verdict': item.get('verdict', 'false_positive'),
+                  'new_severity': item.get('new_severity', 'medium'),
+                  'reasoning': item.get('reasoning', ''),
+              })
+
+      # Merge using threshold
+      merged = []
+      confirmed_count = 0
+      fp_count = 0
+      for fid in sorted(votes.keys(), key=lambda x: (isinstance(x, str), x)):
+          vote_list = votes[fid]
+          confirm_votes = [v for v in vote_list if v['verdict'] in ('confirmed', 'downgraded')]
+          fp_votes = [v for v in vote_list if v['verdict'] == 'false_positive']
+
+          if len(confirm_votes) >= threshold:
+              severities = [v['new_severity'] for v in confirm_votes]
+              final_sev = min(severities, key=lambda s: SEVERITY_ORDER.get(s, 1))
+              reasoning = '; '.join(v['reasoning'] for v in confirm_votes if v['reasoning'])
+              merged.append({
+                  'finding_id': fid,
+                  'verdict': 'confirmed',
+                  'final_severity': final_sev,
+                  'votes': {'confirmed': len(confirm_votes), 'false_positive': len(fp_votes)},
+                  'reasoning': reasoning or 'majority confirmed',
+              })
+              confirmed_count += 1
+          else:
+              reasoning = '; '.join(v['reasoning'] for v in fp_votes if v['reasoning'])
+              merged.append({
+                  'finding_id': fid,
+                  'verdict': 'false_positive',
+                  'final_severity': 'n/a',
+                  'votes': {'confirmed': len(confirm_votes), 'false_positive': len(fp_votes)},
+                  'reasoning': reasoning or 'majority ruled false positive',
+              })
+              fp_count += 1
+
+      total = confirmed_count + fp_count
+      result = {
+          'cycle': int(cycle) if cycle.isdigit() else cycle,
+          'validated': merged,
+          'confirmed_count': confirmed_count,
+          'false_positive_count': fp_count,
+          'false_positive_rate': f'{fp_count * 100 // max(total, 1)}%',
       }
-      ```
+      print(json.dumps(result, indent=2))
+      PYEOF
     output: "validated_findings"
 
   # ========================================================================
@@ -321,10 +408,12 @@ steps:
   # ========================================================================
   - id: "fix"
     agent: "amplihack:core:builder"
+    working_dir: "{{repo_path}}"
     condition: "validated_findings and 'confirmed' in validated_findings"
     prompt: |
       # Quality Audit — Cycle {{cycle_number}} — FIX
 
+      **Repository:** {{repo_path}}
       **Audit Findings:** {{audit_findings}}
       **Validation Results:** {{validated_findings}}
       **Target Path:** {{target_path}}
@@ -389,11 +478,23 @@ steps:
     type: "bash"
     condition: "validated_findings and fix_results"
     command: |
-      # Use environment variables to pass JSON safely — avoids bash interpreting
-      # JSON double-quotes as string terminators inside python3 -c "..." (#2872).
-      export VALIDATED={{validated_findings}}
-      export FIX_RESULTS={{fix_results}}
-      export FIX_ALL={{fix_all_per_cycle}}
+      # Write multi-line JSON to temp files to avoid bash quoting issues (#3638, #2872).
+      # Single-quoted heredoc delimiters prevent shell expansion of adversarial content.
+      # Long unique delimiters mitigate delimiter-collision injection risk (#3696).
+      _VALIDATED_TMPFILE=$(mktemp)
+      _FIX_RESULTS_TMPFILE=$(mktemp)
+      chmod 600 "$_VALIDATED_TMPFILE" "$_FIX_RESULTS_TMPFILE"
+      trap 'rm -f "$_VALIDATED_TMPFILE" "$_FIX_RESULTS_TMPFILE"' EXIT
+      cat > "$_VALIDATED_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_VALIDATED_STEP4B__'
+      {{validated_findings}}
+      __AMPLIHACK_SAFE_HEREDOC_VALIDATED_STEP4B__
+      cat > "$_FIX_RESULTS_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_FIXRES_STEP4B__'
+      {{fix_results}}
+      __AMPLIHACK_SAFE_HEREDOC_FIXRES_STEP4B__
+
+      export FIX_ALL="{{fix_all_per_cycle}}"
+      export VALIDATED_FILE="$_VALIDATED_TMPFILE"
+      export FIX_RESULTS_FILE="$_FIX_RESULTS_TMPFILE"
 
       python3 - <<'PYEOF'
       import json, sys, os
@@ -401,9 +502,11 @@ steps:
       fix_all = os.environ.get('FIX_ALL', '').lower() == 'true'
 
       try:
-          validated = json.loads(os.environ.get('VALIDATED', '{}'))
-          fixes = json.loads(os.environ.get('FIX_RESULTS', '{}'))
-      except json.JSONDecodeError as e:
+          with open(os.environ['VALIDATED_FILE']) as f:
+              validated = json.loads(f.read())
+          with open(os.environ['FIX_RESULTS_FILE']) as f:
+              fixes = json.loads(f.read())
+      except (json.JSONDecodeError, FileNotFoundError) as e:
           # If we can't parse, report but don't block
           print(f'WARNING: Could not parse JSON for fix verification: {e}')
           print('VERIFY: SKIP (unparseable)')
@@ -449,18 +552,32 @@ steps:
   - id: "accumulate-history"
     type: "bash"
     command: |
-      CYCLE={{cycle_number}}
-      CURRENT_HISTORY={{cycle_history}}
-      FINDINGS={{validated_findings}}
+      CYCLE="{{cycle_number}}"
 
-      if [ -z "$CURRENT_HISTORY" ]; then
+      # Write multi-line JSON to temp files to avoid bash quoting issues (#3638).
+      # Single-quoted heredoc delimiters prevent shell expansion of adversarial content.
+      # Long unique delimiters mitigate delimiter-collision injection risk (#3696).
+      _HISTORY_TMPFILE=$(mktemp)
+      _FINDINGS_TMPFILE=$(mktemp)
+      chmod 600 "$_HISTORY_TMPFILE" "$_FINDINGS_TMPFILE"
+      trap 'rm -f "$_HISTORY_TMPFILE" "$_FINDINGS_TMPFILE"' EXIT
+      cat > "$_HISTORY_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_HISTORY_STEP4C__'
+      {{cycle_history}}
+      __AMPLIHACK_SAFE_HEREDOC_HISTORY_STEP4C__
+      cat > "$_FINDINGS_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_FINDINGS_STEP4C__'
+      {{validated_findings}}
+      __AMPLIHACK_SAFE_HEREDOC_FINDINGS_STEP4C__
+
+      # Stream tmpfile contents directly via cat instead of loading into
+      # shell variables — avoids size limits and extra copies for large JSON.
+      if [ ! -s "$_HISTORY_TMPFILE" ]; then
         echo "--- Cycle $CYCLE findings ---"
-        echo "$FINDINGS"
+        cat "$_FINDINGS_TMPFILE"
       else
-        echo "$CURRENT_HISTORY"
+        cat "$_HISTORY_TMPFILE"
         echo ""
         echo "--- Cycle $CYCLE findings ---"
-        echo "$FINDINGS"
+        cat "$_FINDINGS_TMPFILE"
       fi
     output: "cycle_history"
 
@@ -471,21 +588,23 @@ steps:
   - id: "recurse-decision"
     type: "bash"
     command: |
-      CYCLE={{cycle_number}}
-      MIN_CYCLES={{min_cycles}}
-      MAX_CYCLES={{max_cycles}}
+      CYCLE="{{cycle_number}}"
+      MIN_CYCLES="{{min_cycles}}"
+      MAX_CYCLES="{{max_cycles}}"
 
       # Write validated_findings to a temp file to avoid bash quoting issues
       # with JSON containing spaces, quotes, and special characters (#3046).
+      # Long unique delimiters mitigate delimiter-collision injection risk (#3696).
       _VALIDATED_TMPFILE=$(mktemp)
       _FIX_VERIFY_TMPFILE=$(mktemp)
+      chmod 600 "$_VALIDATED_TMPFILE" "$_FIX_VERIFY_TMPFILE"
       trap 'rm -f "$_VALIDATED_TMPFILE" "$_FIX_VERIFY_TMPFILE"' EXIT
-      cat > "$_VALIDATED_TMPFILE" <<__VALIDATED_EOF__
+      cat > "$_VALIDATED_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_VALIDATED_STEP5__'
       {{validated_findings}}
-      __VALIDATED_EOF__
-      cat > "$_FIX_VERIFY_TMPFILE" <<__FIX_VERIFY_EOF__
+      __AMPLIHACK_SAFE_HEREDOC_VALIDATED_STEP5__
+      cat > "$_FIX_VERIFY_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_FIXVER_STEP5__'
       {{fix_verification}}
-      __FIX_VERIFY_EOF__
+      __AMPLIHACK_SAFE_HEREDOC_FIXVER_STEP5__
 
       FIX_VERIFY=$(cat "$_FIX_VERIFY_TMPFILE")
 
@@ -517,17 +636,21 @@ steps:
       # NOT: are there old unfixed issues remaining?
       export VALIDATED_FILE="$_VALIDATED_TMPFILE"
       read -r HIGH_COUNT CRITICAL_COUNT MEDIUM_COUNT CONFIRMED <<< $(python3 -c "
-      import json, sys, os
+      import json, os
       try:
           with open(os.environ['VALIDATED_FILE']) as f:
               data = json.loads(f.read())
-          validated = data.get('validated', [])
-          high = sum(1 for v in validated if v.get('final_severity') == 'high' and v.get('verdict') == 'confirmed')
-          critical = sum(1 for v in validated if v.get('final_severity') == 'critical' and v.get('verdict') == 'confirmed')
-          medium = sum(1 for v in validated if v.get('final_severity') == 'medium' and v.get('verdict') == 'confirmed')
-          confirmed = sum(1 for v in validated if v.get('verdict') == 'confirmed')
+          high = critical = medium = confirmed = 0
+          for v in data.get('validated', []):
+              if v.get('verdict') == 'confirmed':
+                  confirmed += 1
+                  sev = v.get('final_severity')
+                  if sev == 'critical': critical += 1
+                  elif sev == 'high': high += 1
+                  elif sev == 'medium': medium += 1
           print(f'{high} {critical} {medium} {confirmed}')
-      except Exception:
+      except Exception as e:
+          print(f'recurse-decision: severity counting failed: {e}', file=sys.stderr)
           print('0 0 0 0')
       ")
 
@@ -552,8 +675,11 @@ steps:
   # ========================================================================
   - id: "summary"
     agent: "amplihack:core:architect"
+    working_dir: "{{repo_path}}"
     prompt: |
       # Quality Audit — Final Summary
+
+      **Repository:** {{repo_path}}
 
       **Cycles completed:** {{cycle_number}}
       **Recurse decision:** {{recurse_decision}}
@@ -584,9 +710,11 @@ steps:
   # ========================================================================
   - id: "self-improvement"
     agent: "amplihack:core:architect"
+    working_dir: "{{repo_path}}"
     prompt: |
       # Quality Audit — Self-Improvement Review
 
+      **Repository:** {{repo_path}}
       **Audit Summary:** {{summary}}
       **Target Path:** {{target_path}}
       **Cycles Completed:** {{cycle_number}}
@@ -640,4 +768,4 @@ output:
     {{self_improvement_results}}
 
     ---
-    *quality-audit-cycle v3.0.0*
+    *quality-audit-cycle v4.0.0*

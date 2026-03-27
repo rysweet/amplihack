@@ -140,11 +140,16 @@ def _write_progress_file(
     elapsed_seconds: float,
     status: str,
     pid: int | None = None,
+    _cached_path: Path | None = None,
 ) -> Path:
-    """Write the current recipe progress to a deterministic JSON file."""
+    """Write the current recipe progress to a deterministic JSON file.
+
+    Pass ``_cached_path`` to skip recomputing the progress file path on
+    repeated calls with the same recipe name / PID (hot-path optimisation).
+    """
     if pid is None:
         pid = os.getpid()
-    path = _progress_file_path(recipe_name, pid)
+    path = _cached_path or _progress_file_path(recipe_name, pid)
     payload: dict[str, Any] = {
         "recipe_name": recipe_name,
         "current_step": current_step,
@@ -172,12 +177,24 @@ def _stream_process_output_with_progress(
     stderr_chunks: list[str] = []
     started_at = time.time()
     state: dict[str, Any] = {"current_step": 0, "step_name": ""}
+    # Pre-compute once — avoids regex + Path construction on every marker line.
+    cached_progress_path = _progress_file_path(recipe_name)
 
     def _drain_stdout() -> None:
         if process.stdout is None:
             return
         for line in process.stdout:
             stdout_chunks.append(line)
+
+    def _emit_step_transition(step_name: str, status: str) -> None:
+        """Emit a machine-readable JSONL step-transition marker to stderr."""
+        print(
+            json.dumps(
+                {"type": "step_transition", "step": step_name, "status": status, "ts": time.time()}
+            ),
+            file=sys.stderr,
+            flush=True,
+        )
 
     def _drain_stderr() -> None:
         if process.stderr is None:
@@ -196,7 +213,9 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="running",
+                    _cached_path=cached_progress_path,
                 )
+                _emit_step_transition(state["step_name"], "start")
             elif stripped.startswith("✓"):
                 _write_progress_file(
                     recipe_name,
@@ -205,7 +224,9 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="completed",
+                    _cached_path=cached_progress_path,
                 )
+                _emit_step_transition(state["step_name"], "done")
             elif stripped.startswith("✗"):
                 _write_progress_file(
                     recipe_name,
@@ -214,7 +235,9 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="failed",
+                    _cached_path=cached_progress_path,
                 )
+                _emit_step_transition(state["step_name"], "fail")
             elif stripped.startswith("⊘"):
                 _write_progress_file(
                     recipe_name,
@@ -223,7 +246,9 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="skipped",
+                    _cached_path=cached_progress_path,
                 )
+                _emit_step_transition(state["step_name"], "skip")
 
     stdout_thread = threading.Thread(target=_drain_stdout)
     stderr_thread = threading.Thread(target=_drain_stderr)
@@ -267,7 +292,9 @@ def _run_rust_process(
 def _meaningful_stderr_tail(stderr: str) -> str:
     lines = stderr.strip().splitlines()
     meaningful = [
-        line for line in lines if not line.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]"))
+        line
+        for line in lines
+        if not line.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]", '{"type"'))
     ]
     return "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
 

@@ -39,7 +39,7 @@ def iter_runtime_roots() -> list[Path]:
     seen: set[Path] = set()
     for root in roots:
         resolved = root.resolve()
-        if resolved not in seen:
+        if resolved not in seen and resolved.is_dir():
             seen.add(resolved)
             unique_roots.append(resolved)
 
