@@ -413,6 +413,8 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and workstream_count != 1 and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
+      # Emit step-transition marker for progress tracking (#3625)
+      echo '{"transition":"step_started","step":"launch-parallel-round-1","timestamp":'$(date +%s)'}' >&2
       REPO_PATH={{repo_path}}
       WS_FILE={{workstreams_file}}
       SESSION_JSON=$(cat <<EOFSESSIONJSON

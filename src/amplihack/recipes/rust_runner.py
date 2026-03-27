@@ -614,6 +614,7 @@ def _write_progress_file(
     elapsed_seconds: float,
     status: str,
     pid: int | None = None,
+    transition: str = "",
 ) -> Path:
     """Write machine-readable JSON step status to a deterministic temp file.
 
@@ -630,6 +631,8 @@ def _write_progress_file(
         status          - "running" | "completed" | "failed" | "skipped"
         pid             - process ID of the writer
         updated_at      - Unix timestamp of last write
+        transition      - step-transition marker: "step_started" |
+                          "step_completed" | "step_failed" | "step_skipped" | ""
 
     Returns the path to the written file (useful for tests and callers that
     want to locate the file without recomputing the path).
@@ -646,6 +649,7 @@ def _write_progress_file(
         "status": status,
         "pid": pid,
         "updated_at": time.time(),
+        "transition": transition,
     }
     try:
         path.write_text(json.dumps(data), encoding="utf-8")
@@ -700,6 +704,7 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="running",
+                    transition="step_started",
                 )
                 rust_runner_execution.emit_step_transition(state["step_name"], "start")
             elif stripped.startswith("✓"):
@@ -710,6 +715,7 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="completed",
+                    transition="step_completed",
                 )
                 rust_runner_execution.emit_step_transition(state["step_name"], "done")
             elif stripped.startswith("✗"):
@@ -720,6 +726,7 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="failed",
+                    transition="step_failed",
                 )
                 rust_runner_execution.emit_step_transition(state["step_name"], "fail")
             elif stripped.startswith("⊘"):
@@ -730,6 +737,7 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="skipped",
+                    transition="step_skipped",
                 )
                 rust_runner_execution.emit_step_transition(state["step_name"], "skip")
 

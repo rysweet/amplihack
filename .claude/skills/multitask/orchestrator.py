@@ -573,6 +573,8 @@ class ParallelOrchestrator:
         """Monitor all workstreams until complete or timeout.
 
         Auto-cleans completed workstream directories to prevent disk exhaustion.
+        Emits a machine-readable JSON heartbeat on each check cycle so callers
+        can detect freshness without parsing human-readable text.
         """
         start = time.time()
 
@@ -615,6 +617,38 @@ class ParallelOrchestrator:
                 ),
                 flush=True,
             )
+
+            # Machine-readable heartbeat for caller freshness detection (#3626)
+            heartbeat = {
+                "type": "workstream_heartbeat",
+                "timestamp": time.time(),
+                "elapsed_seconds": elapsed,
+                "summary": {
+                    "running": len(status["running"]),
+                    "completed": len(status["completed"]),
+                    "failed": len(status["failed"]),
+                    "total": len(self.workstreams),
+                },
+                "workstreams": [
+                    {
+                        "issue": ws.issue,
+                        "description": ws.description,
+                        "status": (
+                            "running"
+                            if ws.issue in status["running"]
+                            else "completed"
+                            if ws.issue in status["completed"]
+                            else "failed"
+                        ),
+                        "runtime_seconds": round(ws.runtime_seconds, 1)
+                        if ws.runtime_seconds
+                        else 0,
+                        "exit_code": ws.exit_code,
+                    }
+                    for ws in self.workstreams
+                ],
+            }
+            print(f"  ::heartbeat::{json.dumps(heartbeat)}")
 
             # Auto-cleanup completed and failed workstream directories
             for ws in self.workstreams:
