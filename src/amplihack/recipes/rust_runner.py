@@ -614,11 +614,15 @@ def _write_progress_file(
     elapsed_seconds: float,
     status: str,
     pid: int | None = None,
+    _cached_path: Path | None = None,
 ) -> Path:
     """Write machine-readable JSON step status to a deterministic temp file.
 
     The file is keyed by *recipe_name* + PID so concurrent runs do not
     overwrite each other.
+
+    Pass ``_cached_path`` to skip recomputing the progress file path on
+    repeated calls with the same recipe name / PID (hot-path optimisation).
 
     Schema::
 
@@ -636,7 +640,7 @@ def _write_progress_file(
     """
     if pid is None:
         pid = os.getpid()
-    path = _progress_file_path(recipe_name, pid)
+    path = _cached_path or _progress_file_path(recipe_name, pid)
     data: dict[str, Any] = {
         "recipe_name": recipe_name,
         "current_step": current_step,
@@ -673,6 +677,8 @@ def _stream_process_output_with_progress(
     stderr_chunks: list[str] = []
     # Mutable state shared with the stderr drain thread.
     state: dict[str, Any] = {"current_step": 0, "step_name": ""}
+    # Pre-compute once — avoids regex + Path construction on every marker line.
+    cached_progress_path = _progress_file_path(recipe_name)
 
     def _drain_stdout() -> None:
         if process.stdout is None:
@@ -708,6 +714,7 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="running",
+                    _cached_path=cached_progress_path,
                 )
                 _emit_step_transition(state["step_name"], "start")
             elif stripped.startswith("✓"):
@@ -718,6 +725,7 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="completed",
+                    _cached_path=cached_progress_path,
                 )
                 _emit_step_transition(state["step_name"], "done")
             elif stripped.startswith("✗"):
@@ -728,6 +736,7 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="failed",
+                    _cached_path=cached_progress_path,
                 )
                 _emit_step_transition(state["step_name"], "fail")
             elif stripped.startswith("⊘"):
@@ -738,6 +747,7 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="skipped",
+                    _cached_path=cached_progress_path,
                 )
                 _emit_step_transition(state["step_name"], "skip")
 

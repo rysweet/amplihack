@@ -520,14 +520,24 @@ class ParallelOrchestrator:
             self._cleaned_up.add(ws.issue)
             return
 
-        # Measure size before deleting
+        # Measure size using os.scandir (avoids separate stat syscalls on
+        # platforms where DirEntry caches inode data from readdir).
         dir_bytes = 0
-        for dirpath, _dirs, files in os.walk(ws.work_dir):
-            for f in files:
-                try:
-                    dir_bytes += os.path.getsize(os.path.join(dirpath, f))
-                except OSError:
-                    pass
+        dirs_to_scan = [ws.work_dir]
+        while dirs_to_scan:
+            current = dirs_to_scan.pop()
+            try:
+                with os.scandir(current) as entries:
+                    for entry in entries:
+                        try:
+                            if entry.is_file(follow_symlinks=False):
+                                dir_bytes += entry.stat(follow_symlinks=False).st_size
+                            elif entry.is_dir(follow_symlinks=False):
+                                dirs_to_scan.append(entry.path)
+                        except OSError:
+                            pass
+            except OSError:
+                pass
 
         shutil.rmtree(ws.work_dir, ignore_errors=True)
         self._cleaned_up.add(ws.issue)
