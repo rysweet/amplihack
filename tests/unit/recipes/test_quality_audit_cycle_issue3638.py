@@ -56,28 +56,28 @@ SAFE_SCALAR_VARS = {
 }
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def recipe():
-    """Load the quality-audit-cycle recipe as parsed YAML."""
+    """Load the quality-audit-cycle recipe as parsed YAML (session-scoped)."""
     with open(RECIPE_PATH) as f:
         return yaml.safe_load(f)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def recipe_text():
-    """Load the raw recipe text for pattern matching."""
+    """Load the raw recipe text for pattern matching (session-scoped)."""
     return RECIPE_PATH.read_text()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def steps_by_id(recipe):
-    """Build a dict of step_id -> step_dict for quick lookup."""
+    """Build a dict of step_id -> step_dict for quick lookup (session-scoped)."""
     return {s["id"]: s for s in recipe["steps"]}
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def skill_texts():
-    """Load all SKILL.md copies (only those that exist)."""
+    """Load all SKILL.md copies — session-scoped since files don't change."""
     texts = {}
     for p in SKILL_PATHS:
         if p.exists():

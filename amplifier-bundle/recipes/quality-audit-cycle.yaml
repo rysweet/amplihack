@@ -560,17 +560,16 @@ steps:
       {{validated_findings}}
       __FINDINGS_EOF__
 
-      CURRENT_HISTORY=$(cat "$_HISTORY_TMPFILE")
-      FINDINGS=$(cat "$_FINDINGS_TMPFILE")
-
-      if [ -z "$CURRENT_HISTORY" ]; then
+      # Stream tmpfile contents directly via cat instead of loading into
+      # shell variables — avoids size limits and extra copies for large JSON.
+      if [ ! -s "$_HISTORY_TMPFILE" ]; then
         echo "--- Cycle $CYCLE findings ---"
-        echo "$FINDINGS"
+        cat "$_FINDINGS_TMPFILE"
       else
-        echo "$CURRENT_HISTORY"
+        cat "$_HISTORY_TMPFILE"
         echo ""
         echo "--- Cycle $CYCLE findings ---"
-        echo "$FINDINGS"
+        cat "$_FINDINGS_TMPFILE"
       fi
     output: "cycle_history"
 
@@ -627,15 +626,18 @@ steps:
       # NOT: are there old unfixed issues remaining?
       export VALIDATED_FILE="$_VALIDATED_TMPFILE"
       read -r HIGH_COUNT CRITICAL_COUNT MEDIUM_COUNT CONFIRMED <<< $(python3 -c "
-      import json, sys, os
+      import json, os
       try:
           with open(os.environ['VALIDATED_FILE']) as f:
               data = json.loads(f.read())
-          validated = data.get('validated', [])
-          high = sum(1 for v in validated if v.get('final_severity') == 'high' and v.get('verdict') == 'confirmed')
-          critical = sum(1 for v in validated if v.get('final_severity') == 'critical' and v.get('verdict') == 'confirmed')
-          medium = sum(1 for v in validated if v.get('final_severity') == 'medium' and v.get('verdict') == 'confirmed')
-          confirmed = sum(1 for v in validated if v.get('verdict') == 'confirmed')
+          high = critical = medium = confirmed = 0
+          for v in data.get('validated', []):
+              if v.get('verdict') == 'confirmed':
+                  confirmed += 1
+                  sev = v.get('final_severity')
+                  if sev == 'critical': critical += 1
+                  elif sev == 'high': high += 1
+                  elif sev == 'medium': medium += 1
           print(f'{high} {critical} {medium} {confirmed}')
       except Exception:
           print('0 0 0 0')
