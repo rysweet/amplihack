@@ -1597,9 +1597,20 @@ steps:
       )
 
       git commit -m "$COMMIT_MSG" 2>/dev/null || echo "Commit prepared"
-      git pull --rebase 2>/dev/null && git push 2>/dev/null || echo "Push prepared"
+      PUSH_RESULT=false
+      PUSH_REASON="no_remote"
+      if git remote get-url origin >/dev/null 2>&1; then
+        if git pull --rebase 2>/dev/null && git push 2>/dev/null; then
+          PUSH_RESULT=true
+          PUSH_REASON="success"
+        else
+          PUSH_REASON="push_failed"
+        fi
+      else
+        echo "Skipping push — no remote configured" >&2
+      fi
 
-      echo '{"committed": true, "pushed": true}'
+      echo "{\"committed\": true, \"pushed\": $PUSH_RESULT, \"push_reason\": \"$PUSH_REASON\"}"
     output: "commit_result"
     parse_json: true
 
@@ -1651,12 +1662,21 @@ steps:
       )
 
       PR_TITLE=$(printf '%s' {{task_description}} | tr '\n\r' ' ' | cut -c1-200)
-      gh pr create \
-        --title "$PR_TITLE" \
-        --body "$PR_BODY" \
-        --label "consensus-validated" 2>/dev/null || echo "PR creation prepared"
+      PR_CREATED=false
+      if git remote get-url origin >/dev/null 2>&1; then
+        if gh pr create \
+          --title "$PR_TITLE" \
+          --body "$PR_BODY" \
+          --label "consensus-validated" 2>/dev/null; then
+          PR_CREATED=true
+        else
+          echo "PR creation failed" >&2
+        fi
+      else
+        echo "Skipping PR creation — no remote configured" >&2
+      fi
 
-      echo '{"pr_created": true}'
+      echo "{\"pr_created\": $PR_CREATED}"
     output: "pr_result"
     parse_json: true
 
@@ -1881,7 +1901,11 @@ steps:
       echo "Pushing review updates..."
       git add -A
       git commit -m "Address PR review feedback" 2>/dev/null || true
-      git pull --rebase 2>/dev/null && git push 2>/dev/null || true
+      if git remote get-url origin >/dev/null 2>&1; then
+        git pull --rebase 2>/dev/null && git push 2>/dev/null || true
+      else
+        echo "Skipping push — no remote configured" >&2
+      fi
       echo '{"updates_pushed": true}'
     output: "review_updates"
     parse_json: true
@@ -2024,7 +2048,11 @@ steps:
     type: "bash"
     command: |
       echo "Checking CI status..."
-      gh pr checks 2>/dev/null || echo "CI check pending"
+      if git remote get-url origin >/dev/null 2>&1; then
+        gh pr checks 2>/dev/null || echo "CI check pending"
+      else
+        echo "Skipping CI check — no remote configured" >&2
+      fi
       echo '{"ci_checked": true}'
     output: "ci_status"
     parse_json: true
