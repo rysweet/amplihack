@@ -141,6 +141,44 @@ class TestEvaluateCondition:
         assert step.evaluate_condition({"description": "Build an API"}) is True
         assert step.evaluate_condition({"description": "Build a CLI"}) is False
 
+    # -- Bool coercion for Python-style True/False literals (fix for #3606) --
+
+    def test_bool_compared_to_python_true_literal(self) -> None:
+        """``flag == True`` when flag is bool True → should match."""
+        step = self._step("flag == True")
+        assert step.evaluate_condition({"flag": True}) is True
+
+    def test_bool_compared_to_python_false_literal(self) -> None:
+        """``flag == False`` when flag is bool False → should match."""
+        step = self._step("flag == False")
+        assert step.evaluate_condition({"flag": False}) is True
+
+    def test_string_true_compared_to_python_true_literal(self) -> None:
+        """``flag == True`` when flag is string "true" → should match."""
+        step = self._step("flag == True")
+        assert step.evaluate_condition({"flag": "true"}) is True
+
+    def test_bool_true_not_equal_python_false_literal(self) -> None:
+        """``flag == False`` when flag is bool True → should NOT match."""
+        step = self._step("flag == False")
+        assert step.evaluate_condition({"flag": True}) is False
+
+    def test_bool_false_not_equal_python_true_literal(self) -> None:
+        """``flag == True`` when flag is bool False → should NOT match."""
+        step = self._step("flag == True")
+        assert step.evaluate_condition({"flag": False}) is False
+
+    def test_python_true_literal_inequality(self) -> None:
+        """``flag != True`` when flag is bool False → should be True."""
+        step = self._step("flag != True")
+        assert step.evaluate_condition({"flag": False}) is True
+
+    def test_complex_expression_with_python_true_literal(self) -> None:
+        """``bug_hunt == True and count >= 2`` — mixed literal/numeric."""
+        step = self._step("bug_hunt == True and count >= 2")
+        assert step.evaluate_condition({"bug_hunt": True, "count": 3}) is True
+        assert step.evaluate_condition({"bug_hunt": False, "count": 3}) is False
+
     def test_import_blocked(self) -> None:
         """simpleeval must block __import__ — no code execution via conditions."""
         step = self._step("__import__('os').system('echo pwned')")
