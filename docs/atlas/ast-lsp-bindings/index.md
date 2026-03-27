@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-27T16:50:00+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-27T19:37:00+00:00
 </div>
 
 ## Map
@@ -66,9 +66,9 @@ Category: <strong>Structural</strong> | Generated: 2026-03-27T16:50:00+00:00
 
     | Metric | Value |
     |--------|-------|
-    | Total definitions | 14689 |
-    | Total exports | 2163 |
-    | Total imports | 16682 |
+    | Total definitions | 14691 |
+    | Total exports | 2165 |
+    | Total imports | 16684 |
     | Potentially dead | 419 |
     | Files with `__all__` | 408 |
 
@@ -86,7 +86,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-27T16:50:00+00:00
 
 ## Key Findings
 
-- 14689 total definitions across all files
+- 14691 total definitions across all files
 - 419 potentially dead definitions (2.9% of total)
 - 1948 files without `__all__` exports
 
@@ -96,9 +96,9 @@ Category: <strong>Structural</strong> | Generated: 2026-03-27T16:50:00+00:00
 
     **Summary metrics:**
 
-    - **Total Definitions**: 14689
-    - **Total Exports**: 2163
-    - **Total Imports**: 16682
+    - **Total Definitions**: 14691
+    - **Total Exports**: 2165
+    - **Total Imports**: 16684
     - **Potentially Dead Count**: 419
     - **Files With All**: 408
     - **Files Without All**: 1948
