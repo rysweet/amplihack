@@ -32,8 +32,13 @@ SKILL_PATHS = [
 
 # Agent steps that need filesystem access (read/write files)
 FILESYSTEM_AGENT_STEPS = [
-    "seek", "validate-agent-1", "validate-agent-2", "validate-agent-3",
-    "fix", "summary", "self-improvement",
+    "seek",
+    "validate-agent-1",
+    "validate-agent-2",
+    "validate-agent-3",
+    "fix",
+    "summary",
+    "self-improvement",
 ]
 
 # Bash steps that receive multi-line JSON via template variables
@@ -102,8 +107,7 @@ class TestBug1RepoPathContext:
         context = recipe.get("context", {})
         if "repo_path" in context:
             assert context["repo_path"] == ".", (
-                f"repo_path should default to '.' (current dir), "
-                f"got '{context['repo_path']}'"
+                f"repo_path should default to '.' (current dir), got '{context['repo_path']}'"
             )
 
 
@@ -144,11 +148,7 @@ class TestBug1AgentPromptRepoPath:
         if step is None:
             pytest.skip(f"Step '{step_id}' not found")
         prompt = step.get("prompt", "")
-        has_repo_ref = (
-            "repo_path" in prompt
-            or "Repository" in prompt
-            or "repository" in prompt
-        )
+        has_repo_ref = "repo_path" in prompt or "Repository" in prompt or "repository" in prompt
         assert has_repo_ref, (
             f"Step '{step_id}' prompt should reference the repository path "
             f"(e.g., '**Repository:** {{{{repo_path}}}}') as defense-in-depth "
@@ -170,9 +170,7 @@ class TestBug2VerifyFixesHeredocSafety:
         command = step.get("command", "")
         # Bare export pattern: export VAR={{template}} on a single line
         # without heredoc wrapping
-        bare_pattern = re.compile(
-            r"export\s+VALIDATED\s*=\s*\{\{validated_findings\}\}"
-        )
+        bare_pattern = re.compile(r"export\s+VALIDATED\s*=\s*\{\{validated_findings\}\}")
         assert not bare_pattern.search(command), (
             "verify-fixes uses bare 'export VALIDATED={{validated_findings}}'. "
             "Multi-line JSON will break bash parsing. Use heredoc-to-tmpfile "
@@ -183,9 +181,7 @@ class TestBug2VerifyFixesHeredocSafety:
         """verify-fixes must NOT use 'export FIX_RESULTS={{fix_results}}'."""
         step = steps_by_id["verify-fixes"]
         command = step.get("command", "")
-        bare_pattern = re.compile(
-            r"export\s+FIX_RESULTS\s*=\s*\{\{fix_results\}\}"
-        )
+        bare_pattern = re.compile(r"export\s+FIX_RESULTS\s*=\s*\{\{fix_results\}\}")
         assert not bare_pattern.search(command), (
             "verify-fixes uses bare 'export FIX_RESULTS={{fix_results}}'. "
             "Multi-line JSON will break bash parsing. Use heredoc-to-tmpfile "
@@ -216,10 +212,11 @@ class TestBug2VerifyFixesHeredocSafety:
             if delimiter.strip("'\"") == "PYEOF":
                 continue
             # JSON-containing heredocs MUST be single-quoted
-            is_quoted = (
-                delimiter.startswith("'") or delimiter.startswith('"')
-            )
-            if "validated" in command.split(delimiter)[0].lower() or "fix" in command.split(delimiter)[0].lower():
+            is_quoted = delimiter.startswith("'") or delimiter.startswith('"')
+            if (
+                "validated" in command.split(delimiter)[0].lower()
+                or "fix" in command.split(delimiter)[0].lower()
+            ):
                 assert is_quoted, (
                     f"Heredoc delimiter {delimiter} for JSON data must be "
                     f"single-quoted (<<'{delimiter}') to prevent shell expansion "
@@ -264,9 +261,8 @@ class TestBug2AccumulateHistoryHeredocSafety:
         step = steps_by_id["accumulate-history"]
         command = step.get("command", "")
         uses_safe_pattern = (
-            ("<<" in command and ("EOF" in command or "HEREDOC" in command))
-            or "mktemp" in command
-        )
+            "<<" in command and ("EOF" in command or "HEREDOC" in command)
+        ) or "mktemp" in command
         assert uses_safe_pattern, (
             "accumulate-history needs heredoc or tmpfile pattern for safely "
             "handling multi-line JSON variables. (#3638 bug 2)"
@@ -289,9 +285,7 @@ class TestBug2ScalarVarsSafe:
         """recurse-decision already uses heredoc for JSON — verify it stays."""
         step = steps_by_id["recurse-decision"]
         command = step.get("command", "")
-        assert "mktemp" in command, (
-            "recurse-decision should use tmpfile pattern for JSON vars"
-        )
+        assert "mktemp" in command, "recurse-decision should use tmpfile pattern for JSON vars"
         assert "__VALIDATED_EOF__" in command, (
             "recurse-decision heredoc for validated_findings not found"
         )
@@ -400,9 +394,7 @@ class TestRecipeValidation:
         parser = RecipeParser()
         recipe = parser.parse_file(RECIPE_PATH)
         assert recipe.name == "quality-audit-cycle"
-        assert len(recipe.steps) >= 10, (
-            f"Expected ≥10 steps, got {len(recipe.steps)}"
-        )
+        assert len(recipe.steps) >= 10, f"Expected ≥10 steps, got {len(recipe.steps)}"
 
     def test_python_parser_no_warnings(self):
         """RecipeParser.validate() should produce no warnings."""
@@ -412,19 +404,13 @@ class TestRecipeValidation:
         recipe = parser.parse_file(RECIPE_PATH)
         raw = RECIPE_PATH.read_text()
         warnings = parser.validate(recipe, raw_yaml=raw)
-        assert warnings == [], (
-            f"Parser produced warnings: {warnings}"
-        )
+        assert warnings == [], f"Parser produced warnings: {warnings}"
 
     def test_all_agent_steps_have_prompts(self, recipe):
         """Every agent step must have a non-empty prompt."""
         for step in recipe["steps"]:
-            if step.get("type") == "agent" or (
-                "agent" in step and "command" not in step
-            ):
-                assert step.get("prompt"), (
-                    f"Agent step '{step['id']}' missing prompt"
-                )
+            if step.get("type") == "agent" or ("agent" in step and "command" not in step):
+                assert step.get("prompt"), f"Agent step '{step['id']}' missing prompt"
 
     def test_all_steps_have_unique_ids(self, recipe):
         """Step IDs must be unique."""
@@ -440,6 +426,30 @@ class TestRecipeValidation:
             output_var = step.get("output")
             if output_var:
                 assert output_var in context_keys, (
-                    f"Step '{step['id']}' output var '{output_var}' "
-                    f"not declared in context section"
+                    f"Step '{step['id']}' output var '{output_var}' not declared in context section"
                 )
+
+
+class TestOutputTemplateVersion:
+    """Bug 5: Output template version must match recipe header version."""
+
+    @pytest.fixture
+    def recipe(self):
+        return yaml.safe_load(RECIPE_PATH.read_text())
+
+    def test_output_template_version_matches_header(self, recipe):
+        """The footer version in the output template must match the recipe version."""
+        header_version = recipe.get("version", "")
+        output_template = recipe.get("output", {}).get("template", "")
+        assert f"v{header_version}" in output_template, (
+            f"Output template footer should contain 'v{header_version}' "
+            f"but template is: {output_template[-80:]}"
+        )
+
+    def test_no_stale_v3_version_in_output(self, recipe):
+        """Output template must not contain stale v3.0.0 reference."""
+        output_template = recipe.get("output", {}).get("template", "")
+        assert "v3.0.0" not in output_template, (
+            "Output template still contains stale 'v3.0.0' — "
+            "should be updated to match recipe header version"
+        )
