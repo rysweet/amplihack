@@ -32,6 +32,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+# Pre-compiled patterns for hot-path sanitization
+_SAFE_ID_RE = re.compile(r"[^a-zA-Z0-9_-]")
+_SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9_]")
+
 try:
     from amplihack.hooks.launcher_detector import LauncherDetector
 except ImportError:
@@ -126,7 +130,7 @@ class ParallelOrchestrator:
 
         Sanitizes issue_id to prevent path traversal attacks.
         """
-        safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(issue_id))
+        safe_id = _SAFE_ID_RE.sub("_", str(issue_id))
         candidate = (self.tmp_base / f"log-{safe_id}.txt").resolve()
         if not str(candidate).startswith(str(self.tmp_base.resolve())):
             raise ValueError(f"Unsafe log path detected for issue_id={issue_id!r}")
@@ -486,24 +490,24 @@ class ParallelOrchestrator:
             self.launch(ws, delegate=delegate)
         print(f"\n{len(self.workstreams)} workstreams launched in parallel ({self.mode} mode)")
 
-    def get_status(self) -> dict[str, list[int]]:
+    def get_status(self) -> dict[str, set[int]]:
         """Get current status of all workstreams."""
-        status: dict[str, list[int]] = {"running": [], "completed": [], "failed": []}
+        status: dict[str, set[int]] = {"running": set(), "completed": set(), "failed": set()}
 
         for ws in self.workstreams:
             proc = self._processes.get(ws.issue)
             if proc and proc.poll() is None:
-                status["running"].append(ws.issue)
+                status["running"].add(ws.issue)
             elif proc:
                 ws.exit_code = proc.returncode
                 if ws.end_time is None:
                     ws.end_time = time.time()
                 if ws.exit_code == 0:
-                    status["completed"].append(ws.issue)
+                    status["completed"].add(ws.issue)
                 else:
-                    status["failed"].append(ws.issue)
+                    status["failed"].add(ws.issue)
             else:
-                status["failed"].append(ws.issue)
+                status["failed"].add(ws.issue)
 
         return status
 
@@ -551,7 +555,7 @@ class ParallelOrchestrator:
         """Read current step name from a workstream's progress file."""
         if ws.pid is None:
             return "unknown"
-        safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", ws.recipe)[:64]
+        safe_name = _SAFE_NAME_RE.sub("_", ws.recipe)[:64]
         progress_path = (
             Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{ws.pid}.json"
         )
@@ -577,9 +581,9 @@ class ParallelOrchestrator:
             now = datetime.now().strftime("%H:%M:%S")
             elapsed = int(time.time() - start)
             print(f"\n[{now}] Status (elapsed: {elapsed}s):")
-            print(f"  Running:   {len(status['running'])} {status['running']}")
-            print(f"  Completed: {len(status['completed'])} {status['completed']}")
-            print(f"  Failed:    {len(status['failed'])} {status['failed']}")
+            print(f"  Running:   {len(status['running'])} {sorted(status['running'])}")
+            print(f"  Completed: {len(status['completed'])} {sorted(status['completed'])}")
+            print(f"  Failed:    {len(status['failed'])} {sorted(status['failed'])}")
 
             # Emit machine-readable JSONL heartbeat
             ws_summaries = []
