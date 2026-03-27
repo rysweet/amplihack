@@ -158,8 +158,10 @@ class TestNormalizeCopilotCliArgs:
 class TestCopilotCompatWrapperSource:
     """Tests for generated nested Copilot wrapper source."""
 
-    def test_wrapper_source_reuses_module_normalizer(self):
+    def test_wrapper_source_inlines_normalizer(self):
         source = _build_copilot_wrapper_source("/usr/bin/copilot")
 
-        assert "module._normalize_copilot_cli_args(args)" in source
+        assert "MODULE_PATH" not in source
+        assert "import importlib.util" not in source
+        assert "def _extract_copilot_prompt_parts(args):" in source
         assert "/usr/bin/copilot" in source
