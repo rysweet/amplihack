@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-25T19:30:00+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-27T16:50:00+00:00
 </div>
 
 ## Map
@@ -48,6 +48,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-25T19:30:00+00:00
         F27["exceptions<br/>refs: 17"]
         F28["output_validator<br/>refs: 17"]
         F29["models<br/>refs: 16"]
+        F30["test_default_workflow_fixes<br/>refs: 12"]
         F23 --> F5
         F24 --> F6
         F25 --> F7
