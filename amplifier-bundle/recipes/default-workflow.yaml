@@ -723,6 +723,7 @@ steps:
   - id: "checkpoint-after-implementation"
     type: "bash"
     command: |
+      set -euo pipefail
       # FIX (#3684/#3673): Fail-hard worktree validation — never fall back to repo_path.
       # The previous `cd ... 2>/dev/null || cd {{repo_path}}` silently committed into
       # the main checkout when the worktree was missing, violating isolation.
@@ -910,6 +911,7 @@ steps:
   - id: "checkpoint-after-review-feedback"
     type: "bash"
     command: |
+      set -euo pipefail
       # FIX (#3684/#3673): Fail-hard worktree validation — never fall back to repo_path.
       # The previous `cd ... 2>/dev/null || cd {{repo_path}}` silently committed into
       # the main checkout when the worktree was missing, violating isolation.
@@ -1640,11 +1642,12 @@ steps:
   - id: "step-19c-zero-bs-verification"
     type: "bash"
     command: |
-      echo "=== ZERO-BS VERIFICATION ===" && \
+      set -euo pipefail
       if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
         echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' missing — cannot verify." >&2; exit 1
       fi
       cd "{{worktree_setup.worktree_path}}" && \
+      echo "=== ZERO-BS VERIFICATION ===" && \
       echo "" && \
       echo "Scanning for Zero-BS violations..." && \
       echo "" && \
