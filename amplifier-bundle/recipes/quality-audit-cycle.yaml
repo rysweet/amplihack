@@ -17,6 +17,9 @@ recursion:
   max_total_steps: 60
 
 context:
+  # Repository root — working directory for agent steps (#3638)
+  repo_path: "."
+
   # Path to audit (structured input per #2843)
   target_path: "src/amplihack"
 
@@ -35,11 +38,15 @@ context:
   # Internal state
   audit_findings: ""
   validated_findings: ""
+  validation_agent_1: ""
+  validation_agent_2: ""
+  validation_agent_3: ""
   fix_results: ""
   fix_verification: ""
   cycle_number: "1"
   cycle_history: ""
   recurse_decision: ""
+  summary: ""
   self_improvement_results: ""
 
 steps:
@@ -49,9 +56,11 @@ steps:
   # ========================================================================
   - id: "seek"
     agent: "amplihack:core:reviewer"
+    working_dir: "{{repo_path}}"
     prompt: |
       # Quality Audit — Cycle {{cycle_number}} — SEEK
 
+      **Repository:** {{repo_path}}
       **Target Path:** {{target_path}}
       **Cycle:** {{cycle_number}} (escalating depth — look with fresh eyes)
       **Severity Threshold:** {{severity_threshold}} (only report findings at or above this severity)
@@ -321,10 +330,12 @@ steps:
   # ========================================================================
   - id: "fix"
     agent: "amplihack:core:builder"
+    working_dir: "{{repo_path}}"
     condition: "validated_findings and 'confirmed' in validated_findings"
     prompt: |
       # Quality Audit — Cycle {{cycle_number}} — FIX
 
+      **Repository:** {{repo_path}}
       **Audit Findings:** {{audit_findings}}
       **Validation Results:** {{validated_findings}}
       **Target Path:** {{target_path}}
@@ -389,11 +400,21 @@ steps:
     type: "bash"
     condition: "validated_findings and fix_results"
     command: |
-      # Use environment variables to pass JSON safely — avoids bash interpreting
-      # JSON double-quotes as string terminators inside python3 -c "..." (#2872).
-      export VALIDATED={{validated_findings}}
-      export FIX_RESULTS={{fix_results}}
+      # Write multi-line JSON to temp files to avoid bash quoting issues (#3638, #2872).
+      # Single-quoted heredoc delimiters prevent shell expansion of adversarial content.
+      _VALIDATED_TMPFILE=$(mktemp)
+      _FIX_RESULTS_TMPFILE=$(mktemp)
+      trap 'rm -f "$_VALIDATED_TMPFILE" "$_FIX_RESULTS_TMPFILE"' EXIT
+      cat > "$_VALIDATED_TMPFILE" <<'__VALIDATED_EOF__'
+      {{validated_findings}}
+      __VALIDATED_EOF__
+      cat > "$_FIX_RESULTS_TMPFILE" <<'__FIX_RESULTS_EOF__'
+      {{fix_results}}
+      __FIX_RESULTS_EOF__
+
       export FIX_ALL={{fix_all_per_cycle}}
+      export VALIDATED_FILE="$_VALIDATED_TMPFILE"
+      export FIX_RESULTS_FILE="$_FIX_RESULTS_TMPFILE"
 
       python3 - <<'PYEOF'
       import json, sys, os
@@ -401,9 +422,11 @@ steps:
       fix_all = os.environ.get('FIX_ALL', '').lower() == 'true'
 
       try:
-          validated = json.loads(os.environ.get('VALIDATED', '{}'))
-          fixes = json.loads(os.environ.get('FIX_RESULTS', '{}'))
-      except json.JSONDecodeError as e:
+          with open(os.environ['VALIDATED_FILE']) as f:
+              validated = json.loads(f.read())
+          with open(os.environ['FIX_RESULTS_FILE']) as f:
+              fixes = json.loads(f.read())
+      except (json.JSONDecodeError, FileNotFoundError) as e:
           # If we can't parse, report but don't block
           print(f'WARNING: Could not parse JSON for fix verification: {e}')
           print('VERIFY: SKIP (unparseable)')
@@ -450,8 +473,21 @@ steps:
     type: "bash"
     command: |
       CYCLE={{cycle_number}}
-      CURRENT_HISTORY={{cycle_history}}
-      FINDINGS={{validated_findings}}
+
+      # Write multi-line JSON to temp files to avoid bash quoting issues (#3638).
+      # Single-quoted heredoc delimiters prevent shell expansion of adversarial content.
+      _HISTORY_TMPFILE=$(mktemp)
+      _FINDINGS_TMPFILE=$(mktemp)
+      trap 'rm -f "$_HISTORY_TMPFILE" "$_FINDINGS_TMPFILE"' EXIT
+      cat > "$_HISTORY_TMPFILE" <<'__HISTORY_EOF__'
+      {{cycle_history}}
+      __HISTORY_EOF__
+      cat > "$_FINDINGS_TMPFILE" <<'__FINDINGS_EOF__'
+      {{validated_findings}}
+      __FINDINGS_EOF__
+
+      CURRENT_HISTORY=$(cat "$_HISTORY_TMPFILE")
+      FINDINGS=$(cat "$_FINDINGS_TMPFILE")
 
       if [ -z "$CURRENT_HISTORY" ]; then
         echo "--- Cycle $CYCLE findings ---"
@@ -552,8 +588,11 @@ steps:
   # ========================================================================
   - id: "summary"
     agent: "amplihack:core:architect"
+    working_dir: "{{repo_path}}"
     prompt: |
       # Quality Audit — Final Summary
+
+      **Repository:** {{repo_path}}
 
       **Cycles completed:** {{cycle_number}}
       **Recurse decision:** {{recurse_decision}}
@@ -584,9 +623,11 @@ steps:
   # ========================================================================
   - id: "self-improvement"
     agent: "amplihack:core:architect"
+    working_dir: "{{repo_path}}"
     prompt: |
       # Quality Audit — Self-Improvement Review
 
+      **Repository:** {{repo_path}}
       **Audit Summary:** {{summary}}
       **Target Path:** {{target_path}}
       **Cycles Completed:** {{cycle_number}}
