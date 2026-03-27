@@ -291,33 +291,76 @@ steps:
   - id: "step-03-create-issue"
     type: "bash"
     command: |
-      cd {{repo_path}} && \
-      echo "=== Step 3: Creating GitHub Issue ===" && \
+      set -euo pipefail
+      cd {{repo_path}}
+      echo "=== Step 3: Creating GitHub Issue ==="
+
       # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
       TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
-      ) && \
-      ISSUE_TITLE=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | cut -c1-200) && \
-      ISSUE_TASK=$(printf '%s' "$TASK_DESC") && \
+      )
+      ISSUE_TITLE=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | cut -c1-200)
+      ISSUE_TASK=$(printf '%s' "$TASK_DESC")
       ISSUE_REQS=$(cat <<EOFREQS
       {{final_requirements}}
       EOFREQS
-      ) && \
-      ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$ISSUE_TASK" "$ISSUE_REQS") && \
-      LABEL_NAME="workflow:default" && \
-      if ! gh label list --limit 1000 2>/dev/null | grep -qw "$LABEL_NAME"; then
-        gh label create "$LABEL_NAME" \
-          --color "0366d6" \
-          --description "Created by default-workflow recipe" 2>/dev/null || true
-      fi && \
-      gh issue create \
+      )
+      ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$ISSUE_TASK" "$ISSUE_REQS")
+      LABEL_NAME="workflow:default"
+      LABEL_ARGS=()
+
+      if ! git remote | grep -q .; then
+        LOCAL_ISSUE_ID=$(python3 -c 'import time; print(int(time.time()))')
+        echo "ERROR: no git remotes found — cannot create GitHub issue from this repository." >&2
+        echo "[ADAPTIVE] Continuing with local tracking issue #${LOCAL_ISSUE_ID}. GitHub issue creation did not occur." >&2
+        printf 'LOCAL_TRACKING_ISSUE=%s\n' "$LOCAL_ISSUE_ID"
+        exit 0
+      fi
+
+      if LABEL_LIST_OUTPUT=$(gh label list --limit 1000 2>&1); then
+        if printf '%s\n' "$LABEL_LIST_OUTPUT" | grep -qw "$LABEL_NAME"; then
+          LABEL_ARGS=(--label "$LABEL_NAME")
+        else
+          LABEL_CREATE_LOG=$(mktemp)
+          if gh label create \
+            "$LABEL_NAME" \
+            --color "0366d6" \
+            --description "Created by default-workflow recipe" >"$LABEL_CREATE_LOG" 2>&1; then
+            LABEL_ARGS=(--label "$LABEL_NAME")
+          else
+            echo "WARNING: gh label create failed — continuing without workflow label." >&2
+            cat "$LABEL_CREATE_LOG" >&2
+          fi
+          rm -f "$LABEL_CREATE_LOG"
+        fi
+      else
+        echo "WARNING: gh label list failed — continuing without workflow label." >&2
+        printf '%s\n' "$LABEL_LIST_OUTPUT" >&2
+      fi
+
+      if ISSUE_OUTPUT=$(gh issue create \
         --title "$ISSUE_TITLE" \
         --body "$ISSUE_BODY" \
-        --label "$LABEL_NAME" 2>&1 || \
-      gh issue create \
-        --title "$ISSUE_TITLE" \
-        --body "$ISSUE_BODY"
+        "${LABEL_ARGS[@]}" 2>&1); then
+        printf '%s\n' "$ISSUE_OUTPUT"
+        exit 0
+      fi
+
+      ISSUE_STATUS=$?
+      echo "ERROR: gh issue create failed (exit $ISSUE_STATUS)." >&2
+      printf '%s\n' "$ISSUE_OUTPUT" >&2
+
+      if [ "${#LABEL_ARGS[@]}" -gt 0 ]; then
+        echo "[ADAPTIVE] Retrying issue creation without the workflow label." >&2
+        ISSUE_OUTPUT=$(gh issue create \
+          --title "$ISSUE_TITLE" \
+          --body "$ISSUE_BODY" 2>&1)
+        printf '%s\n' "$ISSUE_OUTPUT"
+        exit 0
+      fi
+
+      exit "$ISSUE_STATUS"
     output: "issue_creation"
     parse_json: false
 
@@ -335,7 +378,12 @@ steps:
       {{issue_creation}}
       EOFISSUECREATION
       )
-      printf '%s' "$ISSUE_CREATION" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1
+      ISSUE_NUMBER=$(printf '%s' "$ISSUE_CREATION" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+      if [ -n "$ISSUE_NUMBER" ]; then
+        printf '%s\n' "$ISSUE_NUMBER"
+        exit 0
+      fi
+      printf '%s' "$ISSUE_CREATION" | grep -oE 'LOCAL_TRACKING_ISSUE=[0-9]+' | head -1 | cut -d= -f2
     output: "issue_number"
 
   # ==========================================================================

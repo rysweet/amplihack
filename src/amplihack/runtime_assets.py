@@ -10,6 +10,7 @@ from pathlib import Path
 _ASSET_RELATIVE_PATHS: dict[str, tuple[str, ...]] = {
     "helper-path": ("amplifier-bundle/tools/orch_helper.py",),
     "session-tree-path": ("amplifier-bundle/tools/session_tree.py",),
+    "multitask-orchestrator-path": (".claude/skills/multitask/orchestrator.py",),
     "hooks-dir": (
         ".claude/tools/amplihack/hooks",
         "amplifier-bundle/tools/amplihack/hooks",

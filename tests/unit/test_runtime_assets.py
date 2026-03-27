@@ -29,6 +29,17 @@ def test_resolve_asset_path_finds_hooks_in_home_claude_layout(tmp_path):
     assert resolved == hooks_dir
 
 
+def test_resolve_asset_path_finds_multitask_orchestrator_in_home_claude_layout(tmp_path):
+    home_root = tmp_path / "home-runtime"
+    orchestrator = home_root / ".claude" / "skills" / "multitask" / "orchestrator.py"
+    orchestrator.parent.mkdir(parents=True, exist_ok=True)
+    orchestrator.write_text("# multitask orchestrator\n")
+
+    resolved = resolve_asset_path("multitask-orchestrator-path", [home_root])
+
+    assert resolved == orchestrator
+
+
 def test_resolve_asset_path_raises_for_missing_assets(tmp_path):
     empty_root = tmp_path / "empty"
     empty_root.mkdir()

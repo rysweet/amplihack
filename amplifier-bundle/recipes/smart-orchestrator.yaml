@@ -412,6 +412,19 @@ steps:
     command: |
       REPO_PATH={{repo_path}}
       WS_FILE={{workstreams_file}}
+      _MULTITASK_RESOLVE_ERR=$(mktemp)
+      trap 'rm -f "$_MULTITASK_RESOLVE_ERR"' EXIT
+      if ! MULTITASK_ORCHESTRATOR=$(python3 -m amplihack.runtime_assets multitask-orchestrator-path 2>"$_MULTITASK_RESOLVE_ERR"); then
+        echo "ERROR: failed to resolve multitask orchestrator runtime asset." >&2
+        cat "$_MULTITASK_RESOLVE_ERR" >&2
+        echo "Ensure amplihack runtime assets are staged correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
+        exit 1
+      fi
+      if [ ! -f "$MULTITASK_ORCHESTRATOR" ]; then
+        echo "ERROR: multitask orchestrator runtime asset not found at: $MULTITASK_ORCHESTRATOR" >&2
+        echo "Ensure amplihack runtime assets are staged correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
+        exit 1
+      fi
       SESSION_JSON=$(cat <<EOFSESSIONJSON
       {{session_info}}
       EOFSESSIONJSON
@@ -460,7 +473,7 @@ steps:
       cat "$WS_FILE"
       echo "---"
       AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$SESSION_DEPTH" \
-        python3 .claude/skills/multitask/orchestrator.py "$WS_FILE"
+        python3 "$MULTITASK_ORCHESTRATOR" "$WS_FILE"
     output: "round_1_result"
 
   # ─────────────────────────────────────────────────────────────────────────
