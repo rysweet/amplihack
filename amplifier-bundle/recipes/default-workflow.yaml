@@ -444,22 +444,51 @@ steps:
         echo "ERROR: repo_path '{{repo_path}}' does not exist or is not a directory" >&2
         exit 1
       fi
-      cd {{repo_path}}
+      cd "{{repo_path}}"
 
       echo "=== Step 4: Creating Worktree and Branch ===" >&2
       echo "" >&2
 
       REMOTE_AVAILABLE="{{repo_topology.remote_available}}"
       REMOTE_NAME="{{repo_topology.remote_name}}"
-      BASE_REF="{{repo_topology.base_ref}}"
       LOCAL_TRACKING_ISSUE="{{repo_topology.local_tracking_issue}}"
       ISSUE_NUMBER="{{issue_number}}"
 
-      if [ "$REMOTE_AVAILABLE" = "true" ]; then
+      # --- Bootstrap detection (BL-003 / issue #3603) ---
+      # Detect whether origin/main exists BEFORE attempting fetch/worktree.
+      # Uses git ls-remote --exit-code which returns 2 for "ref not found" (distinct
+      # from network errors which return 128). This prevents silent degradation on
+      # network failures — only genuine "ref missing" triggers bootstrap mode.
+      # Security: stderr suppressed to avoid leaking credential helper output.
+      # Guard: HEAD must resolve — a zero-commit repo cannot be used as a base ref.
+      if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+        echo "ERROR: No commits in repository — create an initial commit before running the workflow." >&2
+        exit 1
+      fi
+      BOOTSTRAP=false
+      if [ "$REMOTE_AVAILABLE" != "true" ] || [ -z "$REMOTE_NAME" ]; then
+        echo "INFO: No git remote available; skipping fetch and branching from HEAD." >&2
+        BOOTSTRAP=true
+        BASE_REF="HEAD"
+      else
+        LS_EXIT=0
+        git ls-remote --exit-code "$REMOTE_NAME" refs/heads/main >/dev/null 2>&1 || LS_EXIT=$?
+        if [ "$LS_EXIT" -eq 2 ]; then
+          echo "BOOTSTRAP: ${REMOTE_NAME} exists but refs/heads/main not found — using HEAD as base ref." >&2
+          BOOTSTRAP=true
+          BASE_REF="HEAD"
+        elif [ "$LS_EXIT" -ne 0 ]; then
+          echo "ERROR: git ls-remote failed (exit $LS_EXIT) — possible network error. Cannot continue." >&2
+          exit 1
+        else
+          BASE_REF="main"
+        fi
+      fi
+
+      if [ "$BOOTSTRAP" = "false" ]; then
         git fetch "$REMOTE_NAME" "$BASE_REF" >&2
         START_POINT="${REMOTE_NAME}/${BASE_REF}"
       else
-        echo "INFO: No git remote available; skipping fetch and branching from HEAD." >&2
         START_POINT="HEAD"
       fi
 
@@ -478,7 +507,7 @@ steps:
       {{task_description}}
       EOFTASKDESC
       )
-      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-50 | sed 's/-$//')
+      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-' | sed 's/-\{2,\}/-/g;s/^-//;s/-$//' | cut -c1-50 | sed 's/-$//')
       # Guard: empty slug (blank/all-symbol input) produces a trailing-hyphen branch that
       # git check-ref-format accepts as valid but is undesirable. Catch it explicitly first.
       if [ -z "$TASK_SLUG" ]; then
@@ -532,14 +561,20 @@ steps:
         CREATED=true
       fi
 
-      if [ "$REMOTE_AVAILABLE" = "true" ]; then
-        # Push branch to remote with tracking (idempotent).
-        # NOTE: Push failures are suppressed here and surface at step-16 PR creation.
-        # This allows idempotent re-runs where the remote branch already exists.
-        git -C "${WORKTREE_PATH}" push "$REMOTE_NAME" "${BRANCH_NAME}" > /dev/null 2>&1 || true
-        git -C "${WORKTREE_PATH}" branch --set-upstream-to="${REMOTE_NAME}/${BRANCH_NAME}" "${BRANCH_NAME}" > /dev/null 2>&1 || true
-      else
-        echo "INFO: No git remote available; skipping initial branch push and upstream setup." >&2
+      # Push branch to remote with tracking (only on fresh creation when a usable remote ref exists).
+      if [ "$CREATED" = "true" ]; then
+        if [ "$BOOTSTRAP" = "true" ]; then
+          if [ "$REMOTE_AVAILABLE" = "true" ]; then
+            echo "BOOTSTRAP: Skipping push — remote main branch not available. Push manually or at PR creation." >&2
+          else
+            echo "INFO: No git remote available; skipping initial branch push and upstream setup." >&2
+          fi
+        else
+          git -C "${WORKTREE_PATH}" push "$REMOTE_NAME" "${BRANCH_NAME}" > /dev/null 2>&1 || \
+            echo "WARNING: Initial push of '${BRANCH_NAME}' failed — will retry at PR creation (step 16)." >&2
+          git -C "${WORKTREE_PATH}" branch --set-upstream-to="${REMOTE_NAME}/${BRANCH_NAME}" "${BRANCH_NAME}" > /dev/null 2>&1 || \
+            echo "WARNING: set-upstream-to failed — will set at push time." >&2
+        fi
       fi
 
       echo "" >&2

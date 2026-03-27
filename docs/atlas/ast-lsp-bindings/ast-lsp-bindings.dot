@@ -68,4 +68,8 @@ digraph ast_lsp_bindings {
     dead3 [label="rust_trial.py\n(experimental)"];
     dead4 [label="copilot_auto_install.py"];
     dead5 [label="staging_cleanup.py"];
+
+    // Test modules (bootstrap detection)
+    node [shape=box, style="filled", fillcolor="#e8f5e9"];
+    test_wf [label="{test_default_workflow_fixes|TestBL001\lTestBL002\lTestBL003\l}"];
 }
