@@ -1,6 +1,6 @@
 name: "default-workflow"
 description: "Complete 23-step development workflow (Steps 0-22) with full agent orchestration"
-version: "2.2.0"
+version: "2.2.1"
 author: "Amplihack Team"
 tags: ["development", "feature", "bugfix", "refactoring", "standard", "full-workflow"]
 
@@ -723,7 +723,15 @@ steps:
   - id: "checkpoint-after-implementation"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
+      # FIX (#3684/#3673): Fail-hard worktree validation — never fall back to repo_path.
+      # The previous `cd ... 2>/dev/null || cd {{repo_path}}` silently committed into
+      # the main checkout when the worktree was missing, violating isolation.
+      if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
+        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' does not exist." >&2
+        echo "The worktree created in step-04 has been invalidated. Cannot checkpoint." >&2
+        exit 1
+      fi
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Checkpoint: Staging Implementation ===" && \
       git add -A && \
       STAGED=$(git diff --cached --name-only) && \
@@ -902,7 +910,15 @@ steps:
   - id: "checkpoint-after-review-feedback"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
+      # FIX (#3684/#3673): Fail-hard worktree validation — never fall back to repo_path.
+      # The previous `cd ... 2>/dev/null || cd {{repo_path}}` silently committed into
+      # the main checkout when the worktree was missing, violating isolation.
+      if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
+        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' does not exist." >&2
+        echo "The worktree created in step-04 has been invalidated. Cannot checkpoint." >&2
+        exit 1
+      fi
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Checkpoint: Staging Review Feedback ===" && \
       git add -A && \
       STAGED=$(git diff --cached --name-only) && \
@@ -1127,7 +1143,16 @@ steps:
   - id: "step-15-commit-push"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} && \
+      # FIX (#3647/#3684): Validate worktree exists before commit — fail-hard with
+      # clear diagnostic instead of cryptic "cd: No such file or directory".
+      set -euo pipefail
+      if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
+        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' does not exist." >&2
+        echo "The worktree created in step-04 was invalidated before commit-push." >&2
+        echo "Check whether a prior step removed or pruned the worktree." >&2
+        exit 1
+      fi
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Step 15: Commit and Push ===" && \
       echo "" && \
       echo "--- Staging Changes ---" && \
@@ -1164,7 +1189,14 @@ steps:
   - id: "step-16-create-draft-pr"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}}
+      set -euo pipefail
+      # FIX (#3684): Validate worktree before PR creation.
+      if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
+        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' does not exist." >&2
+        echo "Cannot create PR — worktree was invalidated." >&2
+        exit 1
+      fi
+      cd "{{worktree_setup.worktree_path}}"
       echo "=== Step 16: Creating Draft PR ===" >&2
 
       # FIX (#3324): Idempotency guard — detect pre-existing PRs before creating one
@@ -1509,7 +1541,11 @@ steps:
   - id: "step-18c-push-feedback-changes"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} && \
+      set -euo pipefail
+      if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
+        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' missing — cannot push feedback." >&2; exit 1
+      fi
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Pushing Review Feedback Changes ===" && \
       git add -A && \
       if [ -n "$(git diff --cached --name-only)" ]; then \
@@ -1605,7 +1641,10 @@ steps:
     type: "bash"
     command: |
       echo "=== ZERO-BS VERIFICATION ===" && \
-      cd {{worktree_setup.worktree_path}} && \
+      if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
+        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' missing — cannot verify." >&2; exit 1
+      fi
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "" && \
       echo "Scanning for Zero-BS violations..." && \
       echo "" && \
@@ -1699,7 +1738,11 @@ steps:
   - id: "step-20b-push-cleanup"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} && \
+      set -euo pipefail
+      if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
+        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' missing — cannot push cleanup." >&2; exit 1
+      fi
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Pushing Cleanup Changes ===" && \
       git add -A && \
       git diff --cached --quiet || (git commit -m "final cleanup pass" && git pull --rebase 2>/dev/null && git push) && \
@@ -1784,7 +1827,11 @@ steps:
   - id: "step-21-pr-ready"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} && \
+      set -euo pipefail
+      if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
+        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' missing — cannot mark PR ready." >&2; exit 1
+      fi
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Step 20: Converting PR to Ready ===" && \
       echo "" && \
       echo "--- Verifying All Steps Complete ---" && \
