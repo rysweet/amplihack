@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import enum
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -70,9 +71,19 @@ class Step:
         eval_ctx: dict[str, Any] = {
             k: str(v).lower() if isinstance(v, bool) else v for k, v in context.items()
         }
+        # Normalise Python-style True/False literals in the condition to their
+        # lowercase string equivalents so ``flag == True`` works when *flag*
+        # was coerced to ``"true"`` above.  simpleeval resolves ``True`` as an
+        # ast.Constant (bool), not a name lookup, so injecting into the
+        # namespace doesn't help — we rewrite the condition text instead.
+        _BOOL_RE = re.compile(r"\bTrue\b|\bFalse\b")
+        normalised = _BOOL_RE.sub(
+            lambda m: "'true'" if m.group() == "True" else "'false'",
+            self.condition.strip(),
+        )
         try:
             evaluator = EvalWithCompoundTypes(names=eval_ctx)
-            return bool(evaluator.eval(self.condition.strip()))
+            return bool(evaluator.eval(normalised))
         except Exception as exc:
             log.warning(
                 "Step condition %r could not be evaluated: %s — defaulting to True (step will run)",
