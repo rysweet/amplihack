@@ -12,8 +12,8 @@ This audit examines five areas of the recipe runner infrastructure. **31 finding
 
 | Severity    | Count | Key Theme                                                |
 | ----------- | ----- | -------------------------------------------------------- |
-| 🔴 Critical | 9     | Silent failures, data loss, broken chains                |
-| 🟠 High     | 10    | Observability gaps, type mismatches, missing checkpoints |
+| 🔴 Critical | 8     | Silent failures, data loss, broken chains                |
+| 🟠 High     | 11    | Observability gaps, type mismatches, missing checkpoints |
 | 🟡 Medium   | 9     | Missing validation, implicit behaviors                   |
 | 🟢 Low      | 3     | Cosmetic, documentation                                  |
 
@@ -171,11 +171,11 @@ The default-workflow has exactly **3 git-based checkpoints** across 23 steps:
 - **Impact**: Hours of agent work (design, implementation, review) are lost on late failures.
 - **Fix**: Serialize context dict to disk after each step; add `--resume-from-step N` CLI flag.
 
-#### F-ERR-2: Step 13 "CANNOT BE SKIPPED" but IS skipped if step 12 fails (🔴 Critical)
+#### F-ERR-2: Step 13 "CANNOT BE SKIPPED" label has no enforcement mechanism (🟠 High)
 
-- **File**: `amplifier-bundle/recipes/default-workflow.yaml:925`
-- **Issue**: Step 13 (outside-in testing) is labeled "CANNOT BE SKIPPED" but depends on step 12 (precommit) passing. If step 12 fails, step 13 never runs. Step 17 gate then exits with error because step 13 output is empty.
-- **Fix**: Decouple step 13 from step 12; allow testing to run even if linting fails.
+- **File**: `amplifier-bundle/recipes/default-workflow.yaml:961`
+- **Issue**: Step 13 (outside-in testing) is labeled "CANNOT BE SKIPPED" in the prompt text, but has no `condition` or `depends_on` field enforcing this. The label is advisory only. Step 17a (compliance gate) validates `local_testing_gate` output and fails if step 13 produced no output — creating an implicit but fragile coupling.
+- **Fix**: Add explicit `required: true` metadata or a validation step that halts the workflow if step 13 is skipped.
 
 #### F-ERR-3: Only 40% of workflow has checkpoint coverage (🟠 High)
 
@@ -300,21 +300,20 @@ PHASE 5: TEARDOWN → complete-session
 
 ## 6. Consolidated Findings
 
-### 🔴 Critical (9)
+### 🔴 Critical (8)
 
-| ID        | Area          | Finding                                       | Impact                              |
-| --------- | ------------- | --------------------------------------------- | ----------------------------------- |
-| F-OBS-1   | Observability | Default progress disabled                     | Zero visibility during execution    |
-| F-OBS-2   | Observability | Failure diagnostics empty                     | Cannot diagnose step failures       |
-| F-COND-1  | Conditions    | Boolean literal `== True` fails               | 11 conditions silently wrong        |
-| F-COND-2  | Conditions    | Exception-on-eval returns True                | Steps run when they shouldn't       |
-| F-ERR-1   | Recovery      | No resume-from-step                           | Hours of work lost on late failures |
-| F-ERR-2   | Recovery      | Step 13 skippable despite "CANNOT BE SKIPPED" | Gate compliance paradox             |
-| F-YAML-1  | YAML Quality  | 173 steps missing explicit type               | Silent type misclassification       |
-| F-YAML-2  | YAML Quality  | 13 agent steps missing output                 | Broken downstream chains            |
-| F-ROUTE-1 | Routing       | Multiple JSON blocks use first                | Wrong decomposition silently used   |
+| ID        | Area          | Finding                         | Impact                              |
+| --------- | ------------- | ------------------------------- | ----------------------------------- |
+| F-OBS-1   | Observability | Default progress disabled       | Zero visibility during execution    |
+| F-OBS-2   | Observability | Failure diagnostics empty       | Cannot diagnose step failures       |
+| F-COND-1  | Conditions    | Boolean literal `== True` fails | 11 conditions silently wrong        |
+| F-COND-2  | Conditions    | Exception-on-eval returns True  | Steps run when they shouldn't       |
+| F-ERR-1   | Recovery      | No resume-from-step             | Hours of work lost on late failures |
+| F-YAML-1  | YAML Quality  | 173 steps missing explicit type | Silent type misclassification       |
+| F-YAML-2  | YAML Quality  | 13 agent steps missing output   | Broken downstream chains            |
+| F-ROUTE-1 | Routing       | Multiple JSON blocks use first  | Wrong decomposition silently used   |
 
-### 🟠 High (10)
+### 🟠 High (11)
 
 | ID       | Area          | Finding                                   |
 | -------- | ------------- | ----------------------------------------- |
@@ -322,6 +321,7 @@ PHASE 5: TEARDOWN → complete-session
 | F-OBS-4  | Observability | No timeout or deadlock detection          |
 | F-OBS-6  | Observability | No heartbeat mechanism                    |
 | F-COND-3 | Conditions    | Deep nested access without null checks    |
+| F-ERR-2  | Recovery      | Step 13 "CANNOT BE SKIPPED" unenforced    |
 | F-ERR-3  | Recovery      | Only 40% checkpoint coverage              |
 | F-ERR-4  | Recovery      | Non-idempotent steps undocumented         |
 | F-ERR-5  | Recovery      | Round-2 uses wrong agent type             |
@@ -359,7 +359,7 @@ PHASE 5: TEARDOWN → complete-session
 | 1   | Fix 11 boolean literal conditions: replace `X == True` with `X == 'true'` or bare `X` | 30 min | F-COND-1         |
 | 2   | Add `output:` field to 13 agent steps in code-atlas.yaml                              | 30 min | F-YAML-2         |
 | 3   | Change exception-on-eval from `return True` to `return False` + log warning           | 1 hr   | F-COND-2         |
-| 4   | Fix step 13 dependency: decouple from step 12 (allow testing even if linting fails)   | 1 hr   | F-ERR-2          |
+| 4   | Add `required: true` enforcement for step 13 or pre-step validation gate              | 1 hr   | F-ERR-2          |
 | 5   | Increase stderr diagnostic tail from 5 to 100 lines; stop filtering `[agent]` lines   | 30 min | F-OBS-2, F-OBS-3 |
 | 6   | Fix `extract_json()` to use last JSON block instead of first                          | 30 min | F-ROUTE-1        |
 | 7   | Add explicit `continue_on_error: true` to steps 3, 16, 21                             | 15 min | F-ERR-6          |
@@ -378,14 +378,14 @@ PHASE 5: TEARDOWN → complete-session
 
 ### P2 — Medium-term (1 month)
 
-| #   | Action                                                      | Effort                          | Findings |
-| --- | ----------------------------------------------------------- | ------------------------------- | -------- | ------- |
-| 15  | Implement heartbeat mechanism (timer-based progress writes) | 4 hr                            | F-OBS-6  |
-| 16  | Add `total_steps` to progress file from recipe metadata     | 2 hr                            | F-OBS-5  |
-| 17  | Create JSON Schema for recipe YAML validation               | 8 hr                            | F-YAML-3 |
-| 18  | Add pre-commit hook for recipe validation                   | 4 hr                            | F-YAML-4 |
-| 19  | Add `idempotent: true                                       | false` metadata to recipe steps | 4 hr     | F-ERR-4 |
-| 20  | Serialize context dict to disk per step (resume prototype)  | 8 hr                            | F-ERR-1  |
+| #   | Action                                                      | Effort | Findings |
+| --- | ----------------------------------------------------------- | ------ | -------- |
+| 15  | Implement heartbeat mechanism (timer-based progress writes) | 4 hr   | F-OBS-6  |
+| 16  | Add `total_steps` to progress file from recipe metadata     | 2 hr   | F-OBS-5  |
+| 17  | Create JSON Schema for recipe YAML validation               | 8 hr   | F-YAML-3 |
+| 18  | Add pre-commit hook for recipe validation                   | 4 hr   | F-YAML-4 |
+| 19  | Add `idempotent: true/false` metadata to recipe steps       | 4 hr   | F-ERR-4  |
+| 20  | Serialize context dict to disk per step (resume prototype)  | 8 hr   | F-ERR-1  |
 
 ### P3 — Long-term (next quarter)
 
