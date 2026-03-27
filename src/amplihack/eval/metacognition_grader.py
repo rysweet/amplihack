@@ -104,7 +104,9 @@ class MetacognitionGrader:
             MetacognitionScore with 4 dimensions and overall score
         """
         try:
-            return await self._grade_with_llm(question, expected_answer, student_answer, self_explanation)
+            return await self._grade_with_llm(
+                question, expected_answer, student_answer, self_explanation
+            )
         except Exception as e:
             logger.warning("Grading failed: %s", e)
             return self._zero_score("Grading failed due to an internal error")

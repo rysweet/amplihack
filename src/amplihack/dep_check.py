@@ -152,8 +152,7 @@ def ensure_sdk_deps() -> DepCheckResult:
             install_cmds = [f"  pip install {SDK_DEPENDENCIES[m]}" for m in result.missing]
             raise ImportError(
                 "Required SDK dependencies are missing and no installer (uv/pip) found.\n"
-                "Install them manually:\n"
-                + "\n".join(install_cmds)
+                "Install them manually:\n" + "\n".join(install_cmds)
             )
 
     for import_name in result.missing:

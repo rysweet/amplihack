@@ -27,31 +27,31 @@ description: What this skill does and when to use it.
 ---
 ```
 
-| Field         | Required | Constraints |
-| ------------- | -------- | ----------- |
-| `name`        | **Yes**  | Max 64 chars. Lowercase letters, numbers, hyphens only. Must match directory name. |
+| Field         | Required | Constraints                                                                           |
+| ------------- | -------- | ------------------------------------------------------------------------------------- |
+| `name`        | **Yes**  | Max 64 chars. Lowercase letters, numbers, hyphens only. Must match directory name.    |
 | `description` | **Yes**  | Max 1024 chars. Include keywords that help Claude decide when to auto-load the skill. |
 
 ### Optional Fields (Agent Skills Spec)
 
-| Field           | Description |
-| --------------- | ----------- |
-| `license`       | License name or reference to a bundled license file. |
+| Field           | Description                                                                      |
+| --------------- | -------------------------------------------------------------------------------- |
+| `license`       | License name or reference to a bundled license file.                             |
 | `compatibility` | Environment requirements (max 500 chars). E.g., "Requires git and Python 3.10+". |
-| `metadata`      | Arbitrary key-value map. Use for version, author, or other custom data. |
-| `allowed-tools` | Space-delimited list of pre-approved tools (experimental). |
+| `metadata`      | Arbitrary key-value map. Use for version, author, or other custom data.          |
+| `allowed-tools` | Space-delimited list of pre-approved tools (experimental).                       |
 
 ### Optional Fields (Claude Code Extensions)
 
-| Field                      | Description |
-| -------------------------- | ----------- |
+| Field                      | Description                                                                               |
+| -------------------------- | ----------------------------------------------------------------------------------------- |
 | `disable-model-invocation` | `true` to prevent Claude from auto-loading. Use for manual-only workflows like `/deploy`. |
-| `user-invocable`           | `false` to hide from the `/` menu. Use for background knowledge. |
-| `model`                    | Model override when this skill is active. |
-| `context`                  | `fork` to run in a forked subagent context. |
-| `agent`                    | Subagent type when `context: fork` is set (e.g., `Explore`, `Plan`). |
-| `hooks`                    | Hooks scoped to this skill's lifecycle. |
-| `argument-hint`            | Hint shown during autocomplete (e.g., `[issue-number]`). |
+| `user-invocable`           | `false` to hide from the `/` menu. Use for background knowledge.                          |
+| `model`                    | Model override when this skill is active.                                                 |
+| `context`                  | `fork` to run in a forked subagent context.                                               |
+| `agent`                    | Subagent type when `context: fork` is set (e.g., `Explore`, `Plan`).                      |
+| `hooks`                    | Hooks scoped to this skill's lifecycle.                                                   |
+| `argument-hint`            | Hint shown during autocomplete (e.g., `[issue-number]`).                                  |
 
 ### Complete Example
 

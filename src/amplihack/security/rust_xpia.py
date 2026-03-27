@@ -12,9 +12,8 @@ import json
 import logging
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -60,7 +59,7 @@ class RustValidationResult:
             threats=data.get("threats", []),
             recommendations=data.get("recommendations", []),
             metadata=data.get("metadata", {}),
-            timestamp=data.get("timestamp", datetime.now(timezone.utc).isoformat()),
+            timestamp=data.get("timestamp", datetime.now(UTC).isoformat()),
             raw_json=data,
         )
 
@@ -81,7 +80,7 @@ class RustValidationResult:
             ],
             recommendations=["Content blocked due to validation error"],
             metadata={"error": True, "reason": reason},
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
 
 
@@ -152,22 +151,19 @@ def _run_command(args: list[str], stdin_data: str | None = None) -> dict[str, An
     # Exit 2 = internal error in the Rust binary — always fail-closed
     if result.returncode == EXIT_ERROR:
         raise RustXPIAError(
-            f"XPIA binary internal error (exit {result.returncode}). "
-            f"stderr: {result.stderr}"
+            f"XPIA binary internal error (exit {result.returncode}). stderr: {result.stderr}"
         )
 
     if not result.stdout.strip():
         raise RustXPIAError(
-            f"XPIA binary produced no output (exit {result.returncode}). "
-            f"stderr: {result.stderr}"
+            f"XPIA binary produced no output (exit {result.returncode}). stderr: {result.stderr}"
         )
 
     try:
         return json.loads(result.stdout)
     except json.JSONDecodeError as e:
         raise RustXPIAError(
-            f"XPIA binary produced invalid JSON: {e}. "
-            f"stdout: {result.stdout[:200]}"
+            f"XPIA binary produced invalid JSON: {e}. stdout: {result.stdout[:200]}"
         ) from e
 
 
@@ -184,9 +180,12 @@ def validate_content(
     try:
         args = [
             "validate-content",
-            "--content-type", content_type,
-            "--security-level", security_level,
-            "--source", source,
+            "--content-type",
+            content_type,
+            "--security-level",
+            security_level,
+            "--source",
+            source,
         ]
         # Use stdin for content to avoid shell injection via args
         data = _run_command(args, stdin_data=content)
@@ -208,9 +207,12 @@ def validate_bash_command(
     try:
         args = [
             "validate-bash",
-            "--command", command,
-            "--security-level", security_level,
-            "--source", source,
+            "--command",
+            command,
+            "--security-level",
+            security_level,
+            "--source",
+            source,
         ]
         data = _run_command(args)
         return RustValidationResult.from_json(data)
@@ -232,10 +234,14 @@ def validate_webfetch_request(
     try:
         args = [
             "validate-webfetch",
-            "--url", url,
-            "--prompt", prompt,
-            "--security-level", security_level,
-            "--source", source,
+            "--url",
+            url,
+            "--prompt",
+            prompt,
+            "--security-level",
+            security_level,
+            "--source",
+            source,
         ]
         data = _run_command(args)
         return RustValidationResult.from_json(data)
@@ -257,9 +263,12 @@ def validate_agent_communication(
     try:
         args = [
             "validate-agent",
-            "--source-agent", source_agent,
-            "--target-agent", target_agent,
-            "--security-level", security_level,
+            "--source-agent",
+            source_agent,
+            "--target-agent",
+            target_agent,
+            "--security-level",
+            security_level,
         ]
         data = _run_command(args, stdin_data=message)
         return RustValidationResult.from_json(data)

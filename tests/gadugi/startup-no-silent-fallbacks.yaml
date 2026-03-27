@@ -32,7 +32,11 @@ scenario:
     # --- Test 1: dep_check import produces zero stderr ---
     - action: launch
       target: "python3"
-      args: ["-c", "import sys; sys.path.insert(0, 'src'); from amplihack.dep_check import check_sdk_dep; print('OK')"]
+      args:
+        [
+          "-c",
+          "import sys; sys.path.insert(0, 'src'); from amplihack.dep_check import check_sdk_dep; print('OK')",
+        ]
       capture_stderr: true
       description: "Import dep_check with zero stderr"
 
@@ -51,7 +55,11 @@ scenario:
     # --- Test 2: microsoft_sdk import produces zero stderr ---
     - action: launch
       target: "python3"
-      args: ["-c", "import sys; sys.path.insert(0, 'src'); from amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk import MicrosoftGoalSeekingAgent; print('OK')"]
+      args:
+        [
+          "-c",
+          "import sys; sys.path.insert(0, 'src'); from amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk import MicrosoftGoalSeekingAgent; print('OK')",
+        ]
       capture_stderr: true
       description: "Import microsoft_sdk with zero stderr"
 
@@ -70,7 +78,11 @@ scenario:
     # --- Test 3: worktree.git_utils imports directly ---
     - action: launch
       target: "python3"
-      args: ["-c", "import sys; sys.path.insert(0, 'src'); from amplihack.worktree.git_utils import get_shared_runtime_dir; print(get_shared_runtime_dir('.'))"]
+      args:
+        [
+          "-c",
+          "import sys; sys.path.insert(0, 'src'); from amplihack.worktree.git_utils import get_shared_runtime_dir; print(get_shared_runtime_dir('.'))",
+        ]
       capture_stderr: true
       description: "Import git_utils directly from amplihack.worktree package"
 
@@ -90,7 +102,11 @@ scenario:
     # --- Test 4: re_enable_prompt imports without fallback warning ---
     - action: launch
       target: "python3"
-      args: ["-c", "import sys; sys.path.insert(0, 'src'); from amplihack.power_steering.re_enable_prompt import prompt_re_enable_if_disabled; print('OK')"]
+      args:
+        [
+          "-c",
+          "import sys; sys.path.insert(0, 'src'); from amplihack.power_steering.re_enable_prompt import prompt_re_enable_if_disabled; print('OK')",
+        ]
       capture_stderr: true
       description: "Import re_enable_prompt with zero stderr"
 
@@ -109,7 +125,11 @@ scenario:
     # --- Test 5: ensure_sdk_deps raises on failure (not silent return) ---
     - action: launch
       target: "python3"
-      args: ["-c", "import sys; sys.path.insert(0, 'src'); from unittest.mock import patch; from amplihack.dep_check import ensure_sdk_deps; fake={'nonexistent_xyz': 'nonexistent-xyz'}; \ntry:\n    with patch('amplihack.dep_check.SDK_DEPENDENCIES', fake), patch('shutil.which', return_value=None):\n        ensure_sdk_deps()\n    print('FAIL: did not raise')\nexcept ImportError:\n    print('PASS: raised ImportError')"]
+      args:
+        [
+          "-c",
+          "import sys; sys.path.insert(0, 'src'); from unittest.mock import patch; from amplihack.dep_check import ensure_sdk_deps; fake={'nonexistent_xyz': 'nonexistent-xyz'}; \ntry:\n    with patch('amplihack.dep_check.SDK_DEPENDENCIES', fake), patch('shutil.which', return_value=None):\n        ensure_sdk_deps()\n    print('FAIL: did not raise')\nexcept ImportError:\n    print('PASS: raised ImportError')",
+        ]
       capture_stderr: true
       description: "ensure_sdk_deps must raise ImportError when deps missing and no installer"
 
@@ -124,7 +144,11 @@ scenario:
     # --- Test 6: check_sdk_dep returns False without printing ---
     - action: launch
       target: "python3"
-      args: ["-c", "import sys; sys.path.insert(0, 'src'); from amplihack.dep_check import check_sdk_dep; result = check_sdk_dep('nonexistent_package_xyz_999'); print(f'result={result}')"]
+      args:
+        [
+          "-c",
+          "import sys; sys.path.insert(0, 'src'); from amplihack.dep_check import check_sdk_dep; result = check_sdk_dep('nonexistent_package_xyz_999'); print(f'result={result}')",
+        ]
       capture_stderr: true
       description: "check_sdk_dep returns False without stderr noise"
 

@@ -23,13 +23,14 @@ This document captures research and recommendations for the messaging transport 
 
 The distributed hive mind already has a **transport-agnostic event bus** in place with three backend implementations:
 
-| Backend | File | Use Case |
-|---|---|---|
-| `LocalEventBus` | `src/amplihack/agents/goal_seeking/hive_mind/event_bus.py` | Testing, single-machine |
-| `AzureServiceBusEventBus` | same | Production on Azure |
-| `RedisEventBus` | same | Low-latency dev/staging |
+| Backend                   | File                                                       | Use Case                |
+| ------------------------- | ---------------------------------------------------------- | ----------------------- |
+| `LocalEventBus`           | `src/amplihack/agents/goal_seeking/hive_mind/event_bus.py` | Testing, single-machine |
+| `AzureServiceBusEventBus` | same                                                       | Production on Azure     |
+| `RedisEventBus`           | same                                                       | Low-latency dev/staging |
 
 **Factory function:**
+
 ```python
 from amplihack.agents.goal_seeking.hive_mind.event_bus import create_event_bus
 
@@ -43,6 +44,7 @@ bus = create_event_bus(
 ### Core Abstractions
 
 **`BusEvent` (immutable data model):**
+
 ```python
 @dataclass(frozen=True)
 class BusEvent:
@@ -54,6 +56,7 @@ class BusEvent:
 ```
 
 **`EventBus` Protocol (transport interface):**
+
 ```python
 class EventBus(Protocol):
     def publish(self, event: BusEvent) -> None: ...
@@ -88,15 +91,15 @@ AMPLIHACK_MEMORY_BACKEND=cognitive
 
 ### Event Types Published
 
-| Event Type | Direction | Purpose |
-|---|---|---|
-| `network_graph.create_node` | broadcast | Replicate node creation to all agents |
-| `network_graph.create_edge` | broadcast | Replicate edge creation to all agents |
-| `network_graph.search_query` | fan-out | Request knowledge from peer agents |
-| `network_graph.search_response` | reply | Return search results to requester |
-| `QUERY` | fan-out | Ask hive a question (OODA loop) |
-| `QUERY_RESPONSE` | reply | Answer hive query |
-| `LEARN_CONTENT` | broadcast | Notify agents of new learned content |
+| Event Type                      | Direction | Purpose                               |
+| ------------------------------- | --------- | ------------------------------------- |
+| `network_graph.create_node`     | broadcast | Replicate node creation to all agents |
+| `network_graph.create_edge`     | broadcast | Replicate edge creation to all agents |
+| `network_graph.search_query`    | fan-out   | Request knowledge from peer agents    |
+| `network_graph.search_response` | reply     | Return search results to requester    |
+| `QUERY`                         | fan-out   | Ask hive a question (OODA loop)       |
+| `QUERY_RESPONSE`                | reply     | Answer hive query                     |
+| `LEARN_CONTENT`                 | broadcast | Notify agents of new learned content  |
 
 ### Transport Layer File Map
 
@@ -125,36 +128,36 @@ deploy/azure_hive/
 
 ### Feature Matrix
 
-| Feature | Azure Event Hubs | Azure Service Bus |
-|---|---|---|
-| **Model** | Append-only log (Kafka-like) | Message broker (AMQP) |
-| **Fan-out / Broadcast** | Excellent — consumer groups read independently | Via topics + subscriptions (up to 2,000 subs) |
-| **Competing consumers** | Complex — requires partition coordination | Native — queue peek-lock |
-| **Message replay** | Yes — rewind to any offset in retention window | No — messages deleted on consumption |
-| **Ordering guarantee** | Per-partition FIFO only | Per-session FIFO (sessions), else best-effort |
-| **Dead-letter queue** | Not native — must implement in app code | Built-in DLQ on every queue and subscription |
-| **Request/Reply (RPC)** | Not supported | Native — `ReplyTo` + `ReplyToSessionId` |
-| **Per-message routing** | No server-side filter rules | SQL filter rules on subscriptions |
-| **Duplicate detection** | None at service layer | Configurable window per entity |
-| **Transactions** | None | Multi-entity atomic transactions |
-| **Message size** | Up to 1 MB (Standard), higher on Premium | 256 KB (Standard), up to 100 MB (Premium) |
-| **Throughput ceiling** | Millions/sec (horizontal via partitions) | High but not extreme — reliability first |
-| **Retention** | 1–7 days (Standard), up to 90 days (Premium) | Until consumed or TTL expires |
-| **Pricing (base)** | Throughput Units / Processing Units | Per operation (Standard) or per MU-day (Premium) |
-| **Dapr support** | `pubsub.azure.eventhubs` (needs Blob Storage for checkpoints) | `pubsub.azure.servicebus.topics` (first-class) |
+| Feature                 | Azure Event Hubs                                              | Azure Service Bus                                |
+| ----------------------- | ------------------------------------------------------------- | ------------------------------------------------ |
+| **Model**               | Append-only log (Kafka-like)                                  | Message broker (AMQP)                            |
+| **Fan-out / Broadcast** | Excellent — consumer groups read independently                | Via topics + subscriptions (up to 2,000 subs)    |
+| **Competing consumers** | Complex — requires partition coordination                     | Native — queue peek-lock                         |
+| **Message replay**      | Yes — rewind to any offset in retention window                | No — messages deleted on consumption             |
+| **Ordering guarantee**  | Per-partition FIFO only                                       | Per-session FIFO (sessions), else best-effort    |
+| **Dead-letter queue**   | Not native — must implement in app code                       | Built-in DLQ on every queue and subscription     |
+| **Request/Reply (RPC)** | Not supported                                                 | Native — `ReplyTo` + `ReplyToSessionId`          |
+| **Per-message routing** | No server-side filter rules                                   | SQL filter rules on subscriptions                |
+| **Duplicate detection** | None at service layer                                         | Configurable window per entity                   |
+| **Transactions**        | None                                                          | Multi-entity atomic transactions                 |
+| **Message size**        | Up to 1 MB (Standard), higher on Premium                      | 256 KB (Standard), up to 100 MB (Premium)        |
+| **Throughput ceiling**  | Millions/sec (horizontal via partitions)                      | High but not extreme — reliability first         |
+| **Retention**           | 1–7 days (Standard), up to 90 days (Premium)                  | Until consumed or TTL expires                    |
+| **Pricing (base)**      | Throughput Units / Processing Units                           | Per operation (Standard) or per MU-day (Premium) |
+| **Dapr support**        | `pubsub.azure.eventhubs` (needs Blob Storage for checkpoints) | `pubsub.azure.servicebus.topics` (first-class)   |
 
 ### Pattern Suitability for Hive Mind
 
-| Communication Pattern | Hive Mind Use | Best Fit |
-|---|---|---|
-| Fan-out: broadcast LEARN_CONTENT to all agents | All agents receive new facts | **Event Hubs** (consumer groups) or Service Bus topics |
-| Fan-out search query to peer agents | `network_graph.search_query` | Service Bus topics + filter subs |
-| Request/reply: `QUERY` → `QUERY_RESPONSE` | Agent asks hive a question | **Service Bus** sessions |
-| Competing-consumer task dispatch | Agent pool picks up work items | **Service Bus** queues |
-| Dead-letter poisoned events | Malformed `BusEvent` | **Service Bus** built-in DLQ |
-| Replay for new agent types bootstrapping | New agent reads full history | **Event Hubs** |
-| Telemetry / observability streams | High-volume agent logs/metrics | **Event Hubs** |
-| Ordered multi-step task chains | OODA tick ordering per agent | **Service Bus** sessions |
+| Communication Pattern                          | Hive Mind Use                  | Best Fit                                               |
+| ---------------------------------------------- | ------------------------------ | ------------------------------------------------------ |
+| Fan-out: broadcast LEARN_CONTENT to all agents | All agents receive new facts   | **Event Hubs** (consumer groups) or Service Bus topics |
+| Fan-out search query to peer agents            | `network_graph.search_query`   | Service Bus topics + filter subs                       |
+| Request/reply: `QUERY` → `QUERY_RESPONSE`      | Agent asks hive a question     | **Service Bus** sessions                               |
+| Competing-consumer task dispatch               | Agent pool picks up work items | **Service Bus** queues                                 |
+| Dead-letter poisoned events                    | Malformed `BusEvent`           | **Service Bus** built-in DLQ                           |
+| Replay for new agent types bootstrapping       | New agent reads full history   | **Event Hubs**                                         |
+| Telemetry / observability streams              | High-volume agent logs/metrics | **Event Hubs**                                         |
+| Ordered multi-step task chains                 | OODA tick ordering per agent   | **Service Bus** sessions                               |
 
 ### Recommendation
 
@@ -171,6 +174,7 @@ deploy/azure_hive/
 **What it is:** A CNCF-graduated distributed runtime that abstracts messaging behind a sidecar HTTP/gRPC API. Applications call `localhost:3500/publish`; the sidecar handles the actual broker interaction.
 
 **Dapr pub/sub with Service Bus:**
+
 ```yaml
 # dapr/components/pubsub.yaml
 apiVersion: dapr.io/v1alpha1
@@ -188,6 +192,7 @@ spec:
 ```
 
 **Agent code (before Dapr):**
+
 ```python
 # Direct Azure SDK
 sender = ServiceBusSender(conn_str, topic_name="hive-graph")
@@ -195,6 +200,7 @@ sender.send_messages(ServiceBusMessage(json.dumps(event.to_dict())))
 ```
 
 **Agent code (after Dapr):**
+
 ```python
 # Dapr sidecar — no Azure SDK
 import httpx
@@ -203,6 +209,7 @@ httpx.post("http://localhost:3500/v1.0/publish/hive-pubsub/hive-graph",
 ```
 
 **Pros:**
+
 - Transport portability: swap Service Bus for Kafka/Redis/RabbitMQ by changing one YAML
 - Built-in at-least-once delivery regardless of backend capabilities
 - Dead-letter topics managed by Dapr uniformly
@@ -211,6 +218,7 @@ httpx.post("http://localhost:3500/v1.0/publish/hive-pubsub/hive-graph",
 - Built-in distributed tracing (OpenTelemetry), metrics, and service-to-service encryption
 
 **Cons:**
+
 - Sidecar overhead: each agent pod needs a sidecar (adds ~50–200 MB RAM per agent)
 - Local development requires `dapr run` or Docker Compose
 - Dapr Agents is new (announced March 2025); production maturity is still evolving
@@ -224,6 +232,7 @@ httpx.post("http://localhost:3500/v1.0/publish/hive-pubsub/hive-graph",
 **What it is:** A CNCF-graduated specification (v1.0, graduated January 2024) that standardizes the event envelope schema. It is **not** a transport or delivery system — purely a schema contract.
 
 **Required CloudEvents fields:**
+
 ```json
 {
   "specversion": "1.0",
@@ -237,6 +246,7 @@ httpx.post("http://localhost:3500/v1.0/publish/hive-pubsub/hive-graph",
 ```
 
 **Relationship to existing `BusEvent`:**
+
 ```python
 # Current BusEvent fields
 @dataclass(frozen=True)
@@ -251,6 +261,7 @@ class BusEvent:
 `BusEvent` is structurally equivalent to a CloudEvents envelope. Adopting CloudEvents would require adding `specversion: "1.0"` and a URI `source` format — a minimal change.
 
 **Azure support:**
+
 - Service Bus: CloudEvents payloads supported natively (message body is schema-agnostic)
 - Event Hubs: CloudEvents supported via Kafka protocol binding
 - Event Grid: Native CloudEvents v1.0 as both input and output schema
@@ -261,14 +272,14 @@ class BusEvent:
 
 ### 3.3 Abstraction Comparison
 
-| Dimension | Dapr | CloudEvents | Existing EventBus Protocol |
-|---|---|---|---|
-| **What it abstracts** | Transport (which broker) | Schema (envelope format) | Transport (which broker) |
-| **Language** | Any (HTTP/gRPC sidecar) | Any (JSON/binary spec) | Python only |
-| **Overhead** | Sidecar process per pod | Zero (schema contract only) | Zero |
-| **Lock-in reduction** | Full broker portability | Interoperability across systems | Python-level portability |
-| **Production readiness** | High (CNCF graduated) | High (CNCF graduated) | Medium (internal only) |
-| **Already in use** | No | No (but BusEvent is compatible) | Yes |
+| Dimension                | Dapr                     | CloudEvents                     | Existing EventBus Protocol |
+| ------------------------ | ------------------------ | ------------------------------- | -------------------------- |
+| **What it abstracts**    | Transport (which broker) | Schema (envelope format)        | Transport (which broker)   |
+| **Language**             | Any (HTTP/gRPC sidecar)  | Any (JSON/binary spec)          | Python only                |
+| **Overhead**             | Sidecar process per pod  | Zero (schema contract only)     | Zero                       |
+| **Lock-in reduction**    | Full broker portability  | Interoperability across systems | Python-level portability   |
+| **Production readiness** | High (CNCF graduated)    | High (CNCF graduated)           | Medium (internal only)     |
+| **Already in use**       | No                       | No (but BusEvent is compatible) | Yes                        |
 
 ---
 
@@ -278,19 +289,20 @@ class BusEvent:
 
 A Premium Service Bus namespace is provisioned and active for the hive mind deployment:
 
-| Property | Value |
-|---|---|
-| **Namespace name** | `hive-sb-prem-dj2qo2w7vu5zi` |
-| **Resource group** | `hive-mind-rg` |
-| **Location** | East US |
-| **SKU** | Premium |
-| **Capacity** | 1 Messaging Unit |
-| **Status** | Active |
-| **Endpoint** | `https://hive-sb-prem-dj2qo2w7vu5zi.servicebus.windows.net:443/` |
+| Property           | Value                                                            |
+| ------------------ | ---------------------------------------------------------------- |
+| **Namespace name** | `hive-sb-prem-dj2qo2w7vu5zi`                                     |
+| **Resource group** | `hive-mind-rg`                                                   |
+| **Location**       | East US                                                          |
+| **SKU**            | Premium                                                          |
+| **Capacity**       | 1 Messaging Unit                                                 |
+| **Status**         | Active                                                           |
+| **Endpoint**       | `https://hive-sb-prem-dj2qo2w7vu5zi.servicebus.windows.net:443/` |
 
 This namespace is provisioned via `deploy/azure_hive/main.bicep` and matches the `AzureServiceBusEventBus` backend configuration in the code.
 
 **Why Premium tier:**
+
 - Dedicated resources (no noisy neighbors)
 - Message size up to 100 MB (vs 256 KB on Standard)
 - VNet integration for network isolation
@@ -299,13 +311,13 @@ This namespace is provisioned via `deploy/azure_hive/main.bicep` and matches the
 
 ### Existing Standard Namespace (staging/dev)
 
-| Property | Value |
-|---|---|
+| Property           | Value                   |
+| ------------------ | ----------------------- |
 | **Namespace name** | `hive-sb-dj2qo2w7vu5zi` |
-| **Resource group** | `hive-mind-rg` |
-| **Location** | West US 2 |
-| **SKU** | Standard |
-| **Use** | Development / staging |
+| **Resource group** | `hive-mind-rg`          |
+| **Location**       | West US 2               |
+| **SKU**            | Standard                |
+| **Use**            | Development / staging   |
 
 ---
 

@@ -21,6 +21,7 @@ try:
 except ImportError:
     # Fallback for testing or missing security module
     print("WARNING: security module not available - using fallback sanitizers", file=sys.stderr)
+
     def sanitize_content(content: str, max_length: int = 5000) -> str:
         return content[:max_length] + "..." if len(content) > max_length else content
 

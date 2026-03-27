@@ -106,7 +106,9 @@ class SQLiteBackend:
 
     async def get_session_info(self, session_id: str) -> SessionInfo | None:
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(self._executor, self.database.get_session_info, session_id)
+        return await loop.run_in_executor(
+            self._executor, self.database.get_session_info, session_id
+        )
 
     async def list_sessions(self, limit: int | None = None) -> list[SessionInfo]:
         loop = asyncio.get_event_loop()
@@ -122,7 +124,7 @@ class SQLiteBackend:
 
     def get_code_graph(self):
         """Return None — SQLite backend has no code graph support."""
-        return None
+        return
 
     async def close(self) -> None:
         loop = asyncio.get_event_loop()

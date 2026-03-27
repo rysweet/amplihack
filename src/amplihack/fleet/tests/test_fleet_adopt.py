@@ -10,11 +10,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from amplihack.fleet.fleet_adopt import AdoptedSession, SessionAdopter
+from amplihack.fleet.fleet_adopt import SessionAdopter
 from amplihack.fleet.fleet_tasks import TaskQueue, TaskStatus
-
 
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — _parse_discovery_output
@@ -108,21 +105,12 @@ class TestParseDiscoveryOutput:
 
     def test_last_msg_only_sets_task_once(self):
         """Only the first LAST_MSG line is used as inferred_task."""
-        output = (
-            "===SESSION:s===\n"
-            "LAST_MSG:First message\n"
-            "LAST_MSG:Second message\n"
-            "===DONE===\n"
-        )
+        output = "===SESSION:s===\nLAST_MSG:First message\nLAST_MSG:Second message\n===DONE===\n"
         sessions = self.adopter._parse_discovery_output("vm-01", output)
         assert sessions[0].inferred_task == "First message"
 
     def test_whitespace_lines_are_stripped(self):
-        output = (
-            "  ===SESSION:ws===  \n"
-            "  CWD:/tmp/test  \n"
-            "  ===DONE===  \n"
-        )
+        output = "  ===SESSION:ws===  \n  CWD:/tmp/test  \n  ===DONE===  \n"
         sessions = self.adopter._parse_discovery_output("vm-01", output)
         assert len(sessions) == 1
         assert sessions[0].working_directory == "/tmp/test"
@@ -160,9 +148,7 @@ class TestAdoptSessions:
             "LAST_MSG:Working on feature X\n"
             "===DONE===\n"
         )
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout=discovery_output, stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=discovery_output, stderr="")
 
         queue = TaskQueue()
         adopter = SessionAdopter()
@@ -182,13 +168,9 @@ class TestAdoptSessions:
     @patch("amplihack.fleet.fleet_adopt.subprocess.run")
     def test_adopt_filters_by_session_names(self, mock_run):
         discovery_output = (
-            "===SESSION:keep===\nCMD:claude\n"
-            "===SESSION:skip===\nCMD:claude\n"
-            "===DONE===\n"
+            "===SESSION:keep===\nCMD:claude\n===SESSION:skip===\nCMD:claude\n===DONE===\n"
         )
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout=discovery_output, stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=discovery_output, stderr="")
 
         queue = TaskQueue()
         adopter = SessionAdopter()

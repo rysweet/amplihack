@@ -47,10 +47,10 @@ native, restricted shells) can now use the dev-orchestrator without workarounds.
 
 **How to choose**:
 
-| Mode | When to use |
-|---|---|
-| Direct (default) | Interactive local development, short-to-medium recipes |
-| Durable (tmux) | Long recipes (>15 min), SSH sessions, environments that prune orphan processes |
+| Mode             | When to use                                                                    |
+| ---------------- | ------------------------------------------------------------------------------ |
+| Direct (default) | Interactive local development, short-to-medium recipes                         |
+| Durable (tmux)   | Long recipes (>15 min), SSH sessions, environments that prune orphan processes |
 
 **Using the durable (tmux) mode**:
 
@@ -135,11 +135,11 @@ guidance were improved for reliability:
 rules for `{{var}}` placeholders. The Python wrapper (`rust_runner.py`) now
 applies three automatic fixes before invoking the Rust binary:
 
-| Pattern | Problem | Auto-fix |
-|---|---|---|
-| `"{{var}}"` | Runner adds double quotes; explicit wrapping doubles them | Strip outer `"` |
-| `'{{var}}'` | Single quotes block `$RECIPE_VAR_*` expansion | Strip outer `'` |
-| `<<'DELIM'` | Quoted heredoc delimiter blocks variable expansion | Remove quotes from delimiter |
+| Pattern     | Problem                                                   | Auto-fix                     |
+| ----------- | --------------------------------------------------------- | ---------------------------- |
+| `"{{var}}"` | Runner adds double quotes; explicit wrapping doubles them | Strip outer `"`              |
+| `'{{var}}'` | Single quotes block `$RECIPE_VAR_*` expansion             | Strip outer `'`              |
+| `<<'DELIM'` | Quoted heredoc delimiter blocks variable expansion        | Remove quotes from delimiter |
 
 **Impact**: Recipes that previously silently broke due to quoting (doubled
 quotes, unexpanded variables, literal heredoc output) now work correctly without
@@ -163,13 +163,13 @@ from amplihack.workflows import GhAwCompiler, Diagnostic, compile_workflow
 
 **Key improvements over the previous parser**:
 
-| Issue | Fix |
-|---|---|
-| `on:` key → Python `True` false positives (YAML 1.1 Norway problem) | `yaml.compose()` preserves the raw `"on"` string key |
-| No line/column in error messages | `Diagnostic(line=N, col=N)` from compose node tree |
-| Typos silently stay as warnings | Levenshtein distance ≤ 2 → severity escalated to `"error"` |
-| Full field list in suggestions | `difflib.get_close_matches(n=3)` → top-3 ranked matches |
-| Missing-field errors give no guidance | `FIELD_VALID_VALUES` dict embeds format examples |
+| Issue                                                               | Fix                                                        |
+| ------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `on:` key → Python `True` false positives (YAML 1.1 Norway problem) | `yaml.compose()` preserves the raw `"on"` string key       |
+| No line/column in error messages                                    | `Diagnostic(line=N, col=N)` from compose node tree         |
+| Typos silently stay as warnings                                     | Levenshtein distance ≤ 2 → severity escalated to `"error"` |
+| Full field list in suggestions                                      | `difflib.get_close_matches(n=3)` → top-3 ranked matches    |
+| Missing-field errors give no guidance                               | `FIELD_VALID_VALUES` dict embeds format examples           |
 
 **Example**:
 
@@ -459,15 +459,15 @@ amplihack recipe run investigation --context task_description="How does auth wor
 
 #### Feature Compatibility Matrix
 
-| Feature | macOS | Linux | WSL | Windows Native |
-|---|---|---|---|---|
-| Core recipe runner | Full | Full | Full | Full |
-| Agent orchestration | Full | Full | Full | Full |
-| Auto mode | Full | Full | Full | Partial (no TUI) |
-| Fleet CLI | Full | Full | Full | Not supported |
-| File locking | Full | Full | Full | Full (`msvcrt` fallback) |
-| Keyboard input | Full | Full | Full | Full (`msvcrt` fallback) |
-| Temp directory | Full | Full | Full | Full (`tempfile.gettempdir()`) |
+| Feature             | macOS | Linux | WSL  | Windows Native                 |
+| ------------------- | ----- | ----- | ---- | ------------------------------ |
+| Core recipe runner  | Full  | Full  | Full | Full                           |
+| Agent orchestration | Full  | Full  | Full | Full                           |
+| Auto mode           | Full  | Full  | Full | Partial (no TUI)               |
+| Fleet CLI           | Full  | Full  | Full | Not supported                  |
+| File locking        | Full  | Full  | Full | Full (`msvcrt` fallback)       |
+| Keyboard input      | Full  | Full  | Full | Full (`msvcrt` fallback)       |
+| Temp directory      | Full  | Full  | Full | Full (`tempfile.gettempdir()`) |
 
 **Documentation Updated**:
 

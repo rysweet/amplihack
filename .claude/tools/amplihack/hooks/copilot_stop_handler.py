@@ -94,12 +94,15 @@ def get_copilot_continuation(
         min_confidence = 0.6
         try:
             from amplihack.fleet._constants import MIN_CONFIDENCE_SEND
+
             min_confidence = MIN_CONFIDENCE_SEND
         except ImportError:
             pass
         if suggestion.action == "send_input" and suggestion.confidence >= min_confidence:
             _metric("copilot_send_input")
-            progress = f"{suggestion.progress_pct}%" if suggestion.progress_pct is not None else "unknown"
+            progress = (
+                f"{suggestion.progress_pct}%" if suggestion.progress_pct is not None else "unknown"
+            )
             return (
                 f"Session co-pilot guidance (goal: {goal}, progress: {progress}):\n\n"
                 f"{suggestion.input_text}\n\n"

@@ -4,21 +4,19 @@ Tests that SSH commands are cached so repeated calls within the TTL window
 return the cached result without re-running the SSH command.
 """
 
+import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-
-import sys
-from pathlib import Path
 
 # Add the amplifier-bundle tools to the path so we can import directly
 _tools_dir = Path(__file__).resolve().parents[2] / "amplifier-bundle" / "tools"
 if str(_tools_dir) not in sys.path:
     sys.path.insert(0, str(_tools_dir))
 
-from amplihack.remote.session import SessionManager, SessionStatus
+from amplihack.remote.session import SessionManager
 
 
 @pytest.fixture
@@ -62,7 +60,9 @@ class TestSSHCacheHit:
     """Second SSH call within TTL reuses cached output."""
 
     def test_second_capture_does_not_call_ssh_again(self, manager, running_session):
-        with patch.object(manager, "_execute_ssh_command", wraps=manager._execute_ssh_command) as mock_exec:
+        with patch.object(
+            manager, "_execute_ssh_command", wraps=manager._execute_ssh_command
+        ) as mock_exec:
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value = MagicMock(stdout="tmux output line 1\nline 2\n")
 

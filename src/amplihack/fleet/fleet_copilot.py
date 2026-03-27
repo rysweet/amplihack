@@ -21,16 +21,19 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from amplihack.fleet._constants import CONFIDENCE_COPILOT_WAIT
-from amplihack.fleet._validation import is_dangerous_input
 from amplihack.fleet._backends import auto_detect_backend
+from amplihack.fleet._constants import CONFIDENCE_COPILOT_WAIT
 from amplihack.fleet._transcript import (
     build_rich_context,
-    extract_last_output as _extract_last_output,  # Re-exported for backward compatibility (tests import from here)
-    infer_jsonl_status as _infer_jsonl_status,
     read_local_transcript,
+)
+from amplihack.fleet._transcript import (
+    infer_jsonl_status as _infer_jsonl_status,
+)
+from amplihack.fleet._transcript import (
     summarize_entries as _summarize_entries,
 )
+from amplihack.fleet._validation import is_dangerous_input
 from amplihack.fleet.fleet_session_reasoner import (
     SessionContext,
     SessionReasoner,

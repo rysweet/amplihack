@@ -11,14 +11,11 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from amplihack.fleet._backends import (
     AnthropicBackend,
     CopilotBackend,
     auto_detect_backend,
 )
-
 
 # ---------------------------------------------------------------------------
 # AnthropicBackend

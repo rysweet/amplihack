@@ -95,8 +95,8 @@ def run_local_test(questions: list[str]) -> dict[str, Any]:
     print()
 
     try:
-        from amplihack.memory.network_store import NetworkGraphStore
         from amplihack.memory.memory_store import InMemoryGraphStore
+        from amplihack.memory.network_store import NetworkGraphStore
     except ImportError:
         print("ERROR: amplihack package not available. Install with: pip install -e .")
         return {"mode": "local", "error": "import failed"}
@@ -116,6 +116,7 @@ def run_local_test(questions: list[str]) -> dict[str, Any]:
             # and pushing it into the store's internal queue (mimicking bus delivery)
             try:
                 from amplihack.agents.goal_seeking.hive_mind.event_bus import BusEvent
+
                 event = BusEvent(
                     event_id=uuid.uuid4().hex,
                     event_type="QUERY",
@@ -266,9 +267,7 @@ class QueryTestClient:
     def _receive_loop(self) -> None:
         while self._running:
             try:
-                messages = self._receiver.receive_messages(
-                    max_message_count=50, max_wait_time=1
-                )
+                messages = self._receiver.receive_messages(max_message_count=50, max_wait_time=1)
                 for msg in messages:
                     try:
                         self._handle_message(msg)
@@ -431,7 +430,8 @@ def main() -> int:
         help="Path to write JSON results",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Enable debug logging",
     )

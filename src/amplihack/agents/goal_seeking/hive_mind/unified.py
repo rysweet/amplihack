@@ -21,7 +21,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from .event_bus import LocalEventBus, make_event
+from .event_bus import LocalEventBus
 from .hive_graph import HiveFact
 from .in_memory_hive import InMemoryHiveGraph
 from .orchestrator import DefaultPromotionPolicy, HiveMindOrchestrator
@@ -126,9 +126,7 @@ class UnifiedHiveMind:
         policy = DefaultPromotionPolicy(
             promote_threshold=self._config.promotion_confidence_threshold,
         )
-        peers = [
-            g for aid, g in self._local_graphs.items() if aid != agent_id
-        ]
+        peers = [g for aid, g in self._local_graphs.items() if aid != agent_id]
         orch = HiveMindOrchestrator(
             agent_id=agent_id,
             hive_graph=self._graph,
@@ -199,15 +197,14 @@ class UnifiedHiveMind:
             # Check if already has enough votes
             self._graph._check_and_promote(fact_id)
             return fact_id
-        else:
-            # Direct promotion via orchestrator
-            result = self._orchestrators[agent_id].store_and_promote(
-                concept=concept,
-                content=content,
-                confidence=confidence,
-                tags=tags,
-            )
-            return result["fact_id"]
+        # Direct promotion via orchestrator
+        result = self._orchestrators[agent_id].store_and_promote(
+            concept=concept,
+            content=content,
+            confidence=confidence,
+            tags=tags,
+        )
+        return result["fact_id"]
 
     def query_local(
         self,
@@ -269,9 +266,7 @@ class UnifiedHiveMind:
 
         for agent_id, orch in self._orchestrators.items():
             # Update peers to include all other local graphs
-            orch._peers = [
-                g for aid, g in self._local_graphs.items() if aid != agent_id
-            ]
+            orch._peers = [g for aid, g in self._local_graphs.items() if aid != agent_id]
             round_result = orch.run_gossip_round()
             results[agent_id] = round_result
 

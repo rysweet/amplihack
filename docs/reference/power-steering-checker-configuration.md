@@ -8,14 +8,14 @@ All runtime constants in the `power_steering_checker` package can be overridden 
 
 ## Quick Reference
 
-| Variable | Default | Module | Description |
-|---|---|---|---|
-| `PSC_CHECKER_TIMEOUT` | `25` | `sdk_calls` | Per-consideration timeout (seconds) |
-| `PSC_PARALLEL_TIMEOUT` | `60` | `sdk_calls` | Total parallel execution budget (seconds) |
-| `PSC_MAX_TRANSCRIPT_LINES` | `50000` | `main_checker` | Transcript size cap (lines) |
-| `PSC_MAX_ASK_USER_QUESTIONS` | `3` | `main_checker` | AskUserQuestion call limit |
-| `PSC_MIN_TESTS_PASSED_THRESHOLD` | `10` | `main_checker` | Minimum passing tests |
-| `PSC_MAX_CONSECUTIVE_BLOCKS` | `10` | `result_formatting` | Consecutive block limit (turn-state fallback) |
+| Variable                         | Default | Module              | Description                                   |
+| -------------------------------- | ------- | ------------------- | --------------------------------------------- |
+| `PSC_CHECKER_TIMEOUT`            | `25`    | `sdk_calls`         | Per-consideration timeout (seconds)           |
+| `PSC_PARALLEL_TIMEOUT`           | `60`    | `sdk_calls`         | Total parallel execution budget (seconds)     |
+| `PSC_MAX_TRANSCRIPT_LINES`       | `50000` | `main_checker`      | Transcript size cap (lines)                   |
+| `PSC_MAX_ASK_USER_QUESTIONS`     | `3`     | `main_checker`      | AskUserQuestion call limit                    |
+| `PSC_MIN_TESTS_PASSED_THRESHOLD` | `10`    | `main_checker`      | Minimum passing tests                         |
+| `PSC_MAX_CONSECUTIVE_BLOCKS`     | `10`    | `result_formatting` | Consecutive block limit (turn-state fallback) |
 
 All variables are **optional**. Omitting them uses the default shown above.
 
@@ -41,11 +41,11 @@ HOOK_TIMEOUT (120s)        ← hard limit imposed by Claude Code framework
 
 **Tuning guidelines**:
 
-| Situation | Recommended value |
-|---|---|
-| Slow network (gh CLI latency > 5s) | `40` |
-| CI environment with fast network | `15` |
-| Debug / local development | `60` |
+| Situation                          | Recommended value |
+| ---------------------------------- | ----------------- |
+| Slow network (gh CLI latency > 5s) | `40`              |
+| CI environment with fast network   | `15`              |
+| Debug / local development          | `60`              |
 
 **Example**:
 
@@ -186,12 +186,16 @@ Not directly supported; use a shell wrapper or configure in your hook invocation
 ```json
 {
   "hooks": {
-    "Stop": [{
-      "hooks": [{
-        "type": "command",
-        "command": "PSC_CHECKER_TIMEOUT=40 PSC_PARALLEL_TIMEOUT=90 python .claude/tools/amplihack/hooks/stop_power_steering.py"
-      }]
-    }]
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PSC_CHECKER_TIMEOUT=40 PSC_PARALLEL_TIMEOUT=90 python .claude/tools/amplihack/hooks/stop_power_steering.py"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
@@ -214,14 +218,14 @@ PSC_CHECKER_TIMEOUT=40 amplihack claude
 
 ## Defaults Rationale
 
-| Variable | Default | Rationale |
-|---|---|---|
-| `PSC_CHECKER_TIMEOUT=25` | Per-check budget that exceeds `gh` CLI network latency (100–500ms) by a wide margin while leaving room for the parallel budget. |
-| `PSC_PARALLEL_TIMEOUT=60` | Roughly 3× median execution time (15–20s), providing a buffer for slow checks without approaching the 120s hook limit. |
-| `PSC_MAX_TRANSCRIPT_LINES=50000` | Covers sessions up to ~50 hours of activity. At ~1 line/second average, 50k lines ≈ 14 hours. |
-| `PSC_MAX_ASK_USER_QUESTIONS=3` | Based on amplihack usage data: sessions asking more than 3 questions before executing tend to be stalling. |
-| `PSC_MIN_TESTS_PASSED_THRESHOLD=10` | Empirically derived: test suites with fewer than 10 passing tests rarely provide meaningful coverage evidence. |
-| `PSC_MAX_CONSECUTIVE_BLOCKS=10` | Fallback only — the real threshold comes from `TurnStateManager` when available. |
+| Variable                            | Default                                                                                                                         | Rationale |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `PSC_CHECKER_TIMEOUT=25`            | Per-check budget that exceeds `gh` CLI network latency (100–500ms) by a wide margin while leaving room for the parallel budget. |
+| `PSC_PARALLEL_TIMEOUT=60`           | Roughly 3× median execution time (15–20s), providing a buffer for slow checks without approaching the 120s hook limit.          |
+| `PSC_MAX_TRANSCRIPT_LINES=50000`    | Covers sessions up to ~50 hours of activity. At ~1 line/second average, 50k lines ≈ 14 hours.                                   |
+| `PSC_MAX_ASK_USER_QUESTIONS=3`      | Based on amplihack usage data: sessions asking more than 3 questions before executing tend to be stalling.                      |
+| `PSC_MIN_TESTS_PASSED_THRESHOLD=10` | Empirically derived: test suites with fewer than 10 passing tests rarely provide meaningful coverage evidence.                  |
+| `PSC_MAX_CONSECUTIVE_BLOCKS=10`     | Fallback only — the real threshold comes from `TurnStateManager` when available.                                                |
 
 ---
 

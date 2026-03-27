@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
-import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +55,7 @@ async def run_feed(
         )
         for i in range(turns)
     ]
-    feed_complete_event = make_feed_complete_event(
-        deployment_id=deployment_id, total_turns=turns
-    )
+    feed_complete_event = make_feed_complete_event(deployment_id=deployment_id, total_turns=turns)
 
     if sb_conn_str:
         await _publish_via_service_bus(events + [feed_complete_event], sb_conn_str, topic_name)

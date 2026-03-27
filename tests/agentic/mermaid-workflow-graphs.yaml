@@ -12,7 +12,18 @@ scenario:
     # Verify all 7 files contain mermaid blocks
     - action: launch
       target: "grep"
-      args: ["-rl", "```mermaid", ".claude/skills/dev-orchestrator/SKILL.md", ".claude/skills/default-workflow/SKILL.md", ".claude/skills/investigation-workflow/SKILL.md", ".claude/skills/quality-audit/SKILL.md", "CLAUDE.md", ".claude/agents/amplihack/specialized/ci-diagnostic-workflow.md", ".claude/commands/amplihack/fix.md"]
+      args:
+        [
+          "-rl",
+          "```mermaid",
+          ".claude/skills/dev-orchestrator/SKILL.md",
+          ".claude/skills/default-workflow/SKILL.md",
+          ".claude/skills/investigation-workflow/SKILL.md",
+          ".claude/skills/quality-audit/SKILL.md",
+          "CLAUDE.md",
+          ".claude/agents/amplihack/specialized/ci-diagnostic-workflow.md",
+          ".claude/commands/amplihack/fix.md",
+        ]
     - action: verify_output
       contains: "SKILL.md"
       description: "At least one skill file contains mermaid block"

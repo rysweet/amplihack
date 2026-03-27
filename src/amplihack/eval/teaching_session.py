@@ -168,7 +168,9 @@ class TeachingSession:
             student_accuracy=accuracy,
         )
 
-    async def _generate_teacher_message(self, turn_number: int, history: list[dict[str, str]]) -> str:
+    async def _generate_teacher_message(
+        self, turn_number: int, history: list[dict[str, str]]
+    ) -> str:
         """Generate the teacher's message for this turn.
 
         Args:

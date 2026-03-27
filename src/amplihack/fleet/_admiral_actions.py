@@ -149,9 +149,7 @@ def reassign_task(
     if action.task and action.vm_name and action.session_name:
         validate_vm_name(action.vm_name)
         # Kill the stuck session
-        kill_cmd = (
-            f"tmux kill-session -t {shlex.quote(action.session_name)} 2>/dev/null || true"
-        )
+        kill_cmd = f"tmux kill-session -t {shlex.quote(action.session_name)} 2>/dev/null || true"
         try:
             subprocess.run(
                 [azlin_path, "connect", action.vm_name, "--no-tmux", "--", kill_cmd],

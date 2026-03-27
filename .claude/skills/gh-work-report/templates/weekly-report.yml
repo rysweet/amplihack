@@ -3,20 +3,20 @@ name: Weekly GitHub Work Report
 on:
   schedule:
     # Every Monday at 08:00 UTC
-    - cron: '0 8 * * 1'
+    - cron: "0 8 * * 1"
   workflow_dispatch:
     inputs:
       days:
-        description: 'Number of days to cover (1, 5, 7, 30, 90)'
+        description: "Number of days to cover (1, 5, 7, 30, 90)"
         required: false
-        default: '7'
+        default: "7"
         type: choice
         options:
-          - '1'
-          - '5'
-          - '7'
-          - '30'
-          - '90'
+          - "1"
+          - "5"
+          - "7"
+          - "30"
+          - "90"
 
 permissions:
   contents: write

@@ -12,7 +12,6 @@ import pytest
 from amplihack.memory.coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
 from amplihack.memory.models import MemoryEntry, MemoryType
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -30,8 +29,9 @@ def async_backend():
     return backend
 
 
-def _make_entry(memory_id, session_id, memory_type=MemoryType.EPISODIC,
-                content="Test content", importance=5):
+def _make_entry(
+    memory_id, session_id, memory_type=MemoryType.EPISODIC, content="Test content", importance=5
+):
     return MemoryEntry(
         id=memory_id,
         session_id=session_id,
@@ -150,9 +150,7 @@ class TestMemoryCoordinatorStore:
         coordinator = MemoryCoordinator(backend=async_backend, session_id="sess_lq")
         with patch.object(coordinator, "_review_quality", AsyncMock(return_value=3)):
             with patch.object(coordinator, "_is_duplicate", AsyncMock(return_value=False)):
-                request = StorageRequest(
-                    content="This content scores below the quality threshold"
-                )
+                request = StorageRequest(content="This content scores below the quality threshold")
                 memory_id = await coordinator.store(request)
 
         assert memory_id is None
@@ -216,10 +214,7 @@ class TestMemoryCoordinatorRetrieve:
         query = RetrievalQuery(query_text="test", memory_types=[MemoryType.SEMANTIC])
         memories = await coordinator.retrieve(query)
 
-        assert all(
-            m.metadata.get("new_memory_type") == MemoryType.SEMANTIC.value
-            for m in memories
-        )
+        assert all(m.metadata.get("new_memory_type") == MemoryType.SEMANTIC.value for m in memories)
 
     @pytest.mark.asyncio
     async def test_retrieve_applies_time_range_filter(self, async_backend):

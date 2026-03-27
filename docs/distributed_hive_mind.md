@@ -49,13 +49,13 @@ graph TB
 
 Cross-shard queries travel over **Azure Event Hubs** via `EventHubsShardTransport` (replacing the former Service Bus shard topic). Key design points:
 
-| Aspect       | Detail                                                                                                                                                                                                    |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Aspect       | Detail                                                                                                                                                                                                                                                                                                                                  |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Routing      | **Explicit `partition_id` routing**: `SHARD_QUERY` sent to `partition_id = target_index % num_partitions`; `SHARD_RESPONSE` sent to `partition_id = requester_index % num_partitions`. This is critical — `partition_key` routing causes silent event loss when multiple agents share a consumer group (see "Partition Routing" below). |
-| Isolation    | Per-app consumer groups: `cg-app-{N}` (not per-agent). Each agent reads from its deterministic partition within the shared group. |
-| Correlation  | `correlation_id + threading.Event` — querying agent blocks in `query_shard()` until the response event fires or timeout expires                                                                           |
-| Local bypass | Queries to own shard bypass the network entirely (no EH round-trip)                                                                                                                                       |
-| Retrieval    | `handle_shard_query()` calls `agent.memory.search()` via `CognitiveAdapter` (n-gram overlap, reranking, semantic matching), falling back to raw `ShardStore.search()` when no agent instance is available |
+| Isolation    | Per-app consumer groups: `cg-app-{N}` (not per-agent). Each agent reads from its deterministic partition within the shared group.                                                                                                                                                                                                       |
+| Correlation  | `correlation_id + threading.Event` — querying agent blocks in `query_shard()` until the response event fires or timeout expires                                                                                                                                                                                                         |
+| Local bypass | Queries to own shard bypass the network entirely (no EH round-trip)                                                                                                                                                                                                                                                                     |
+| Retrieval    | `handle_shard_query()` calls `agent.memory.search()` via `CognitiveAdapter` (n-gram overlap, reranking, semantic matching), falling back to raw `ShardStore.search()` when no agent instance is available                                                                                                                               |
 
 ### Partition Routing (critical for multi-agent-per-app)
 
@@ -241,45 +241,45 @@ The fix: `CognitiveAdapter` monkey-patches `kuzu.Database.__init__` to bound eac
 
 ### Latest: 100 agents × 5000 turns — 99.29% (2026-03-13)
 
-| Config | Score | Notes |
-|---|---|---|
+| Config                 | Score      | Notes                                         |
+| ---------------------- | ---------- | --------------------------------------------- |
 | 100 agents, 5000 turns | **99.29%** | 50 turns/agent, 83 min learning, 20 questions |
-| 100 agents, 1000 turns | **99.29%** | 10 turns/agent, same score |
-| 5 agents, 100 turns | 96.92% | Pre-scaling baseline |
+| 100 agents, 1000 turns | **99.29%** | 10 turns/agent, same score                    |
+| 5 agents, 100 turns    | 96.92%     | Pre-scaling baseline                          |
 
 **Category breakdown (100 agents, 5000 turns):**
 
-| Category | Score |
-|---|---|
-| needle_in_haystack (4q) | 100% |
-| numerical_precision (3q) | 100% |
-| temporal_evolution (3q) | 100% |
-| cross_reference (2q) | 100% |
-| infrastructure_knowledge (1q) | 100% |
-| meta_memory (1q) | 100% |
-| security_log_analysis (1q) | 100% |
-| incident_tracking (1q) | 97.50% |
-| distractor_resistance (2q) | 97.50% |
-| source_attribution (2q) | 96.67% |
+| Category                      | Score  |
+| ----------------------------- | ------ |
+| needle_in_haystack (4q)       | 100%   |
+| numerical_precision (3q)      | 100%   |
+| temporal_evolution (3q)       | 100%   |
+| cross_reference (2q)          | 100%   |
+| infrastructure_knowledge (1q) | 100%   |
+| meta_memory (1q)              | 100%   |
+| security_log_analysis (1q)    | 100%   |
+| incident_tracking (1q)        | 97.50% |
+| distractor_resistance (2q)    | 97.50% |
+| source_attribution (2q)       | 96.67% |
 
 ### Historical progression
 
-| Milestone | Score | Key Fix |
-|---|---|---|
-| Initial deployment | 0% | Broken event delivery |
-| CBS auth + stale events | 39% → 42% | EventHubsShardTransport replaces Service Bus |
-| CognitiveAdapter retrieval | 71.54% | Cross-shard queries use full n-gram + reranking |
-| Answer timeout | 96.92% | 120s → 240s timeout for 5-agent eval |
-| 100-agent scaling | 18.42% | Consumer group partition competition |
-| **Partition routing fix** | **99.29%** | Explicit partition_id = agent_index % num_partitions |
+| Milestone                  | Score      | Key Fix                                              |
+| -------------------------- | ---------- | ---------------------------------------------------- |
+| Initial deployment         | 0%         | Broken event delivery                                |
+| CBS auth + stale events    | 39% → 42%  | EventHubsShardTransport replaces Service Bus         |
+| CognitiveAdapter retrieval | 71.54%     | Cross-shard queries use full n-gram + reranking      |
+| Answer timeout             | 96.92%     | 120s → 240s timeout for 5-agent eval                 |
+| 100-agent scaling          | 18.42%     | Consumer group partition competition                 |
+| **Partition routing fix**  | **99.29%** | Explicit partition_id = agent_index % num_partitions |
 
 ### Previous federated results (superseded)
 
-| Condition                   | Model      | Score | Notes                                 |
-| --------------------------- | ---------- | ----- | ------------------------------------- |
-| Single agent                | Sonnet 4.5 | 94.1% | Baseline, 5000 turns, 21.7h           |
-| Federated smoke (10 agents) | Sonnet 4.5 | 65.7% | Old routing, low variance |
-| Federated full (100 agents) | Sonnet 4.5 | 45.8% | Old routing, degraded at scale   |
+| Condition                   | Model      | Score | Notes                          |
+| --------------------------- | ---------- | ----- | ------------------------------ |
+| Single agent                | Sonnet 4.5 | 94.1% | Baseline, 5000 turns, 21.7h    |
+| Federated smoke (10 agents) | Sonnet 4.5 | 65.7% | Old routing, low variance      |
+| Federated full (100 agents) | Sonnet 4.5 | 45.8% | Old routing, degraded at scale |
 
 ### Known Issues (resolved)
 
