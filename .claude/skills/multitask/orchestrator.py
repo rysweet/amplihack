@@ -542,7 +542,9 @@ class ParallelOrchestrator:
         if ws.pid is None:
             return "unknown"
         safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", ws.recipe)[:64]
-        progress_path = Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{ws.pid}.json"
+        progress_path = (
+            Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{ws.pid}.json"
+        )
         try:
             real_path = progress_path.resolve()
             if not str(real_path).startswith(str(Path(tempfile.gettempdir()).resolve())):
@@ -580,17 +582,24 @@ class ParallelOrchestrator:
                     ws_status = "failed"
                 else:
                     ws_status = "unknown"
-                ws_summaries.append({
-                    "issue": ws.issue,
-                    "status": ws_status,
-                    "step": self._read_workstream_progress(ws),
-                    "elapsed_s": int(ws.runtime_seconds or 0),
-                })
-            print(json.dumps({
-                "type": "heartbeat",
-                "elapsed_s": elapsed,
-                "workstreams": ws_summaries,
-            }), flush=True)
+                ws_summaries.append(
+                    {
+                        "issue": ws.issue,
+                        "status": ws_status,
+                        "step": self._read_workstream_progress(ws),
+                        "elapsed_s": int(ws.runtime_seconds or 0),
+                    }
+                )
+            print(
+                json.dumps(
+                    {
+                        "type": "heartbeat",
+                        "elapsed_s": elapsed,
+                        "workstreams": ws_summaries,
+                    }
+                ),
+                flush=True,
+            )
 
             # Auto-cleanup completed and failed workstream directories
             for ws in self.workstreams:

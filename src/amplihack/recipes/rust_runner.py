@@ -683,7 +683,9 @@ def _stream_process_output_with_progress(
     def _emit_step_transition(step_name: str, status: str) -> None:
         """Emit a machine-readable JSONL step-transition marker to stderr."""
         print(
-            json.dumps({"type": "step_transition", "step": step_name, "status": status, "ts": time.time()}),
+            json.dumps(
+                {"type": "step_transition", "step": step_name, "status": status, "ts": time.time()}
+            ),
             file=sys.stderr,
             flush=True,
         )
@@ -801,7 +803,9 @@ def _execute_rust_command(
                 lines = stderr.strip().splitlines()
                 # Skip progress/heartbeat/JSONL lines, show last 5 meaningful lines
                 meaningful = [
-                    ln for ln in lines if not ln.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]", "{"))
+                    ln
+                    for ln in lines
+                    if not ln.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]", "{"))
                 ]
                 stderr_tail = "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
             raise RuntimeError(

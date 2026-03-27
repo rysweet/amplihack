@@ -182,7 +182,9 @@ def _stream_process_output_with_progress(
     def _emit_step_transition(step_name: str, status: str) -> None:
         """Emit a machine-readable JSONL step-transition marker to stderr."""
         print(
-            json.dumps({"type": "step_transition", "step": step_name, "status": status, "ts": time.time()}),
+            json.dumps(
+                {"type": "step_transition", "step": step_name, "status": status, "ts": time.time()}
+            ),
             file=sys.stderr,
             flush=True,
         )
