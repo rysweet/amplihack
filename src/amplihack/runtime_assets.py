@@ -23,7 +23,14 @@ def iter_runtime_roots() -> list[Path]:
 
     env_root = os.environ.get("AMPLIHACK_HOME")
     if env_root:
-        roots.append(Path(env_root).expanduser())
+        env_path = Path(env_root).expanduser()
+        if env_path.is_dir():
+            roots.append(env_path)
+        else:
+            print(
+                f"WARNING: AMPLIHACK_HOME={env_root!r} is not a valid directory — skipping",
+                file=sys.stderr,
+            )
 
     roots.append(Path.home() / ".amplihack")
 
