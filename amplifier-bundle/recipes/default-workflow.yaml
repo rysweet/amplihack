@@ -728,9 +728,7 @@ steps:
       # The previous `cd ... 2>/dev/null || cd {{repo_path}}` silently committed into
       # the main checkout when the worktree was missing, violating isolation.
       if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
-        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' does not exist." >&2
-        echo "The worktree created in step-04 has been invalidated. Cannot checkpoint." >&2
-        exit 1
+        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' missing — cannot checkpoint implementation." >&2; exit 1
       fi
       cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Checkpoint: Staging Implementation ===" && \
@@ -916,9 +914,7 @@ steps:
       # The previous `cd ... 2>/dev/null || cd {{repo_path}}` silently committed into
       # the main checkout when the worktree was missing, violating isolation.
       if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
-        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' does not exist." >&2
-        echo "The worktree created in step-04 has been invalidated. Cannot checkpoint." >&2
-        exit 1
+        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' missing — cannot checkpoint feedback." >&2; exit 1
       fi
       cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Checkpoint: Staging Review Feedback ===" && \
@@ -1149,10 +1145,7 @@ steps:
       # clear diagnostic instead of cryptic "cd: No such file or directory".
       set -euo pipefail
       if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
-        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' does not exist." >&2
-        echo "The worktree created in step-04 was invalidated before commit-push." >&2
-        echo "Check whether a prior step removed or pruned the worktree." >&2
-        exit 1
+        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' missing — cannot commit-push." >&2; exit 1
       fi
       cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Step 15: Commit and Push ===" && \
@@ -1194,9 +1187,7 @@ steps:
       set -euo pipefail
       # FIX (#3684): Validate worktree before PR creation.
       if [ ! -d "{{worktree_setup.worktree_path}}" ]; then
-        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' does not exist." >&2
-        echo "Cannot create PR — worktree was invalidated." >&2
-        exit 1
+        echo "ERROR: Worktree path '{{worktree_setup.worktree_path}}' missing — cannot create PR." >&2; exit 1
       fi
       cd "{{worktree_setup.worktree_path}}"
       echo "=== Step 16: Creating Draft PR ===" >&2
