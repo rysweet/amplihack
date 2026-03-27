@@ -1335,6 +1335,10 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         environment={"AMPLIHACK_LAUNCHER": "copilot"},
     )
 
+    # Copilot home directory — defined before the try block so it's
+    # available for validate_and_repair_copilot_config even if staging fails.
+    copilot_home = Path.home() / ".copilot"
+
     # CRITICAL: Create agent files and AGENTS.md BEFORE launching Copilot
     # Copilot autodiscovers these at startup
     try:
@@ -1349,9 +1353,6 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         user_dir = Path(os.getcwd())
 
         strategy = CopilotStrategy(user_dir)
-
-        # Copilot home directory — all user-level staging goes here
-        copilot_home = Path.home() / ".copilot"
 
         # Stage ALL extensibility mechanisms to ~/.copilot/ for parity
         # with Claude Code. Copilot CLI discovers agents/skills natively;
@@ -1421,7 +1422,8 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # Validate and repair config.json before launching nested agents.
     # Catches missing plugin metadata fields that cause Copilot CLI to crash.
     # See issue #3671.
-    validate_and_repair_copilot_config(copilot_home)
+    if not validate_and_repair_copilot_config(copilot_home):
+        print("Warning: Could not validate/repair config.json — nested agents may fail")
 
     # Build command with filesystem access to user directories
     # Model override via COPILOT_MODEL env var. Note: Copilot CLI uses different

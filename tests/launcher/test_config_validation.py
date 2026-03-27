@@ -5,7 +5,10 @@ and repaired before launching nested Copilot agents.
 """
 
 import json
+import os
 from pathlib import Path
+
+import pytest
 
 from amplihack.launcher.copilot import (
     REQUIRED_PLUGIN_FIELDS,
@@ -234,6 +237,7 @@ def test_malformed_json(tmp_path: Path) -> None:
     assert validate_and_repair_copilot_config(tmp_path) is False
 
 
+@pytest.mark.skipif(os.getuid() == 0, reason="root bypasses file permissions")
 def test_permission_error(tmp_path: Path) -> None:
     """Read-only config.json with broken entries returns False."""
     config = {"installed_plugins": [{"name": "broken"}]}
