@@ -792,6 +792,18 @@ def _execute_rust_command(
         recipe_name=name,
     )
 
+    if log_path and emit_startup_banner:
+        print(
+            f"[amplihack] recipe log: {log_path}",
+            file=sys.stderr,
+            flush=True,
+        )
+        print(
+            f"[amplihack] monitor with: tail -f {log_path}",
+            file=sys.stderr,
+            flush=True,
+        )
+
     try:
         data = json.loads(stdout)
     except (json.JSONDecodeError, TypeError):
@@ -833,6 +845,8 @@ def _execute_rust_command(
                 stderr_tail = "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
             raise RuntimeError(
                 f"Rust recipe runner failed (exit {returncode}): {stderr_tail or 'no stderr'}"
+                + (f"\n\n[amplihack] Log file: {log_path}" if log_path else "")
+                + f"\n[amplihack] To retry, run the same recipe_by_name() call again."
             )
         raise RuntimeError(
             f"Rust recipe runner returned unparseable output (exit {returncode}): "

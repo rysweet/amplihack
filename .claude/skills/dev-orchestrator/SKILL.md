@@ -140,6 +140,72 @@ This skill auto-activates for development and investigation keywords. It is also
 The `UserPromptSubmit` hook reinforces this by injecting a classification prompt
 that instructs Claude to invoke `Skill(skill="dev-orchestrator")` for dev/investigation tasks.
 
+## Step 0: Input Validation (Pre-flight Checks)
+
+**Purpose**: Validate environment and prerequisites before starting the workflow. Fail fast with actionable error messages rather than failing deep into a multi-hour workflow.
+
+**MANDATORY**: Run these checks before ANY workflow step. If any check fails, STOP and emit the error message with the restart command.
+
+### Checks
+
+1. **Git Repository Validation**
+   ```bash
+   git rev-parse --git-dir >/dev/null 2>&1 || {
+     echo "❌ ERROR: Not a git repository."
+     echo "  Current directory: $(pwd)"
+     echo "  Fix: cd /path/to/your/repo"
+     echo "  Restart: /dev <your-task-description>"
+     exit 1
+   }
+   ```
+
+2. **AMPLIHACK_HOME Validation**
+   ```bash
+   if [ -z "$AMPLIHACK_HOME" ] || [ ! -d "$AMPLIHACK_HOME" ]; then
+     echo "❌ ERROR: AMPLIHACK_HOME is not set or points to a non-existent directory."
+     echo "  Current value: '${AMPLIHACK_HOME:-<unset>}'"
+     echo "  Fix: export AMPLIHACK_HOME=/path/to/amplihack"
+     echo "  Restart: /dev <your-task-description>"
+     exit 1
+   fi
+   ```
+
+3. **Required Context Variables**
+   ```bash
+   if [ -z "$REPO_PATH" ] || [ ! -d "$REPO_PATH" ]; then
+     echo "❌ ERROR: repo_path is missing or invalid."
+     echo "  Provided: '${REPO_PATH:-<empty>}'"
+     echo "  Fix: Ensure repo_path points to your project root"
+     echo "  Restart: run_recipe_by_name('smart-orchestrator', user_context={'repo_path': '/correct/path', ...})"
+     exit 1
+   fi
+   ```
+
+4. **Git Remote Validation**
+   ```bash
+   if ! git remote -v | grep -q .; then
+     echo "⚠️ WARNING: No git remote configured."
+     echo "  Steps requiring GitHub (issues, PRs) will be skipped."
+     echo "  Fix: git remote add origin https://github.com/owner/repo.git"
+     echo "  This is non-fatal — workflow continues without remote-dependent steps."
+   fi
+   ```
+
+### Error Message Format
+
+All validation errors MUST include:
+- **❌ ERROR** or **⚠️ WARNING** prefix (errors halt, warnings continue)
+- **Current state**: What the validation found
+- **Fix**: Exact command to resolve the issue
+- **Restart**: Exact command to re-run the workflow after fixing
+
+### Restart Command Template
+
+```
+cd <repo_path> && env AMPLIHACK_HOME=<amplihack_home> \
+  python3 -c "from amplihack.recipes import run_recipe_by_name; run_recipe_by_name('smart-orchestrator', user_context={'task_description': '<original-task>', 'repo_path': '.'}, progress=True)"
+```
+
 ## Execution Instructions
 
 **YOUR NEXT ACTION after reading this skill MUST include a Bash tool call that
@@ -411,6 +477,65 @@ After execution completes, verify the goal was achieved. If not:
 - For missing information: ask the user
 - For fixable gaps: re-invoke with the remaining work description
 - For infrastructure failures: file a bug and try adaptive strategy
+
+### Monitoring Recipe Execution
+
+After launching the recipe runner, monitor progress via the log file:
+
+```
+Recipe log: /tmp/amplihack-recipe-{name}-{pid}.log
+Monitor with: tail -f /tmp/amplihack-recipe-*.log
+```
+
+**Parsing step_transition events for progress summary:**
+
+The recipe runner emits JSON `step_transition` events to stderr/log. Parse
+them to show a human-readable progress summary:
+
+```bash
+# Show live progress from step_transition events
+tail -f /tmp/amplihack-recipe-*.log | grep --line-buffered '"event":"step_transition"' | \
+  python3 -c "
+import sys, json
+for line in sys.stdin:
+    try:
+        evt = json.loads(line.strip())
+        step = evt.get('step', '?')
+        status = evt.get('status', '?')
+        name = evt.get('name', '')
+        elapsed = evt.get('elapsed_s', 0)
+        print(f'  [{status}] Step {step}: {name} ({elapsed:.1f}s)')
+    except (json.JSONDecodeError, KeyError):
+        pass
+"
+```
+
+**Example output:**
+```
+  [started]   Step 1: parse-decomposition (0.0s)
+  [completed] Step 1: parse-decomposition (3.2s)
+  [started]   Step 2: activate-workflow (3.2s)
+  [completed] Step 2: activate-workflow (45.8s)
+  [started]   Step 3: execute-round-1 (45.8s)
+```
+
+### On Failure: Restart Command
+
+If the recipe fails, emit the exact restart command with the same context so
+the user can re-run without reconstructing the invocation:
+
+```
+❌ Recipe '{recipe_name}' failed at step {step_number}: {step_name}
+   Error: {error_message}
+
+   Restart with:
+   cd {repo_path} && env AMPLIHACK_HOME={amplihack_home} \
+     python3 -c "from amplihack.recipes import run_recipe_by_name; run_recipe_by_name('{recipe_name}', user_context={'task_description': '{original_task}', 'repo_path': '.'}, progress=True)"
+```
+
+Always preserve the original `task_description` and `repo_path` in the restart
+command. If additional `user_context` keys were provided (e.g., `branch`,
+`issue_url`), include those as well.
 
 ### Enforcement: PostToolUse Workflow Guard
 

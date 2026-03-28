@@ -89,6 +89,51 @@ steps:
   - id: "step-00-workflow-preparation"
     type: "bash"
     command: |
+      # ── Pre-flight validation ──────────────────────────────────────────
+      ERRORS=""
+      REPO="{{repo_path}}"
+
+      # 1. repo_path must be a directory
+      if [ ! -d "$REPO" ]; then
+        ERRORS="${ERRORS}\n  ✗ repo_path '$REPO' does not exist or is not a directory"
+      else
+        # 2. repo_path must be a git repo
+        if ! git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1; then
+          ERRORS="${ERRORS}\n  ✗ repo_path '$REPO' is not a git repository"
+        fi
+      fi
+
+      # 3. task_description must be non-empty
+      TASK_CHECK="{{task_description}}"
+      if [ -z "$TASK_CHECK" ] || [ "$TASK_CHECK" = "{{""task_description""}}" ]; then
+        ERRORS="${ERRORS}\n  ✗ task_description is empty — nothing to do"
+      fi
+
+      # 4. Check git identity is configured
+      if ! git config user.email >/dev/null 2>&1; then
+        ERRORS="${ERRORS}\n  ✗ git user.email not configured (run: git config --global user.email you@example.com)"
+      fi
+
+      # 5. Check gh CLI is available
+      if ! command -v gh >/dev/null 2>&1; then
+        ERRORS="${ERRORS}\n  ✗ gh CLI not found (install: https://cli.github.com)"
+      elif ! gh auth status >/dev/null 2>&1; then
+        ERRORS="${ERRORS}\n  ✗ gh CLI not authenticated (run: gh auth login)"
+      fi
+
+      # Fail fast with all errors at once
+      if [ -n "$ERRORS" ]; then
+        echo "=== PRE-FLIGHT VALIDATION FAILED ===" >&2
+        printf "%b\n" "$ERRORS" >&2
+        echo "" >&2
+        echo "Fix the above issues, then restart with:" >&2
+        echo "  run_recipe_by_name('default-workflow', user_context={'task_description': '...', 'repo_path': '/path/to/repo'})" >&2
+        exit 1
+      fi
+      echo "=== Pre-flight checks passed ==="
+      echo ""
+      # ── End pre-flight ─────────────────────────────────────────────────
+
       echo "=== WORKFLOW PREPARATION COMPLETE ==="
       echo ""
       echo "23-Step Workflow Initialized (with granular sub-steps for Steps 17-19):"

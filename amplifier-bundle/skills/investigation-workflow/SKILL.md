@@ -111,6 +111,72 @@ This skill provides a systematic 6-phase workflow for investigating and understa
 **Verification Required**: Test understanding through practical application
 **Knowledge Capture**: Document findings to prevent repeat investigations
 
+### Step 0: Input Validation (Pre-flight Checks)
+
+**Purpose**: Validate environment and prerequisites before starting the investigation. Fail fast with actionable error messages rather than failing mid-investigation.
+
+**MANDATORY**: Run these checks before ANY phase. If any check fails, STOP and emit the error message with the restart command.
+
+#### Checks
+
+1. **Git Repository Validation**
+   ```bash
+   git rev-parse --git-dir >/dev/null 2>&1 || {
+     echo "❌ ERROR: Not a git repository."
+     echo "  Current directory: $(pwd)"
+     echo "  Fix: cd /path/to/your/repo"
+     echo "  Restart: /dev <your-task-description>"
+     exit 1
+   }
+   ```
+
+2. **AMPLIHACK_HOME Validation**
+   ```bash
+   if [ -z "$AMPLIHACK_HOME" ] || [ ! -d "$AMPLIHACK_HOME" ]; then
+     echo "❌ ERROR: AMPLIHACK_HOME is not set or points to a non-existent directory."
+     echo "  Current value: '${AMPLIHACK_HOME:-<unset>}'"
+     echo "  Fix: export AMPLIHACK_HOME=/path/to/amplihack"
+     echo "  Restart: /dev <your-task-description>"
+     exit 1
+   fi
+   ```
+
+3. **Required Context Variables**
+   ```bash
+   if [ -z "$REPO_PATH" ] || [ ! -d "$REPO_PATH" ]; then
+     echo "❌ ERROR: repo_path is missing or invalid."
+     echo "  Provided: '${REPO_PATH:-<empty>}'"
+     echo "  Fix: Ensure repo_path points to your project root"
+     echo "  Restart: run_recipe_by_name('investigation-workflow', user_context={'repo_path': '/correct/path', ...})"
+     exit 1
+   fi
+   ```
+
+4. **Git Remote Validation** (optional for local-only investigations)
+   ```bash
+   if ! git remote -v | grep -q .; then
+     echo "⚠️ WARNING: No git remote configured."
+     echo "  Steps requiring GitHub (issues, PRs) will be skipped."
+     echo "  Fix: git remote add origin https://github.com/owner/repo.git"
+     echo "  This is non-fatal — investigation continues without remote-dependent steps."
+   fi
+   ```
+
+#### Error Message Format
+
+All validation errors MUST include:
+- **❌ ERROR** or **⚠️ WARNING** prefix (errors halt, warnings continue)
+- **Current state**: What the validation found
+- **Fix**: Exact command to resolve the issue
+- **Restart**: Exact command to re-run the workflow after fixing
+
+#### Restart Command Template
+
+```
+cd <repo_path> && env AMPLIHACK_HOME=<amplihack_home> \
+  python3 -c "from amplihack.recipes import run_recipe_by_name; run_recipe_by_name('investigation-workflow', user_context={'task_description': '<original-task>', 'repo_path': '.'}, progress=True)"
+```
+
 ## The 6-Phase Investigation Workflow
 
 ### Phase 1: Scope Definition
