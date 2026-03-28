@@ -12,7 +12,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-MIN_RUNNER_VERSION = "0.1.0"
+MIN_RUNNER_VERSION = "0.2.8"
 _REPO_URL = "https://github.com/rysweet/amplihack-recipe-runner"
 
 
@@ -165,9 +165,23 @@ def is_rust_runner_available() -> bool:
 
 
 def ensure_rust_recipe_runner(*, quiet: bool = False) -> bool:
-    """Ensure the recipe-runner-rs binary is installed."""
-    if is_rust_runner_available():
-        return True
+    """Ensure the recipe-runner-rs binary is installed and up-to-date.
+
+    If the binary exists but is older than MIN_RUNNER_VERSION, it is
+    automatically updated via ``cargo install --git --force``.
+    """
+    binary = find_rust_binary()
+    if binary is not None:
+        version, compatible = _evaluate_runner_version(binary)
+        if compatible:
+            return True
+        # Binary exists but is outdated — fall through to reinstall
+        if not quiet:
+            logger.warning(
+                "recipe-runner-rs %s is outdated (need >= %s). Updating…",
+                version or "unknown",
+                MIN_RUNNER_VERSION,
+            )
 
     cargo = shutil.which("cargo")
     if cargo is None:
@@ -179,13 +193,14 @@ def ensure_rust_recipe_runner(*, quiet: bool = False) -> bool:
             )
         return False
 
+    action = "Updating" if binary else "Installing"
     if not quiet:
-        logger.info("Installing recipe-runner-rs from %s …", _REPO_URL)
+        logger.info("%s recipe-runner-rs from %s …", action, _REPO_URL)
 
     timeout = _install_timeout()
     try:
         result = subprocess.run(
-            [cargo, "install", "--git", _REPO_URL],
+            [cargo, "install", "--git", _REPO_URL, "--force"],
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -198,8 +213,14 @@ def ensure_rust_recipe_runner(*, quiet: bool = False) -> bool:
         return False
 
     if result.returncode == 0:
+        # Clear cached binary path so the new binary is discovered
+        _binary_search_paths.cache_clear()
         if not quiet:
-            logger.info("recipe-runner-rs installed successfully")
+            new_version = get_runner_version()
+            logger.info(
+                "recipe-runner-rs %s successfully",
+                f"updated to {new_version}" if new_version else "installed",
+            )
         return True
 
     logger.warning(
