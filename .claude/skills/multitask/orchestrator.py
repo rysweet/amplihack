@@ -573,7 +573,7 @@ class ParallelOrchestrator:
             data = json.loads(real_path.read_text(encoding="utf-8"))
             return data.get("step_name", "unknown")
         except (OSError, json.JSONDecodeError, KeyError) as exc:
-            print(f"[debug] Could not read progress for {ws.recipe}: {exc}", file=sys.stderr)
+            print(f"[warn] Could not read progress for {ws.recipe}: {exc}", file=sys.stderr)
             return "unknown"
 
     def monitor(self, check_interval: int = 10, max_runtime: int = 7200) -> None:
