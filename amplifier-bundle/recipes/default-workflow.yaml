@@ -262,12 +262,18 @@ steps:
 
   - id: "step-02c-resolve-ambiguity"
     agent: "amplihack:ambiguity"
+    timeout: 60
     prompt: |
       # Step 2c: Resolve Any Remaining Ambiguity
 
       **Task:** {{task_description}}
       **Clarified Requirements:** {{clarified_requirements}}
       **Codebase Analysis:** {{codebase_analysis}}
+
+      **IMPORTANT: Context size guard** — If the accumulated context (especially
+      codebase_analysis) exceeds 100KB or feels excessively large, summarize the
+      key points into a concise overview before analyzing. Do NOT process
+      extremely large context verbatim; extract the relevant sections first.
 
       Review for any remaining ambiguity in the requirements.
 
@@ -414,6 +420,16 @@ steps:
         BRANCH_NAME="feat/task-unnamed-$(date +%s)"
       else
         BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
+        # FIX (#3551): Truncate branch names exceeding 200 chars to prevent gh CLI failures.
+        # Cut on hyphen boundary to avoid mid-word truncation, append 4-char hash for uniqueness.
+        if [ ${#BRANCH_NAME} -gt 200 ]; then
+          echo "WARNING: branch name is ${#BRANCH_NAME} chars (>200 limit) — truncating" >&2
+          TRUNCATED="${BRANCH_NAME:0:195}"
+          TRUNCATED="${TRUNCATED%-}"
+          HASH_SUFFIX=$(printf '%s' "$BRANCH_NAME" | md5sum | cut -c1-4)
+          BRANCH_NAME="${TRUNCATED}-${HASH_SUFFIX}"
+          echo "WARNING: truncated branch name to ${#BRANCH_NAME} chars: ${BRANCH_NAME}" >&2
+        fi
         # Validate with authoritative git ref checker; fall back to safe unique name on failure
         if ! git check-ref-format --branch "${BRANCH_NAME}" >/dev/null 2>&1; then
           echo "WARNING: derived branch name '${BRANCH_NAME}' is invalid — falling back to task-unnamed" >&2

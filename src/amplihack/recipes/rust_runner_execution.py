@@ -120,6 +120,16 @@ def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, in
         for line in process.stdout:
             stdout_chunks.append(line)
 
+    def _emit_step_transition(step_name: str, status: str) -> None:
+        """Emit a machine-readable JSONL step-transition marker to stderr."""
+        print(
+            json.dumps(
+                {"type": "step_transition", "step": step_name, "status": status, "ts": time.time()}
+            ),
+            file=sys.stderr,
+            flush=True,
+        )
+
     def _drain_stderr() -> None:
         if process.stderr is None:
             return
@@ -157,11 +167,16 @@ def _write_progress_file(
     elapsed_seconds: float,
     status: str,
     pid: int | None = None,
+    _cached_path: Path | None = None,
 ) -> Path:
-    """Write the current recipe progress to a deterministic JSON file."""
+    """Write the current recipe progress to a deterministic JSON file.
+
+    Pass ``_cached_path`` to skip recomputing the progress file path on
+    repeated calls with the same recipe name / PID (hot-path optimisation).
+    """
     if pid is None:
         pid = os.getpid()
-    path = _progress_file_path(recipe_name, pid)
+    path = _cached_path or _progress_file_path(recipe_name, pid)
     payload: dict[str, Any] = {
         "recipe_name": recipe_name,
         "current_step": current_step,
@@ -189,6 +204,8 @@ def _stream_process_output_with_progress(
     stderr_chunks: list[str] = []
     started_at = time.time()
     state: dict[str, Any] = {"current_step": 0, "step_name": ""}
+    # Pre-compute once — avoids regex + Path construction on every marker line.
+    cached_progress_path = _progress_file_path(recipe_name)
 
     def _drain_stdout() -> None:
         if process.stdout is None:
