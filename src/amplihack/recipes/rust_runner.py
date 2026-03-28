@@ -43,8 +43,8 @@ MAX_BINARY_OUTPUT_BYTES = 10 * 1024 * 1024  # 10 MiB
 # R7: replacement regex for _sanitize_key — only safe characters allowed.
 # Dots and hyphens are explicitly included so recipe/package names round-trip.
 # perf: compiled at module level; _sanitize_key is called per env-var (hundreds
-# per recipe run), so avoiding re.compile() on each call is measurable (~2 µs
-# saved per call × ~500 vars = ~1 ms per recipe invocation).
+# per recipe run), so avoiding re.compile() on each call is measurable (~2 us
+# saved per call x ~500 vars = ~1 ms per recipe invocation).
 _KEY_SANITIZE_RE: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9_.\-]")
 
 # Separate sanitizer for progress file names — must match the pattern used by
@@ -653,7 +653,7 @@ def _write_progress_file(
     """
     if pid is None:
         pid = os.getpid()
-    path = _cached_path or _progress_file_path(recipe_name, pid)
+    path = _progress_file_path(recipe_name, pid)
     data: dict[str, Any] = {
         "recipe_name": recipe_name,
         "current_step": current_step,
@@ -692,8 +692,6 @@ def _stream_process_output_with_progress(
     stderr_chunks: list[str] = []
     # Mutable state shared with the stderr drain thread.
     state: dict[str, Any] = {"current_step": 0, "step_name": ""}
-    # Pre-compute once — avoids regex + Path construction on every marker line.
-    cached_progress_path = _progress_file_path(recipe_name)
 
     def _drain_stdout() -> None:
         if process.stdout is None:
@@ -710,8 +708,7 @@ def _stream_process_output_with_progress(
             stderr_chunks.append(line)
             print(line, end="", file=sys.stderr, flush=True)
             stripped = line.strip()
-            # Step started: "▶ step-name (optional label)"
-            if stripped.startswith("▶"):
+            if stripped.startswith("\u25b6"):
                 state["current_step"] += 1
                 state["step_name"] = stripped[1:].strip().split("(")[0].strip()
                 _write_progress_file(
@@ -724,7 +721,7 @@ def _stream_process_output_with_progress(
                     transition="step_started",
                 )
                 rust_runner_execution.emit_step_transition(state["step_name"], "start")
-            elif stripped.startswith("✓"):
+            elif stripped.startswith("\u2713"):
                 _write_progress_file(
                     recipe_name,
                     current_step=state["current_step"],
@@ -735,7 +732,7 @@ def _stream_process_output_with_progress(
                     transition="step_completed",
                 )
                 rust_runner_execution.emit_step_transition(state["step_name"], "done")
-            elif stripped.startswith("✗"):
+            elif stripped.startswith("\u2717"):
                 _write_progress_file(
                     recipe_name,
                     current_step=state["current_step"],
@@ -746,7 +743,7 @@ def _stream_process_output_with_progress(
                     transition="step_failed",
                 )
                 rust_runner_execution.emit_step_transition(state["step_name"], "fail")
-            elif stripped.startswith("⊘"):
+            elif stripped.startswith("\u2298"):
                 _write_progress_file(
                     recipe_name,
                     current_step=state["current_step"],
@@ -788,7 +785,7 @@ def _execute_rust_command(
             "Set the env var via the amplihack CLI dispatcher to use a different agent."
         )
 
-    stdout, stderr, returncode = rust_runner_execution._run_rust_process(
+    stdout, stderr, returncode, log_path = rust_runner_execution._run_rust_process(
         cmd,
         progress=progress,
         env=env,
@@ -851,6 +848,7 @@ def _execute_rust_command(
         success=success_value,
         step_results=_build_step_results(step_results_data),
         context=context_data,
+        log_path=log_path,
     )
 
 
