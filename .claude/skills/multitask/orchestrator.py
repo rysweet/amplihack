@@ -187,7 +187,14 @@ class ParallelOrchestrator:
         task: str,
         recipe: str = "default-workflow",
     ) -> Workstream:
-        """Create a workstream with its directory without cloning a repository."""
+        """Create a workstream with its directory without cloning a repository.
+
+        Added to support pre-allocated workstreams where the caller manages the
+        git clone/worktree lifecycle (e.g., quality-audit-cycle creates worktrees
+        up-front and only needs lightweight Workstream metadata). Unlike ``add()``,
+        this skips the ``gh`` / ``git clone`` side-effects so it can run in
+        environments without network access or an ``origin`` remote.
+        """
         ws = Workstream(
             issue=issue,
             branch=branch,

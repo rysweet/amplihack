@@ -49,7 +49,6 @@ steps:
       build, code, or make any changes. Do NOT create files, edit code, or run
       commands. Do NOT invoke any skills, workflows, or tools. Do NOT call
       dev-orchestrator or any other orchestrator. Return ONLY the JSON object below.
-      Your ONLY job is to output the JSON decomposition below.
 
       **REQUEST**: {{task_description}}
 

@@ -71,54 +71,55 @@ class TestBranchNameTruncation:
     200 chars, strip trailing hyphen, and emit a warning to stderr.
     """
 
-    # The shell pipeline from step-04 that assembles the branch name.
-    # We reproduce lines 401-422 with template vars substituted.
-    _BRANCH_ASSEMBLY_SCRIPT = textwrap.dedent(r"""
-        TASK_DESC="$1"
-        BRANCH_PREFIX="$2"
-        ISSUE_NUMBER="$3"
+    @staticmethod
+    def _extract_branch_script() -> str:
+        """Extract the branch assembly script from the actual YAML step-04.
 
-        TASK_SLUG=$(printf '%s' "$TASK_DESC" \
-          | tr '\n\r' '  ' \
-          | tr '[:upper:] ' '[:lower:]-' \
-          | tr -cd 'a-z0-9-' \
-          | sed 's/-\{2,\}/-/g;s/^-//;s/-$//' \
-          | cut -c1-50 \
-          | sed 's/-$//')
+        This ensures the test exercises the real truncation code path —
+        if the YAML changes, the test automatically picks up the change.
+        """
+        content = DEFAULT_WORKFLOW.read_text(encoding="utf-8")
+        recipe = yaml.safe_load(content)
+        step04 = next(s for s in recipe["steps"] if s.get("id") == "step-04-setup-worktree")
+        cmd = step04["command"]
 
-        if [ -z "$TASK_SLUG" ]; then
-          BRANCH_NAME="feat/task-unnamed-$(date +%s)"
-        else
-          BRANCH_NAME="${BRANCH_PREFIX}/issue-${ISSUE_NUMBER}-${TASK_SLUG}"
-          if [ ${#BRANCH_NAME} -gt 200 ]; then
-            echo "WARNING: branch name is ${#BRANCH_NAME} chars (>200 limit) — truncating" >&2
-            TRUNCATED=$(printf '%s' "$BRANCH_NAME" | cut -c1-195 | sed 's/-$//')
-            HASH_SUFFIX=$(printf '%s' "$BRANCH_NAME" | md5sum | cut -c1-4)
-            BRANCH_NAME="${TRUNCATED}-${HASH_SUFFIX}"
-            echo "WARNING: truncated branch name to ${#BRANCH_NAME} chars: ${BRANCH_NAME}" >&2
-          fi
-          if ! git check-ref-format --branch "${BRANCH_NAME}" >/dev/null 2>&1; then
-            BRANCH_NAME="feat/task-unnamed-$(date +%s)"
-          fi
-        fi
+        # Extract from TASK_SLUG assignment through BRANCH_NAME finalization.
+        lines = cmd.split("\n")
+        start = next(i for i, l in enumerate(lines) if "TASK_SLUG=$(" in l)
+        # End at the line after the git-check-ref-format fallback block
+        end = None
+        depth = 0
+        for i in range(start, len(lines)):
+            line = lines[i].strip()
+            if line.startswith("if ") and line.endswith("; then"):
+                depth += 1
+            if line == "fi":
+                depth -= 1
+                if depth <= 0:
+                    end = i + 1
+                    break
+        assert end is not None, "Could not find end of branch assembly block in YAML"
 
-        printf '%s' "$BRANCH_NAME"
-    """).strip()
+        # Replace template vars with positional args for test invocation
+        block = "\n".join(lines[start:end])
+        block = block.replace("{{task_description}}", "$1")
+        block = block.replace("{{branch_prefix}}", "$2")
+        block = block.replace("{{issue_number}}", "$3")
+        # Remove the heredoc TASK_DESC pattern (already handled by $1)
+        script = textwrap.dedent(f"""\
+            TASK_DESC="$1"
+            {block}
+            printf '%s' "$BRANCH_NAME"
+        """)
+        return script.strip()
 
     def _assemble_branch(
         self, task_desc: str, branch_prefix: str = "feat", issue_number: str = "42"
     ) -> tuple[str, str]:
-        """Run the branch assembly pipeline and return (branch_name, stderr)."""
+        """Run the branch assembly pipeline extracted from the YAML and return (branch_name, stderr)."""
+        script = self._extract_branch_script()
         result = subprocess.run(
-            [
-                "bash",
-                "-c",
-                self._BRANCH_ASSEMBLY_SCRIPT,
-                "--",
-                task_desc,
-                branch_prefix,
-                issue_number,
-            ],
+            ["bash", "-c", script, "--", task_desc, branch_prefix, issue_number],
             capture_output=True,
             text=True,
             timeout=10,
