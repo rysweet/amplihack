@@ -23,6 +23,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import textwrap
 import threading
 import time
@@ -66,6 +67,7 @@ class Workstream:
     start_time: float | None = None
     end_time: float | None = None
     exit_code: int | None = None
+    last_output_at: float | None = None
 
     @property
     def is_running(self) -> bool:
@@ -104,6 +106,10 @@ class ParallelOrchestrator:
         self._stdout_lock = threading.Lock()  # Serialize concurrent stdout writes
         self._tail_threads: dict[int, threading.Thread] = {}  # Per-workstream tailing threads
         self._max_log_bytes: int = MAX_LOG_BYTES
+        status_path = os.environ.get("AMPLIHACK_PARALLEL_STATUS_FILE")
+        self._status_path = (
+            Path(status_path) if status_path else self.tmp_base / "parallel-status.json"
+        )
 
     def setup(self) -> None:
         """Create clean temporary directory for workstreams and check disk space."""
@@ -283,10 +289,12 @@ class ParallelOrchestrator:
 
         safe_task = json.dumps(ws.task)
         safe_recipe = json.dumps(ws.recipe)
+        safe_expected_account = json.dumps(os.environ.get("AMPLIHACK_EXPECTED_GH_ACCOUNT", ""))
         launcher_py.write_text(
             textwrap.dedent(f"""\
             #!/usr/bin/env python3
             \"\"\"Workstream launcher - Rust recipe runner execution.\"\"\"
+            import inspect
             import sys
             import logging
             from pathlib import Path
@@ -307,13 +315,19 @@ class ParallelOrchestrator:
                 print("ERROR: amplihack package not importable. Falling back to classic mode.")
                 sys.exit(2)
 
-            result = run_recipe_by_name(
-                {safe_recipe},
-                user_context={{
+            run_kwargs = {{
+                "user_context": {{
                     "task_description": {safe_task},
-                    "repo_path": ".",
+                    "repo_path": str(repo_root),
+                    "execution_root": str(repo_root),
+                    "expected_gh_account": {safe_expected_account},
                 }},
-            )
+                "progress": True,
+            }}
+            if "working_dir" in inspect.signature(run_recipe_by_name).parameters:
+                run_kwargs["working_dir"] = str(repo_root)
+
+            result = run_recipe_by_name({safe_recipe}, **run_kwargs)
 
             print()
             print("=" * 60)
@@ -403,10 +417,10 @@ class ParallelOrchestrator:
         )
         run_sh.chmod(0o755)
 
-    def _tail_output(self, pipe: object, log_file: Path, issue_id: int) -> None:
+    def _tail_output(self, pipe: object, log_file: Path, ws: Workstream) -> None:
         """Daemon thread: read from pipe, tee to log file + prefixed stdout.
 
-        Lines are written raw to the log file and with a ``[ws:{issue_id}]`` prefix
+        Lines are written raw to the log file and with a ``[ws:{ws.issue}]`` prefix
         to stdout.  Writing stops when ``_max_log_bytes`` is reached.
         Log file is created with 0o600 permissions (owner-only) to protect secrets.
         """
@@ -414,12 +428,13 @@ class ParallelOrchestrator:
         log_fd = os.open(str(log_file), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(log_fd, "w") as log_fh:
             for line in iter(pipe.readline, ""):  # type: ignore[union-attr]
+                ws.last_output_at = time.time()
                 if log_bytes_written < self._max_log_bytes:
                     encoded_len = len(line.encode("utf-8", errors="replace"))
                     if log_bytes_written + encoded_len <= self._max_log_bytes:
                         log_fh.write(line)
                         log_bytes_written += encoded_len
-                self._stdout_write(f"[ws:{issue_id}] {line}")
+                self._stdout_write(f"[ws:{ws.issue}] {line}")
 
     def launch(self, ws: Workstream, *, delegate: str | None = None) -> None:
         """Launch a single workstream subprocess.
@@ -443,12 +458,13 @@ class ParallelOrchestrator:
         )
         ws.pid = proc.pid
         ws.start_time = time.time()
+        ws.last_output_at = ws.start_time
         self._processes[ws.issue] = proc
 
         # Start a daemon thread to tee stdout → log file + prefixed console output
         tail_thread = threading.Thread(
             target=self._tail_output,
-            args=(proc.stdout, ws.log_file, ws.issue),
+            args=(proc.stdout, ws.log_file, ws),
             daemon=True,
         )
         tail_thread.start()
@@ -459,30 +475,119 @@ class ParallelOrchestrator:
     def launch_all(self) -> None:
         """Launch all workstreams in parallel."""
         delegate = self._detect_delegate()
+        print("[amplihack] phase: launching-parallel-workstreams")
         for ws in self.workstreams:
             self.launch(ws, delegate=delegate)
         print(f"\n{len(self.workstreams)} workstreams launched in parallel ({self.mode} mode)")
 
+    def _refresh_workstream_status(self, ws: Workstream, *, now: float | None = None) -> str:
+        """Update cached end-state fields and return the current workstream status."""
+        if now is None:
+            now = time.time()
+        proc = self._processes.get(ws.issue)
+        if proc and proc.poll() is None:
+            return "running"
+        if proc:
+            ws.exit_code = proc.returncode
+            if ws.end_time is None:
+                ws.end_time = now
+            return "completed" if ws.exit_code == 0 else "failed"
+        if ws.exit_code is None:
+            ws.exit_code = -1
+        if ws.end_time is None:
+            ws.end_time = now
+        return "failed"
+
     def get_status(self) -> dict[str, list[int]]:
         """Get current status of all workstreams."""
         status: dict[str, list[int]] = {"running": [], "completed": [], "failed": []}
+        now = time.time()
 
         for ws in self.workstreams:
-            proc = self._processes.get(ws.issue)
-            if proc and proc.poll() is None:
-                status["running"].append(ws.issue)
-            elif proc:
-                ws.exit_code = proc.returncode
-                if ws.end_time is None:
-                    ws.end_time = time.time()
-                if ws.exit_code == 0:
-                    status["completed"].append(ws.issue)
-                else:
-                    status["failed"].append(ws.issue)
-            else:
-                status["failed"].append(ws.issue)
+            status[self._refresh_workstream_status(ws, now=now)].append(ws.issue)
 
         return status
+
+    def _write_status_snapshot(self, *, elapsed_seconds: float) -> None:
+        """Write machine-readable parallel status for hooks and operators."""
+        now = time.time()
+        counts = {"total": len(self.workstreams), "running": 0, "completed": 0, "failed": 0}
+        last_output_candidates: list[float] = []
+        snapshot: dict[str, object] = {
+            "generated_at": round(now, 3),
+            "elapsed_seconds": round(elapsed_seconds, 3),
+            "counts": counts,
+            "workstreams": [],
+            "owner_uid": os.geteuid() if hasattr(os, "geteuid") else None,
+            "session_id": os.environ.get("AMPLIHACK_SESSION_ID", ""),
+        }
+        tree_id = os.environ.get("AMPLIHACK_TREE_ID")
+        if tree_id:
+            snapshot["tree_id"] = tree_id
+
+        for ws in self.workstreams:
+            ws_status = self._refresh_workstream_status(ws, now=now)
+            counts[ws_status] += 1
+            runtime_seconds = ws.runtime_seconds
+            silent_for_seconds = (
+                max(0.0, now - ws.last_output_at) if ws.last_output_at is not None else None
+            )
+            if ws.last_output_at is not None:
+                last_output_candidates.append(ws.last_output_at)
+            snapshot["workstreams"].append(
+                {
+                    "issue": ws.issue,
+                    "description": ws.description,
+                    "branch": ws.branch,
+                    "status": ws_status,
+                    "pid": ws.pid,
+                    "runtime_seconds": round(runtime_seconds, 3)
+                    if runtime_seconds is not None
+                    else None,
+                    "last_output_at": round(ws.last_output_at, 3)
+                    if ws.last_output_at is not None
+                    else None,
+                    "silent_for_seconds": round(silent_for_seconds, 3)
+                    if silent_for_seconds is not None
+                    else None,
+                    "log_file": str(ws.log_file),
+                }
+            )
+
+        if last_output_candidates:
+            latest_output_at = max(last_output_candidates)
+            snapshot["last_output_at"] = round(latest_output_at, 3)
+            snapshot["silent_for_seconds"] = round(max(0.0, now - latest_output_at), 3)
+        else:
+            snapshot["last_output_at"] = None
+            snapshot["silent_for_seconds"] = None
+
+        try:
+            self._status_path.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+            tmp_fd, tmp_name = tempfile.mkstemp(
+                prefix=f".{self._status_path.name}.",
+                dir=str(self._status_path.parent),
+            )
+            try:
+                os.fchmod(tmp_fd, 0o600)
+                with os.fdopen(tmp_fd, "w", encoding="utf-8") as tmp_file:
+                    json.dump(snapshot, tmp_file, indent=2)
+                os.replace(tmp_name, self._status_path)
+            except OSError:
+                try:
+                    os.close(tmp_fd)
+                except OSError:
+                    pass
+                try:
+                    os.unlink(tmp_name)
+                except OSError:
+                    pass
+                raise
+        except OSError as exc:
+            print(
+                f"[orchestrator] WARNING: could not write parallel status snapshot: {exc}",
+                file=sys.stderr,
+            )
 
     def _cleanup_workstream_dir(self, ws: Workstream) -> None:
         """Remove a completed workstream's work directory to free disk space.
@@ -514,12 +619,15 @@ class ParallelOrchestrator:
             f"[{ws.issue}] Cleaned up work dir ({freed_mb:.0f}MB freed, log preserved at {ws.log_file})"
         )
 
-    def monitor(self, check_interval: int = 60, max_runtime: int = 7200) -> None:
+    def monitor(self, check_interval: int = 15, max_runtime: int = 7200) -> None:
         """Monitor all workstreams until complete or timeout.
 
         Auto-cleans completed workstream directories to prevent disk exhaustion.
         """
         start = time.time()
+        print("[amplihack] phase: monitoring-parallel-workstreams")
+        print(f"[amplihack] parallel-status: {self._status_path}")
+        self._write_status_snapshot(elapsed_seconds=0.0)
 
         while time.time() - start < max_runtime:
             status = self.get_status()
@@ -530,6 +638,7 @@ class ParallelOrchestrator:
             print(f"  Running:   {len(status['running'])} {status['running']}")
             print(f"  Completed: {len(status['completed'])} {status['completed']}")
             print(f"  Failed:    {len(status['failed'])} {status['failed']}")
+            self._write_status_snapshot(elapsed_seconds=time.time() - start)
 
             # Auto-cleanup completed and failed workstream directories
             for ws in self.workstreams:
@@ -554,6 +663,7 @@ class ParallelOrchestrator:
                 ws.exit_code = -1
                 ws.end_time = time.time()
                 self._cleanup_workstream_dir(ws)
+        self._write_status_snapshot(elapsed_seconds=time.time() - start)
 
     def report(self) -> str:
         """Generate final report."""
@@ -774,7 +884,8 @@ def run(config_path: str, mode: str = "recipe", recipe: str = "default-workflow"
     """
     config = json.loads(Path(config_path).read_text())
 
-    # Detect repo URL from git remote
+    # Detect clone source from git remote; local-only repos fall back to the
+    # current checkout so workstreams can still be cloned and launched safely.
     result = subprocess.run(
         ["git", "remote", "get-url", "origin"],
         capture_output=True,
@@ -783,8 +894,8 @@ def run(config_path: str, mode: str = "recipe", recipe: str = "default-workflow"
     )
     repo_url = result.stdout.strip() if result.returncode == 0 else ""
     if not repo_url:
-        print("ERROR: Could not determine repo URL from git remote.")
-        sys.exit(1)
+        repo_url = str(Path.cwd().resolve())
+        print("INFO: No git remote 'origin' found — using local checkout as workstream source.")
 
     orchestrator = ParallelOrchestrator(repo_url=repo_url, mode=mode)
     orchestrator.setup()
@@ -818,14 +929,15 @@ def cleanup(config_path: str, dry_run: bool = False) -> None:
         config_path: Path to JSON config file with workstream definitions
         dry_run: If True, show what would be deleted without deleting
     """
-    # Detect repo URL
+    # Detect clone source for cleanup reporting; local-only repos fall back to
+    # the current checkout instead of erroring out on missing origin.
     result = subprocess.run(
         ["git", "remote", "get-url", "origin"],
         capture_output=True,
         text=True,
         timeout=5,
     )
-    repo_url = result.stdout.strip() if result.returncode == 0 else ""
+    repo_url = result.stdout.strip() if result.returncode == 0 else str(Path.cwd().resolve())
 
     orchestrator = ParallelOrchestrator(repo_url=repo_url)
     orchestrator.cleanup_merged(config_path, dry_run=dry_run)

@@ -11,6 +11,8 @@ tags: ["orchestration", "routing", "parallel", "auto-classify", "goal-seeking"]
 context:
   task_description: ""
   repo_path: "."
+  execution_root: ""
+  expected_gh_account: ""
   decomposition_json: ""
   session_id: ""
   tree_id: ""
@@ -83,7 +85,10 @@ steps:
   - id: "parse-decomposition"
     type: "bash"
     command: |
-      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
+      if ! HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path)"; then
+          echo "ERROR: Failed to resolve required runtime asset 'helper-path'." >&2
+          exit 1
+      fi
       if [ ! -f "$HELPER_PATH" ]; then
           echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
           echo "Ensure amplihack is installed correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
@@ -134,7 +139,10 @@ steps:
   - id: "activate-workflow"
     type: "bash"
     command: |
-      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
+      if ! HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path)"; then
+          echo "ERROR: Failed to resolve required runtime asset 'helper-path'." >&2
+          exit 1
+      fi
       if [ ! -f "$HELPER_PATH" ]; then
           echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
           echo "Ensure amplihack is installed correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
@@ -146,7 +154,11 @@ steps:
       )
       TASK_TYPE={{task_type}}
       FORCE_SINGLE={{force_single_workstream}}
-      HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir 2>/dev/null || true)"
+      HOOKS_DIR=""
+      if ! HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir)"; then
+          echo "WARNING: hooks-dir runtime asset unavailable — workflow semaphore hooks are disabled for this run." >&2
+          HOOKS_DIR=""
+      fi
       _DECOMP_TMPFILE=$(mktemp)
       trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
       cat > "$_DECOMP_TMPFILE" <<__DECOMP_EOF__
@@ -222,7 +234,11 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type or task_type == ''"
     command: |
-      TREE_SCRIPT="$(python3 -m amplihack.runtime_assets session-tree-path 2>/dev/null || true)"
+      TREE_SCRIPT=""
+      if ! TREE_SCRIPT="$(python3 -m amplihack.runtime_assets session-tree-path)"; then
+        echo "WARNING: session-tree-path runtime asset unavailable — proceeding without recursion tracking." >&2
+        TREE_SCRIPT=""
+      fi
       SESSION_ID=$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")
 
       if [ -f "$TREE_SCRIPT" ]; then
@@ -335,9 +351,10 @@ steps:
     condition: |
       'Development' in task_type and ((workstream_count == '1' or workstream_count == '') or force_single_workstream == 'true')
     recipe: "default-workflow"
-    # No explicit context needed: task_description and repo_path flow through
-    # from the parent smart-orchestrator context automatically via context merging
-    # in _execute_sub_recipe().
+    sub_context:
+      task_description: "{{task_description}}"
+      repo_path: "{{repo_path}}"
+      expected_gh_account: "{{expected_gh_account}}"
     output: "round_1_result"
 
   - id: "execute-single-round-1-investigation"
@@ -345,9 +362,10 @@ steps:
     condition: |
       'Investigation' in task_type and ((workstream_count == '1' or workstream_count == '') or force_single_workstream == 'true')
     recipe: "investigation-workflow"
-    # No explicit context needed: task_description and repo_path flow through
-    # from the parent smart-orchestrator context automatically via context merging
-    # in _execute_sub_recipe().
+    sub_context:
+      task_description: "{{task_description}}"
+      repo_path: "{{repo_path}}"
+      expected_gh_account: "{{expected_gh_account}}"
     output: "round_1_result"
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -359,7 +377,10 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
+      if ! HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path)"; then
+          echo "ERROR: Failed to resolve required runtime asset 'helper-path'." >&2
+          exit 1
+      fi
       if [ ! -f "$HELPER_PATH" ]; then
           echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
           echo "Ensure amplihack is installed correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
@@ -402,6 +423,15 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
+      if ! ORCH_PATH="$(python3 -m amplihack.runtime_assets multitask-orchestrator-path)"; then
+        echo "ERROR: Failed to resolve required runtime asset 'multitask-orchestrator-path'." >&2
+        exit 1
+      fi
+      if [ ! -f "$ORCH_PATH" ]; then
+        echo "ERROR: multitask orchestrator not found at: $ORCH_PATH" >&2
+        echo "Ensure amplihack is installed correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
+        exit 1
+      fi
       REPO_PATH={{repo_path}}
       WS_FILE={{workstreams_file}}
       SESSION_JSON=$(cat <<EOFSESSIONJSON
@@ -448,11 +478,16 @@ steps:
         echo "ERROR: repo_path does not exist: $REPO_PATH" >&2; exit 1
       fi
       cd "$REPO_PATH"
+      PARALLEL_STATUS_FILE="${AMPLIHACK_PARALLEL_STATUS_FILE:-$(mktemp /tmp/amplihack-parallel-status-XXXXXX.json)}"
+      echo "[amplihack] phase: launching-parallel-workstreams"
+      echo "[amplihack] phase: monitoring-parallel-workstreams status_file=$PARALLEL_STATUS_FILE"
       echo "Launching parallel workstreams (tree: $TREE_ID, depth: $SESSION_DEPTH):"
       cat "$WS_FILE"
       echo "---"
       AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$SESSION_DEPTH" \
-        python3 .claude/skills/multitask/orchestrator.py "$WS_FILE"
+      AMPLIHACK_EXPECTED_GH_ACCOUNT="{{expected_gh_account}}" \
+      AMPLIHACK_PARALLEL_STATUS_FILE="$PARALLEL_STATUS_FILE" \
+        python3 "$ORCH_PATH" "$WS_FILE"
     output: "round_1_result"
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -470,8 +505,10 @@ steps:
     condition: |
       'Development' in task_type and 'BLOCKED' in recursion_guard and workstream_count != '1' and workstream_count != ''
     recipe: "default-workflow"
-    # No explicit context needed: task_description and repo_path flow through
-    # from the parent smart-orchestrator context automatically.
+    sub_context:
+      task_description: "{{task_description}}"
+      repo_path: "{{repo_path}}"
+      expected_gh_account: "{{expected_gh_account}}"
     output: "round_1_result"
 
   - id: "execute-single-fallback-blocked-investigation"
@@ -480,8 +517,10 @@ steps:
     condition: |
       'Investigation' in task_type and 'BLOCKED' in recursion_guard and workstream_count != '1' and workstream_count != ''
     recipe: "investigation-workflow"
-    # No explicit context needed: task_description and repo_path flow through
-    # from the parent smart-orchestrator context automatically.
+    sub_context:
+      task_description: "{{task_description}}"
+      repo_path: "{{repo_path}}"
+      expected_gh_account: "{{expected_gh_account}}"
     output: "round_1_result"
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -525,6 +564,7 @@ steps:
         RECIPE="default-workflow"
       fi
 
+      echo "[amplihack] phase: adaptive-recovery" >&2
       echo "[ADAPTIVE] No execution path ran for $TASK_TYPE task." >&2
       echo "[ADAPTIVE] Switching to direct $RECIPE invocation." >&2
       echo "$RECIPE"
@@ -574,20 +614,85 @@ steps:
       EOFBODY
       )
 
-      # Attempt to file a GH issue — non-fatal if gh is unavailable or auth fails
-      ISSUE_URL=$(gh issue create \
-        --title "smart-orchestrator routing gap: $TASK_TYPE task, workstream_count=$WS_COUNT" \
-        --body "$BODY" \
-        --label "bug" 2>/dev/null) || true
+      TOOLS_ROOT="${AMPLIHACK_HOME:-}"
+      if [ -n "$TOOLS_ROOT" ]; then
+        TOOLS_ROOT="${TOOLS_ROOT}/amplifier-bundle/tools"
+      else
+        TOOLS_ROOT=$(python3 - <<'PYEOF'
+      from pathlib import Path
+      import amplihack
+      print(Path(amplihack.__file__).resolve().parents[2] / "amplifier-bundle" / "tools")
+      PYEOF
+        )
+      fi
 
-      if [ -n "$ISSUE_URL" ]; then
+      EXPECTED_GH_ACCOUNT=""
+      EXPECTED_GH_ACCOUNT_ERROR=""
+      if ! EXPECTED_GH_ACCOUNT=$(python3 "${TOOLS_ROOT}/orch_helper.py" require-bound expected_gh_account "{{expected_gh_account}}" 2>&1); then
+        EXPECTED_GH_ACCOUNT_ERROR="$EXPECTED_GH_ACCOUNT"
+        EXPECTED_GH_ACCOUNT=""
+      fi
+      REMOTE_URL=$(git -C "{{repo_path}}" remote get-url origin 2>/dev/null || true)
+      REPO_SLUG=""
+      if [ -n "$REMOTE_URL" ]; then
+        REPO_SLUG=$(python3 "${TOOLS_ROOT}/orch_helper.py" repo-slug "$REMOTE_URL")
+      fi
+
+      # Attempt to file a GH issue — non-fatal if repo binding or auth checks fail
+      GH_ISSUE_TIMEOUT_SECONDS="${AMPLIHACK_GH_ISSUE_TIMEOUT_SECONDS:-15}"
+      ISSUE_URL=""
+      GH_CREATE_STATUS=1
+      if [ -n "$EXPECTED_GH_ACCOUNT" ] && [ -n "$REPO_SLUG" ]; then
+        GH_AUTH_STATUS=""
+        if GH_AUTH_STATUS=$(timeout 10 gh auth status 2>&1); then
+          if printf '%s' "$GH_AUTH_STATUS" | python3 "${TOOLS_ROOT}/validate_gh_account.py" "$EXPECTED_GH_ACCOUNT" >/dev/null; then
+            if command -v timeout >/dev/null 2>&1; then
+              if ISSUE_URL=$(timeout "$GH_ISSUE_TIMEOUT_SECONDS" gh issue create \
+                --repo "$REPO_SLUG" \
+                --title "smart-orchestrator routing gap: $TASK_TYPE task, workstream_count=$WS_COUNT" \
+                --body "$BODY" \
+                --label "bug" 2>/dev/null); then
+                GH_CREATE_STATUS=0
+              else
+                GH_CREATE_STATUS=$?
+              fi
+            else
+              if ISSUE_URL=$(gh issue create \
+                --repo "$REPO_SLUG" \
+                --title "smart-orchestrator routing gap: $TASK_TYPE task, workstream_count=$WS_COUNT" \
+                --body "$BODY" \
+                --label "bug" 2>/dev/null); then
+                GH_CREATE_STATUS=0
+              else
+                GH_CREATE_STATUS=$?
+              fi
+            fi
+          else
+            GH_CREATE_STATUS=$?
+          fi
+        else
+          GH_CREATE_STATUS=$?
+        fi
+      else
+        GH_CREATE_STATUS=1
+      fi
+
+      if [ "$GH_CREATE_STATUS" -eq 0 ] && [ -n "$ISSUE_URL" ]; then
         echo "[ADAPTIVE] Filed infrastructure bug: $ISSUE_URL" >&2
         echo "$ISSUE_URL"
       else
         # Log the diagnostic info so it's preserved even if filing fails
         DIAG_FILE=$(mktemp /tmp/smart-orch-diag-XXXXXX.md)
         echo "$BODY" > "$DIAG_FILE"
-        echo "[ADAPTIVE] Could not file GH issue (gh unavailable or auth failed)." >&2
+        if [ "${GH_CREATE_STATUS:-1}" -eq 124 ]; then
+          echo "[ADAPTIVE] GH issue filing timed out after ${GH_ISSUE_TIMEOUT_SECONDS}s." >&2
+        elif [ -n "$EXPECTED_GH_ACCOUNT_ERROR" ]; then
+          echo "[ADAPTIVE] Could not file GH issue: $EXPECTED_GH_ACCOUNT_ERROR" >&2
+        elif [ -z "$REPO_SLUG" ]; then
+          echo "[ADAPTIVE] Could not file GH issue: repo_slug is required for GH mutations." >&2
+        else
+          echo "[ADAPTIVE] Could not file GH issue (gh unavailable or auth failed)." >&2
+        fi
         echo "[ADAPTIVE] Diagnostic info saved to: $DIAG_FILE" >&2
         echo "diag:$DIAG_FILE"
       fi
@@ -598,6 +703,10 @@ steps:
     condition: |
       adaptive_recipe == 'default-workflow'
     recipe: "default-workflow"
+    sub_context:
+      task_description: "{{task_description}}"
+      repo_path: "{{repo_path}}"
+      expected_gh_account: "{{expected_gh_account}}"
     output: "round_1_result"
 
   - id: "adaptive-execute-investigation"
@@ -605,6 +714,10 @@ steps:
     condition: |
       adaptive_recipe == 'investigation-workflow'
     recipe: "investigation-workflow"
+    sub_context:
+      task_description: "{{task_description}}"
+      repo_path: "{{repo_path}}"
+      expected_gh_account: "{{expected_gh_account}}"
     output: "round_1_result"
 
   # Cleanup temp workstreams file
@@ -620,6 +733,13 @@ steps:
   # Phase 3: Goal-seeking reflection loop (up to 3 rounds)
   # Pattern from auto-workflow.yaml: CONTINUE/COMPLETE on each round.
   # ─────────────────────────────────────────────────────────────────────────
+
+  - id: "announce-reflection-phase"
+    type: "bash"
+    condition: |
+      'Q&A' not in task_type and 'Operations' not in task_type and round_1_result
+    command: |
+      echo "[amplihack] phase: reflection-round-1"
 
   - id: "reflect-round-1"
     type: "agent"
@@ -822,6 +942,12 @@ steps:
   # Phase 5: Summary
   # ─────────────────────────────────────────────────────────────────────────
 
+  - id: "announce-finalization-phase"
+    type: "bash"
+    condition: "'Q&A' not in task_type and 'Operations' not in task_type and round_1_result"
+    command: |
+      echo "[amplihack] phase: finalization"
+
   - id: "summarize"
     type: "agent"
     condition: "'Q&A' not in task_type and 'Operations' not in task_type and round_1_result"
@@ -863,8 +989,16 @@ steps:
       {{session_info}}
       EOFSESSIONJSON
       )
-      TREE_SCRIPT="$(python3 -m amplihack.runtime_assets session-tree-path 2>/dev/null || true)"
-      HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir 2>/dev/null || true)"
+      TREE_SCRIPT=""
+      if ! TREE_SCRIPT="$(python3 -m amplihack.runtime_assets session-tree-path)"; then
+        echo "WARNING: session-tree-path runtime asset unavailable — skipping session tree completion." >&2
+        TREE_SCRIPT=""
+      fi
+      HOOKS_DIR=""
+      if ! HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir)"; then
+        echo "WARNING: hooks-dir runtime asset unavailable — workflow semaphore cleanup is disabled for this run." >&2
+        HOOKS_DIR=""
+      fi
       # Parse session fields and clear workflow semaphore in one Python subprocess.
       # Uses env vars instead of pipe+heredoc to avoid stdin conflict (issue #2581).
       export SESSION_JSON HOOKS_DIR

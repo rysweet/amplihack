@@ -34,6 +34,12 @@ def _repo_root() -> Path:
 REPO_ROOT = _repo_root()
 
 
+def _execution_context(**extra: str) -> dict[str, str]:
+    context = {"execution_root": str(REPO_ROOT)}
+    context.update(extra)
+    return context
+
+
 # ============================================================================
 # Scenario 1: Real recipe dry-run execution via Rust
 # ============================================================================
@@ -48,7 +54,7 @@ class TestRecipeDryRunExecution:
 
         result = run_recipe_by_name(
             "default-workflow",
-            user_context={"task_description": "test task", "repo_path": "."},
+            user_context=_execution_context(task_description="test task", repo_path="."),
             dry_run=True,
         )
         assert result.success, f"default-workflow dry-run failed: {result}"
@@ -63,7 +69,7 @@ class TestRecipeDryRunExecution:
 
         result = run_recipe_by_name(
             "smart-orchestrator",
-            user_context={"task_description": "test orchestration", "repo_path": "."},
+            user_context=_execution_context(task_description="test orchestration", repo_path="."),
             dry_run=True,
         )
         assert result.success, f"smart-orchestrator dry-run failed"
@@ -80,7 +86,7 @@ class TestRecipeDryRunExecution:
 
         result = run_recipe_by_name(
             "investigation-workflow",
-            user_context={"task_description": "test investigation", "repo_path": "."},
+            user_context=_execution_context(task_description="test investigation", repo_path="."),
             dry_run=True,
         )
         assert result.success
@@ -192,14 +198,14 @@ class TestBackwardCompatibility:
         from amplihack.recipes import run_recipe_by_name
         mock_rust.return_value = MagicMock()
         # Old code: run_recipe_by_name("x", adapter=CLISubprocessAdapter())
-        run_recipe_by_name("test", adapter=MagicMock())
+        run_recipe_by_name("test", user_context=_execution_context(), adapter=MagicMock())
         mock_rust.assert_called_once()
 
     @patch("amplihack.recipes.run_recipe_via_rust")
     def test_adapter_not_forwarded_to_rust(self, mock_rust):
         from amplihack.recipes import run_recipe_by_name
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", adapter="should-be-ignored")
+        run_recipe_by_name("test", user_context=_execution_context(), adapter="should-be-ignored")
         call_kwargs = mock_rust.call_args[1]
         assert "adapter" not in call_kwargs
 
@@ -216,13 +222,13 @@ class TestErrorBehavior:
         from amplihack.recipes import run_recipe_by_name, RustRunnerNotFoundError
         with patch("amplihack.recipes.rust_runner.find_rust_binary", return_value=None):
             with pytest.raises(RustRunnerNotFoundError, match="recipe-runner-rs"):
-                run_recipe_by_name("default-workflow")
+                run_recipe_by_name("default-workflow", user_context=_execution_context())
 
     def test_recipe_not_found_error(self):
         """Non-existent recipe should raise clear error from Rust runner."""
         from amplihack.recipes import run_recipe_by_name
         with pytest.raises((FileNotFoundError, RuntimeError)):
-            run_recipe_by_name("nonexistent-recipe-xyz-12345")
+            run_recipe_by_name("nonexistent-recipe-xyz-12345", user_context=_execution_context())
 
 
 # ============================================================================
@@ -237,7 +243,7 @@ class TestRustRunnerResultStructure:
         from amplihack.recipes import run_recipe_by_name
         result = run_recipe_by_name(
             "default-workflow",
-            user_context={"task_description": "test", "repo_path": "."},
+            user_context=_execution_context(task_description="test", repo_path="."),
             dry_run=True,
         )
         assert isinstance(result.recipe_name, str)
@@ -247,7 +253,7 @@ class TestRustRunnerResultStructure:
         from amplihack.recipes import run_recipe_by_name
         result = run_recipe_by_name(
             "default-workflow",
-            user_context={"task_description": "test", "repo_path": "."},
+            user_context=_execution_context(task_description="test", repo_path="."),
             dry_run=True,
         )
         assert len(result.step_results) > 0
@@ -259,7 +265,7 @@ class TestRustRunnerResultStructure:
         from amplihack.recipes import run_recipe_by_name
         result = run_recipe_by_name(
             "default-workflow",
-            user_context={"task_description": "test", "repo_path": "."},
+            user_context=_execution_context(task_description="test", repo_path="."),
             dry_run=True,
         )
         assert isinstance(result.success, bool)

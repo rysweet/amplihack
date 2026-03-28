@@ -22,6 +22,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import amplihack
+import amplihack.recipes as recipes_module
+import amplihack.recipes.rust_runner as rust_runner_module
+import amplihack.recipes.rust_runner_execution as rust_runner_execution_module
 from amplihack.recipes.models import StepStatus
 from amplihack.recipes.rust_runner import (
     RustRunnerNotFoundError,
@@ -35,10 +39,64 @@ from amplihack.recipes.rust_runner import (
 
 
 @pytest.fixture(autouse=True)
-def _mock_runner_version_check():
+def _restore_amplihack_modules(monkeypatch):
+    """Protect string-based patches after helper tests purge amplihack from sys.modules."""
+    monkeypatch.setitem(sys.modules, "amplihack", amplihack)
+    monkeypatch.setitem(sys.modules, "amplihack.recipes", recipes_module)
+    monkeypatch.setitem(sys.modules, "amplihack.recipes.rust_runner", rust_runner_module)
+    monkeypatch.setitem(
+        sys.modules,
+        "amplihack.recipes.rust_runner_execution",
+        rust_runner_execution_module,
+    )
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _mock_runner_version_check(monkeypatch):
     """Keep rust_runner tests focused on runner behavior, not binary version gating."""
-    with patch("amplihack.recipes.rust_runner.check_runner_version", return_value=True):
+    monkeypatch.setattr(rust_runner_module, "check_runner_version", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(rust_runner_module, "raise_for_runner_version", lambda *_args, **_kwargs: None)
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _seed_execution_root_for_legacy_runner_tests(monkeypatch, request):
+    """Keep legacy runner tests focused on command plumbing, not root validation."""
+    if request.node.get_closest_marker("strict_execution_root"):
         yield
+        return
+
+    original_resolve = rust_runner_module._resolve_execution_root
+
+    def _fake_validate_runner_execution_root(
+        execution_root: str, *, authoritative_repo: str | None = None
+    ) -> dict[str, object]:
+        resolved = Path(execution_root).resolve()
+        authoritative = (
+            Path(authoritative_repo).resolve() if authoritative_repo is not None else resolved
+        )
+        return {
+            "execution_root": str(resolved),
+            "authoritative_repo_path": str(authoritative),
+            "expected_gh_account": "",
+            "owner_kind": "authoritative-repo",
+            "git_initialized": True,
+            "marker_path": "",
+        }
+
+    def _resolve_with_default(*, working_dir: str, user_context: dict[str, object] | None):
+        context = dict(user_context) if user_context is not None else {}
+        context.setdefault("execution_root", str(Path(working_dir).resolve()))
+        return original_resolve(working_dir=working_dir, user_context=context)
+
+    monkeypatch.setattr(
+        rust_runner_module,
+        "validate_runner_execution_root",
+        _fake_validate_runner_execution_root,
+    )
+    monkeypatch.setattr(rust_runner_module, "_resolve_execution_root", _resolve_with_default)
+    yield
 
 
 def _import_dev_intent_router():
@@ -153,6 +211,15 @@ class TestRunRecipeViaRust:
         assert result.step_results[0].step_id == "s1"
         assert result.step_results[0].status == StepStatus.COMPLETED
 
+    def test_rejects_world_writable_binary(self, tmp_path):
+        binary = tmp_path / "recipe-runner-rs"
+        binary.write_text("", encoding="utf-8")
+        binary.chmod(0o777)
+
+        with patch("amplihack.recipes.rust_runner.find_rust_binary", return_value=str(binary)):
+            with pytest.raises(RuntimeError, match="world-writable"):
+                run_recipe_via_rust("test-recipe")
+
     @patch(
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
@@ -223,21 +290,49 @@ class TestRunRecipeViaRust:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("subprocess.run")
-    def test_normalizes_relative_recipe_dirs_against_working_dir(self, mock_run, mock_find):
+    def test_normalizes_relative_recipe_dirs_against_working_dir(
+        self, mock_run, mock_find, tmp_path
+    ):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
             returncode=0,
             stdout=self._make_rust_output(),
             stderr="",
         )
+        working_dir = tmp_path / "worktree"
+        working_dir.mkdir()
         run_recipe_via_rust(
             "test-recipe",
             recipe_dirs=["amplifier-bundle/recipes"],
-            working_dir="/repo/worktree",
+            working_dir=str(working_dir),
         )
         cmd = mock_run.call_args[0][0]
         idx = cmd.index("-R")
-        assert cmd[idx + 1] == "/repo/worktree/amplifier-bundle/recipes"
+        assert cmd[idx + 1] == str(working_dir / "amplifier-bundle/recipes")
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.run")
+    def test_injects_execution_root_into_context_and_cwd(self, mock_run, mock_find, tmp_path):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=self._make_rust_output(),
+            stderr="",
+        )
+
+        run_recipe_via_rust(
+            "test-recipe",
+            user_context={"task_description": "hello"},
+            working_dir=str(tmp_path),
+        )
+
+        cmd = mock_run.call_args[0][0]
+        kwargs = mock_run.call_args.kwargs
+        execution_root_flag = f"execution_root={tmp_path.resolve()}"
+        assert execution_root_flag in cmd
+        assert kwargs["cwd"] == str(tmp_path.resolve())
 
     @patch.dict("os.environ", {"AMPLIHACK_AGENT_BINARY": "copilot"}, clear=False)
     @patch(
@@ -438,12 +533,16 @@ class TestConfigurableTimeouts:
 class TestEngineSelection:
     """Tests for run_recipe_by_name — always uses Rust runner."""
 
+    @staticmethod
+    def _context(root: str | None = None) -> dict[str, str]:
+        return {"execution_root": root or str(Path(".").resolve())}
+
     @patch("amplihack.recipes.run_recipe_via_rust")
     def test_always_uses_rust(self, mock_rust):
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test")
+        run_recipe_by_name("test", user_context=self._context())
         mock_rust.assert_called_once()
 
     @patch("amplihack.recipes.run_recipe_via_rust")
@@ -451,7 +550,7 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", adapter=MagicMock())
+        run_recipe_by_name("test", user_context=self._context(), adapter=MagicMock())
         mock_rust.assert_called_once()
 
     @patch("amplihack.recipes.run_recipe_via_rust")
@@ -460,10 +559,10 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", recipe_dirs=["/custom/recipes"])
+        run_recipe_by_name("test", user_context=self._context(), recipe_dirs=["/custom/recipes"])
         mock_rust.assert_called_once_with(
             name="test",
-            user_context=None,
+            user_context=self._context(),
             dry_run=False,
             recipe_dirs=["/custom/recipes"],
             working_dir=".",
@@ -477,7 +576,7 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", working_dir="/some/path")
+        run_recipe_by_name("test", user_context=self._context("/some/path"), working_dir="/some/path")
         _, kwargs = mock_rust.call_args
         assert kwargs["working_dir"] == "/some/path"
 
@@ -487,7 +586,7 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", auto_stage=False)
+        run_recipe_by_name("test", user_context=self._context(), auto_stage=False)
         _, kwargs = mock_rust.call_args
         assert kwargs["auto_stage"] is False
 
@@ -497,7 +596,7 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", progress=True)
+        run_recipe_by_name("test", user_context=self._context(), progress=True)
         _, kwargs = mock_rust.call_args
         assert kwargs["progress"] is True
 
@@ -507,7 +606,7 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("default-workflow")
+        run_recipe_by_name("default-workflow", user_context=self._context())
 
         _, kwargs = mock_rust.call_args
         assert kwargs["name"] == "default-workflow"
@@ -519,7 +618,7 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         with pytest.raises(RustRunnerNotFoundError):
-            run_recipe_by_name("test")
+            run_recipe_by_name("test", user_context=self._context())
 
     def test_python_runner_no_longer_importable(self):
         with pytest.raises(ImportError):
@@ -761,8 +860,10 @@ class TestProgressFile:
     def test_write_progress_file_creates_file(self, tmp_path):
         """_write_progress_file() creates the file at the expected temp path."""
         pid = os.getpid()
-        with patch("amplihack.recipes.rust_runner.tempfile") as mock_tmp:
-            mock_tmp.gettempdir.return_value = str(tmp_path)
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
             path = _write_progress_file(
                 "test-recipe",
                 current_step=1,
@@ -780,8 +881,10 @@ class TestProgressFile:
     def test_write_progress_file_correct_schema(self, tmp_path):
         """_write_progress_file() writes valid JSON with all required fields."""
         pid = os.getpid()
-        with patch("amplihack.recipes.rust_runner.tempfile") as mock_tmp:
-            mock_tmp.gettempdir.return_value = str(tmp_path)
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
             path = _write_progress_file(
                 "my-recipe",
                 current_step=2,
@@ -790,6 +893,8 @@ class TestProgressFile:
                 elapsed_seconds=3.7,
                 status="completed",
                 pid=pid,
+                last_output_at=2.5,
+                silent_for_seconds=1.2,
             )
         data = json.loads(path.read_text())
         assert data["recipe_name"] == "my-recipe"
@@ -799,14 +904,20 @@ class TestProgressFile:
         assert abs(data["elapsed_seconds"] - 3.7) < 0.05
         assert data["status"] == "completed"
         assert data["pid"] == pid
+        assert data["runner_pid"] == pid
+        assert data["owner_uid"] == (os.geteuid() if hasattr(os, "geteuid") else None)
         assert "updated_at" in data
+        assert abs(data["last_output_at"] - 2.5) < 0.05
+        assert abs(data["silent_for_seconds"] - 1.2) < 0.05
 
     def test_get_recipe_progress_reads_file_back(self, tmp_path):
         """get_recipe_progress() reads back progress written by _write_progress_file()."""
         pid = os.getpid()
         # Write the progress file into tmp_path
-        with patch("amplihack.recipes.rust_runner.tempfile") as mock_tmp:
-            mock_tmp.gettempdir.return_value = str(tmp_path)
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
             _write_progress_file(
                 "workflow-recipe",
                 current_step=3,
@@ -815,6 +926,11 @@ class TestProgressFile:
                 elapsed_seconds=12.0,
                 status="running",
                 pid=pid,
+                last_output_at=9.0,
+                silent_for_seconds=3.0,
+                last_heartbeat_at=8.0,
+                heartbeat_interval_seconds=15,
+                heartbeat_silence_seconds=30,
             )
 
         # Now query via get_recipe_progress, patching gettempdir in dev_intent_router
@@ -839,8 +955,10 @@ class TestProgressFile:
     def test_get_recipe_progress_none_recipe_name_finds_any(self, tmp_path):
         """get_recipe_progress(None) returns the most recent progress file."""
         pid = os.getpid()
-        with patch("amplihack.recipes.rust_runner.tempfile") as mock_tmp:
-            mock_tmp.gettempdir.return_value = str(tmp_path)
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
             _write_progress_file(
                 "some-recipe",
                 current_step=1,
@@ -858,3 +976,91 @@ class TestProgressFile:
         assert result is not None
         assert result["step_name"] == "first"
         assert result["status"] == "running"
+
+    def test_get_recipe_progress_includes_parallel_status_sidecar(self, tmp_path):
+        """Parallel status sidecars should not break basic progress discovery."""
+        pid = os.getpid()
+        parallel_status_path = tmp_path / "parallel-status-explicit.json"
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
+            _write_progress_file(
+                "workflow-recipe",
+                current_step=1,
+                total_steps=2,
+                step_name="launch-parallel-round-1",
+                elapsed_seconds=4.0,
+                status="running",
+                pid=pid,
+                last_output_at=3.0,
+                silent_for_seconds=1.0,
+                last_heartbeat_at=2.5,
+                heartbeat_interval_seconds=15,
+                heartbeat_silence_seconds=30,
+                parallel_status_path=str(parallel_status_path),
+            )
+
+        parallel_status_path.write_text(
+            json.dumps(
+                {
+                    "counts": {"total": 2, "running": 1, "completed": 1, "failed": 0},
+                    "workstreams": [
+                        {"issue": 101, "status": "running"},
+                        {"issue": 102, "status": "completed"},
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        router = _import_dev_intent_router()
+        with patch.object(router._tempfile, "gettempdir", return_value=str(tmp_path)):
+            result = router.get_recipe_progress("workflow-recipe")
+
+        assert result is not None
+        assert result["step_name"] == "launch-parallel-round-1"
+        assert result["status"] == "running"
+        assert "parallel_status" not in result
+
+    def test_get_recipe_progress_prefers_explicit_parallel_status_file(self, tmp_path):
+        """Explicit sidecar env vars should not break basic progress lookup."""
+        pid = os.getpid()
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
+            _write_progress_file(
+                "workflow-recipe",
+                current_step=1,
+                total_steps=2,
+                step_name="launch-parallel-round-1",
+                elapsed_seconds=4.0,
+                status="running",
+                pid=pid,
+                last_output_at=3.0,
+                silent_for_seconds=1.0,
+            )
+
+        auto_discovered_path = tmp_path / "amplihack-parallel-status-auto.json"
+        auto_discovered_path.write_text(
+            json.dumps({"counts": {"total": 9, "running": 9, "completed": 0, "failed": 0}}),
+            encoding="utf-8",
+        )
+        explicit_status_path = tmp_path / "parallel-status-explicit.json"
+        explicit_status_path.write_text(
+            json.dumps({"counts": {"total": 2, "running": 1, "completed": 1, "failed": 0}}),
+            encoding="utf-8",
+        )
+
+        router = _import_dev_intent_router()
+        with (
+            patch.object(router._tempfile, "gettempdir", return_value=str(tmp_path)),
+            patch.dict(os.environ, {"AMPLIHACK_PARALLEL_STATUS_FILE": str(explicit_status_path)}),
+        ):
+            result = router.get_recipe_progress("workflow-recipe")
+
+        assert result is not None
+        assert result["step_name"] == "launch-parallel-round-1"
+        assert result["status"] == "running"
+        assert "parallel_status" not in result

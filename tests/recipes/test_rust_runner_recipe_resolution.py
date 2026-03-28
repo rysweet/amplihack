@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import sys
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+import amplihack
+import amplihack.recipes as recipes_module
+import amplihack.recipes.rust_runner as rust_runner_module
 from amplihack.recipes.rust_runner import (
     RustRunnerNotFoundError,
     _resolve_recipe_target,
@@ -17,24 +21,73 @@ from amplihack.recipes.rust_runner import (
 
 
 @pytest.fixture(autouse=True)
-def _mock_runner_version_check():
+def _restore_amplihack_modules(monkeypatch):
+    """Protect string-based patches after helper tests purge amplihack from sys.modules."""
+    monkeypatch.setitem(sys.modules, "amplihack", amplihack)
+    monkeypatch.setitem(sys.modules, "amplihack.recipes", recipes_module)
+    monkeypatch.setitem(sys.modules, "amplihack.recipes.rust_runner", rust_runner_module)
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _mock_runner_version_check(monkeypatch):
     """Keep recipe-resolution tests focused on targeting, not binary version gating."""
-    with patch(
-        "amplihack.recipes.rust_runner.runner_binary.raise_for_runner_version",
-        return_value=None,
-    ):
+    monkeypatch.setattr(rust_runner_module, "check_runner_version", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(rust_runner_module, "raise_for_runner_version", lambda *_args, **_kwargs: None)
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _seed_execution_root_for_legacy_runner_tests(monkeypatch, request):
+    if request.node.get_closest_marker("strict_execution_root"):
         yield
+        return
+
+    original_resolve = rust_runner_module._resolve_execution_root
+
+    def _fake_validate_runner_execution_root(
+        execution_root: str, *, authoritative_repo: str | None = None
+    ) -> dict[str, object]:
+        resolved = Path(execution_root).resolve()
+        authoritative = (
+            Path(authoritative_repo).resolve() if authoritative_repo is not None else resolved
+        )
+        return {
+            "execution_root": str(resolved),
+            "authoritative_repo_path": str(authoritative),
+            "expected_gh_account": "",
+            "owner_kind": "authoritative-repo",
+            "git_initialized": True,
+            "marker_path": "",
+        }
+
+    def _resolve_with_default(*, working_dir: str, user_context: dict[str, object] | None):
+        context = dict(user_context) if user_context is not None else {}
+        context.setdefault("execution_root", str(Path(working_dir).resolve()))
+        return original_resolve(working_dir=working_dir, user_context=context)
+
+    monkeypatch.setattr(
+        rust_runner_module,
+        "validate_runner_execution_root",
+        _fake_validate_runner_execution_root,
+    )
+    monkeypatch.setattr(rust_runner_module, "_resolve_execution_root", _resolve_with_default)
+    yield
 
 
 class TestEngineSelection:
     """Tests for run_recipe_by_name — always uses Rust runner."""
+
+    @staticmethod
+    def _context(root: str | None = None) -> dict[str, str]:
+        return {"execution_root": root or str(Path(".").resolve())}
 
     @patch("amplihack.recipes.run_recipe_via_rust")
     def test_always_uses_rust(self, mock_rust):
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test")
+        run_recipe_by_name("test", user_context=self._context())
         mock_rust.assert_called_once()
 
     @patch("amplihack.recipes.run_recipe_via_rust")
@@ -42,7 +95,7 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", adapter=MagicMock())
+        run_recipe_by_name("test", user_context=self._context(), adapter=MagicMock())
         mock_rust.assert_called_once()
 
     @patch("amplihack.recipes.run_recipe_via_rust")
@@ -51,10 +104,10 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", recipe_dirs=["/custom/recipes"])
+        run_recipe_by_name("test", user_context=self._context(), recipe_dirs=["/custom/recipes"])
         mock_rust.assert_called_once_with(
             name="test",
-            user_context=None,
+            user_context=self._context(),
             dry_run=False,
             recipe_dirs=["/custom/recipes"],
             working_dir=".",
@@ -68,7 +121,7 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", working_dir="/some/path")
+        run_recipe_by_name("test", user_context=self._context("/some/path"), working_dir="/some/path")
         _, kwargs = mock_rust.call_args
         assert kwargs["working_dir"] == "/some/path"
 
@@ -78,7 +131,7 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", auto_stage=False)
+        run_recipe_by_name("test", user_context=self._context(), auto_stage=False)
         _, kwargs = mock_rust.call_args
         assert kwargs["auto_stage"] is False
 
@@ -88,7 +141,7 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("test", progress=True)
+        run_recipe_by_name("test", user_context=self._context(), progress=True)
         _, kwargs = mock_rust.call_args
         assert kwargs["progress"] is True
 
@@ -98,7 +151,7 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         mock_rust.return_value = MagicMock()
-        run_recipe_by_name("default-workflow")
+        run_recipe_by_name("default-workflow", user_context=self._context())
 
         _, kwargs = mock_rust.call_args
         assert kwargs["name"] == "default-workflow"
@@ -110,7 +163,7 @@ class TestEngineSelection:
         from amplihack.recipes import run_recipe_by_name
 
         with pytest.raises(RustRunnerNotFoundError):
-            run_recipe_by_name("test")
+            run_recipe_by_name("test", user_context=self._context())
 
     def test_python_runner_no_longer_importable(self):
         with pytest.raises(ImportError):

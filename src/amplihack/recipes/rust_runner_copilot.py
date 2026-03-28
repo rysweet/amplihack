@@ -121,19 +121,51 @@ if __name__ == "__main__":
 
 
 def _write_wrapper_file(path: Path, content: str, *, executable: bool = False) -> None:
-    path.write_text(content, encoding="utf-8")
+    if path.exists() and path.is_symlink():
+        raise RuntimeError(f"Refusing to overwrite symlinked Copilot wrapper file: {path}")
+    if path.parent.exists() and path.parent.is_symlink():
+        raise RuntimeError(
+            f"Refusing to write Copilot wrapper into symlinked directory: {path.parent}"
+        )
+
+    content_bytes = content.encode("utf-8")
+    existing_content: bytes | None = None
+    try:
+        existing_content = path.read_bytes()
+    except FileNotFoundError:
+        pass
+
+    if existing_content != content_bytes:
+        fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=str(path.parent))
+        try:
+            with os.fdopen(fd, "wb") as tmp_file:
+                tmp_file.write(content_bytes)
+            os.replace(tmp_name, path)
+        except Exception:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
+            raise
     if executable and os.name != "nt":
-        path.chmod(0o755)
+        mode = path.stat().st_mode
+        if not mode & 0o111:
+            path.chmod(mode | 0o755)
 
 
-def _create_copilot_compat_wrapper_dir(real_binary: str) -> str:
+def _create_copilot_compat_wrapper_dir(real_binary: str, execution_root: str) -> str:
     """Create a Copilot wrapper for nested recipe-runner agent launches."""
-    wrapper_dir = Path(tempfile.mkdtemp(prefix="amplihack-copilot-compat-"))
+    root = Path(execution_root)
+    if not root.is_absolute():
+        raise RuntimeError("execution_root must be absolute for Copilot wrapper placement")
+    wrapper_dir = root.resolve() / ".amplihack" / "copilot-compat"
+    if wrapper_dir.exists() and wrapper_dir.is_symlink():
+        raise RuntimeError(f"Refusing to use symlinked Copilot wrapper directory: {wrapper_dir}")
+    wrapper_dir.mkdir(parents=True, exist_ok=True)
     wrapper_py_path = wrapper_dir / "copilot.py"
+    wrapper_source = _build_copilot_wrapper_source(real_binary)
 
-    _write_wrapper_file(
-        wrapper_py_path, _build_copilot_wrapper_source(real_binary), executable=True
-    )
+    _write_wrapper_file(wrapper_py_path, wrapper_source, executable=True)
     _write_wrapper_file(
         wrapper_dir / "copilot.cmd",
         f'@echo off\r\n"{sys.executable}" "%~dp0copilot.py" %*\r\n',

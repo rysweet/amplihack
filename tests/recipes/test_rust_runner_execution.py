@@ -7,24 +7,79 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+import amplihack
+import amplihack.recipes as recipes_module
+import amplihack.recipes.rust_runner as rust_runner_module
+import amplihack.recipes.rust_runner_execution as rust_runner_execution_module
 from amplihack.recipes.models import StepStatus
 from amplihack.recipes.rust_runner import RustRunnerNotFoundError, run_recipe_via_rust
 from amplihack.recipes.rust_runner_execution import _write_progress_file
 
 
 @pytest.fixture(autouse=True)
-def _mock_runner_version_check():
+def _restore_amplihack_modules(monkeypatch):
+    """Protect string-based patches after helper tests purge amplihack from sys.modules."""
+    monkeypatch.setitem(sys.modules, "amplihack", amplihack)
+    monkeypatch.setitem(sys.modules, "amplihack.recipes", recipes_module)
+    monkeypatch.setitem(sys.modules, "amplihack.recipes.rust_runner", rust_runner_module)
+    monkeypatch.setitem(
+        sys.modules,
+        "amplihack.recipes.rust_runner_execution",
+        rust_runner_execution_module,
+    )
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _mock_runner_version_check(monkeypatch):
     """Keep execution tests focused on command/response behavior, not version gating."""
-    with patch(
-        "amplihack.recipes.rust_runner.runner_binary.raise_for_runner_version",
-        return_value=None,
-    ):
+    monkeypatch.setattr(rust_runner_module, "check_runner_version", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(rust_runner_module, "raise_for_runner_version", lambda *_args, **_kwargs: None)
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _seed_execution_root_for_legacy_runner_tests(monkeypatch, request):
+    if request.node.get_closest_marker("strict_execution_root"):
         yield
+        return
+
+    original_resolve = rust_runner_module._resolve_execution_root
+
+    def _fake_validate_runner_execution_root(
+        execution_root: str, *, authoritative_repo: str | None = None
+    ) -> dict[str, object]:
+        resolved = Path(execution_root).resolve()
+        authoritative = (
+            Path(authoritative_repo).resolve() if authoritative_repo is not None else resolved
+        )
+        return {
+            "execution_root": str(resolved),
+            "authoritative_repo_path": str(authoritative),
+            "expected_gh_account": "",
+            "owner_kind": "authoritative-repo",
+            "git_initialized": True,
+            "marker_path": "",
+        }
+
+    def _resolve_with_default(*, working_dir: str, user_context: dict[str, object] | None):
+        context = dict(user_context) if user_context is not None else {}
+        context.setdefault("execution_root", str(Path(working_dir).resolve()))
+        return original_resolve(working_dir=working_dir, user_context=context)
+
+    monkeypatch.setattr(
+        rust_runner_module,
+        "validate_runner_execution_root",
+        _fake_validate_runner_execution_root,
+    )
+    monkeypatch.setattr(rust_runner_module, "_resolve_execution_root", _resolve_with_default)
+    yield
 
 
 class TestRunRecipeViaRust:
@@ -138,21 +193,25 @@ class TestRunRecipeViaRust:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("subprocess.run")
-    def test_normalizes_relative_recipe_dirs_against_working_dir(self, mock_run, mock_find):
+    def test_normalizes_relative_recipe_dirs_against_working_dir(
+        self, mock_run, mock_find, tmp_path
+    ):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
             returncode=0,
             stdout=self._make_rust_output(),
             stderr="",
         )
+        working_dir = tmp_path / "repo" / "worktree"
+        working_dir.mkdir(parents=True)
         run_recipe_via_rust(
             "test-recipe",
             recipe_dirs=["amplifier-bundle/recipes"],
-            working_dir="/repo/worktree",
+            working_dir=str(working_dir),
         )
         cmd = mock_run.call_args[0][0]
         idx = cmd.index("-R")
-        assert cmd[idx + 1] == "/repo/worktree/amplifier-bundle/recipes"
+        assert cmd[idx + 1] == str(working_dir / "amplifier-bundle/recipes")
 
     @patch.dict("os.environ", {"AMPLIHACK_AGENT_BINARY": "copilot"}, clear=False)
     @patch(
@@ -200,21 +259,21 @@ class TestRunRecipeViaRust:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("subprocess.run")
-    def test_forwards_pythonpath_and_seeds_claude_project_dir(
-        self, mock_run, mock_find
-    ):
+    def test_forwards_pythonpath_and_seeds_claude_project_dir(self, mock_run, mock_find, tmp_path):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
             returncode=0,
             stdout=self._make_rust_output(),
             stderr="",
         )
+        working_dir = tmp_path / "repo" / "worktree"
+        working_dir.mkdir(parents=True)
 
-        run_recipe_via_rust("test-recipe", working_dir="/repo/worktree")
+        run_recipe_via_rust("test-recipe", working_dir=str(working_dir))
 
         env = mock_run.call_args.kwargs["env"]
         assert env["PYTHONPATH"] == "/repo/src"
-        assert env["CLAUDE_PROJECT_DIR"] == "/repo/worktree"
+        assert env["CLAUDE_PROJECT_DIR"] == str(working_dir)
 
     @patch.dict(
         "os.environ",
@@ -225,7 +284,7 @@ class TestRunRecipeViaRust:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("subprocess.run")
-    def test_preserves_existing_claude_project_dir(self, mock_run, mock_find):
+    def test_preserves_existing_claude_project_dir(self, mock_run, mock_find, tmp_path):
         """When CLAUDE_PROJECT_DIR is already set, _project_dir_context is a no-op."""
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
@@ -233,8 +292,10 @@ class TestRunRecipeViaRust:
             stdout=self._make_rust_output(),
             stderr="",
         )
+        working_dir = tmp_path / "different" / "dir"
+        working_dir.mkdir(parents=True)
 
-        run_recipe_via_rust("test-recipe", working_dir="/different/dir")
+        run_recipe_via_rust("test-recipe", working_dir=str(working_dir))
 
         env = mock_run.call_args.kwargs["env"]
         assert env["CLAUDE_PROJECT_DIR"] == "/already/set"
@@ -248,7 +309,7 @@ class TestRunRecipeViaRust:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("subprocess.run")
-    def test_preserves_empty_string_claude_project_dir(self, mock_run, mock_find):
+    def test_preserves_empty_string_claude_project_dir(self, mock_run, mock_find, tmp_path):
         """Empty string CLAUDE_PROJECT_DIR must be preserved, not overwritten."""
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
@@ -256,8 +317,10 @@ class TestRunRecipeViaRust:
             stdout=self._make_rust_output(),
             stderr="",
         )
+        working_dir = tmp_path / "some" / "dir"
+        working_dir.mkdir(parents=True)
 
-        run_recipe_via_rust("test-recipe", working_dir="/some/dir")
+        run_recipe_via_rust("test-recipe", working_dir=str(working_dir))
 
         env = mock_run.call_args.kwargs["env"]
         assert env["CLAUDE_PROJECT_DIR"] == ""
@@ -564,6 +627,65 @@ class TestProgressStreaming:
         assert last["step_name"] == "classify-and-decompose"
         assert last["status"] == "completed"
 
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.Popen")
+    def test_progress_mode_throttles_non_marker_progress_writes(
+        self,
+        mock_popen,
+        mock_find,
+        tmp_path,
+    ):
+        class FakePopen:
+            def __init__(self, stdout: str, stderr: str, returncode: int = 0):
+                self.stdout = io.StringIO(stdout)
+                self.stderr = io.StringIO(stderr)
+                self._returncode = returncode
+
+            def wait(self, timeout=None):
+                return self._returncode
+
+            def poll(self):
+                return self._returncode
+
+        mock_popen.return_value = FakePopen(
+            stdout=self._make_rust_output(),
+            stderr=(
+                "▶ classify-and-decompose (agent)\n"
+                "  [agent] still running\n"
+                "  [agent] still running\n"
+                "✓ classify-and-decompose\n"
+            ),
+        )
+
+        written_payloads: list[dict] = []
+        original_write = _write_progress_file
+
+        def capture_write(*args, **kwargs):
+            path = original_write(*args, **kwargs)
+            if path.exists():
+                written_payloads.append(json.loads(path.read_text(encoding="utf-8")))
+            return path
+
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(tmp_path),
+            ),
+            patch(
+                "amplihack.recipes.rust_runner_execution._PROGRESS_ACTIVITY_WRITE_INTERVAL_SECONDS",
+                60.0,
+            ),
+            patch(
+                "amplihack.recipes.rust_runner_execution._write_progress_file",
+                side_effect=capture_write,
+            ),
+        ):
+            run_recipe_via_rust("smart-orchestrator", progress=True)
+
+        assert [payload["status"] for payload in written_payloads] == ["running", "completed"]
+
 
 class TestProgressFiles:
     def test_write_progress_file_writes_expected_schema(self, tmp_path):
@@ -580,6 +702,11 @@ class TestProgressFiles:
                 elapsed_seconds=3.75,
                 status="running",
                 pid=pid,
+                last_output_at=3.0,
+                silent_for_seconds=0.75,
+                last_heartbeat_at=3.5,
+                heartbeat_interval_seconds=15,
+                heartbeat_silence_seconds=30,
             )
 
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -590,3 +717,75 @@ class TestProgressFiles:
         assert payload["status"] == "running"
         assert payload["pid"] == pid
         assert "updated_at" in payload
+        assert abs(payload["last_output_at"] - 3.0) < 0.05
+        assert abs(payload["silent_for_seconds"] - 0.75) < 0.05
+        assert abs(payload["last_heartbeat_at"] - 3.5) < 0.05
+        assert payload["heartbeat_interval_seconds"] == 15
+        assert payload["heartbeat_silence_seconds"] == 30
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.Popen")
+    def test_progress_mode_emits_heartbeat_and_refreshes_progress_file(
+        self,
+        mock_popen,
+        mock_find,
+        tmp_path,
+    ):
+        class FakePopen:
+            def __init__(self, stdout: str, stderr: str, returncode: int = 0):
+                self.stdout = io.StringIO(stdout)
+                self.stderr = io.StringIO(stderr)
+                self._returncode = returncode
+                self._done = False
+
+            def wait(self, timeout=None):
+                time.sleep(0.05)
+                self._done = True
+                return self._returncode
+
+            def poll(self):
+                return self._returncode if self._done else None
+
+        mock_popen.return_value = FakePopen(
+            stdout=TestRunRecipeViaRust()._make_rust_output(),
+            stderr="▶ classify-and-decompose (agent)\n",
+        )
+
+        written_payloads: list[dict] = []
+        original_write = _write_progress_file
+
+        def capture_write(*args, **kwargs):
+            path = original_write(*args, **kwargs)
+            written_payloads.append(json.loads(path.read_text(encoding="utf-8")))
+            return path
+
+        streamed_stderr = io.StringIO()
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(tmp_path),
+            ),
+            patch("amplihack.recipes.rust_runner_execution._PROGRESS_HEARTBEAT_POLL_SECONDS", 0.01),
+            patch(
+                "amplihack.recipes.rust_runner_execution._PROGRESS_HEARTBEAT_INTERVAL_SECONDS",
+                0.01,
+            ),
+            patch(
+                "amplihack.recipes.rust_runner_execution._PROGRESS_HEARTBEAT_SILENCE_SECONDS", 0.01
+            ),
+            patch(
+                "amplihack.recipes.rust_runner_execution._write_progress_file",
+                side_effect=capture_write,
+            ),
+            patch.object(sys, "stderr", streamed_stderr),
+        ):
+            run_recipe_via_rust("smart-orchestrator", progress=True)
+
+        assert "[amplihack] heartbeat:" in streamed_stderr.getvalue()
+        assert any(payload["silent_for_seconds"] > 0 for payload in written_payloads)
+        assert all("last_output_at" in payload for payload in written_payloads)
+        assert any((payload["last_heartbeat_at"] or 0) > 0 for payload in written_payloads)
+        assert all(payload["heartbeat_interval_seconds"] == 0.01 for payload in written_payloads)
+        assert all(payload["heartbeat_silence_seconds"] == 0.01 for payload in written_payloads)
