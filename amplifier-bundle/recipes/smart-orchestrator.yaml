@@ -467,6 +467,11 @@ steps:
       echo "---"
       AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$SESSION_DEPTH" \
         python3 .claude/skills/multitask/orchestrator.py "$WS_FILE"
+      # Clean up workstreams file now, before this step's output inflates
+      # the recipe context. Doing it here avoids the E2BIG error that
+      # occurs when a later bash step inherits megabytes of env vars
+      # from accumulated round_1_result (fix: cleanup-helper-arg-overflow).
+      rm -f "$WS_FILE" 2>/dev/null || true
     output: "round_1_result"
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -623,12 +628,16 @@ steps:
     recipe: "investigation-workflow"
     output: "round_1_result"
 
-  # Cleanup temp workstreams file
+  # Cleanup temp workstreams file (best-effort fallback).
+  # Primary cleanup happens inside launch-parallel-round-1 before context
+  # bloat.  This step uses a glob instead of {{workstreams_file}} so it
+  # carries no template variables — reducing the env-var payload the Rust
+  # runner passes to bash.  The command is unconditionally successful so a
+  # cleanup failure never aborts the recipe (fix: cleanup-helper-arg-overflow).
   - id: "cleanup-helper"
     type: "bash"
     command: |
-      WS_FILE={{workstreams_file}}
-      [ -f "$WS_FILE" ] && rm -f "$WS_FILE"
+      rm -f /tmp/smart-orch-ws-*.json 2>/dev/null || true
       echo "ok"
     output: "cleanup_status"
 
