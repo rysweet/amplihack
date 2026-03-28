@@ -263,8 +263,10 @@ Investigation tasks.** Always try `smart-orchestrator` first.
 
 **Required environment variables** for the recipe runner:
 
-- `AMPLIHACK_HOME` — must point to the amplihack repo root (e.g.,
-  `/home/user/src/amplihack`). The recipe runner uses this to find
+- `AMPLIHACK_HOME` — Auto-detected from the current working directory by
+  walking parent directories for an `amplifier-bundle/` folder, with fallback
+  to `~/.amplihack`. If auto-detection fails, set manually to the directory
+  containing `amplifier-bundle/`. The recipe runner uses this to find
   `amplifier-bundle/tools/orch_helper.py` and other orchestrator scripts.
 - Preserve `AMPLIHACK_AGENT_BINARY` — nested workflow agents read this env var
   to stay on the caller's active binary (for example, Copilot in Copilot CLI).
