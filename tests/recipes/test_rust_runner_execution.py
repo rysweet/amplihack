@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
-from amplihack.recipes.models import StepStatus
+from amplihack.recipes.models import RecipeResult, StepStatus
 from amplihack.recipes.rust_runner import RustRunnerNotFoundError, run_recipe_via_rust
 from amplihack.recipes.rust_runner_execution import _write_progress_file
 
@@ -563,6 +563,227 @@ class TestProgressStreaming:
         assert last["current_step"] == 1
         assert last["step_name"] == "classify-and-decompose"
         assert last["status"] == "completed"
+
+
+class TestRecipeLogPath:
+    """Tests for _recipe_log_path() — the persistent log file path helper."""
+
+    def test_returns_path_in_tmp(self, tmp_path):
+        from amplihack.recipes.rust_runner_execution import _recipe_log_path
+
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
+            path = _recipe_log_path("smart-orchestrator", pid=42)
+        assert path.parent == tmp_path
+        assert "amplihack-recipe-" in path.name
+        assert "42" in path.name
+        assert path.suffix == ".log"
+
+    def test_sanitizes_recipe_name(self, tmp_path):
+        from amplihack.recipes.rust_runner_execution import _recipe_log_path
+
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
+            path = _recipe_log_path("my/weird recipe!", pid=1)
+        # Slashes and spaces are sanitized; only [a-zA-Z0-9_] survive
+        assert " " not in path.name
+        assert "!" not in path.name
+
+    def test_extracts_stem_from_path(self, tmp_path):
+        from amplihack.recipes.rust_runner_execution import _recipe_log_path
+
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
+            path = _recipe_log_path("/recipes/default-workflow.yaml", pid=1)
+        assert "default" in path.name
+        assert ".yaml" not in path.name
+
+
+class TestRecipeLogFileCreation:
+    """Tests for log file creation and teeing in _run_rust_process()."""
+
+    def test_progress_mode_creates_log_file(self, tmp_path):
+        """_run_rust_process with progress=True should create a log file."""
+        from amplihack.recipes.rust_runner_execution import _run_rust_process
+
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(tmp_path),
+            ),
+            patch("subprocess.Popen") as mock_popen,
+        ):
+            fake_stdout = io.StringIO('{"recipe_name":"test","success":true}\n')
+            fake_stderr = io.StringIO("some stderr\n")
+            mock_popen.return_value.stdout = fake_stdout
+            mock_popen.return_value.stderr = fake_stderr
+            mock_popen.return_value.wait.return_value = 0
+
+            stdout, stderr, rc, log_path = _run_rust_process(
+                ["fake-cmd"],
+                progress=True,
+                env={"PATH": "/usr/bin"},
+                recipe_name="test-recipe",
+            )
+
+        assert log_path is not None
+        assert Path(log_path).exists()
+        content = Path(log_path).read_text(encoding="utf-8")
+        assert "amplihack recipe log" in content
+        assert "test-recipe" in content
+
+    def test_no_progress_returns_none_log_path(self):
+        """_run_rust_process with progress=False should return log_path=None."""
+        from amplihack.recipes.rust_runner_execution import _run_rust_process
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="out", stderr="err"
+            )
+            stdout, stderr, rc, log_path = _run_rust_process(
+                ["fake-cmd"],
+                progress=False,
+                env={"PATH": "/usr/bin"},
+                recipe_name="test-recipe",
+            )
+
+        assert log_path is None
+
+    def test_log_file_contains_stdout_and_stderr(self, tmp_path):
+        """Log file should contain [stdout] and [stderr] prefixed lines."""
+        from amplihack.recipes.rust_runner_execution import _run_rust_process
+
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(tmp_path),
+            ),
+            patch("subprocess.Popen") as mock_popen,
+        ):
+            fake_stdout = io.StringIO("hello stdout\n")
+            fake_stderr = io.StringIO("hello stderr\n")
+            mock_popen.return_value.stdout = fake_stdout
+            mock_popen.return_value.stderr = fake_stderr
+            mock_popen.return_value.wait.return_value = 0
+
+            _, _, _, log_path = _run_rust_process(
+                ["fake-cmd"],
+                progress=True,
+                env={"PATH": "/usr/bin"},
+                recipe_name="tee-test",
+            )
+
+        content = Path(log_path).read_text(encoding="utf-8")
+        assert "[stdout] hello stdout" in content
+        assert "[stderr] hello stderr" in content
+
+    def test_log_file_has_footer(self, tmp_path):
+        """Log file should end with a footer showing exit code and elapsed time."""
+        from amplihack.recipes.rust_runner_execution import _run_rust_process
+
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(tmp_path),
+            ),
+            patch("subprocess.Popen") as mock_popen,
+        ):
+            mock_popen.return_value.stdout = io.StringIO("")
+            mock_popen.return_value.stderr = io.StringIO("")
+            mock_popen.return_value.wait.return_value = 0
+
+            _, _, _, log_path = _run_rust_process(
+                ["fake-cmd"],
+                progress=True,
+                env={"PATH": "/usr/bin"},
+                recipe_name="footer-test",
+            )
+
+        content = Path(log_path).read_text(encoding="utf-8")
+        assert "exited with code 0" in content
+        assert "footer-test" in content
+
+    def test_sets_amplihack_recipe_log_env_var(self, tmp_path):
+        """_run_rust_process should set AMPLIHACK_RECIPE_LOG in the env dict."""
+        from amplihack.recipes.rust_runner_execution import _run_rust_process
+
+        env = {"PATH": "/usr/bin"}
+
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(tmp_path),
+            ),
+            patch("subprocess.Popen") as mock_popen,
+        ):
+            mock_popen.return_value.stdout = io.StringIO("")
+            mock_popen.return_value.stderr = io.StringIO("")
+            mock_popen.return_value.wait.return_value = 0
+
+            _run_rust_process(
+                ["fake-cmd"],
+                progress=True,
+                env=env,
+                recipe_name="env-test",
+            )
+
+        assert "AMPLIHACK_RECIPE_LOG" in env
+        assert env["AMPLIHACK_RECIPE_LOG"].endswith(".log")
+
+    def test_log_creation_failure_degrades_gracefully(self, tmp_path):
+        """If log file creation fails, recipe should still execute."""
+        from amplihack.recipes.rust_runner_execution import _run_rust_process
+
+        # Point to a non-existent directory to force creation failure
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value="/nonexistent/path/that/does/not/exist",
+            ),
+            patch("subprocess.Popen") as mock_popen,
+        ):
+            mock_popen.return_value.stdout = io.StringIO("output\n")
+            mock_popen.return_value.stderr = io.StringIO("")
+            mock_popen.return_value.wait.return_value = 0
+
+            stdout, stderr, rc, log_path = _run_rust_process(
+                ["fake-cmd"],
+                progress=True,
+                env={"PATH": "/usr/bin"},
+                recipe_name="fail-test",
+            )
+
+        assert log_path is None
+        assert rc == 0
+
+
+class TestRecipeResultLogPath:
+    """Tests for RecipeResult.log_path field."""
+
+    def test_default_log_path_is_none(self):
+        result = RecipeResult(recipe_name="test", success=True)
+        assert result.log_path is None
+
+    def test_log_path_stored(self):
+        result = RecipeResult(
+            recipe_name="test", success=True, log_path="/tmp/test.log"
+        )
+        assert result.log_path == "/tmp/test.log"
+
+    def test_log_path_in_str_representation(self):
+        """log_path should not break __str__."""
+        result = RecipeResult(
+            recipe_name="test", success=True, log_path="/tmp/test.log"
+        )
+        text = str(result)
+        assert isinstance(text, str)
+        assert "test" in text
 
 
 class TestProgressFiles:

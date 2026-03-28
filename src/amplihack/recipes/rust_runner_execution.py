@@ -173,16 +173,11 @@ def _write_progress_file(
     elapsed_seconds: float,
     status: str,
     pid: int | None = None,
-    _cached_path: Path | None = None,
 ) -> Path:
-    """Write the current recipe progress to a deterministic JSON file.
-
-    Pass ``_cached_path`` to skip recomputing the progress file path on
-    repeated calls with the same recipe name / PID (hot-path optimisation).
-    """
+    """Write the current recipe progress to a deterministic JSON file."""
     if pid is None:
         pid = os.getpid()
-    path = _cached_path or _progress_file_path(recipe_name, pid)
+    path = _progress_file_path(recipe_name, pid)
     payload: dict[str, Any] = {
         "recipe_name": recipe_name,
         "current_step": current_step,
@@ -330,9 +325,13 @@ def _stream_process_output_with_progress(
                     f"after {elapsed:.1f}s ---\n"
                 )
                 log_fh.flush()
-                log_fh.close()
             except OSError as exc:
-                logger.debug("Log footer/close failed for %s: %s", log_file_path, exc)
+                logger.debug("Log footer write failed for %s: %s", log_file_path, exc)
+            finally:
+                try:
+                    log_fh.close()
+                except OSError:
+                    pass
     return "".join(stdout_chunks), "".join(stderr_chunks), returncode
 
 

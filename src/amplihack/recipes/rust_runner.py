@@ -666,8 +666,13 @@ def _write_progress_file(
         "transition": transition,
     }
     try:
-        path.write_text(json.dumps(data), encoding="utf-8")
-        path.chmod(0o600)
+        fd = os.open(
+            str(path),
+            rust_runner_execution._OPEN_CREATE_FLAGS,
+            rust_runner_execution._LOG_FILE_MODE,
+        )
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(data))
     except OSError as exc:
         logger.debug("Could not write progress file %s: %s", path, exc)
     return path
