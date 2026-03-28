@@ -1,6 +1,6 @@
 name: "default-workflow"
 description: "Complete 23-step development workflow (Steps 0-22) with full agent orchestration"
-version: "2.2.0"
+version: "2.3.0"
 author: "Amplihack Team"
 tags: ["development", "feature", "bugfix", "refactoring", "standard", "full-workflow"]
 
@@ -151,7 +151,7 @@ steps:
   - id: "step-01-prepare-workspace"
     type: "bash"
     command: |
-      cd {{repo_path}} && \
+      cd "{{repo_path}}" && \
       echo "=== Step 1: Preparing Workspace ===" && \
       echo "" && \
       echo "Current directory: $(pwd)" && \
@@ -297,7 +297,7 @@ steps:
   - id: "step-03-create-issue"
     type: "bash"
     command: |
-      cd {{repo_path}} && \
+      cd "{{repo_path}}" && \
       echo "=== Step 3: Creating GitHub Issue ===" && \
       # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
       TASK_DESC=$(cat <<EOFTASKDESC
@@ -315,7 +315,8 @@ steps:
       if ! gh label list --limit 1000 2>/dev/null | grep -qw "$LABEL_NAME"; then
         gh label create "$LABEL_NAME" \
           --color "0366d6" \
-          --description "Created by default-workflow recipe" 2>/dev/null || true
+          --description "Created by default-workflow recipe" 2>&1 || \
+          echo "WARNING: Could not create label '$LABEL_NAME' — will attempt issue creation without it" >&2
       fi && \
       gh issue create \
         --title "$ISSUE_TITLE" \
@@ -604,6 +605,30 @@ steps:
     output: "design_spec"
     parse_json: true
 
+  # --------------------------------------------------------------------------
+  # CHECKPOINT: Stage design artifacts to prevent loss if implementation fails.
+  # Design work (architecture, API, DB schema) can take significant time;
+  # losing it to a later failure wastes hours of agent work.
+  # --------------------------------------------------------------------------
+  - id: "checkpoint-after-design"
+    type: "bash"
+    command: |
+      cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}" && \
+      echo "=== Checkpoint: Staging Design Artifacts ===" && \
+      git add -A && \
+      STAGED=$(git diff --cached --name-only) && \
+      if [ -n "$STAGED" ]; then \
+        git commit -m "wip: checkpoint after design consolidation (steps 5-5e)
+
+      Automatic checkpoint to preserve design artifacts.
+      Architecture, API design, and database schema saved before documentation phase." && \
+        echo "Checkpoint commit created with $(wc -l <<< "$STAGED") file(s)" ; \
+      else \
+        echo "No design changes to checkpoint" ; \
+      fi && \
+      echo "=== Design Checkpoint Complete ==="
+    output: "design_checkpoint"
+
   # ==========================================================================
   # STEP 6: RETCON DOCUMENTATION WRITING
   # ==========================================================================
@@ -740,7 +765,7 @@ steps:
   - id: "checkpoint-after-implementation"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
+      cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}" && \
       echo "=== Checkpoint: Staging Implementation ===" && \
       git add -A && \
       STAGED=$(git diff --cached --name-only) && \
@@ -919,7 +944,7 @@ steps:
   - id: "checkpoint-after-review-feedback"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
+      cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}" && \
       echo "=== Checkpoint: Staging Review Feedback ===" && \
       git add -A && \
       STAGED=$(git diff --cached --name-only) && \
@@ -1096,7 +1121,7 @@ steps:
 
       **Commands to execute:**
       ```bash
-      cd {{repo_path}}
+      cd "{{repo_path}}"
 
       # Show changes
       git diff main...HEAD --stat
@@ -1144,7 +1169,7 @@ steps:
   - id: "step-15-commit-push"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} && \
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Step 15: Commit and Push ===" && \
       echo "" && \
       echo "--- Staging Changes ---" && \
@@ -1167,10 +1192,31 @@ steps:
       echo "--- Pushing to Remote ---" && \
       if git remote get-url origin >/dev/null 2>&1; then HAS_REMOTE=true; else HAS_REMOTE=false; fi && \
       if [ "$HAS_REMOTE" = "true" ]; then \
-        if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
-          git pull --rebase 2>/dev/null && git push ; \
+        PUSH_NEEDED=false && \
+        if git rev-parse --verify '@{u}' >/dev/null 2>&1; then \
+          if [ "$(git rev-list --count '@{u}..HEAD' 2>/dev/null || echo 1)" != "0" ]; then \
+            PUSH_NEEDED=true ; \
+          fi ; \
         else \
-          echo "WARNING: Nothing to push - branch is up to date with remote" ; \
+          echo "INFO: No upstream tracking branch — will push and set upstream" >&2 && \
+          PUSH_NEEDED=true ; \
+        fi && \
+        if [ "$PUSH_NEEDED" = "true" ]; then \
+          PUSH_OK=false && \
+          for ATTEMPT in 1 2 3; do \
+            git pull --rebase 2>/dev/null || true && \
+            if git push --set-upstream origin "$(git branch --show-current)" 2>&1; then \
+              PUSH_OK=true && break ; \
+            else \
+              echo "WARNING: Push attempt $ATTEMPT/3 failed — retrying in 2s" >&2 && \
+              sleep 2 ; \
+            fi ; \
+          done && \
+          if [ "$PUSH_OK" = "false" ]; then \
+            echo "ERROR: Push failed after 3 attempts — PR creation (step 16) will fail" >&2 && exit 1 ; \
+          fi ; \
+        else \
+          echo "INFO: Branch is up to date with remote — nothing to push" ; \
         fi ; \
       else \
         echo "Skipping push — no remote configured" >&2 ; \
@@ -1186,7 +1232,7 @@ steps:
   - id: "step-16-create-draft-pr"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}}
+      cd "{{worktree_setup.worktree_path}}"
       echo "=== Step 16: Creating Draft PR ===" >&2
 
       # Guard: skip PR creation if no remote (#3668)
@@ -1538,7 +1584,7 @@ steps:
   - id: "step-18c-push-feedback-changes"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} && \
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Pushing Review Feedback Changes ===" && \
       git add -A && \
       if [ -n "$(git diff --cached --name-only)" ]; then \
@@ -1553,10 +1599,18 @@ steps:
       fi && \
       if git remote get-url origin >/dev/null 2>&1; then HAS_REMOTE=true; else HAS_REMOTE=false; fi && \
       if [ "$HAS_REMOTE" = "true" ]; then \
-        if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
-          git pull --rebase 2>/dev/null && git push ; \
-        else \
-          echo "WARNING: Nothing to push - branch is up to date with remote" ; \
+        PUSH_OK=false && \
+        for ATTEMPT in 1 2 3; do \
+          git pull --rebase 2>/dev/null || true && \
+          if git push 2>&1; then \
+            PUSH_OK=true && break ; \
+          else \
+            echo "WARNING: Push attempt $ATTEMPT/3 failed — retrying in 2s" >&2 && \
+            sleep 2 ; \
+          fi ; \
+        done && \
+        if [ "$PUSH_OK" = "false" ]; then \
+          echo "ERROR: Push failed after 3 attempts" >&2 && exit 1 ; \
         fi ; \
       else \
         echo "Skipping push — no remote configured" >&2 ; \
@@ -1639,7 +1693,7 @@ steps:
     type: "bash"
     command: |
       echo "=== ZERO-BS VERIFICATION ===" && \
-      cd {{worktree_setup.worktree_path}} && \
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "" && \
       echo "Scanning for Zero-BS violations..." && \
       echo "" && \
@@ -1733,14 +1787,26 @@ steps:
   - id: "step-20b-push-cleanup"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} && \
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Pushing Cleanup Changes ===" && \
       git add -A && \
       if ! git diff --cached --quiet; then \
         git commit -m "final cleanup pass" && \
         if git remote get-url origin >/dev/null 2>&1; then HAS_REMOTE=true; else HAS_REMOTE=false; fi && \
         if [ "$HAS_REMOTE" = "true" ]; then \
-          git pull --rebase 2>/dev/null && git push ; \
+          PUSH_OK=false && \
+          for ATTEMPT in 1 2 3; do \
+            git pull --rebase 2>/dev/null || true && \
+            if git push 2>&1; then \
+              PUSH_OK=true && break ; \
+            else \
+              echo "WARNING: Cleanup push attempt $ATTEMPT/3 failed — retrying in 2s" >&2 && \
+              sleep 2 ; \
+            fi ; \
+          done && \
+          if [ "$PUSH_OK" = "false" ]; then \
+            echo "ERROR: Cleanup push failed after 3 attempts" >&2 && exit 1 ; \
+          fi ; \
         else \
           echo "Skipping push — no remote configured" >&2 ; \
         fi ; \
@@ -1826,7 +1892,7 @@ steps:
   - id: "step-21-pr-ready"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} && \
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Step 20: Converting PR to Ready ===" && \
       echo "" && \
       echo "--- Verifying All Steps Complete ---" && \
@@ -1889,7 +1955,7 @@ steps:
   - id: "step-22b-final-status"
     type: "bash"
     command: |
-      cd {{repo_path}} && \
+      cd "{{repo_path}}" && \
       echo "=== WORKFLOW COMPLETE ===" && \
       echo "" && \
       if git remote get-url origin >/dev/null 2>&1; then HAS_REMOTE=true; else HAS_REMOTE=false; fi && \
