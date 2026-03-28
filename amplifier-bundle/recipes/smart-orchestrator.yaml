@@ -33,6 +33,39 @@ context:
 
 steps:
   # ─────────────────────────────────────────────────────────────────────────
+  # Phase 0: Pre-flight Validation
+  # ─────────────────────────────────────────────────────────────────────────
+  - id: "preflight-validation"
+    type: "bash"
+    command: |
+      ERRORS=""
+      REPO="{{repo_path}}"
+      TASK="{{task_description}}"
+      if [ -z "$TASK" ]; then
+        ERRORS="${ERRORS}\n  ✗ task_description is empty"
+      fi
+      if [ ! -d "$REPO" ]; then
+        ERRORS="${ERRORS}\n  ✗ repo_path '$REPO' does not exist"
+      elif ! git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1; then
+        ERRORS="${ERRORS}\n  ✗ repo_path '$REPO' is not a git repository"
+      fi
+      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
+      if [ -z "$HELPER_PATH" ] || [ ! -f "$HELPER_PATH" ]; then
+        ERRORS="${ERRORS}\n  ✗ Cannot find orch_helper.py — set AMPLIHACK_HOME to a valid amplihack root"
+      fi
+      if ! command -v recipe-runner-rs >/dev/null 2>&1 && [ ! -f "$HOME/.cargo/bin/recipe-runner-rs" ]; then
+        ERRORS="${ERRORS}\n  ✗ recipe-runner-rs not found (run: cargo install --git https://github.com/rysweet/amplihack-recipe-runner)"
+      fi
+      if [ -n "$ERRORS" ]; then
+        echo "=== SMART-ORCHESTRATOR PRE-FLIGHT FAILED ===" >&2
+        printf "%b\n" "$ERRORS" >&2
+        echo "Restart: run_recipe_by_name('smart-orchestrator', user_context={'task_description': '...', 'repo_path': '...'}, progress=True)" >&2
+        exit 1
+      fi
+      echo "=== Pre-flight passed ==="
+    output: "preflight_status"
+
+  # ─────────────────────────────────────────────────────────────────────────
   # Phase 1: Classify & Decompose
   # ─────────────────────────────────────────────────────────────────────────
 

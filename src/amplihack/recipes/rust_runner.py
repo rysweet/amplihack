@@ -833,6 +833,8 @@ def _execute_rust_command(
                 stderr_tail = "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
             raise RuntimeError(
                 f"Rust recipe runner failed (exit {returncode}): {stderr_tail or 'no stderr'}"
+                + (f"\n\n  Log file: {log_path}" if log_path else "")
+                + "\n  To retry, run the same run_recipe_by_name() call again."
             )
         raise RuntimeError(
             f"Rust recipe runner returned unparseable output (exit {returncode}): "

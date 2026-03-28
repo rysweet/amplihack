@@ -74,6 +74,31 @@ context:
 
 steps:
   # ==========================================================================
+  # PRE-FLIGHT VALIDATION
+  # ==========================================================================
+  - id: "preflight-validation"
+    type: "bash"
+    command: |
+      ERRORS=""
+      REPO="{{repo_path}}"
+      if [ ! -d "$REPO" ]; then
+        ERRORS="${ERRORS}\n  ✗ repo_path '$REPO' does not exist"
+      elif ! git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1; then
+        ERRORS="${ERRORS}\n  ✗ repo_path '$REPO' is not a git repository"
+      fi
+      if [ -z "{{task_description}}" ]; then
+        ERRORS="${ERRORS}\n  ✗ task_description is empty"
+      fi
+      if [ -n "$ERRORS" ]; then
+        echo "=== INVESTIGATION-WORKFLOW PRE-FLIGHT FAILED ===" >&2
+        printf "%b\n" "$ERRORS" >&2
+        echo "Restart: run_recipe_by_name('investigation-workflow', user_context={...}, progress=True)" >&2
+        exit 1
+      fi
+      echo "=== Pre-flight passed ==="
+    output: "preflight_status"
+
+  # ==========================================================================
   # INITIALIZATION: Track start time for efficiency metrics
   # ==========================================================================
   - id: "init-tracking"
