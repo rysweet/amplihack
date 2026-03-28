@@ -2,6 +2,161 @@
 
 This file documents non-obvious problems, solutions, and patterns discovered during amplihack development. Review and update this regularly, removing outdated entries or those replaced by better practices, code, or tools. Update entries where best practices have evolved.
 
+## Recipe Runner Bool Coercion: Always Use `== 'true'` Not `== True` (2026-03-28)
+
+### Issue
+
+Recipe YAML conditions like `bug_hunt == True` silently failed — steps never executed despite the context variable being truthy. This caused bug-hunt steps in `code-atlas`, `quality-audit-cycle`, and `investigation-workflow` recipes to never run.
+
+### Root Cause
+
+The recipe runner coerces Python booleans to lowercase strings before storing them in the context (`True` → `"true"`, `False` → `"false"`). `simpleeval` then resolves the bare Python name `True` as the Python boolean `True`, so `"true" == True` evaluates to `False`. The mismatch is invisible — no error, no warning, just a silently skipped step.
+
+Additionally, dot-notation access on context dicts (e.g., `strategy.type`) throws an `AttributeError` when `strategy` is `None` or missing, causing the entire condition to fail.
+
+### Solution
+
+**PRs #3649, #3645, #3651** (merged 2026-03-27/28):
+
+- Changed all `== True` / `== False` condition comparisons to `== 'true'` / `== 'false'` in YAML recipes.
+- Added falsy guards for dot-notation access: `strategy.type` → `strategy and strategy.type`.
+- Added safety wrapping in the condition evaluator to convert booleans to their lowercase string form before evaluation.
+
+### Key Learnings
+
+1. **The recipe runner string-coerces bools**: `True` in Python context becomes `"true"` in recipe context. Write conditions as `== 'true'`, never `== True`.
+2. **Dot-notation access is not safe when the parent is missing**: Always guard with `parent and parent.child` in conditions.
+3. **Silent failure is the danger**: Condition evaluation failures suppress rather than raise errors, so broken conditions look identical to "step not triggered".
+4. **All recipe files were affected**: A single evaluator bug propagated across `code-atlas`, `quality-audit-cycle`, `investigation-workflow`, `qa-workflow`, `consensus-workflow` recipes.
+
+### Prevention
+
+- Use `== 'true'` / `== 'false'` (lowercase strings) for all boolean checks in YAML recipe conditions.
+- Guard any dot-notation access: `parent and parent.field` before accessing nested fields.
+- Write unit tests that assert steps ARE triggered (not just that they don't crash) to catch silent skips.
+
+---
+
+## Worktree Isolation: Silent Fallback Lands Changes in Wrong Directory (2026-03-28)
+
+### Issue
+
+`default-workflow` changes were landing in the main repository directory instead of the intended worktree, causing cross-contamination between concurrent branches.
+
+### Root Cause
+
+**PR #3693** (merged 2026-03-27) identified two bugs:
+
+1. **Silent fallback pattern**: `step-04-setup-worktree` had a fallback that continued in the main repo when worktree creation failed, instead of hard-failing. This meant errors were hidden and work happened in the wrong place.
+2. **Missing `working_dir` on agent steps**: Agent steps that executed after worktree setup did not have an explicit `working_dir` set, so they defaulted to the recipe runner's launch directory (the main repo root), not the worktree.
+
+### Solution
+
+- Removed the silent fallback; worktree setup now fails loudly if the worktree cannot be created.
+- Added explicit `working_dir: "{{ worktree_path }}"` to all agent steps that run post-worktree-setup.
+
+### Key Learnings
+
+1. **Silent fallbacks mask failures**: A "safe" fallback to the main repo is worse than a hard failure — it silently corrupts work.
+2. **`working_dir` must be explicit**: Recipe runner agent steps do not inherit the "current" working directory from previous steps; each step needs it stated explicitly.
+3. **Worktree isolation is a contract**: If a workflow creates a worktree, every subsequent step must honor that isolation contract.
+
+### Prevention
+
+- Never use "fallback to main repo" patterns in worktree setup steps.
+- Set `working_dir` explicitly on every agent step that follows worktree creation.
+- Add an assertion step after worktree setup that verifies the active directory is the worktree path before proceeding.
+
+---
+
+## New Repo Bootstrap: Never Assume `origin/main` Exists (2026-03-28)
+
+### Issue
+
+`default-workflow` and `consensus-workflow` crashed at the worktree-setup or push steps on new repositories that had no `origin/main` branch yet. Error: `fatal: 'origin/main' not found`.
+
+### Root Cause
+
+Steps assumed that `git push -u origin HEAD` and `git fetch origin main` would always succeed, and that `origin/main` could be used as a base for worktree creation.
+
+### Solution
+
+**PRs #3620, #3650** (merged 2026-03-27/28):
+
+- Added a bootstrap detection check: `git ls-remote --exit-code origin main` before attempting to fetch or push.
+- When the remote does not have `main`, the workflow skips the branch-base check and uses the local HEAD as the worktree base.
+- Replaced unguarded `git push -u origin` calls with conditional logic.
+
+### Key Learnings
+
+1. **New repos are a valid state**: Don't treat missing `origin/main` as an error — detect it and adapt.
+2. **`git ls-remote` is cheap**: Use it to probe remote state before assuming it matches local expectations.
+3. **Bootstrap paths need explicit guarding**: Any step that touches a remote must handle the "no remote yet" case.
+
+### Prevention
+
+- Always check `git ls-remote --exit-code origin <branch>` before any step that fetches or pushes to a specific remote branch.
+- Document the "new repo" code path explicitly in workflow comments so it isn't accidentally removed.
+
+---
+
+## Recipe Runner Output Capture for Nested Workflows (2026-03-28)
+
+### Issue
+
+When the recipe runner launched nested workflows (sub-recipes called from a parent recipe), the parent agent had no way to monitor their progress. Output from child recipes was lost; the parent appeared stalled.
+
+### Root Cause
+
+**PR #3712** (merged 2026-03-28): The recipe runner did not tee subprocess output to a shared log file. The parent agent could only poll a status flag, not observe actual output lines as they arrived.
+
+### Solution
+
+- All workflow output is now teed to a per-run log file that the parent agent can `tail -f` or poll.
+- Heartbeat lines are written on a fixed interval so the parent can distinguish "running slowly" from "hung".
+
+### Key Learnings
+
+1. **Nested workflow output must be observable**: Parent agents cannot block-wait for child completion; they need live visibility.
+2. **Tee early, tee everything**: Routing output through `tee` at the subprocess boundary is simpler and more reliable than post-hoc log parsing.
+3. **Heartbeats prevent false-stall diagnosis**: Regular progress markers let the parent distinguish slow progress from a hung process.
+
+### Prevention
+
+- When spawning any long-running subprocess from a recipe step, tee its stdout/stderr to a named log file.
+- Emit a heartbeat (e.g., `# still running — step N of M`) at regular intervals from nested workflows.
+
+---
+
+## Recipe Runner Auto-Version Check: Binary Existence ≠ Binary Currency (2026-03-28)
+
+### Issue
+
+Systems with an old `recipe-runner-rs` binary hit cryptic `AttributeError: .strip() can only be called on strings` failures at runtime. The startup check only verified the binary _existed_, not that it was recent enough.
+
+### Root Cause
+
+**PR #3705** (merged 2026-03-28): The binary version check was missing. Old binaries had a different return type for workstream counts (integer instead of string), which caused `.strip()` to fail with an unhelpful error message far from the actual cause.
+
+### Solution
+
+- Added a version check at startup: the runner now calls `recipe-runner-rs --version` and compares against the minimum required version embedded in the Python wrapper.
+- If the binary is outdated, the runner prints a clear upgrade message and exits before any recipe execution begins.
+
+### Key Learnings
+
+1. **Binary existence checks are insufficient**: Always check the version of external binaries that the code depends on, not just whether they exist.
+2. **Type mismatches from old binaries produce misleading errors**: A `.strip()` failure looks like a bug in the caller, not in the dependency.
+3. **Startup validation is cheaper than mid-run failures**: A clear error at launch is vastly better than a cryptic crash mid-recipe.
+
+### Prevention
+
+- Embed a `MINIMUM_BINARY_VERSION` constant in any Python wrapper around an external binary.
+- Check version at startup with a clear, actionable error message if the check fails.
+- Include the binary version in all bug report templates to simplify diagnosis.
+
+---
+
 ## Cleanup Agent Gap: Root Directory Organization (2026-01-12)
 
 ### Issue
