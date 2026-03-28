@@ -20,6 +20,11 @@ from amplihack.recipes.models import RecipeResult, StepResult, StepStatus
 
 logger = logging.getLogger(__name__)
 
+# Flags for atomic, symlink-safe file creation in /tmp.
+_OPEN_CREATE_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+_OPEN_APPEND_FLAGS = os.O_WRONLY | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0)
+_LOG_FILE_MODE = 0o600
+
 
 # Shared step-transition prefix for filtering JSONL markers from meaningful stderr.
 _STEP_TRANSITION_PREFIX = '{"type":"step_transition"'
@@ -189,7 +194,9 @@ def _write_progress_file(
         "updated_at": time.time(),
     }
     try:
-        path.write_text(json.dumps(payload), encoding="utf-8")
+        fd = os.open(str(path), _OPEN_CREATE_FLAGS, _LOG_FILE_MODE)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(payload))
     except OSError as error:
         logger.debug("Could not write progress file %s: %s", path, error)
     return path
@@ -229,7 +236,8 @@ def _stream_process_output_with_progress(
     log_lock = threading.Lock()
     if log_file_path is not None:
         try:
-            log_fh = open(log_file_path, "a", encoding="utf-8")  # noqa: SIM115
+            fd = os.open(str(log_file_path), _OPEN_APPEND_FLAGS, _LOG_FILE_MODE)
+            log_fh = os.fdopen(fd, "a", encoding="utf-8")
         except OSError as exc:
             logger.warning("Could not open recipe log file %s: %s", log_file_path, exc)
 
@@ -241,8 +249,8 @@ def _stream_process_output_with_progress(
             try:
                 log_fh.write(line)
                 log_fh.flush()
-            except OSError:
-                pass
+            except OSError as exc:
+                logger.debug("Log write failed for %s: %s", log_file_path, exc)
 
     def _drain_stdout() -> None:
         if process.stdout is None:
@@ -259,7 +267,7 @@ def _stream_process_output_with_progress(
         for line in process.stderr:
             stderr_chunks.append(line)
             print(line, end="", file=sys.stderr, flush=True)
-            _log_write(line)
+            _log_write(f"[stderr] {line}")
             stripped = line.strip()
             if stripped.startswith("▶"):
                 state["current_step"] += 1
@@ -323,8 +331,8 @@ def _stream_process_output_with_progress(
                 )
                 log_fh.flush()
                 log_fh.close()
-            except OSError:
-                pass
+            except OSError as exc:
+                logger.debug("Log footer/close failed for %s: %s", log_file_path, exc)
     return "".join(stdout_chunks), "".join(stderr_chunks), returncode
 
 
@@ -346,10 +354,11 @@ def _run_rust_process(
         log_file_path = _recipe_log_path(recipe_name)
         log_path = str(log_file_path)
         # Write a header so the log is immediately identifiable.
+        # Use os.open() with O_NOFOLLOW for atomic permissions (no TOCTOU race).
         try:
-            with open(log_file_path, "w", encoding="utf-8") as fh:
+            fd = os.open(str(log_file_path), _OPEN_CREATE_FLAGS, _LOG_FILE_MODE)
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
                 fh.write(f"--- amplihack recipe log: {recipe_name} (pid {os.getpid()}) ---\n")
-            os.chmod(log_file_path, 0o600)
         except OSError as exc:
             logger.warning("Could not create recipe log file %s: %s", log_file_path, exc)
             log_file_path = None
@@ -358,12 +367,11 @@ def _run_rust_process(
         # Set AMPLIHACK_RECIPE_LOG so child processes can append to the same log.
         if log_path is not None:
             env["AMPLIHACK_RECIPE_LOG"] = log_path
-
-        print(
-            f"[amplihack] recipe log: {log_path}",
-            file=sys.stderr,
-            flush=True,
-        )
+            print(
+                f"[amplihack] recipe log: {log_path}",
+                file=sys.stderr,
+                flush=True,
+            )
 
         process = subprocess.Popen(
             cmd,
