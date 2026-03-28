@@ -24,7 +24,7 @@ import logging
 import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -429,7 +429,7 @@ class HierarchicalMemory:
 
         node_id = _make_id()
         tags = tags or []
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Build metadata with category and any temporal info
         meta = {"category": category.value}
@@ -497,7 +497,7 @@ class HierarchicalMemory:
             raise ValueError("content cannot be empty")
 
         episode_id = _make_id()
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
 
         self.connection.execute(
             """
@@ -1860,7 +1860,7 @@ class HierarchicalMemory:
         """
         export_data: dict[str, Any] = {
             "agent_name": self.agent_name,
-            "exported_at": datetime.utcnow().isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "format_version": "1.1",
             "semantic_nodes": [],
             "episodic_nodes": [],

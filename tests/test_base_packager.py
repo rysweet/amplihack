@@ -5,7 +5,7 @@ Tests all common file operation methods shared between UVXPackager and Filesyste
 """
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -67,8 +67,8 @@ def sample_bundle(sample_agent):
         },
         metadata={"preferences": {"test": "value"}},
         status="ready",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -413,8 +413,8 @@ It has no tests or documentation, just the core agent definition.""",
         manifest={"bundle": {}, "agents": []},
         metadata={},
         status="ready",
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
     base_packager.write_all_common_files(minimal_bundle, temp_package_dir)

@@ -19,7 +19,7 @@ Public API (the "studs"):
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Import workflow state management
@@ -284,7 +284,7 @@ class WorkflowGate:
         metrics_file = self.metrics_dir / "workflow_enforcement_metrics.jsonl"
 
         entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "session_id": session_id,
             "decision": decision,
             "reason": reason,

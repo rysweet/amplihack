@@ -15,7 +15,7 @@ Output:
 import argparse
 import json
 from collections import defaultdict
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -150,7 +150,7 @@ def calculate_metrics(analysis: dict[str, Any]) -> dict[str, Any]:
 
 def generate_markdown_report(analysis: dict[str, Any], metrics: dict[str, Any]) -> str:
     """Generate markdown report from analysis and metrics."""
-    report_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    report_time = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     # Most skipped steps
     step_data = analysis["step_data"]

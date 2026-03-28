@@ -1,7 +1,7 @@
 """Tests for skill index building."""
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -155,7 +155,7 @@ def test_save_index(tmp_path):
 
     index_data = {
         "version": "1.0",
-        "generated": datetime.utcnow().isoformat() + "Z",
+        "generated": datetime.now(UTC).isoformat() + "Z",
         "skills": [
             {
                 "name": "test-skill",

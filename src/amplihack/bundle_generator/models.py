@@ -6,7 +6,7 @@ Provides type-safe data structures for all stages of the bundle generation pipel
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -92,7 +92,7 @@ class GeneratedAgent:
     dependencies: list[str] = field(default_factory=list)
     tests: list[str] = field(default_factory=list)  # Test file contents
     documentation: str = ""  # Additional docs
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     generation_time_seconds: float = 0.0
 
     def __post_init__(self):
@@ -120,8 +120,8 @@ class AgentBundle:
     manifest: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
     status: Literal["pending", "processing", "ready", "failed"] = "pending"
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __post_init__(self):
         """Validate bundle."""
@@ -153,7 +153,7 @@ class PackagedBundle:
     checksum: str = ""
     size_bytes: int = 0
     uvx_metadata: dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __post_init__(self):
         """Validate packaged bundle."""
