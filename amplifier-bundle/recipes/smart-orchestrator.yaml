@@ -36,6 +36,37 @@ steps:
   # Phase 1: Classify & Decompose
   # ─────────────────────────────────────────────────────────────────────────
 
+  - id: "preactivate-workflow"
+    type: "bash"
+    command: |
+      HOOKS_DIR=""
+      if ! HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir)"; then
+          echo "WARNING: hooks-dir runtime asset unavailable — early workflow semaphore is disabled for this run." >&2
+          printf '%s' "unavailable"
+          exit 0
+      fi
+      export HOOKS_DIR
+      python3 - <<'PYEOF'
+      import io, os, sys
+      hooks_dir = os.environ.get("HOOKS_DIR", "")
+      activated = False
+      if hooks_dir:
+          _saved_stdout = sys.stdout
+          sys.stdout = io.StringIO()
+          try:
+              sys.path.insert(0, hooks_dir)
+              from dev_intent_router import set_workflow_active
+
+              set_workflow_active("orchestration", 0)
+              activated = True
+          except Exception:
+              activated = False
+          finally:
+              sys.stdout = _saved_stdout
+      print("active" if activated else "unavailable")
+      PYEOF
+    output: "workflow_preactivated"
+
   - id: "classify-and-decompose"
     type: "agent"
     agent: "amplihack:core:architect"

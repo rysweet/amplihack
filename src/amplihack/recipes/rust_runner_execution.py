@@ -23,6 +23,8 @@ _RECIPE_NAME_SANITIZE_RE = re.compile(r"[^a-zA-Z0-9_]")
 
 _ALLOWED_RUST_ENV_VARS = {
     "AMPLIHACK_AGENT_BINARY",
+    "AMPLIHACK_COPILOT_REAL_BINARY",
+    "AMPLIHACK_EXECUTION_ROOT",
     "AMPLIHACK_HOME",
     "AMPLIHACK_MAX_DEPTH",
     "AMPLIHACK_MAX_SESSIONS",
@@ -68,10 +70,73 @@ _STATUS_MAP = {
 }
 
 
+def _copilot_wrapper_dir(execution_root: str) -> Path:
+    """Return the managed Copilot wrapper directory for an execution root."""
+    return Path(execution_root).resolve() / ".amplihack" / "copilot-compat"
+
+
+def _is_copilot_wrapper_path(candidate: str | None, execution_root: str | None) -> bool:
+    """Return True when *candidate* points at the managed Copilot compat wrapper."""
+    if not candidate or not execution_root:
+        return False
+    try:
+        wrapper_dir = _copilot_wrapper_dir(execution_root)
+        resolved = Path(candidate).resolve()
+    except OSError:
+        return False
+    return resolved.parent == wrapper_dir
+
+
+def _strip_path_entry(path_value: str, blocked_dir: Path) -> str:
+    """Return PATH with *blocked_dir* removed, preserving entry order."""
+    blocked = str(blocked_dir)
+    entries: list[str] = []
+    for entry in path_value.split(os.pathsep):
+        if not entry:
+            continue
+        try:
+            if str(Path(entry).resolve()) == blocked:
+                continue
+        except OSError:
+            if entry == blocked:
+                continue
+        entries.append(entry)
+    return os.pathsep.join(entries)
+
+
+def _resolve_real_copilot_binary(env: dict[str, str], which: Callable[..., str | None]) -> str | None:
+    """Resolve the actual Copilot binary rather than the managed wrapper."""
+    execution_root = env.get("AMPLIHACK_EXECUTION_ROOT")
+    configured = env.get("AMPLIHACK_COPILOT_REAL_BINARY")
+    if configured and not _is_copilot_wrapper_path(configured, execution_root):
+        return configured
+
+    search_path = env.get("PATH")
+    candidate = which("copilot", path=search_path)
+    if candidate and not _is_copilot_wrapper_path(candidate, execution_root):
+        return candidate
+
+    if execution_root and search_path:
+        stripped_path = _strip_path_entry(search_path, _copilot_wrapper_dir(execution_root))
+        if stripped_path and stripped_path != search_path:
+            fallback = which("copilot", path=stripped_path)
+            if fallback and not _is_copilot_wrapper_path(fallback, execution_root):
+                return fallback
+
+    if candidate and _is_copilot_wrapper_path(candidate, execution_root):
+        raise RuntimeError(
+            "Resolved Copilot binary points at the managed compat wrapper, "
+            "but no real Copilot binary was found behind it."
+        )
+
+    return None
+
+
 def build_rust_env(
     *,
-    wrapper_factory: Callable[[str], str],
+    wrapper_factory: Callable[[str, str], str],
     which: Callable[..., str | None],
+    execution_root: str | None = None,
 ) -> dict[str, str]:
     """Return the minimal subprocess environment for the Rust runner."""
     env: dict[str, str] = {}
@@ -80,14 +145,27 @@ def build_rust_env(
         if value is not None:
             env[key] = value
 
+    if execution_root is not None:
+        env["AMPLIHACK_EXECUTION_ROOT"] = execution_root
+
     if env.get("AMPLIHACK_AGENT_BINARY") == "copilot":
-        real_copilot = which("copilot", path=env.get("PATH"))
+        real_copilot = _resolve_real_copilot_binary(env, which)
         if real_copilot:
-            wrapper_dir = wrapper_factory(real_copilot)
-            existing_path = env.get("PATH", "")
-            env["PATH"] = (
-                f"{wrapper_dir}{os.pathsep}{existing_path}" if existing_path else wrapper_dir
-            )
+            wrapper_root = env.get("AMPLIHACK_EXECUTION_ROOT")
+            if not wrapper_root:
+                raise RuntimeError(
+                    "AMPLIHACK_EXECUTION_ROOT is required for nested Copilot wrapper setup"
+                )
+            if not Path(wrapper_root).exists():
+                raise RuntimeError(
+                    f"AMPLIHACK_EXECUTION_ROOT does not exist for nested Copilot wrapper setup: {wrapper_root}"
+                )
+            env["AMPLIHACK_COPILOT_REAL_BINARY"] = real_copilot
+            wrapper_dir = wrapper_factory(real_copilot, wrapper_root)
+            path_entries = [entry for entry in env.get("PATH", "").split(os.pathsep) if entry]
+            if wrapper_dir not in path_entries:
+                path_entries.insert(0, wrapper_dir)
+            env["PATH"] = os.pathsep.join(path_entries)
 
     return env
 
