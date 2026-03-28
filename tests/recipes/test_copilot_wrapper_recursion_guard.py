@@ -5,13 +5,27 @@ from __future__ import annotations
 import importlib.util
 import os
 import sys
+import types
 from pathlib import Path
 
 import pytest
 
+_SRC_ROOT = Path(__file__).resolve().parents[2] / "src" / "amplihack" / "recipes"
+_MODELS_PATH = _SRC_ROOT / "models.py"
 _MODULE_PATH = (
-    Path(__file__).resolve().parents[2] / "src" / "amplihack" / "recipes" / "rust_runner_execution.py"
+    _SRC_ROOT / "rust_runner_execution.py"
 )
+
+sys.modules.setdefault("amplihack", types.ModuleType("amplihack"))
+sys.modules.setdefault("amplihack.recipes", types.ModuleType("amplihack.recipes"))
+
+_MODELS_SPEC = importlib.util.spec_from_file_location("amplihack.recipes.models", _MODELS_PATH)
+if _MODELS_SPEC is None or _MODELS_SPEC.loader is None:  # pragma: no cover - import guard
+    raise RuntimeError(f"Could not load recipe models from {_MODELS_PATH}")
+_MODELS_MODULE = importlib.util.module_from_spec(_MODELS_SPEC)
+sys.modules["amplihack.recipes.models"] = _MODELS_MODULE
+_MODELS_SPEC.loader.exec_module(_MODELS_MODULE)
+
 _SPEC = importlib.util.spec_from_file_location("amplihack_rust_runner_execution", _MODULE_PATH)
 if _SPEC is None or _SPEC.loader is None:  # pragma: no cover - import guard
     raise RuntimeError(f"Could not load rust_runner_execution from {_MODULE_PATH}")
