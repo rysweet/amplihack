@@ -2,11 +2,23 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
+import sys
+from pathlib import Path
 
 import pytest
 
-from amplihack.recipes.rust_runner_execution import build_rust_env
+_MODULE_PATH = (
+    Path(__file__).resolve().parents[2] / "src" / "amplihack" / "recipes" / "rust_runner_execution.py"
+)
+_SPEC = importlib.util.spec_from_file_location("amplihack_rust_runner_execution", _MODULE_PATH)
+if _SPEC is None or _SPEC.loader is None:  # pragma: no cover - import guard
+    raise RuntimeError(f"Could not load rust_runner_execution from {_MODULE_PATH}")
+_MODULE = importlib.util.module_from_spec(_SPEC)
+sys.modules.setdefault("amplihack_rust_runner_execution", _MODULE)
+_SPEC.loader.exec_module(_MODULE)
+build_rust_env = _MODULE.build_rust_env
 
 
 def test_build_rust_env_recovers_when_path_already_points_at_wrapper(tmp_path):
