@@ -1,6 +1,6 @@
 name: "default-workflow"
 description: "Complete 23-step development workflow (Steps 0-22) with full agent orchestration"
-version: "2.2.0"
+version: "2.3.0"
 author: "Amplihack Team"
 tags: ["development", "feature", "bugfix", "refactoring", "standard", "full-workflow"]
 
@@ -315,7 +315,8 @@ steps:
       if ! gh label list --limit 1000 2>/dev/null | grep -qw "$LABEL_NAME"; then
         gh label create "$LABEL_NAME" \
           --color "0366d6" \
-          --description "Created by default-workflow recipe" 2>/dev/null || true
+          --description "Created by default-workflow recipe" 2>&1 || \
+          echo "WARNING: Could not create label '$LABEL_NAME' — will attempt issue creation without it" >&2
       fi && \
       gh issue create \
         --title "$ISSUE_TITLE" \
@@ -603,6 +604,30 @@ steps:
       ```
     output: "design_spec"
     parse_json: true
+
+  # --------------------------------------------------------------------------
+  # CHECKPOINT: Stage design artifacts to prevent loss if implementation fails.
+  # Design work (architecture, API, DB schema) can take significant time;
+  # losing it to a later failure wastes hours of agent work.
+  # --------------------------------------------------------------------------
+  - id: "checkpoint-after-design"
+    type: "bash"
+    command: |
+      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
+      echo "=== Checkpoint: Staging Design Artifacts ===" && \
+      git add -A && \
+      STAGED=$(git diff --cached --name-only) && \
+      if [ -n "$STAGED" ]; then \
+        git commit -m "wip: checkpoint after design consolidation (steps 5-5e)
+
+      Automatic checkpoint to preserve design artifacts.
+      Architecture, API design, and database schema saved before documentation phase." && \
+        echo "Checkpoint commit created with $(wc -l <<< "$STAGED") file(s)" ; \
+      else \
+        echo "No design changes to checkpoint" ; \
+      fi && \
+      echo "=== Design Checkpoint Complete ==="
+    output: "design_checkpoint"
 
   # ==========================================================================
   # STEP 6: RETCON DOCUMENTATION WRITING
@@ -1167,10 +1192,31 @@ steps:
       echo "--- Pushing to Remote ---" && \
       if git remote get-url origin >/dev/null 2>&1; then HAS_REMOTE=true; else HAS_REMOTE=false; fi && \
       if [ "$HAS_REMOTE" = "true" ]; then \
-        if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
-          git pull --rebase 2>/dev/null && git push ; \
+        PUSH_NEEDED=false && \
+        if git rev-parse --verify '@{u}' >/dev/null 2>&1; then \
+          if [ "$(git rev-list --count '@{u}..HEAD' 2>/dev/null || echo 1)" != "0" ]; then \
+            PUSH_NEEDED=true ; \
+          fi ; \
         else \
-          echo "WARNING: Nothing to push - branch is up to date with remote" ; \
+          echo "INFO: No upstream tracking branch — will push and set upstream" >&2 && \
+          PUSH_NEEDED=true ; \
+        fi && \
+        if [ "$PUSH_NEEDED" = "true" ]; then \
+          PUSH_OK=false && \
+          for ATTEMPT in 1 2 3; do \
+            if git pull --rebase 2>/dev/null; true; then true; fi && \
+            if git push --set-upstream origin "$(git branch --show-current)" 2>&1; then \
+              PUSH_OK=true && break ; \
+            else \
+              echo "WARNING: Push attempt $ATTEMPT/3 failed — retrying in 2s" >&2 && \
+              sleep 2 ; \
+            fi ; \
+          done && \
+          if [ "$PUSH_OK" = "false" ]; then \
+            echo "ERROR: Push failed after 3 attempts — PR creation (step 16) will fail" >&2 ; \
+          fi ; \
+        else \
+          echo "INFO: Branch is up to date with remote — nothing to push" ; \
         fi ; \
       else \
         echo "Skipping push — no remote configured" >&2 ; \
@@ -1553,10 +1599,18 @@ steps:
       fi && \
       if git remote get-url origin >/dev/null 2>&1; then HAS_REMOTE=true; else HAS_REMOTE=false; fi && \
       if [ "$HAS_REMOTE" = "true" ]; then \
-        if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
-          git pull --rebase 2>/dev/null && git push ; \
-        else \
-          echo "WARNING: Nothing to push - branch is up to date with remote" ; \
+        PUSH_OK=false && \
+        for ATTEMPT in 1 2 3; do \
+          if git pull --rebase 2>/dev/null; true; then true; fi && \
+          if git push 2>&1; then \
+            PUSH_OK=true && break ; \
+          else \
+            echo "WARNING: Push attempt $ATTEMPT/3 failed — retrying in 2s" >&2 && \
+            sleep 2 ; \
+          fi ; \
+        done && \
+        if [ "$PUSH_OK" = "false" ]; then \
+          echo "ERROR: Push failed after 3 attempts" >&2 ; \
         fi ; \
       else \
         echo "Skipping push — no remote configured" >&2 ; \
@@ -1740,7 +1794,19 @@ steps:
         git commit -m "final cleanup pass" && \
         if git remote get-url origin >/dev/null 2>&1; then HAS_REMOTE=true; else HAS_REMOTE=false; fi && \
         if [ "$HAS_REMOTE" = "true" ]; then \
-          git pull --rebase 2>/dev/null && git push ; \
+          PUSH_OK=false && \
+          for ATTEMPT in 1 2 3; do \
+            if git pull --rebase 2>/dev/null; true; then true; fi && \
+            if git push 2>&1; then \
+              PUSH_OK=true && break ; \
+            else \
+              echo "WARNING: Cleanup push attempt $ATTEMPT/3 failed — retrying in 2s" >&2 && \
+              sleep 2 ; \
+            fi ; \
+          done && \
+          if [ "$PUSH_OK" = "false" ]; then \
+            echo "ERROR: Cleanup push failed after 3 attempts" >&2 ; \
+          fi ; \
         else \
           echo "Skipping push — no remote configured" >&2 ; \
         fi ; \
