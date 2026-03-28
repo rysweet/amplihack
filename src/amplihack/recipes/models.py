@@ -140,6 +140,7 @@ class RecipeResult:
     success: bool
     step_results: list[StepResult] = field(default_factory=list)
     context: dict[str, Any] = field(default_factory=dict)
+    log_path: str | None = None
 
     @property
     def output(self) -> str:

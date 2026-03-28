@@ -44,6 +44,7 @@ _ALLOWED_RUST_ENV_VARS = {
     "AMPLIHACK_MAX_DEPTH",
     "AMPLIHACK_MAX_SESSIONS",
     "AMPLIHACK_NONINTERACTIVE",
+    "AMPLIHACK_RECIPE_LOG",
     "AMPLIHACK_SESSION_DEPTH",
     "AMPLIHACK_SESSION_ID",
     "AMPLIHACK_TREE_ID",
@@ -194,24 +195,61 @@ def _write_progress_file(
     return path
 
 
+def _recipe_log_path(recipe_name: str, pid: int | None = None) -> Path:
+    """Return the persistent log file path for a recipe run.
+
+    The log captures ALL stdout and stderr from the Rust binary and its child
+    processes so the parent agent can ``tail -f`` it for live visibility.
+    """
+    if pid is None:
+        pid = os.getpid()
+    stem = Path(recipe_name).stem if ("/" in recipe_name or os.sep in recipe_name) else recipe_name
+    safe_name = _RECIPE_NAME_SANITIZE_RE.sub("_", stem)[:64]
+    return Path(tempfile.gettempdir()) / f"amplihack-recipe-{safe_name}-{pid}.log"
+
+
 def _stream_process_output_with_progress(
     process: subprocess.Popen[str],
     *,
     recipe_name: str,
+    log_file_path: Path | None = None,
 ) -> tuple[str, str, int]:
-    """Collect stdout, relay stderr live, and persist step-level progress markers."""
+    """Collect stdout, relay stderr live, and persist step-level progress markers.
+
+    When *log_file_path* is provided, ALL stdout and stderr lines are teed to
+    that file in append mode with immediate flushing (``tail -f`` friendly).
+    """
     stdout_chunks: list[str] = []
     stderr_chunks: list[str] = []
     started_at = time.time()
     state: dict[str, Any] = {"current_step": 0, "step_name": ""}
-    # Pre-compute once — avoids regex + Path construction on every marker line.
-    cached_progress_path = _progress_file_path(recipe_name)
+
+    # Open the log file once; both drain threads share it under a lock.
+    log_fh = None
+    log_lock = threading.Lock()
+    if log_file_path is not None:
+        try:
+            log_fh = open(log_file_path, "a", encoding="utf-8")  # noqa: SIM115
+        except OSError as exc:
+            logger.warning("Could not open recipe log file %s: %s", log_file_path, exc)
+
+    def _log_write(line: str) -> None:
+        """Write a line to the log file if open, with immediate flush."""
+        if log_fh is None:
+            return
+        with log_lock:
+            try:
+                log_fh.write(line)
+                log_fh.flush()
+            except OSError:
+                pass
 
     def _drain_stdout() -> None:
         if process.stdout is None:
             return
         for line in process.stdout:
             stdout_chunks.append(line)
+            _log_write(f"[stdout] {line}")
 
     # Step-transition emitter is now the module-level emit_step_transition().
 
@@ -221,6 +259,7 @@ def _stream_process_output_with_progress(
         for line in process.stderr:
             stderr_chunks.append(line)
             print(line, end="", file=sys.stderr, flush=True)
+            _log_write(line)
             stripped = line.strip()
             if stripped.startswith("▶"):
                 state["current_step"] += 1
@@ -274,6 +313,18 @@ def _stream_process_output_with_progress(
     finally:
         stdout_thread.join()
         stderr_thread.join()
+        # Write a footer and close the log file.
+        if log_fh is not None:
+            elapsed = time.time() - started_at
+            try:
+                log_fh.write(
+                    f"\n--- recipe '{recipe_name}' exited with code {returncode} "
+                    f"after {elapsed:.1f}s ---\n"
+                )
+                log_fh.flush()
+                log_fh.close()
+            except OSError:
+                pass
     return "".join(stdout_chunks), "".join(stderr_chunks), returncode
 
 
@@ -283,8 +334,37 @@ def _run_rust_process(
     progress: bool,
     env: dict[str, str],
     recipe_name: str,
-) -> tuple[str, str, int]:
+) -> tuple[str, str, int, str | None]:
+    """Run the Rust binary, optionally teeing output to a persistent log file.
+
+    Returns (stdout, stderr, returncode, log_path).  *log_path* is the
+    absolute path to the log file when *progress* is True, else ``None``.
+    """
+    log_path: str | None = None
+
     if progress:
+        log_file_path = _recipe_log_path(recipe_name)
+        log_path = str(log_file_path)
+        # Write a header so the log is immediately identifiable.
+        try:
+            with open(log_file_path, "w", encoding="utf-8") as fh:
+                fh.write(f"--- amplihack recipe log: {recipe_name} (pid {os.getpid()}) ---\n")
+            os.chmod(log_file_path, 0o600)
+        except OSError as exc:
+            logger.warning("Could not create recipe log file %s: %s", log_file_path, exc)
+            log_file_path = None
+            log_path = None
+
+        # Set AMPLIHACK_RECIPE_LOG so child processes can append to the same log.
+        if log_path is not None:
+            env["AMPLIHACK_RECIPE_LOG"] = log_path
+
+        print(
+            f"[amplihack] recipe log: {log_path}",
+            file=sys.stderr,
+            flush=True,
+        )
+
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -293,7 +373,12 @@ def _run_rust_process(
             bufsize=1,
             env=env,
         )
-        return _stream_process_output_with_progress(process, recipe_name=recipe_name)
+        stdout, stderr, returncode = _stream_process_output_with_progress(
+            process,
+            recipe_name=recipe_name,
+            log_file_path=log_file_path,
+        )
+        return stdout, stderr, returncode, log_path
 
     result = subprocess.run(
         cmd,
@@ -301,7 +386,7 @@ def _run_rust_process(
         text=True,
         env=env,
     )
-    return result.stdout, result.stderr, result.returncode
+    return result.stdout, result.stderr, result.returncode, None
 
 
 def _meaningful_stderr_tail(stderr: str) -> str:
@@ -420,7 +505,7 @@ def execute_rust_command(
             "Set the env var via the amplihack CLI dispatcher to use a different agent."
         )
 
-    stdout, stderr, returncode = _run_rust_process(
+    stdout, stderr, returncode, log_path = _run_rust_process(
         cmd,
         progress=progress,
         env=env,
@@ -437,4 +522,5 @@ def execute_rust_command(
         success=success_value,
         step_results=_build_step_results(normalized_step_results),
         context=context_data,
+        log_path=log_path,
     )
