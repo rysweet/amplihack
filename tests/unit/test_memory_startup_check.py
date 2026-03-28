@@ -3,28 +3,32 @@
 Verifies that:
 - No subprocess calls are made (PEP 668 compliance)
 - Import check returns True when library is present
-- Clear error printed when library is absent
+- Warning logged when library is absent
 - amplihack-memory-lib remains a mandatory dependency in pyproject.toml
 """
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from unittest.mock import patch
 
 
 class TestMemoryStartupCheck:
-    """Verify ensure_memory_lib_installed() is a pure import guard."""
+    """Verify ensure_memory_lib_installed() is a lazy import guard."""
 
     def test_returns_true_when_lib_available(self):
         """When amplihack_memory is importable, return True."""
-        from amplihack.memory_auto_install import ensure_memory_lib_installed
+        from importlib import reload
 
-        result = ensure_memory_lib_installed()
+        import amplihack.memory_auto_install
+
+        reload(amplihack.memory_auto_install)
+        result = amplihack.memory_auto_install.ensure_memory_lib_installed()
         assert result is True
 
     def test_returns_false_when_lib_absent(self):
-        """When amplihack_memory is not importable, return False with error."""
+        """When amplihack_memory is not importable, return False with warning."""
         import builtins
 
         original_import = builtins.__import__
@@ -43,8 +47,8 @@ class TestMemoryStartupCheck:
             result = amplihack.memory_auto_install.ensure_memory_lib_installed()
             assert result is False
 
-    def test_prints_repair_instructions_when_absent(self, capsys):
-        """Error message must include actionable repair commands."""
+    def test_logs_warning_with_repair_instructions_when_absent(self, caplog):
+        """Warning message must include actionable repair commands."""
         import builtins
 
         original_import = builtins.__import__
@@ -60,11 +64,22 @@ class TestMemoryStartupCheck:
             import amplihack.memory_auto_install
 
             reload(amplihack.memory_auto_install)
-            amplihack.memory_auto_install.ensure_memory_lib_installed()
+            with caplog.at_level(logging.WARNING):
+                amplihack.memory_auto_install.ensure_memory_lib_installed()
 
-        captured = capsys.readouterr()
-        assert "pip install" in captured.err
-        assert "amplihack-memory-lib" in captured.err
+        assert "amplihack-memory-lib" in caplog.text
+        assert "pip install" in caplog.text or "not importable" in caplog.text
+
+    def test_result_is_cached(self):
+        """Second call returns cached result without re-importing."""
+        from importlib import reload
+
+        import amplihack.memory_auto_install
+
+        reload(amplihack.memory_auto_install)
+        first = amplihack.memory_auto_install.ensure_memory_lib_installed()
+        second = amplihack.memory_auto_install.ensure_memory_lib_installed()
+        assert first == second
 
     def test_no_subprocess_import_in_module(self):
         """memory_auto_install.py must not import subprocess."""

@@ -5,7 +5,7 @@ for Phase 2, with scale optimization planned for Phase 6.
 """
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -49,7 +49,7 @@ class SkillIndexBuilder:
         # Build new index
         index_data = {
             "version": "1.0",
-            "generated": datetime.utcnow().isoformat() + "Z",
+            "generated": datetime.now(UTC).isoformat() + "Z",
             "skills": [],
         }
 
@@ -112,7 +112,7 @@ class SkillIndexBuilder:
         except Exception:
             return {
                 "version": "1.0",
-                "generated": datetime.utcnow().isoformat() + "Z",
+                "generated": datetime.now(UTC).isoformat() + "Z",
                 "skills": [],
                 "total_skills": 0,
             }

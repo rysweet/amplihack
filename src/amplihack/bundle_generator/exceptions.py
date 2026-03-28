@@ -32,7 +32,7 @@ class BundleGeneratorError(Exception):
         self.error_code = error_code
         self.details = details or {}
         self.recovery_suggestion = recovery_suggestion
-        self.timestamp = datetime.datetime.utcnow()
+        self.timestamp = datetime.datetime.now(datetime.UTC)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for logging/API responses."""

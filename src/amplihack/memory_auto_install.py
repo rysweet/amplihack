@@ -1,48 +1,44 @@
-"""Startup check for amplihack-memory-lib.
+"""Lazy availability check for amplihack-memory-lib.
 
-amplihack-memory-lib is a mandatory dependency declared in pyproject.toml.
-pip/uv installs it automatically. This module verifies it is importable at
-CLI startup and fails loudly if the install is broken.
+amplihack-memory-lib is declared as a dependency in pyproject.toml.  The
+package manager (pip / uv) installs it when amplihack is installed.
 
-No subprocess calls. No auto-install. The package manager handles installation.
+This module provides a **lazy** guard that can be called at the point where
+memory features are actually needed — NOT at CLI startup.  On PEP 668
+systems the eager startup check caused hard failures even when the user
+never invoked memory features (#3331).
+
+No subprocess calls.  No auto-install.  No startup side-effects.
 """
 
-import sys
+import logging
+
+_log = logging.getLogger(__name__)
+_checked: bool | None = None  # tri-state cache: None = not checked yet
 
 
 def ensure_memory_lib_installed() -> bool:
-    """Verify amplihack-memory-lib is importable.
+    """Check whether amplihack-memory-lib is importable (cached).
 
-    This is a startup prerequisite check, not an installer. The library is
-    declared as a mandatory dependency in pyproject.toml — the package manager
-    (pip, uv, etc.) installs it when amplihack is installed.
+    Safe to call repeatedly — the actual import probe runs only once and
+    the result is cached for the lifetime of the process.
 
-    If the import fails, the installation is broken and we fail loudly with
-    actionable repair instructions.
-
-    Returns:
-        True if the library is available.
-
-    Raises:
-        SystemExit: If the library cannot be imported (broken install).
+    Returns ``True`` if the library is available, ``False`` otherwise.
+    On failure a warning is logged with repair instructions.
     """
+    global _checked
+    if _checked is not None:
+        return _checked
+
     try:
         import amplihack_memory  # type: ignore[import-untyped]  # noqa: F401
 
+        _checked = True
         return True
     except ImportError:
-        print(
-            "ERROR: amplihack-memory-lib is not importable.\n"
-            "\n"
-            "This is a required dependency that should have been installed\n"
-            "automatically. Your installation may be broken.\n"
-            "\n"
-            "Repair with:\n"
-            "  pip install --force-reinstall amplihack\n"
-            "  # or:\n"
-            "  pip install amplihack-memory-lib\n",
-            file=sys.stderr,
+        _log.warning(
+            "amplihack-memory-lib is not importable. Memory features will "
+            "be unavailable.  Repair with:  pip install amplihack-memory-lib"
         )
-        # Return False instead of sys.exit so the CLI can still start
-        # for commands that don't need memory (e.g. --help, version).
+        _checked = False
         return False

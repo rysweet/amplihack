@@ -12,7 +12,7 @@ Storage Format:
 """
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -133,7 +133,7 @@ def save_update_preference(value: str) -> None:
     # Create data structure
     data: dict[str, Any] = {
         "auto_update": auto_update_value,
-        "last_prompted": datetime.utcnow().isoformat() + "Z",
+        "last_prompted": datetime.now(UTC).isoformat() + "Z",
     }
 
     # Ensure parent directory exists
@@ -164,7 +164,7 @@ def get_last_prompted() -> datetime | None:
 
     Example:
         >>> last = get_last_prompted()
-        >>> if last and (datetime.utcnow() - last).days < 7:
+        >>> if last and (datetime.now(timezone.utc) - last).days < 7:
         ...     print("Don't prompt again yet")
     """
     try:

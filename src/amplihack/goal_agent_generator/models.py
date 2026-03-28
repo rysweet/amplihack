@@ -6,7 +6,7 @@ Defines type-safe structures for goals, plans, skills, and agent bundles.
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -65,7 +65,7 @@ class ExecutionPlan:
         default_factory=list
     )  # Groups of phases that can run in parallel
     risk_factors: list[str] = field(default_factory=list)
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __post_init__(self):
         """Validate execution plan."""
@@ -147,8 +147,8 @@ class GoalAgentBundle:
     sdk_tools: list[SDKToolConfig] = field(default_factory=list)
     sub_agent_configs: list[SubAgentConfig] = field(default_factory=list)
     status: Literal["pending", "planning", "assembling", "ready", "failed"] = "pending"
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __post_init__(self):
         """Validate bundle."""

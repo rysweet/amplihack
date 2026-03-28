@@ -10,7 +10,7 @@ import logging
 import shutil
 import tarfile
 import zipfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -181,7 +181,7 @@ class UVXPackager:
                 for agent in bundle.agents
             ],
             "metadata": bundle.metadata,
-            "created": datetime.utcnow().isoformat(),
+            "created": datetime.now(UTC).isoformat(),
         }
 
         # Write UVX metadata
@@ -422,7 +422,7 @@ Bundle ID: {bundle.id}
             "entry_point": f"amplihack.bundles.{bundle.name}",
             "install_command": f"uvx install {bundle.name}",
             "agent_count": len(bundle.agents),
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
 
     def extract_package(self, package_path: Path, target_path: Path) -> AgentBundle:

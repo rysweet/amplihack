@@ -134,7 +134,7 @@ All tests passed (3/3)
         goal = "Create login endpoint"
         success_criteria = "Endpoint handles valid and invalid credentials"
 
-        scenarios = generator.generate_scenarios(goal, success_criteria)
+        generator.generate_scenarios(goal, success_criteria)
 
         # Collect evidence
         collector = EvidenceCollector(working_directory=str(test_workspace))
@@ -185,7 +185,7 @@ class TestGadugiEndToEndValidation:
         (system / "auth.py").write_text(
             """
 import jwt
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 def login(email: str, password: str) -> dict:
     # Simplified authentication
@@ -195,7 +195,7 @@ def login(email: str, password: str) -> dict:
     return {"status": "error", "message": "Invalid credentials"}
 
 def generate_token(email: str) -> str:
-    payload = {"email": email, "exp": datetime.utcnow() + timedelta(hours=1)}
+    payload = {"email": email, "exp": datetime.now(UTC) + timedelta(hours=1)}
     return jwt.encode(payload, "secret", algorithm="HS256")
 """
         )

@@ -152,11 +152,10 @@ def main():
     if rust_exit_code is not None:
         return rust_exit_code
 
-    # Ensure dependencies are installed at CLI startup (not import time)
+    # Ensure optional dependencies are available (lazy — memory check deferred
+    # to actual usage so PEP 668 systems don't fail on startup).
     from .copilot_auto_install import ensure_copilot_sdk_installed
-    from .memory_auto_install import ensure_memory_lib_installed
 
-    ensure_memory_lib_installed()
     ensure_copilot_sdk_installed()
 
     # Import and use the enhanced CLI

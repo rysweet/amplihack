@@ -43,7 +43,7 @@ import time
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from functools import wraps
 from pathlib import Path
@@ -321,7 +321,7 @@ class ValidationResults:
     total_links: int = 0
     broken_links: list[BrokenLink] = field(default_factory=list)
     warnings: list[BrokenLink] = field(default_factory=list)
-    scan_date: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
+    scan_date: str = field(default_factory=lambda: datetime.now(UTC).isoformat() + "Z")
 
 
 @dataclass
