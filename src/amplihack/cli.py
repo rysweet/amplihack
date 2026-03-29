@@ -725,6 +725,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Set context variable (key=value). Values may contain special characters: -c 'task=Fix bug (#123)'",
     )
     run_parser.add_argument("--dry-run", action="store_true", help="Show what would be executed")
+    run_parser.add_argument(
+        "--progress",
+        action="store_true",
+        help="Stream live recipe-runner progress to stderr",
+    )
     run_parser.add_argument("-v", "--verbose", action="store_true", help="Show detailed output")
     run_parser.add_argument(
         "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
@@ -761,6 +766,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     )
     show_parser.add_argument("--no-steps", action="store_true", help="Hide step details")
     show_parser.add_argument("--no-context", action="store_true", help="Hide context variables")
+
+    from .recovery.__main__ import add_recovery_subcommand
+
+    add_recovery_subcommand(subparsers)
+
     # Mode detection commands
     mode_parser = subparsers.add_parser("mode", help="Claude installation mode commands")
     mode_subparsers = mode_parser.add_subparsers(dest="mode_command", help="Mode subcommands")
@@ -1848,6 +1858,7 @@ def main(argv: list[str] | None = None) -> int:
                 recipe_path=args.recipe_path,
                 context=context,
                 dry_run=args.dry_run,
+                progress=args.progress,
                 verbose=args.verbose,
                 format=args.format,
                 working_dir=args.working_dir,
@@ -1875,6 +1886,14 @@ def main(argv: list[str] | None = None) -> int:
                 show_steps=not args.no_steps,
                 show_context=not args.no_context,
             )
+
+        create_parser().print_help()
+        return 1
+    elif args.command == "recovery":
+        from .recovery.__main__ import run_from_args as run_recovery_from_args
+
+        if args.recovery_command == "run":
+            return run_recovery_from_args(args)
 
         create_parser().print_help()
         return 1

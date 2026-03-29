@@ -112,6 +112,39 @@ steps:
     parse_json: true
 
   # ==========================================================================
+  # WORKFLOW HOOK GUARD
+  # Mark the current repo as workflow-active before any child agent prompt runs.
+  # This prevents Copilot nested sessions from auto-routing back into
+  # smart-orchestrator while this workflow is already executing (issue #3548).
+  # ==========================================================================
+  - id: "activate-workflow-guard"
+    type: "bash"
+    command: |
+      if [ -n "${AMPLIHACK_ASSET_RESOLVER:-}" ] && [ -x "$AMPLIHACK_ASSET_RESOLVER" ]; then
+        HOOKS_DIR=$("$AMPLIHACK_ASSET_RESOLVER" "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null) || HOOKS_DIR=""
+      else
+        HOOKS_DIR=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null) || HOOKS_DIR=""
+      fi
+      export HOOKS_DIR
+      python3 - <<'PYEOF'
+      import os
+      import sys
+
+      hooks_dir = os.environ.get("HOOKS_DIR", "")
+      try:
+          if hooks_dir:
+              sys.path.insert(0, hooks_dir)
+              from dev_intent_router import set_workflow_active
+
+              set_workflow_active("Investigation", 1)
+      except Exception:
+          pass
+
+      print("workflow-active")
+      PYEOF
+    output: "workflow_guard_status"
+
+  # ==========================================================================
   # PHASE 1: SCOPE DEFINITION
   # Define investigation boundaries and success criteria
   # Uses: prompt-writer (scope), ambiguity (if needed)
@@ -901,6 +934,33 @@ steps:
       EOF
     output: "efficiency_metrics"
     parse_json: true
+
+  - id: "clear-workflow-guard"
+    type: "bash"
+    command: |
+      if [ -n "${AMPLIHACK_ASSET_RESOLVER:-}" ] && [ -x "$AMPLIHACK_ASSET_RESOLVER" ]; then
+        HOOKS_DIR=$("$AMPLIHACK_ASSET_RESOLVER" "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null) || HOOKS_DIR=""
+      else
+        HOOKS_DIR=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null) || HOOKS_DIR=""
+      fi
+      export HOOKS_DIR
+      python3 - <<'PYEOF'
+      import os
+      import sys
+
+      hooks_dir = os.environ.get("HOOKS_DIR", "")
+      try:
+          if hooks_dir:
+              sys.path.insert(0, hooks_dir)
+              from dev_intent_router import clear_workflow_active
+
+              clear_workflow_active()
+      except Exception:
+          pass
+
+      print("workflow-inactive")
+      PYEOF
+    output: "workflow_guard_cleared"
 
   # ==========================================================================
   # FINAL OUTPUT

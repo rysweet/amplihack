@@ -6,18 +6,124 @@ steps, recipes, results, and error types.
 
 from __future__ import annotations
 
+import ast
 import enum
-import logging
-import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from simpleeval import EvalWithCompoundTypes  # type: ignore[import-untyped]
 
-log = logging.getLogger(__name__)
+class _ConditionEvaluationError(ValueError):
+    """Raised when a recipe condition uses unsupported syntax or unknown values."""
 
-# Pre-compiled regex for normalising Python True/False literals in step conditions.
-_BOOL_RE = re.compile(r"\bTrue\b|\bFalse\b")
+
+def _resolve_attribute(value: Any, attribute: str) -> Any:
+    """Resolve dotted access against dict-like or attribute-based objects."""
+    if isinstance(value, Mapping):
+        if attribute in value:
+            return value[attribute]
+        raise _ConditionEvaluationError(f"Unknown key '{attribute}' in condition")
+
+    if hasattr(value, attribute):
+        return getattr(value, attribute)
+
+    raise _ConditionEvaluationError(f"Unknown attribute '{attribute}' in condition")
+
+
+def _coerce_bool_string_compare(left: Any, right: Any) -> tuple[Any, Any]:
+    """Allow bools to compare cleanly with workflow-style 'true'/'false' strings."""
+    if isinstance(left, bool) and isinstance(right, str):
+        return str(left).lower(), right.lower()
+    if isinstance(right, bool) and isinstance(left, str):
+        return left.lower(), str(right).lower()
+    return left, right
+
+
+def _evaluate_compare(operator: ast.cmpop, left: Any, right: Any) -> bool:
+    """Evaluate a supported comparison operator."""
+    if isinstance(operator, (ast.Eq, ast.NotEq)):
+        left, right = _coerce_bool_string_compare(left, right)
+
+    if isinstance(operator, ast.Eq):
+        return left == right
+    if isinstance(operator, ast.NotEq):
+        return left != right
+    if isinstance(operator, ast.Gt):
+        return left > right
+    if isinstance(operator, ast.GtE):
+        return left >= right
+    if isinstance(operator, ast.Lt):
+        return left < right
+    if isinstance(operator, ast.LtE):
+        return left <= right
+    if isinstance(operator, ast.In):
+        return left in right
+    if isinstance(operator, ast.NotIn):
+        return left not in right
+    if isinstance(operator, ast.Is):
+        return left is right
+    if isinstance(operator, ast.IsNot):
+        return left is not right
+
+    raise _ConditionEvaluationError(f"Unsupported comparison operator: {type(operator).__name__}")
+
+
+def _evaluate_condition_ast(node: ast.AST, context: dict[str, Any]) -> Any:
+    """Evaluate a restricted condition AST with fail-closed semantics."""
+    if isinstance(node, ast.Expression):
+        return _evaluate_condition_ast(node.body, context)
+
+    if isinstance(node, ast.Name):
+        if node.id in {"True", "False", "None"}:
+            return {"True": True, "False": False, "None": None}[node.id]
+        if node.id not in context:
+            raise _ConditionEvaluationError(f"Unknown name '{node.id}' in condition")
+        return context[node.id]
+
+    if isinstance(node, ast.Constant):
+        return node.value
+
+    if isinstance(node, ast.Attribute):
+        value = _evaluate_condition_ast(node.value, context)
+        return _resolve_attribute(value, node.attr)
+
+    if isinstance(node, ast.List):
+        return [_evaluate_condition_ast(element, context) for element in node.elts]
+
+    if isinstance(node, ast.Tuple):
+        return tuple(_evaluate_condition_ast(element, context) for element in node.elts)
+
+    if isinstance(node, ast.Set):
+        return {_evaluate_condition_ast(element, context) for element in node.elts}
+
+    if isinstance(node, ast.BoolOp):
+        values = [_evaluate_condition_ast(value, context) for value in node.values]
+        if isinstance(node.op, ast.And):
+            return all(bool(value) for value in values)
+        if isinstance(node.op, ast.Or):
+            return any(bool(value) for value in values)
+        raise _ConditionEvaluationError(f"Unsupported boolean operator: {type(node.op).__name__}")
+
+    if isinstance(node, ast.UnaryOp):
+        operand = _evaluate_condition_ast(node.operand, context)
+        if isinstance(node.op, ast.Not):
+            return not bool(operand)
+        if isinstance(node.op, ast.USub):
+            return -operand
+        if isinstance(node.op, ast.UAdd):
+            return +operand
+        raise _ConditionEvaluationError(f"Unsupported unary operator: {type(node.op).__name__}")
+
+    if isinstance(node, ast.Compare):
+        left = _evaluate_condition_ast(node.left, context)
+        for operator, comparator_node in zip(node.ops, node.comparators, strict=True):
+            right = _evaluate_condition_ast(comparator_node, context)
+            if not _evaluate_compare(operator, left, right):
+                return False
+            left = right
+        return True
+
+    raise _ConditionEvaluationError(f"Unsupported condition syntax: {type(node).__name__}")
 
 
 class StepType(enum.Enum):
@@ -61,38 +167,25 @@ class Step:
         """Evaluate the step condition against a context dict.
 
         Returns True if the step should execute (condition is met or absent).
-        The condition is a Python expression evaluated with *context* as the
-        namespace.  Booleans are coerced to lowercase strings so that
-        ``force_single_workstream == 'true'`` works regardless of whether the
-        value arrived as ``bool`` or ``str`` (fix #3075).  Numeric types are
-        kept as-is to support ``num_versions >= 4`` comparisons.
+        Conditions use a strict, fail-closed expression subset:
+        names, dotted attribute access, boolean operators, membership, and
+        comparisons. Anything unsafe or malformed evaluates to False.
         """
         if not self.condition:
             return True
-        # Coerce booleans to lowercase strings so recipe conditions like
-        # ``== 'true'`` work.  Keep numbers as-is for numeric comparisons.
-        eval_ctx: dict[str, Any] = {
-            k: str(v).lower() if isinstance(v, bool) else v for k, v in context.items()
-        }
-        # Normalise Python-style True/False literals in the condition to their
-        # lowercase string equivalents so ``flag == True`` works when *flag*
-        # was coerced to ``"true"`` above.  simpleeval resolves ``True`` as an
-        # ast.Constant (bool), not a name lookup, so injecting into the
-        # namespace doesn't help — we rewrite the condition text instead.
-        normalised = _BOOL_RE.sub(
-            lambda m: "'true'" if m.group() == "True" else "'false'",
-            self.condition.strip(),
-        )
+
         try:
-            evaluator = EvalWithCompoundTypes(names=eval_ctx)
-            return bool(evaluator.eval(normalised))
-        except Exception as exc:
-            log.warning(
-                "Step condition %r could not be evaluated: %s — defaulting to True (step will run)",
-                self.condition,
-                exc,
-            )
-            return True
+            parsed = ast.parse(self.condition.strip(), mode="eval")
+            return bool(_evaluate_condition_ast(parsed, context))
+        except (
+            SyntaxError,
+            TypeError,
+            ValueError,
+            AttributeError,
+            KeyError,
+            IndexError,
+        ):
+            return False
 
 
 @dataclass

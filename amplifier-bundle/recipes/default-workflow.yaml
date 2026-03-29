@@ -43,9 +43,6 @@ recursion:
 context:
   # Description of the task
   task_description: ""
-context_validation:
-  task_description: "nonempty"
-  repo_path: "git_repo"
 
   # Specific requirements (user-provided or empty)
   requirements: ""
@@ -81,6 +78,10 @@ context_validation:
   final_cleanup: ""
   quality_audit_results: ""
   ci_status: ""
+
+context_validation:
+  task_description: "nonempty"
+  repo_path: "git_repo"
 
 steps:
   # ==========================================================================
@@ -175,6 +176,39 @@ steps:
       printf 'Task: %s\n' "$TASK_DESC"
       printf 'Repository: %s\n' {{repo_path}}
     output: "workflow_init"
+
+  # ==========================================================================
+  # WORKFLOW HOOK GUARD
+  # Mark the current repo as workflow-active before any child agent prompt runs.
+  # This prevents Copilot nested sessions from auto-routing back into
+  # smart-orchestrator while this workflow is already executing (issue #3548).
+  # ==========================================================================
+  - id: "step-00b-activate-workflow-guard"
+    type: "bash"
+    command: |
+      if [ -n "${AMPLIHACK_ASSET_RESOLVER:-}" ] && [ -x "$AMPLIHACK_ASSET_RESOLVER" ]; then
+        HOOKS_DIR=$("$AMPLIHACK_ASSET_RESOLVER" "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null) || HOOKS_DIR=""
+      else
+        HOOKS_DIR=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null) || HOOKS_DIR=""
+      fi
+      export HOOKS_DIR
+      python3 - <<'PYEOF'
+      import os
+      import sys
+
+      hooks_dir = os.environ.get("HOOKS_DIR", "")
+      try:
+          if hooks_dir:
+              sys.path.insert(0, hooks_dir)
+              from dev_intent_router import set_workflow_active
+
+              set_workflow_active("Development", 1)
+      except Exception:
+          pass
+
+      print("workflow-active")
+      PYEOF
+    output: "workflow_guard_status"
 
   # ==========================================================================
   # STEP 1: PREPARE THE WORKSPACE
@@ -432,17 +466,19 @@ steps:
       # update consensus-workflow.yaml in the same commit. See Issue #2952 for context.
       #
       # Generate branch name from task description.
-      # FIX (issue #3087): Use UNQUOTED heredoc so the Rust recipe runner's
-      # env-var expansion ($RECIPE_VAR_task_description) works correctly.
-      # Single-quoted heredoc (<<'EOF') prevented variable expansion, producing
-      # garbled branch names like "feat/issue--recipevartaskdescription".
-      # Security note: the sanitization pipeline (tr -cd 'a-z0-9-') strips all
-      # shell metacharacters from the output, mitigating injection risk.
-      TASK_DESC=$(cat <<EOFTASKDESC
+      # Prefer the Rust runner's RECIPE_VAR_task_description when present, but
+      # keep the single-quoted heredoc fallback for renderers that substitute
+      # the template directly. This preserves compatibility without allowing
+      # shell expansion of task_description.
+      if [ -n "${RECIPE_VAR_task_description+x}" ]; then
+        TASK_DESC=${RECIPE_VAR_task_description}
+      else
+        TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
-      )
-      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-' | sed 's/-\{2,\}/-/g;s/^-//;s/-$//' | cut -c1-50 | sed 's/-$//')
+        )
+      fi
+      TASK_SLUG=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-' | sed 's/-\{2,\}/-/g' | sed 's/^-//;s/-$//' | cut -c1-50 | sed 's/-$//')
       # Guard: empty slug (blank/all-symbol input) produces a trailing-hyphen branch that
       # git check-ref-format accepts as valid but is undesirable. Catch it explicitly first.
       if [ -z "$TASK_SLUG" ]; then
@@ -2015,6 +2051,33 @@ steps:
       echo "" && \
       echo "All 23 workflow steps completed successfully."
     output: "final_status"
+
+  - id: "step-22c-clear-workflow-guard"
+    type: "bash"
+    command: |
+      if [ -n "${AMPLIHACK_ASSET_RESOLVER:-}" ] && [ -x "$AMPLIHACK_ASSET_RESOLVER" ]; then
+        HOOKS_DIR=$("$AMPLIHACK_ASSET_RESOLVER" "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null) || HOOKS_DIR=""
+      else
+        HOOKS_DIR=$(python3 -m amplihack.resolve_bundle_asset "amplifier-bundle/tools/amplihack/hooks" 2>/dev/null) || HOOKS_DIR=""
+      fi
+      export HOOKS_DIR
+      python3 - <<'PYEOF'
+      import os
+      import sys
+
+      hooks_dir = os.environ.get("HOOKS_DIR", "")
+      try:
+          if hooks_dir:
+              sys.path.insert(0, hooks_dir)
+              from dev_intent_router import clear_workflow_active
+
+              clear_workflow_active()
+      except Exception:
+          pass
+
+      print("workflow-inactive")
+      PYEOF
+    output: "workflow_guard_cleared"
 
   # ==========================================================================
   # FINAL OUTPUT

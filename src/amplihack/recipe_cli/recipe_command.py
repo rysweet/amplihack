@@ -68,6 +68,7 @@ def _execute_recipe(
     merged_context: dict[str, Any],
     *,
     dry_run: bool,
+    progress: bool,
     verbose: bool,
     working_dir: str | None,
 ) -> RecipeResult:
@@ -76,7 +77,7 @@ def _execute_recipe(
         user_context=merged_context,
         dry_run=dry_run,
         working_dir=working_dir or ".",
-        progress=False,
+        progress=progress or verbose,
         emit_startup_banner=False,
     )
 
@@ -100,6 +101,7 @@ def handle_run(
     recipe_path: str,
     context: dict[str, Any],
     dry_run: bool = False,
+    progress: bool = False,
     verbose: bool = False,
     format: str = "table",
     working_dir: str | None = None,
@@ -115,6 +117,7 @@ def handle_run(
             validated_path,
             merged_context,
             dry_run=dry_run,
+            progress=progress,
             verbose=verbose,
             working_dir=working_dir,
         )
