@@ -31,6 +31,10 @@ context:
   adaptive_recipe: "" # set by detect-execution-gap when routing fails
   infra_error_details: "" # diagnostic info for infrastructure failures
 
+context_validation:
+  task_description: "nonempty"
+  repo_path: "git_repo"
+
 steps:
   # ─────────────────────────────────────────────────────────────────────────
   # Phase 0: Pre-flight Validation
