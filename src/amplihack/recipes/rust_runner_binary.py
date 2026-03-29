@@ -12,7 +12,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-MIN_RUNNER_VERSION = "0.2.9"
+MIN_RUNNER_VERSION = "0.2.10"
 _REPO_URL = "https://github.com/rysweet/amplihack-recipe-runner"
 
 

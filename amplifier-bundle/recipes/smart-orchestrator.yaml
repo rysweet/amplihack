@@ -668,6 +668,7 @@ steps:
   # runner passes to bash.  The command is unconditionally successful so a
   # cleanup failure never aborts the recipe (fix: cleanup-helper-arg-overflow).
   - id: "cleanup-helper"
+    fatal: false
     type: "bash"
     command: |
       rm -f /tmp/smart-orch-ws-*.json 2>/dev/null || true
