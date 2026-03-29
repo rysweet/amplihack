@@ -43,6 +43,9 @@ recursion:
 context:
   # Description of the task
   task_description: ""
+context_validation:
+  task_description: "nonempty"
+  repo_path: "git_repo"
 
   # Specific requirements (user-provided or empty)
   requirements: ""

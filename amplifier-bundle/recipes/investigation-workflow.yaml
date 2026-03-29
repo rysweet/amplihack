@@ -46,6 +46,9 @@ recursion:
 context:
   # The main question to investigate
   investigation_question: ""
+context_validation:
+  task_description: "nonempty"
+  repo_path: "git_repo"
 
   # Path to focus investigation on (optional)
   codebase_path: ""
