@@ -994,6 +994,7 @@ steps:
   # STEP 12: RUN TESTS AND PRE-COMMIT HOOKS
   # ==========================================================================
   - id: "step-12-run-precommit"
+    fatal: false
     agent: "amplihack:pre-commit-diagnostic"
     prompt: |
       # Step 12: Run Tests and Pre-commit Hooks
@@ -1784,6 +1785,7 @@ steps:
   # STEP 20: FINAL CLEANUP AND VERIFICATION
   # ==========================================================================
   - id: "step-20-final-cleanup"
+    fatal: false
     agent: "amplihack:cleanup"
     prompt: |
       # Step 20: Final Cleanup and Verification
@@ -1815,6 +1817,7 @@ steps:
     output: "final_cleanup"
 
   - id: "step-20b-push-cleanup"
+    fatal: false
     type: "bash"
     command: |
       cd "{{worktree_setup.worktree_path}}" && \
@@ -1920,6 +1923,7 @@ steps:
   # Convert draft PR to ready-for-review.
   # ==========================================================================
   - id: "step-21-pr-ready"
+    fatal: false
     type: "bash"
     command: |
       cd "{{worktree_setup.worktree_path}}" && \
@@ -1983,6 +1987,7 @@ steps:
     output: "ci_status"
 
   - id: "step-22b-final-status"
+    fatal: false
     type: "bash"
     command: |
       cd "{{repo_path}}" && \
