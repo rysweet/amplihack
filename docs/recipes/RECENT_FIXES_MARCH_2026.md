@@ -2,6 +2,230 @@
 
 This document tracks recent bug fixes and improvements to the Recipe Runner and Skills systems following the Diátaxis framework.
 
+---
+
+## March 28–29, 2026: Recipe Runner Reliability & Workflow Resilience
+
+### Recipe Context Validation — Runner-Level Pre-flight Guard (PR #3753)
+
+**What changed**: All 4 core recipes (`default-workflow`, `smart-orchestrator`, `consensus-workflow`, `investigation-workflow`) now use the built-in `context_validation` feature. The runner validates required context variables before executing any step.
+
+**Why it matters**: Previously, a missing context variable (e.g. `task_description`) would cause a cryptic failure deep inside a 2-hour workflow run. With runner-level validation, the recipe fails fast at step-00 with a clear error message and the exact restart command needed to retry with the correct context.
+
+**How to apply**: If your recipe fails immediately at step-00 with a validation error, check that all required context variables are supplied. Use `amplihack recipe run <name> -c key=value` for each missing variable.
+
+| Variable | Required by |
+|---|---|
+| `task_description` | default-workflow, smart-orchestrator, investigation-workflow |
+| `repo_path` | default-workflow, quality-audit-cycle |
+
+---
+
+### Non-Critical Workflow Steps No Longer Fatal (PR #3750)
+
+**What changed**: Pre-commit, cleanup, and status-check steps in core recipes are now marked `fatal: false`. Requires `recipe-runner-rs` ≥ 0.2.10 (auto-installed on next amplihack startup).
+
+**Root cause**: Steps like `pre-commit-check` and `cleanup-worktree` were marked `fatal: true` (the default). A transient pre-commit hook failure or a cleanup step that found nothing to delete would abort the entire multi-hour workflow.
+
+**Fix**: Steps that are best-effort by design now carry `fatal: false`. The runner logs a warning and continues on failure rather than aborting. Core implementation steps (design, build, review, commit) remain `fatal: true`.
+
+**Affected step classes**:
+
+| Step type | Was fatal | Now |
+|---|---|---|
+| `pre-commit-check` | true | false |
+| `cleanup-worktree` | true | false |
+| `git-status-check` | true | false |
+| Implementation/review/design | true | true (unchanged) |
+
+---
+
+### File-Based Context Passing — recipe-runner-rs 0.2.9 (PR #3747)
+
+**What changed**: `MIN_RUNNER_VERSION` bumped to 0.2.9. Auto-update installs the new binary on next `amplihack` startup.
+
+**Why it matters**: Previously, recipe context was passed as `RECIPE_VAR_*` environment variables. Large context values (e.g. multi-workstream output) exceeded the Linux `execve()` argument list limit (~2MB), producing the error `Argument list too long (os error 7)`. Version 0.2.9 switches to file-based context passing, removing the size limit entirely.
+
+**No action required** — the auto-updater handles the binary upgrade transparently.
+
+---
+
+### Pre-flight Validation in Core Recipe YAMLs (PR #3732)
+
+**What changed**: The 4 core recipe YAMLs now include an explicit `step-00-validate-inputs` bash step that runs before any agent or implementation work.
+
+**What it checks**:
+- `repo_path` exists and is a valid git repository
+- `AMPLIHACK_HOME` is set and points to a directory
+- Required context variables for the specific recipe are present
+
+**Error output format**: On failure, the step prints the exact `amplihack recipe run` command to restart the recipe with the correct arguments, so you never need to reconstruct the command from scratch.
+
+**Explanation**: The pattern follows the "fail fast, fail visibly" principle. Rather than running two hours of agent work and discovering a missing variable in step 17, the pre-flight step surfaces the problem in under a second.
+
+Additionally, `rust_runner.py` now prints the log file path and a `tail -f` monitor command at startup:
+
+```
+[amplihack] Recipe log: /tmp/amplihack-recipe-default-workflow-12345.log
+[amplihack] Monitor: tail -f /tmp/amplihack-recipe-default-workflow-12345.log
+```
+
+---
+
+### Cleanup-Helper Arg List Overflow Fix (PR #3731)
+
+**Problem**: The `cleanup-helper` bash step in `smart-orchestrator.yaml` failed with `Argument list too long (os error 7)` after parallel workstreams completed.
+
+**Root cause**: After 3+ parallel workstreams, the Rust runner accumulates all context variables as `RECIPE_VAR_*` env vars. The `round_1_result` variable alone can reach several megabytes when passed as an env var to the bash cleanup step, exceeding the Linux `execve()` limit.
+
+**Fix** (two-part):
+
+1. **Primary cleanup moved inside `launch-parallel-round-1`**: The workstreams file is deleted _within_ the step that uses it, before `round_1_result` is set. At that point the env var payload is small.
+
+2. **`cleanup-helper` simplified to a glob-based fallback**:
+   - Removed `{{workstreams_file}}` template variable (no large env vars needed)
+   - Uses `/tmp/smart-orch-ws-*.json` glob pattern instead
+   - `|| true` ensures cleanup failure never aborts the recipe
+
+**Before / After**:
+
+```yaml
+# Before (broken for large contexts)
+cleanup-helper:
+  command: rm -f "{{workstreams_file}}"
+
+# After (glob-based, no template vars)
+cleanup-helper:
+  command: rm -f /tmp/smart-orch-ws-*.json || true
+```
+
+---
+
+### Default-Workflow Resilience — 7 Commonly-Failing Steps (PR #3728)
+
+**What changed**: `default-workflow` SKILL.md updated to v1.1.0 and recipe to v2.3.0 with resilience improvements for the 7 most frequently-failing steps.
+
+**New SKILL.md sections**:
+
+- **Known Failure Points & Resilience Guidance** — documents failure modes and recovery patterns for steps 3, 5e→6, 15, 18c, 20b
+- **Checkpoint Strategy** — table showing when work is preserved and can be resumed
+
+**Recipe changes**:
+
+| Step | Change | Reason |
+|---|---|---|
+| Step 3 (label creation) | `gh label create` errors now visible (removed `2>/dev/null`) | Silent failures were hiding label creation bugs |
+| Step 5e → 6 (new: `checkpoint-after-design`) | New checkpoint preserves architecture/API/DB schema before implementation | Hours of design work lost when implementation steps failed |
+| Step 15 (push) | Explicit upstream guard; bounded retry (3 attempts, 2s backoff) | `@{u}` reference caused cryptic failure on first push |
+| Step 18c (push feedback) | Bounded retry loop replaces silent skip | Transient network errors aborted the workflow |
+| Step 20b (push cleanup) | Bounded retry loop replaces silent skip | Same as 18c |
+
+**Checkpoint strategy reference**:
+
+| Checkpoint | Triggered after | Work preserved |
+|---|---|---|
+| `checkpoint-after-design` | Step 5e | Architecture, API design, DB schema |
+| `checkpoint-after-implementation` | Step 10 | All code changes |
+| `checkpoint-after-review-feedback` | Step 13 | Review-driven revisions |
+
+---
+
+### Recipe Runner Output Capture — Persistent Log File (PR #3712)
+
+**Problem**: When the recipe runner launched nested workflows, the parent agent had no way to observe child output. This caused:
+- Parent appeared stalled for hours (no visible progress)
+- Error details from failed child steps were lost
+- No file to `tail -f` for live monitoring
+
+**Fix**: Every recipe run now creates a persistent log file at:
+
+```
+/tmp/amplihack-recipe-{recipe-name}-{pid}.log
+```
+
+The file path is:
+1. Printed at startup in the banner
+2. Set in the `AMPLIHACK_RECIPE_LOG` environment variable for child processes
+3. Returned in `RecipeResult.log_path` for programmatic access
+
+All stdout and stderr are tee'd to this file in real-time (flushed after every write), so `tail -f` works correctly.
+
+**Security**: The log file is created with `O_NOFOLLOW` and mode `0o600` (owner-readable only). The recipe name is sanitised before path construction to prevent path traversal.
+
+**How to monitor a running recipe**:
+
+```bash
+# The startup banner shows the exact path:
+# [amplihack] Recipe log: /tmp/amplihack-recipe-default-workflow-12345.log
+tail -f /tmp/amplihack-recipe-default-workflow-12345.log
+```
+
+---
+
+### Auto-Update recipe-runner-rs When Outdated (PR #3705)
+
+**What changed**: `ensure_rust_recipe_runner()` now checks the installed binary version against `MIN_RUNNER_VERSION` (bumped to 0.2.8) and auto-reinstalls via `cargo install --git --force` if the binary is outdated.
+
+**Before**: The startup check only verified the binary _existed_. Outdated binaries produced cryptic errors like `.strip() can only be called on strings`.
+
+**After**: On next `amplihack` startup, if the binary version is below `MIN_RUNNER_VERSION`, amplihack reinstalls it automatically and logs visible progress messages. No manual action required.
+
+---
+
+### Recipe Orchestration Bug Consolidation (PR #3700)
+
+Consolidated fix for 7 recipe and orchestration bugs:
+
+| Issue | Fix |
+|---|---|
+| #3551 | Branch names > 200 chars truncated with md5 hash suffix + warning |
+| #3548 | Anti-recursion instruction prevents `classify-and-decompose` from invoking skills/workflows |
+| #3333/#3315 | Version check and `progress` parameter in recipe runner |
+| #3330 | Check for existing PR before attempting `gh pr create` in step-16 |
+| #3298 | SKILL.md documents `AMPLIHACK_HOME` auto-detection |
+| #3291 | `timeout: 60` + context size guard on step-02c to prevent hangs on large context |
+
+**Branch name truncation** (previously caused silent git push failures):
+
+```
+# Long branch names are now truncated and logged:
+[amplihack] Branch name truncated to 200 chars (md5 suffix appended): feat/issue-1234-...abc12345
+```
+
+---
+
+### Code Hygiene — 5 Bug Fixes (PR #3704)
+
+| Issue | Fix |
+|---|---|
+| #3529 | `pm-architect` mirror files synced across amplifier-bundle and docs |
+| #3331 | Memory lib auto-install deferred from CLI startup to first use (eliminates PEP 668 install-on-import warnings) |
+| #3309 | All `datetime.utcnow()` calls replaced with `datetime.now(UTC)` across 23+ files |
+| #3308 | `~20` `AMPLIHACK_*` env vars documented in `.env.example` with descriptions and defaults |
+
+**`datetime.utcnow()` deprecation** — if you use amplihack Python APIs directly, update any `datetime.utcnow()` calls in your own code to `datetime.now(timezone.utc)` (Python 3.11+: `datetime.now(UTC)`).
+
+---
+
+### Version History — March 28–29, 2026
+
+All fixes released in **amplihack v0.6.103** (March 29, 2026):
+
+| PR | Fix |
+|---|---|
+| #3753 | Built-in `context_validation` in all core recipe YAMLs |
+| #3750 | Non-critical steps marked `fatal: false` (requires runner 0.2.10) |
+| #3747 | File-based context passing via runner 0.2.9 |
+| #3732 | Pre-flight validation step-00 in all core recipes |
+| #3731 | Cleanup-helper arg list overflow fix |
+| #3728 | Default-workflow resilience: 7 steps, new checkpoint, bounded retries |
+| #3712 | Persistent recipe log file with real-time tee |
+| #3705 | Auto-update recipe-runner-rs when version is outdated |
+| #3700 | 7 recipe orchestration bugs (branch truncation, anti-recursion, PR guard) |
+| #3704 | 5 code hygiene bugs (mirror sync, lazy memory, utcnow, env docs) |
+
+---
+
 ## Rust Runner Env Propagation & Investigation Routing (PR #3512, Issue #3496)
 
 **Problem**: Nested workflow sessions started in temp cwds with wrong environment,
