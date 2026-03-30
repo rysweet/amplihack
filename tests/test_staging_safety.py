@@ -3,6 +3,8 @@
 Tests all safety check branches with temporary directories.
 """
 
+import importlib
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -370,3 +372,109 @@ class TestIsSafeToDeleteSecurityChecks:
 
             assert result.status == "unsafe"
             assert "symlink" in result.reason.lower()
+
+
+def _require_staging_safety_attr(attr_name: str):
+    module = importlib.import_module("amplihack.staging_safety")
+    assert hasattr(module, attr_name), f"amplihack.staging_safety must define {attr_name}"
+    return getattr(module, attr_name)
+
+
+def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+@pytest.fixture
+def git_repo(tmp_path: Path) -> Path:
+    _git(tmp_path, "init")
+    _git(tmp_path, "config", "user.email", "tests@example.com")
+    _git(tmp_path, "config", "user.name", "Recovery Tests")
+    return tmp_path
+
+
+class TestRecoveryStageGuards:
+    """Tests for the Stage 1/2 staging guardrails added to staging_safety.py."""
+
+    def test_capture_protected_staged_files_returns_relative_paths(self, git_repo: Path):
+        """Stage 1 must snapshot the unrelated staged set before any mutation."""
+        capture_protected_staged_files = _require_staging_safety_attr(
+            "capture_protected_staged_files"
+        )
+
+        (git_repo / "docs").mkdir()
+        (git_repo / "src" / "amplihack" / "launcher").mkdir(parents=True)
+        (git_repo / "docs" / "index.md").write_text("docs")
+        (git_repo / "src" / "amplihack" / "launcher" / "core.py").write_text("print('x')\n")
+        (git_repo / "notes.txt").write_text("unstaged\n")
+
+        _git(git_repo, "add", "docs/index.md", "src/amplihack/launcher/core.py")
+
+        protected = capture_protected_staged_files(git_repo)
+
+        assert protected == [
+            "docs/index.md",
+            "src/amplihack/launcher/core.py",
+        ]
+
+    def test_validate_fix_batch_rejects_repo_wide_staging_on_dirty_tree(self, git_repo: Path):
+        """Recovery must ban repo-wide staging in a dirty main worktree."""
+        validate_fix_batch = _require_staging_safety_attr("validate_fix_batch")
+
+        (git_repo / "docs").mkdir()
+        (git_repo / "docs" / "index.md").write_text("protected\n")
+        (git_repo / "scratch.py").write_text("print('dirty tree')\n")
+        _git(git_repo, "add", "docs/index.md")
+
+        with pytest.raises(ValueError, match="repo-wide staging"):
+            validate_fix_batch(
+                repo_path=git_repo,
+                candidate_paths=["."],
+                protected_staged_files=["docs/index.md"],
+            )
+
+    def test_validate_fix_batch_rejects_overlap_with_protected_staged_files(self, git_repo: Path):
+        """Stage 2 fixes must stay outside the protected staged set."""
+        validate_fix_batch = _require_staging_safety_attr("validate_fix_batch")
+
+        (git_repo / "docs").mkdir()
+        (git_repo / "docs" / "index.md").write_text("protected\n")
+        _git(git_repo, "add", "docs/index.md")
+
+        with pytest.raises(ValueError, match="protected staged"):
+            validate_fix_batch(
+                repo_path=git_repo,
+                candidate_paths=["docs/index.md"],
+                protected_staged_files=["docs/index.md"],
+            )
+
+    def test_require_isolated_worktree_for_commit_capable_steps(self, git_repo: Path):
+        """Stage 3 FIX+VERIFY must refuse to mutate the dirty main worktree."""
+        require_isolated_worktree = _require_staging_safety_attr("require_isolated_worktree")
+
+        with pytest.raises(ValueError, match="isolated worktree"):
+            require_isolated_worktree(
+                stage_name="FIX+VERIFY", repo_path=git_repo, worktree_path=None
+            )
+
+    def test_require_isolated_worktree_accepts_registered_git_worktree(self, git_repo: Path):
+        """Registered git worktrees are valid mutation targets."""
+        require_isolated_worktree = _require_staging_safety_attr("require_isolated_worktree")
+        (git_repo / "README.md").write_text("hello\n")
+        _git(git_repo, "add", "README.md")
+        _git(git_repo, "commit", "-m", "init")
+        worktree_path = git_repo.parent / "worktree"
+        _git(git_repo, "worktree", "add", str(worktree_path), "HEAD")
+
+        resolved = require_isolated_worktree(
+            stage_name="FIX+VERIFY",
+            repo_path=git_repo,
+            worktree_path=worktree_path,
+        )
+
+        assert resolved == worktree_path.resolve()

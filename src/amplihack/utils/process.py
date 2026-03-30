@@ -5,6 +5,8 @@ import shutil
 import signal
 import subprocess
 import sys
+from dataclasses import dataclass
+from pathlib import Path
 
 
 class ProcessManager:
@@ -121,6 +123,7 @@ class ProcessManager:
         cwd: str | None = None,
         env: dict[str, str] | None = None,
         capture_output: bool = True,
+        timeout: int | None = None,
     ) -> subprocess.CompletedProcess:
         """Run a command with cross-platform compatibility.
 
@@ -143,6 +146,8 @@ class ProcessManager:
             "env": env,
             "capture_output": capture_output,
             "text": True,
+            "timeout": timeout,
+            "check": False,
         }
 
         # On Windows, npm/npx/node are typically .cmd batch files
@@ -157,3 +162,54 @@ class ProcessManager:
             # which is better than shell injection vulnerability
 
         return subprocess.run(command, **kwargs)
+
+
+@dataclass(frozen=True, slots=True)
+class CommandResult:
+    """Structured subprocess result with normalized text output."""
+
+    args: tuple[str, ...]
+    returncode: int
+    stdout: str
+    stderr: str
+
+
+def ensure_path_within_root(root: Path, candidate: Path) -> Path:
+    """Resolve *candidate* and ensure it remains within *root*."""
+    resolved_root = root.resolve()
+    resolved_candidate = candidate.resolve()
+    try:
+        resolved_candidate.relative_to(resolved_root)
+    except ValueError as exc:
+        raise ValueError(
+            f"Path '{resolved_candidate}' escapes allowed root '{resolved_root}'"
+        ) from exc
+    return resolved_candidate
+
+
+def run_command_with_timeout(
+    command: list[str],
+    *,
+    cwd: Path | str | None = None,
+    env: dict[str, str] | None = None,
+    timeout: int,
+) -> CommandResult:
+    """Run a subprocess with an explicit timeout and captured text output."""
+    if not command:
+        raise ValueError("Command must not be empty")
+    if timeout <= 0:
+        raise ValueError("Command timeout must be greater than zero")
+
+    completed = ProcessManager.run_command(
+        command,
+        cwd=str(cwd) if cwd is not None else None,
+        env=env,
+        capture_output=True,
+        timeout=timeout,
+    )
+    return CommandResult(
+        args=tuple(command),
+        returncode=completed.returncode,
+        stdout=completed.stdout or "",
+        stderr=completed.stderr or "",
+    )
