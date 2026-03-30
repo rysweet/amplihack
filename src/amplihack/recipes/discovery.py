@@ -57,57 +57,60 @@ _REPO_ROOT_BUNDLE_DIR = _PACKAGE_DIR.parent.parent / "amplifier-bundle" / "recip
 # - Path is canonicalized via Path(raw).resolve() before use (follows symlinks)
 # - .is_dir() check is required — invalid values emit a WARNING log, not an
 #   exception and not silent ignore (#3237)
-# - _AMPLIHACK_HOME_BUNDLE_DIR is kept for backwards compat with rust_runner.py
-_AMPLIHACK_HOME_DIR: Path | None = None
-_AMPLIHACK_HOME_BUNDLE_DIR: Path | None = None
-_amplihack_home_raw = os.environ.get("AMPLIHACK_HOME")
-if _amplihack_home_raw:
-    _amplihack_home_resolved = Path(_amplihack_home_raw).resolve()
-    if _amplihack_home_resolved.is_dir():
-        _AMPLIHACK_HOME_DIR = _amplihack_home_resolved
-        _bundle_candidate = _amplihack_home_resolved / "amplifier-bundle" / "recipes"
-        if _bundle_candidate.is_dir():
-            _AMPLIHACK_HOME_BUNDLE_DIR = _bundle_candidate
-        else:
-            logger.warning(
-                "AMPLIHACK_HOME=%r is set but amplifier-bundle/recipes/ subdir not found "
-                "(resolved: %s) — recipes from AMPLIHACK_HOME will not be discovered. "
-                "Ensure amplifier-bundle/recipes/ exists inside AMPLIHACK_HOME.",
-                _amplihack_home_raw,
-                _bundle_candidate,
-            )
-    else:
+# - _get_amplihack_home_bundle_dir() is called per-use to avoid stale data
+#   when AMPLIHACK_HOME changes between calls in the same process (#3811)
+
+
+def _get_amplihack_home_bundle_dir() -> Path | None:
+    """Resolve ``$AMPLIHACK_HOME/amplifier-bundle/recipes/`` dynamically.
+
+    Re-reads the environment on each call so concurrent runs with different
+    AMPLIHACK_HOME values get correct results (fixes #3811).
+    """
+    raw = os.environ.get("AMPLIHACK_HOME")
+    if not raw:
+        return None
+
+    resolved = Path(raw).resolve()
+    if not resolved.is_dir():
         logger.warning(
             "AMPLIHACK_HOME=%r is not a valid directory (resolved: %s) — ignoring. "
             "Set AMPLIHACK_HOME to an existing directory containing your amplihack installation.",
-            _amplihack_home_raw,
-            _amplihack_home_resolved,
+            raw,
+            resolved,
         )
+        return None
 
-# Directories searched for recipe files, in priority order.
-# Later entries override earlier ones when recipes share the same name.
-#
-# The installed-package path comes first so that core recipes are always
-# discoverable even when CWD is an unrelated project.  This fixes #2812
-# where recipe discovery failed outside the amplihack source tree.
-#
-# Priority (package → repo-root → AMPLIHACK_HOME → global → local):
-# 1. <site-packages>/amplihack/amplifier-bundle/recipes/ - Installed package
-# 2. <repo-root>/amplifier-bundle/recipes/               - Editable install
-# 3. $AMPLIHACK_HOME/amplifier-bundle/recipes/ - Explicit env var (resolved, bundle subdir checked)
-# 4. ~/.amplihack/.claude/recipes/       - User home (global installation)
-# 5. amplifier-bundle/recipes/           - Global bundled (CWD-relative)
-# 6. src/amplihack/amplifier-bundle/     - Global source (CWD-relative)
-# 7. .claude/recipes/                    - Project local recipes
-_DEFAULT_SEARCH_DIRS: list[Path] = [
-    _PACKAGE_BUNDLE_DIR,  # Installed package — ALWAYS available
-    _REPO_ROOT_BUNDLE_DIR,  # Editable install — repo root fallback
-    *([_AMPLIHACK_HOME_BUNDLE_DIR] if _AMPLIHACK_HOME_BUNDLE_DIR else []),
-    Path.home() / ".amplihack" / ".claude" / "recipes",  # Global user home
-    Path("amplifier-bundle") / "recipes",  # Global bundled
-    Path("src") / "amplihack" / "amplifier-bundle" / "recipes",  # Global source
-    Path(".claude") / "recipes",  # Local - LAST
-]
+    bundle_candidate = resolved / "amplifier-bundle" / "recipes"
+    if bundle_candidate.is_dir():
+        return bundle_candidate
+
+    logger.warning(
+        "AMPLIHACK_HOME=%r is set but amplifier-bundle/recipes/ subdir not found "
+        "(resolved: %s) — recipes from AMPLIHACK_HOME will not be discovered. "
+        "Ensure amplifier-bundle/recipes/ exists inside AMPLIHACK_HOME.",
+        raw,
+        bundle_candidate,
+    )
+    return None
+
+
+def _get_default_search_dirs() -> list[Path]:
+    """Build the recipe search directory list, reading env vars fresh.
+
+    Called on every discovery/find call so concurrent runs with different
+    AMPLIHACK_HOME or AMPLIHACK_TREE_ID values never see stale paths (#3811).
+    """
+    amplihack_home_bundle = _get_amplihack_home_bundle_dir()
+    return [
+        _PACKAGE_BUNDLE_DIR,  # Installed package — ALWAYS available
+        _REPO_ROOT_BUNDLE_DIR,  # Editable install — repo root fallback
+        *([] if amplihack_home_bundle is None else [amplihack_home_bundle]),
+        Path.home() / ".amplihack" / ".claude" / "recipes",  # Global user home
+        Path("amplifier-bundle") / "recipes",  # Global bundled
+        Path("src") / "amplihack" / "amplifier-bundle" / "recipes",  # Global source
+        Path(".claude") / "recipes",  # Local - LAST
+    ]
 
 
 @dataclass
@@ -218,6 +221,8 @@ def discover_recipes(
     Returns:
         RecipeCache of qualified key -> RecipeInfo (bare-name lookup supported).
     """
+    dirs = search_dirs or _get_default_search_dirs()
+    recipes: dict[str, RecipeInfo] = {}
     dirs = search_dirs or _DEFAULT_SEARCH_DIRS
     recipes = RecipeCache()
 
@@ -336,6 +341,7 @@ def find_recipe(name: str, search_dirs: list[Path] | None = None) -> Path | None
     Returns:
         Path to the recipe file, or None.
     """
+    dirs = search_dirs or _get_default_search_dirs()
     # Qualified lookup: "dir_path:recipe_name"
     if ":" in name:
         dir_part, _, bare_name = name.rpartition(":")
@@ -564,7 +570,7 @@ def _load_manifest(recipe_dir: Path) -> dict[str, str]:
 
 def _find_first_recipe_dir() -> Path | None:
     """Return the first existing recipe directory from the search list."""
-    for d in _DEFAULT_SEARCH_DIRS:
+    for d in _get_default_search_dirs():
         if d.is_dir():
             return d
     return None
