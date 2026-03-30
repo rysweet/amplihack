@@ -12,16 +12,39 @@ Public API:
 
 from __future__ import annotations
 
+import os
 import subprocess
 import tarfile
 import tempfile
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_auth import AUTH_FILES, AuthResult, _validate_chmod_mode
 
 __all__ = ["propagate_all_bundled"]
+
+_BUNDLE_FILE_MODE = 0o600
+_BUNDLE_DIR_MODE = 0o700
+_BUNDLE_OPEN_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+
+
+@contextmanager
+def _create_secure_bundle_file() -> Iterator[Path]:
+    """Create a private bundle file inside a private temp workspace."""
+    with tempfile.TemporaryDirectory(
+        prefix="fleet-auth-bundle-",
+        dir=tempfile.gettempdir(),
+    ) as temp_dir:
+        workspace = Path(temp_dir)
+        workspace.chmod(_BUNDLE_DIR_MODE)
+        bundle_path = workspace / "fleet-auth-bundle.tar.gz"
+        fd = os.open(str(bundle_path), _BUNDLE_OPEN_FLAGS, _BUNDLE_FILE_MODE)
+        os.close(fd)
+        bundle_path.chmod(_BUNDLE_FILE_MODE)
+        yield bundle_path
 
 
 def propagate_all_bundled(
@@ -64,9 +87,8 @@ def propagate_all_bundled(
             duration_seconds=time.monotonic() - start,
         )
 
-    # Create tar bundle with neutral name
-    bundle_path = Path(tempfile.gettempdir()) / "fleet-auth-bundle.tar.gz"
-    try:
+    # Create tar bundle with neutral remote name inside a private local workspace.
+    with _create_secure_bundle_file() as bundle_path:
         with tarfile.open(bundle_path, "w:gz") as tar:
             for src_path, dest_path, _ in files_to_bundle:
                 # Store relative to home
@@ -74,6 +96,7 @@ def propagate_all_bundled(
                 if ".." in arcname or arcname.startswith("/"):
                     continue  # Skip unsafe paths
                 tar.add(src_path, arcname=arcname)
+        bundle_path.chmod(_BUNDLE_FILE_MODE)
 
         # Copy bundle (neutral filename bypasses azlin credential check)
         result = subprocess.run(
@@ -115,6 +138,3 @@ def propagate_all_bundled(
             files_copied=files_copied,
             duration_seconds=time.monotonic() - start,
         )
-
-    finally:
-        bundle_path.unlink(missing_ok=True)

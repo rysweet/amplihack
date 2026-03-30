@@ -4,10 +4,12 @@ Tests the GitHubIdentity, AuthPropagator data flow, and identity switching.
 All external calls (subprocess) are mocked.
 """
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from amplihack.fleet import _auth_bundle
 from amplihack.fleet.fleet_auth import AuthPropagator, AuthResult, GitHubIdentity
 
 
@@ -168,6 +170,18 @@ class TestAuthPropagatorPropagation:
 class TestPropagateAllBundled:
     """Tests for propagate_all_bundled tar bundle flow."""
 
+    def test_secure_bundle_file_uses_private_workspace(self, tmp_path, monkeypatch):
+        """Secure bundle helper should create a private file in a private temp dir."""
+        monkeypatch.setattr(_auth_bundle.tempfile, "gettempdir", lambda: str(tmp_path))
+
+        with _auth_bundle._create_secure_bundle_file() as bundle_path:
+            assert bundle_path.name == "fleet-auth-bundle.tar.gz"
+            assert bundle_path.parent.parent == tmp_path
+            assert bundle_path.parent.name.startswith("fleet-auth-bundle-")
+            assert bundle_path.exists()
+            assert bundle_path.stat().st_mode & 0o777 == 0o600
+            assert bundle_path.parent.stat().st_mode & 0o777 == 0o700
+
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
     def test_bundled_no_auth_files(self, mock_run, tmp_path, monkeypatch):
         """When no auth files exist locally, return error."""
@@ -223,12 +237,20 @@ class TestPropagateAllBundled:
             return orig_expanduser(self)
 
         monkeypatch.setattr("pathlib.Path.expanduser", mock_expanduser)
+        monkeypatch.setattr(_auth_bundle.tempfile, "gettempdir", lambda: str(tmp_path))
 
-        # First call: azlin cp succeeds, second call: extract succeeds
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="", stderr=""),  # cp
-            MagicMock(returncode=0, stdout="AUTH_OK", stderr=""),  # extract
-        ]
+        def side_effect(*args, **kwargs):
+            cmd = args[0]
+            if len(cmd) >= 2 and cmd[1] == "cp":
+                bundle_path = Path(cmd[2])
+                assert bundle_path.name == "fleet-auth-bundle.tar.gz"
+                assert bundle_path.parent.name.startswith("fleet-auth-bundle-")
+                assert bundle_path.parent.parent == tmp_path
+                assert bundle_path.stat().st_mode & 0o777 == 0o600
+                return MagicMock(returncode=0, stdout="", stderr="")
+            return MagicMock(returncode=0, stdout="AUTH_OK", stderr="")
+
+        mock_run.side_effect = side_effect
 
         auth = AuthPropagator()
         result = auth.propagate_all_bundled("test-vm")

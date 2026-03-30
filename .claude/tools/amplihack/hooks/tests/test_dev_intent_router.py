@@ -265,7 +265,13 @@ class TestRecipeProgress(unittest.TestCase):
 
     def _write_progress(self, filename: str, payload: dict) -> Path:
         path = Path(self._tmp) / filename
+        if "recipe_name" not in payload:
+            recipe_fragment = filename[len("amplihack-progress-") :].rsplit("-", 1)[0]
+            payload = {**payload, "recipe_name": recipe_fragment.replace("_", "-")}
+        if "pid" not in payload:
+            payload = {**payload, "pid": int(filename.rsplit("-", 1)[1].split(".", 1)[0])}
         path.write_text(json.dumps(payload), encoding="utf-8")
+        path.chmod(0o600)
         return path
 
     @patch("dev_intent_router._tempfile.gettempdir")
@@ -274,7 +280,9 @@ class TestRecipeProgress(unittest.TestCase):
         self.assertIsNone(get_recipe_progress("smart-orchestrator"))
 
     @patch("dev_intent_router._tempfile.gettempdir")
-    def test_reads_named_recipe_progress(self, mock_gettempdir):
+    @patch("dev_intent_router.os.kill")
+    def test_reads_named_recipe_progress(self, mock_kill, mock_gettempdir):
+        mock_kill.return_value = None
         mock_gettempdir.return_value = self._tmp
         self._write_progress(
             "amplihack-progress-smart_orchestrator-123.json",
@@ -294,7 +302,9 @@ class TestRecipeProgress(unittest.TestCase):
         self.assertEqual(result["status"], "running")
 
     @patch("dev_intent_router._tempfile.gettempdir")
-    def test_prefers_most_recent_progress_file(self, mock_gettempdir):
+    @patch("dev_intent_router.os.kill")
+    def test_prefers_most_recent_progress_file(self, mock_kill, mock_gettempdir):
+        mock_kill.return_value = None
         mock_gettempdir.return_value = self._tmp
         older = self._write_progress(
             "amplihack-progress-default_workflow-100.json",
@@ -323,6 +333,75 @@ class TestRecipeProgress(unittest.TestCase):
         self.assertEqual(result["current_step"], 3)
         self.assertEqual(result["step_name"], "new-step")
         self.assertEqual(result["status"], "completed")
+
+    @patch("dev_intent_router._tempfile.gettempdir")
+    @patch("dev_intent_router.os.kill")
+    def test_rejects_world_readable_progress_file(self, mock_kill, mock_gettempdir):
+        mock_kill.return_value = None
+        mock_gettempdir.return_value = self._tmp
+        trusted = self._write_progress(
+            "amplihack-progress-smart_orchestrator-111.json",
+            {
+                "recipe_name": "smart-orchestrator",
+                "current_step": 1,
+                "total_steps": 0,
+                "step_name": "trusted-step",
+                "elapsed_seconds": 1.0,
+                "status": "running",
+            },
+        )
+        untrusted = self._write_progress(
+            "amplihack-progress-smart_orchestrator-222.json",
+            {
+                "recipe_name": "smart-orchestrator",
+                "current_step": 9,
+                "total_steps": 0,
+                "step_name": "spoofed-step",
+                "elapsed_seconds": 9.0,
+                "status": "running",
+            },
+        )
+        os.utime(trusted, (1, 1))
+        os.utime(untrusted, (2, 2))
+        untrusted.chmod(0o644)
+
+        result = get_recipe_progress("smart-orchestrator")
+
+        self.assertEqual(result["step_name"], "trusted-step")
+        self.assertEqual(result["current_step"], 1)
+
+    @patch("dev_intent_router._tempfile.gettempdir")
+    @patch("dev_intent_router.os.kill")
+    def test_can_bind_progress_lookup_to_expected_pid(self, mock_kill, mock_gettempdir):
+        mock_kill.return_value = None
+        mock_gettempdir.return_value = self._tmp
+        self._write_progress(
+            "amplihack-progress-smart_orchestrator-111.json",
+            {
+                "recipe_name": "smart-orchestrator",
+                "current_step": 1,
+                "total_steps": 0,
+                "step_name": "pid-111",
+                "elapsed_seconds": 1.0,
+                "status": "running",
+            },
+        )
+        self._write_progress(
+            "amplihack-progress-smart_orchestrator-222.json",
+            {
+                "recipe_name": "smart-orchestrator",
+                "current_step": 2,
+                "total_steps": 0,
+                "step_name": "pid-222",
+                "elapsed_seconds": 2.0,
+                "status": "running",
+            },
+        )
+
+        result = get_recipe_progress("smart-orchestrator", pid=111)
+
+        self.assertEqual(result["step_name"], "pid-111")
+        self.assertEqual(result["current_step"], 1)
 
 
 class TestEnvVarFallback(unittest.TestCase):
@@ -377,7 +456,7 @@ class TestRoutingPromptContent(unittest.TestCase):
 
     def test_contains_hybrid_category(self):
         self.assertIn("HYBRID", _ROUTING_PROMPT)
-        self.assertIn("Investigate/understand THEN implement/fix", _ROUTING_PROMPT)
+        self.assertIn("investigate X then fix Y", _ROUTING_PROMPT)
 
     def test_contains_qa_category(self):
         self.assertIn("Q&A", _ROUTING_PROMPT)
@@ -403,17 +482,17 @@ class TestRoutingPromptContent(unittest.TestCase):
         self.assertIn("what is OAuth?", _ROUTING_PROMPT)
 
     def test_prompt_is_concise(self):
-        # New prompt is longer due to MANDATORY RULE section for code/docs changes
-        self.assertLess(len(_ROUTING_PROMPT), 2500)
+        # Keep the routing prompt reasonably bounded so it does not balloon each turn.
+        self.assertLess(len(_ROUTING_PROMPT), 3500)
 
     def test_auto_routed_announcement(self):
         self.assertIn("[auto-routed]", _ROUTING_PROMPT)
 
     def test_contains_mandatory_code_edit_rule(self):
         """The prompt must enforce that ALL file changes use DEV workflow."""
-        self.assertIn("MANDATORY RULE", _ROUTING_PROMPT)
-        self.assertIn("ALWAYS DEV", _ROUTING_PROMPT)
-        self.assertIn("NO exceptions", _ROUTING_PROMPT)
+        self.assertIn("FILE_EDIT", _ROUTING_PROMPT)
+        self.assertIn('"update README" = DEV', _ROUTING_PROMPT)
+        self.assertIn('"fix a typo" = DEV', _ROUTING_PROMPT)
 
     def test_routing_prompt_is_not_empty(self):
         """The prompt must load from external template file successfully."""

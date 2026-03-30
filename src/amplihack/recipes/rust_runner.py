@@ -59,6 +59,8 @@ _KEY_SANITIZE_RE: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9_.\-]")
 # filename when looking up progress records.
 # perf: same rationale as _KEY_SANITIZE_RE — called per progress write.
 _PROGRESS_NAME_SANITIZE_RE: re.Pattern[str] = re.compile(r"[^a-zA-Z0-9_]")
+_PROGRESS_FILE_MODE = 0o600
+_PROGRESS_FILE_OPEN_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
 
 # R5: allowlist pattern for recipe names.
 # perf: compiled once; validated on every run_recipe_via_rust() call.
@@ -751,8 +753,9 @@ def _write_progress_file(
         "transition": transition,
     }
     try:
-        path.write_text(json.dumps(data), encoding="utf-8")
-        path.chmod(0o600)
+        fd = os.open(str(path), _PROGRESS_FILE_OPEN_FLAGS, _PROGRESS_FILE_MODE)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(data))
     except OSError as exc:
         logger.debug("Could not write progress file %s: %s", path, exc)
     return path

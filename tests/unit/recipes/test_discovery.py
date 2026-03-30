@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+import amplihack.recipes.discovery as discovery_module
 from amplihack.recipes.discovery import (
     _PACKAGE_BUNDLE_DIR,
     check_upstream_changes,
@@ -13,6 +16,13 @@ from amplihack.recipes.discovery import (
     update_manifest,
 )
 from amplihack.recipes.parser import RecipeParser
+
+
+@pytest.fixture(autouse=True)
+def _clear_recipe_info_cache() -> None:
+    discovery_module._RECIPE_INFO_CACHE.clear()
+    yield
+    discovery_module._RECIPE_INFO_CACHE.clear()
 
 
 class TestDiscoverRecipes:
@@ -56,6 +66,79 @@ class TestDiscoverRecipes:
         assert _PACKAGE_BUNDLE_DIR.is_absolute(), (
             f"Expected absolute path, got: {_PACKAGE_BUNDLE_DIR}"
         )
+
+    def test_reuses_cached_recipe_info_for_unchanged_files(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Repeated discovery should reuse metadata for unchanged recipe files."""
+        recipe_dir = tmp_path / "recipes"
+        recipe_dir.mkdir()
+        recipe_path = recipe_dir / "cached.yaml"
+        recipe_path.write_text("name: cached\ndescription: first\nsteps:\n  - name: one\n")
+
+        real_safe_load = discovery_module.yaml.safe_load
+        parse_calls = 0
+
+        def counting_safe_load(content: object) -> object:
+            nonlocal parse_calls
+            parse_calls += 1
+            return real_safe_load(content)
+
+        monkeypatch.setattr(discovery_module.yaml, "safe_load", counting_safe_load)
+
+        first = discover_recipes([recipe_dir])
+        second = discover_recipes([recipe_dir])
+
+        assert parse_calls == 1
+        assert second["cached"].description == first["cached"].description
+        assert second["cached"].sha256 == first["cached"].sha256
+
+    def test_refreshes_cached_recipe_info_when_file_changes(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Discovery cache invalidates when a recipe file's metadata changes."""
+        recipe_dir = tmp_path / "recipes"
+        recipe_dir.mkdir()
+        recipe_path = recipe_dir / "cached.yaml"
+        recipe_path.write_text("name: cached\ndescription: first\nsteps:\n  - name: one\n")
+
+        real_safe_load = discovery_module.yaml.safe_load
+        parse_calls = 0
+
+        def counting_safe_load(content: object) -> object:
+            nonlocal parse_calls
+            parse_calls += 1
+            return real_safe_load(content)
+
+        monkeypatch.setattr(discovery_module.yaml, "safe_load", counting_safe_load)
+
+        first = discover_recipes([recipe_dir])
+        recipe_path.write_text("name: cached\ndescription: updated now\nsteps:\n  - name: one\n")
+        second = discover_recipes([recipe_dir])
+
+        assert parse_calls == 2
+        assert first["cached"].description == "first"
+        assert second["cached"].description == "updated now"
+        assert second["cached"].sha256 != first["cached"].sha256
+
+    def test_cached_recipe_info_isolation_prevents_mutation_leaks(self, tmp_path: Path) -> None:
+        """Cache hits should return detached objects, not shared mutable state."""
+        recipe_dir = tmp_path / "recipes"
+        recipe_dir.mkdir()
+        recipe_path = recipe_dir / "cached.yaml"
+        recipe_path.write_text(
+            "name: cached\ndescription: first\ntags:\n  - stable\nsteps:\n  - name: one\n"
+        )
+
+        first = discover_recipes([recipe_dir])
+        first["cached"].description = "poisoned"
+        first["cached"].tags.append("mutated")
+
+        second = discover_recipes([recipe_dir])
+
+        assert first["cached"] is not second["cached"]
+        assert second["cached"].description == "first"
+        assert second["cached"].tags == ["stable"]
 
 
 class TestListRecipes:
@@ -120,7 +203,6 @@ class TestParseFile:
     def test_parse_file_missing_raises(self, tmp_path: Path) -> None:
         """parse_file raises FileNotFoundError for missing files."""
         parser = RecipeParser()
-        import pytest
 
         with pytest.raises(FileNotFoundError):
             parser.parse_file(tmp_path / "nonexistent.yaml")

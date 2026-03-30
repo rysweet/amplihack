@@ -23,6 +23,7 @@ import glob as _glob
 import json as _json
 import os
 import re as _re
+import stat as _stat
 import tempfile as _tempfile
 from pathlib import Path
 
@@ -49,6 +50,11 @@ _WELCOME_BANNER = ""  # Deprecated: visible notice now shown by session_start ho
 
 # Minimum prompt length to inject routing (saves ~400 tokens on trivial turns)
 _MIN_PROMPT_LENGTH = 10
+_PROGRESS_FILE_RE = _re.compile(
+    r"^amplihack-progress-(?P<safe_name>[a-zA-Z0-9_]{1,64})-(?P<pid>\d+)\.json$"
+)
+_PROGRESS_PRIVATE_MODE_MASK = 0o077
+_PROGRESS_READ_FLAGS = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
 
 
 # ---------------------------------------------------------------------------
@@ -245,29 +251,98 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
     return True, _ROUTING_PROMPT
 
 
-def get_recipe_progress(recipe_name: str | None = None) -> dict | None:
-    """Return the most recent machine-readable progress record for a recipe run."""
-    tmp_dir = _tempfile.gettempdir()
+def _progress_safe_name(recipe_name: str) -> str:
+    """Return the sanitized recipe name used in progress filenames."""
+    stem = Path(recipe_name).stem if ("/" in recipe_name or os.sep in recipe_name) else recipe_name
+    return _re.sub(r"[^a-zA-Z0-9_]", "_", stem)[:64]
 
-    if recipe_name is not None:
-        stem = (
-            Path(recipe_name).stem if ("/" in recipe_name or os.sep in recipe_name) else recipe_name
-        )
-        safe_name = _re.sub(r"[^a-zA-Z0-9_]", "_", stem)[:64]
-        pattern = str(Path(tmp_dir) / f"amplihack-progress-{safe_name}-*.json")
-    else:
-        pattern = str(Path(tmp_dir) / "amplihack-progress-*.json")
 
-    files = _glob.glob(pattern)
-    if not files:
-        return None
-
-    files.sort(key=lambda candidate: Path(candidate).stat().st_mtime, reverse=True)
-
+def _pid_is_alive(pid: int) -> bool:
+    """Return True when *pid* belongs to a currently running process."""
+    if pid <= 0:
+        return False
     try:
-        data = _json.loads(Path(files[0]).read_text(encoding="utf-8"))
-    except (OSError, _json.JSONDecodeError, ValueError):
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def _read_trusted_progress_file(
+    path: Path,
+    *,
+    expected_safe_name: str | None,
+    expected_pid: int | None,
+) -> tuple[float, dict] | None:
+    """Read a progress file only when its filename, owner, mode, and payload agree."""
+    try:
+        match = _PROGRESS_FILE_RE.fullmatch(path.name)
+        if match is None:
+            return None
+        file_safe_name = match.group("safe_name")
+        file_pid = int(match.group("pid"))
+        if expected_safe_name is not None and file_safe_name != expected_safe_name:
+            return None
+        if expected_pid is not None and file_pid != expected_pid:
+            return None
+
+        stat_result = path.stat(follow_symlinks=False)
+        if not _stat.S_ISREG(stat_result.st_mode):
+            return None
+        if hasattr(os, "getuid") and stat_result.st_uid != os.getuid():
+            return None
+        if stat_result.st_mode & _PROGRESS_PRIVATE_MODE_MASK:
+            return None
+        if not _pid_is_alive(file_pid):
+            return None
+
+        fd = os.open(str(path), _PROGRESS_READ_FLAGS)
+        with os.fdopen(fd, "r", encoding="utf-8") as handle:
+            data = _json.load(handle)
+    except (OSError, _json.JSONDecodeError, TypeError, ValueError):
         return None
+    if not isinstance(data, dict):
+        return None
+    payload_pid = data.get("pid")
+    payload_recipe_name = data.get("recipe_name")
+    if not isinstance(payload_pid, int) or payload_pid != file_pid:
+        return None
+    if not isinstance(payload_recipe_name, str):
+        return None
+    if _progress_safe_name(payload_recipe_name) != file_safe_name:
+        return None
+    return stat_result.st_mtime, data
+
+
+def get_recipe_progress(recipe_name: str | None = None, pid: int | None = None) -> dict | None:
+    """Return the newest trusted machine-readable progress record for a recipe run."""
+    tmp_dir = Path(_tempfile.gettempdir())
+    safe_name = _progress_safe_name(recipe_name) if recipe_name is not None else None
+
+    if safe_name is not None and pid is not None:
+        candidates = [tmp_dir / f"amplihack-progress-{safe_name}-{pid}.json"]
+    elif safe_name is not None:
+        candidates = [Path(match) for match in _glob.glob(str(tmp_dir / f"amplihack-progress-{safe_name}-*.json"))]
+    elif pid is not None:
+        candidates = [Path(match) for match in _glob.glob(str(tmp_dir / f"amplihack-progress-*-{pid}.json"))]
+    else:
+        candidates = [Path(match) for match in _glob.glob(str(tmp_dir / "amplihack-progress-*.json"))]
+
+    trusted_records = []
+    for candidate in candidates:
+        trusted = _read_trusted_progress_file(
+            candidate,
+            expected_safe_name=safe_name,
+            expected_pid=pid,
+        )
+        if trusted is not None:
+            trusted_records.append(trusted)
+
+    if not trusted_records:
+        return None
+
+    trusted_records.sort(key=lambda item: item[0], reverse=True)
+    _, data = trusted_records[0]
 
     return {
         "current_step": data.get("current_step", 0),

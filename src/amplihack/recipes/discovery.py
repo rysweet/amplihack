@@ -140,6 +140,31 @@ class RecipeInfo:
     sha256: str = ""
 
 
+@dataclass
+class _RecipeInfoCacheEntry:
+    """Cached recipe metadata keyed by stable file metadata."""
+
+    mtime_ns: int
+    size: int
+    info: RecipeInfo
+
+
+_RECIPE_INFO_CACHE: dict[Path, _RecipeInfoCacheEntry] = {}
+
+
+def _clone_recipe_info(info: RecipeInfo) -> RecipeInfo:
+    """Return a detached copy so callers cannot mutate cached metadata."""
+    return RecipeInfo(
+        name=info.name,
+        path=info.path,
+        description=info.description,
+        version=info.version,
+        step_count=info.step_count,
+        tags=list(info.tags),
+        sha256=info.sha256,
+    )
+
+
 def discover_recipes(
     search_dirs: list[Path] | None = None,
 ) -> dict[str, RecipeInfo]:
@@ -447,30 +472,48 @@ def update_manifest(local_dir: Path | None = None) -> Path:
 
 def _load_recipe_info(yaml_path: Path) -> RecipeInfo | None:
     """Load minimal metadata from a recipe YAML file without full parsing."""
+    resolved_path = yaml_path.resolve()
     try:
-        text = yaml_path.read_text(encoding="utf-8")
-        data = yaml.safe_load(text)
+        stat = resolved_path.stat()
+        cached = _RECIPE_INFO_CACHE.get(resolved_path)
+        if cached is not None and cached.mtime_ns == stat.st_mtime_ns and cached.size == stat.st_size:
+            return _clone_recipe_info(cached.info)
+
+        content = resolved_path.read_bytes()
+        data = yaml.safe_load(content)
         if not isinstance(data, dict) or "name" not in data:
             return None
 
         steps = data.get("steps", [])
-        return RecipeInfo(
+        raw_tags = data.get("tags", [])
+        info = RecipeInfo(
             name=data["name"],
-            path=yaml_path.resolve(),
+            path=resolved_path,
             description=data.get("description", ""),
             version=data.get("version", ""),
             step_count=len(steps) if isinstance(steps, list) else 0,
-            tags=data.get("tags", []),
-            sha256=_file_hash(yaml_path),
+            tags=list(raw_tags) if isinstance(raw_tags, list) else [],
+            sha256=_short_sha256_bytes(content),
         )
+        _RECIPE_INFO_CACHE[resolved_path] = _RecipeInfoCacheEntry(
+            mtime_ns=stat.st_mtime_ns,
+            size=stat.st_size,
+            info=_clone_recipe_info(info),
+        )
+        return info
     except Exception:
-        logger.debug("Failed to load recipe info from %s", yaml_path)
+        logger.debug("Failed to load recipe info from %s", resolved_path)
         return None
+
+
+def _short_sha256_bytes(content: bytes) -> str:
+    """Return the short SHA-256 digest for in-memory file contents."""
+    return hashlib.sha256(content).hexdigest()[:16]
 
 
 def _file_hash(path: Path) -> str:
     """Return SHA-256 hex digest of a file's contents."""
-    return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+    return _short_sha256_bytes(path.read_bytes())
 
 
 def _load_manifest(recipe_dir: Path) -> dict[str, str]:
