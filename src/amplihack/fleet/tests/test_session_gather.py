@@ -17,7 +17,6 @@ import pytest
 from amplihack.fleet._session_context import SessionContext
 from amplihack.fleet._session_gather import gather_context, parse_context_output
 
-
 # ---------------------------------------------------------------------------
 # gather_context -- success path
 # ---------------------------------------------------------------------------
@@ -320,12 +319,7 @@ class TestTranscriptEarlyRecentParsing:
     def test_recent_only_no_early_marker(self):
         """Output without ---EARLY--- marker should just use the text as recent."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
-        output = (
-            "===TRANSCRIPT===\n"
-            "just recent text here\n"
-            "more recent text\n"
-            "===END===\n"
-        )
+        output = "===TRANSCRIPT===\njust recent text here\nmore recent text\n===END===\n"
         parse_context_output(output, ctx)
 
         assert "just recent text here" in ctx.transcript_summary
@@ -343,13 +337,7 @@ class TestTranscriptEarlyRecentParsing:
     def test_early_section_empty_recent_populated(self):
         """---EARLY--- with no content between it and ---RECENT--- should still parse recent."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
-        output = (
-            "===TRANSCRIPT===\n"
-            "---EARLY---\n"
-            "---RECENT---\n"
-            "only recent content\n"
-            "===END===\n"
-        )
+        output = "===TRANSCRIPT===\n---EARLY---\n---RECENT---\nonly recent content\n===END===\n"
         parse_context_output(output, ctx)
 
         assert "only recent content" in ctx.transcript_summary
@@ -369,10 +357,7 @@ class TestObjectivesParsing:
         """TSV-formatted objectives are parsed into project_objectives."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
         output = (
-            "===OBJECTIVES===\n"
-            "42\tAdd authentication\tOPEN\n"
-            "43\tFix login flow\tOPEN\n"
-            "===END===\n"
+            "===OBJECTIVES===\n42\tAdd authentication\tOPEN\n43\tFix login flow\tOPEN\n===END===\n"
         )
         parse_context_output(output, ctx)
         assert len(ctx.project_objectives) == 2
@@ -390,13 +375,7 @@ class TestObjectivesParsing:
     def test_malformed_lines_skipped(self):
         """Lines without proper format are skipped."""
         ctx = SessionContext(vm_name="devy", session_name="task-1")
-        output = (
-            "===OBJECTIVES===\n"
-            "not-a-number\tBad line\n"
-            "42\tGood line\tOPEN\n"
-            "\n"
-            "===END===\n"
-        )
+        output = "===OBJECTIVES===\nnot-a-number\tBad line\n42\tGood line\tOPEN\n\n===END===\n"
         parse_context_output(output, ctx)
         assert len(ctx.project_objectives) == 1
         assert ctx.project_objectives[0]["number"] == 42
@@ -404,9 +383,12 @@ class TestObjectivesParsing:
     @patch("amplihack.fleet._session_gather._match_project")
     def test_enriches_with_local_project(self, mock_match):
         """After parsing repo_url, context is enriched with local project data."""
-        mock_match.return_value = ("myapp", [
-            {"number": 99, "title": "Local objective", "state": "open"},
-        ])
+        mock_match.return_value = (
+            "myapp",
+            [
+                {"number": 99, "title": "Local objective", "state": "open"},
+            ],
+        )
 
         ctx = SessionContext(vm_name="devy", session_name="task-1")
         output = (

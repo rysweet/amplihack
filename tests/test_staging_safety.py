@@ -478,4 +478,3 @@ class TestRecoveryStageGuards:
         )
 
         assert resolved == worktree_path.resolve()
-

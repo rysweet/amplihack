@@ -11,19 +11,15 @@ Testing pyramid:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 import threading
 import time
-import uuid
 
 import pytest
 
 from amplihack.agents.goal_seeking.hive_mind.bloom import BloomFilter
 from amplihack.agents.goal_seeking.hive_mind.constants import (
-    DEFAULT_BROADCAST_THRESHOLD,
-    DEFAULT_CONFIDENCE_GATE,
     GOSSIP_MIN_CONFIDENCE,
     MAX_TRUST_SCORE,
     PEER_CONFIDENCE_DISCOUNT,
@@ -55,14 +51,12 @@ from amplihack.agents.goal_seeking.hive_mind.hive_graph import (
     HiveAgent,
     HiveEdge,
     HiveFact,
-    HiveGraph,
     InMemoryHiveGraph,
     create_hive_graph,
 )
 from amplihack.agents.goal_seeking.hive_mind.orchestrator import (
     DefaultPromotionPolicy,
     HiveMindOrchestrator,
-    PromotionPolicy,
 )
 from amplihack.agents.goal_seeking.hive_mind.quality import (
     QualityGate,
@@ -75,7 +69,6 @@ from amplihack.agents.goal_seeking.hive_mind.reranker import (
     rrf_merge,
     trust_weighted_score,
 )
-
 
 # ===========================================================================
 # Section 1: EDGE CASES & BOUNDARY CONDITIONS (Unit Tests)
@@ -156,9 +149,7 @@ class TestHiveGraphEdgeCases:
         hive = InMemoryHiveGraph("test")
         hive.register_agent("a1")
         for i in range(5):
-            hive.promote_fact("a1", HiveFact(
-                fact_id=f"f{i}", content=f"fact {i}", concept="t"
-            ))
+            hive.promote_fact("a1", HiveFact(fact_id=f"f{i}", content=f"fact {i}", concept="t"))
         results = hive.query_facts("")
         assert len(results) == 5
 
@@ -176,9 +167,9 @@ class TestHiveGraphEdgeCases:
     def test_check_contradictions_same_content_not_flagged(self) -> None:
         hive = InMemoryHiveGraph("test")
         hive.register_agent("a1")
-        hive.promote_fact("a1", HiveFact(
-            fact_id="f1", content="Earth orbits the Sun", concept="astronomy"
-        ))
+        hive.promote_fact(
+            "a1", HiveFact(fact_id="f1", content="Earth orbits the Sun", concept="astronomy")
+        )
         # Exact same content should not be a contradiction
         result = hive.check_contradictions("Earth orbits the Sun", "astronomy")
         assert len(result) == 0
@@ -244,7 +235,9 @@ class TestHiveGraphFederation:
 
         # child_a promotes a high-confidence fact
         fact = HiveFact(
-            fact_id="f1", content="Important discovery", concept="science",
+            fact_id="f1",
+            content="Important discovery",
+            concept="science",
             confidence=0.95,
         )
         child_a.promote_fact("agent_a", fact)
@@ -265,9 +258,9 @@ class TestHiveGraphFederation:
         hive_a.add_child(hive_b)
         hive_b.add_child(hive_a)
 
-        hive_a.promote_fact("agent_a", HiveFact(
-            fact_id="f1", content="circular test fact", concept="test"
-        ))
+        hive_a.promote_fact(
+            "agent_a", HiveFact(fact_id="f1", content="circular test fact", concept="test")
+        )
 
         # Should complete without infinite recursion
         results = hive_a.query_federated("circular test")
@@ -283,12 +276,12 @@ class TestHiveGraphFederation:
 
         # Same content in both hives
         same_content = "Shared knowledge fact"
-        parent.promote_fact("p_agent", HiveFact(
-            fact_id="pf1", content=same_content, concept="shared"
-        ))
-        child.promote_fact("c_agent", HiveFact(
-            fact_id="cf1", content=same_content, concept="shared"
-        ))
+        parent.promote_fact(
+            "p_agent", HiveFact(fact_id="pf1", content=same_content, concept="shared")
+        )
+        child.promote_fact(
+            "c_agent", HiveFact(fact_id="cf1", content=same_content, concept="shared")
+        )
 
         results = parent.query_federated("Shared knowledge")
         contents = [f.content for f in results]
@@ -346,11 +339,15 @@ class TestEventBusEdgeCases:
         assert len(events) == 1
 
     def test_bus_event_json_roundtrip(self) -> None:
-        event = make_event("FACT_PROMOTED", "agent_x", {
-            "content": "Test content",
-            "confidence": 0.95,
-            "nested": {"key": "value"},
-        })
+        event = make_event(
+            "FACT_PROMOTED",
+            "agent_x",
+            {
+                "content": "Test content",
+                "confidence": 0.95,
+                "nested": {"key": "value"},
+            },
+        )
         json_str = event.to_json()
         restored = BusEvent.from_json(json_str)
         assert restored.event_id == event.event_id
@@ -585,8 +582,10 @@ class TestDHTEdgeCases:
         router.add_agent("a1")
         router.add_agent("a2")
         fact = ShardFact(
-            fact_id="f1", content="DNA stores genetic information",
-            concept="biology", confidence=0.9,
+            fact_id="f1",
+            content="DNA stores genetic information",
+            concept="biology",
+            confidence=0.9,
         )
         stored_on = router.store_fact(fact)
         assert len(stored_on) >= 1
@@ -742,9 +741,7 @@ class TestQualityEdgeCases:
 
     def test_quality_gate_should_promote(self) -> None:
         gate = QualityGate(promotion_threshold=0.1)
-        assert gate.should_promote(
-            "DNA stores genetic information", "genetics"
-        ) is True
+        assert gate.should_promote("DNA stores genetic information", "genetics") is True
 
     def test_quality_gate_blocks_low_quality(self) -> None:
         gate = QualityGate(promotion_threshold=0.99)
@@ -779,12 +776,12 @@ class TestGossipEdgeCases:
         peer.register_agent("p1")
 
         # Same fact in both hives
-        source.promote_fact("a1", HiveFact(
-            fact_id="f1", content="shared fact", concept="t", confidence=0.9
-        ))
-        peer.promote_fact("p1", HiveFact(
-            fact_id="f2", content="shared fact", concept="t", confidence=0.9
-        ))
+        source.promote_fact(
+            "a1", HiveFact(fact_id="f1", content="shared fact", concept="t", confidence=0.9)
+        )
+        peer.promote_fact(
+            "p1", HiveFact(fact_id="f2", content="shared fact", concept="t", confidence=0.9)
+        )
 
         result = run_gossip_round(source, [peer])
         # Should share 0 facts since peer already has the content
@@ -805,9 +802,9 @@ class TestGossipEdgeCases:
         for i in range(3):
             h = InMemoryHiveGraph(f"hive_{i}")
             h.register_agent(f"agent_{i}")
-            h.promote_fact(f"agent_{i}", HiveFact(
-                fact_id=f"f_{i}", content="identical content", concept="t"
-            ))
+            h.promote_fact(
+                f"agent_{i}", HiveFact(fact_id=f"f_{i}", content="identical content", concept="t")
+            )
             hives.append(h)
         assert convergence_check(hives) == 1.0
 
@@ -816,9 +813,9 @@ class TestGossipEdgeCases:
         for i in range(3):
             h = InMemoryHiveGraph(f"hive_{i}")
             h.register_agent(f"agent_{i}")
-            h.promote_fact(f"agent_{i}", HiveFact(
-                fact_id=f"f_{i}", content=f"unique content {i}", concept="t"
-            ))
+            h.promote_fact(
+                f"agent_{i}", HiveFact(fact_id=f"f_{i}", content=f"unique content {i}", concept="t")
+            )
             hives.append(h)
         assert convergence_check(hives) == 0.0
 
@@ -830,9 +827,9 @@ class TestGossipEdgeCases:
         peer.register_agent("p1")
 
         # Add a low-confidence fact (below min_confidence)
-        source.promote_fact("a1", HiveFact(
-            fact_id="f1", content="low confidence fact", concept="t", confidence=0.5
-        ))
+        source.promote_fact(
+            "a1", HiveFact(fact_id="f1", content="low confidence fact", concept="t", confidence=0.5)
+        )
 
         result = run_gossip_round(source, [peer], protocol)
         # Low confidence fact should not be gossipped
@@ -876,9 +873,7 @@ class TestOrchestratorIntegration:
         bus = LocalEventBus()
         bus.subscribe("agent_a")
 
-        orch = HiveMindOrchestrator(
-            "agent_a", source_hive, bus, peers=[peer_hive]
-        )
+        orch = HiveMindOrchestrator("agent_a", source_hive, bus, peers=[peer_hive])
         orch.store_and_promote("Science", "Water boils at 100C", 0.95)
         result = orch.run_gossip_round()
         # Gossip should have attempted to contact the peer
@@ -922,11 +917,15 @@ class TestOrchestratorIntegration:
         bus.subscribe("a1")
         orch = HiveMindOrchestrator("a1", hive, bus)
 
-        event = make_event("FACT_PROMOTED", "agent_b", {
-            "concept": "Test",
-            "confidence": 0.9,
-            # Missing "content"
-        })
+        event = make_event(
+            "FACT_PROMOTED",
+            "agent_b",
+            {
+                "concept": "Test",
+                "confidence": 0.9,
+                # Missing "content"
+            },
+        )
         result = orch.process_event(event)
         assert result["incorporated"] is False
         assert "missing" in result["reason"]
@@ -938,11 +937,15 @@ class TestOrchestratorIntegration:
         bus.subscribe("a1")
         orch = HiveMindOrchestrator("a1", hive, bus)
 
-        event = make_event("FACT_PROMOTED", "agent_b", {
-            "content": "Some content",
-            "confidence": 0.9,
-            # Missing "concept"
-        })
+        event = make_event(
+            "FACT_PROMOTED",
+            "agent_b",
+            {
+                "content": "Some content",
+                "confidence": 0.9,
+                # Missing "concept"
+            },
+        )
         result = orch.process_event(event)
         assert result["incorporated"] is False
 
@@ -973,12 +976,16 @@ class TestSecurityBoundaries:
         bus.subscribe("a1")
         orch = HiveMindOrchestrator("a1", hive, bus)
 
-        event = make_event("FACT_PROMOTED", "malicious_peer", {
-            "concept": "exploit",
-            "content": "Malicious fact with max confidence",
-            "confidence": 1.0,
-            "tags": [],
-        })
+        event = make_event(
+            "FACT_PROMOTED",
+            "malicious_peer",
+            {
+                "concept": "exploit",
+                "content": "Malicious fact with max confidence",
+                "confidence": 1.0,
+                "tags": [],
+            },
+        )
         result = orch.process_event(event)
         if result["incorporated"]:
             facts = hive.query_facts("Malicious fact")
@@ -1083,10 +1090,7 @@ class TestConcurrency:
             except Exception as e:
                 errors.append(e)
 
-        threads = [
-            threading.Thread(target=promote_facts, args=(i,))
-            for i in range(num_threads)
-        ]
+        threads = [threading.Thread(target=promote_facts, args=(i,)) for i in range(num_threads)]
         for t in threads:
             t.start()
         for t in threads:
@@ -1212,9 +1216,9 @@ class TestHiveGraphTTL:
     def test_ttl_enabled_registers_metadata(self) -> None:
         hive = InMemoryHiveGraph("test", enable_ttl=True)
         hive.register_agent("a1")
-        fid = hive.promote_fact("a1", HiveFact(
-            fact_id="f1", content="decaying fact", concept="t", confidence=0.9
-        ))
+        fid = hive.promote_fact(
+            "a1", HiveFact(fact_id="f1", content="decaying fact", concept="t", confidence=0.9)
+        )
         assert fid == "f1"
         assert "f1" in hive._ttl_registry
 
@@ -1223,7 +1227,9 @@ class TestHiveGraphTTL:
         hive.register_agent("a1")
         # Manually set a very old created_at
         fact = HiveFact(
-            fact_id="old_fact", content="ancient fact", concept="t",
+            fact_id="old_fact",
+            content="ancient fact",
+            concept="t",
             created_at=0.0,
         )
         hive.promote_fact("a1", fact)
@@ -1233,9 +1239,7 @@ class TestHiveGraphTTL:
     def test_gc_keeps_fresh_facts(self) -> None:
         hive = InMemoryHiveGraph("test", enable_ttl=True)
         hive.register_agent("a1")
-        hive.promote_fact("a1", HiveFact(
-            fact_id="fresh", content="new fact", concept="t"
-        ))
+        hive.promote_fact("a1", HiveFact(fact_id="fresh", content="new fact", concept="t"))
         removed = hive.gc()
         assert "fresh" not in removed
 
@@ -1258,12 +1262,8 @@ class TestHiveGraphMergeState:
         hive_b = InMemoryHiveGraph("b")
         hive_b.register_agent("b1")
 
-        hive_a.promote_fact("a1", HiveFact(
-            fact_id="fa1", content="fact from a", concept="t"
-        ))
-        hive_b.promote_fact("b1", HiveFact(
-            fact_id="fb1", content="fact from b", concept="t"
-        ))
+        hive_a.promote_fact("a1", HiveFact(fact_id="fa1", content="fact from a", concept="t"))
+        hive_b.promote_fact("b1", HiveFact(fact_id="fb1", content="fact from b", concept="t"))
 
         hive_a.merge_state(hive_b)
         assert hive_a.get_fact("fb1") is not None
@@ -1288,9 +1288,7 @@ class TestHiveGraphMergeState:
 
         # Both have same fact
         for h, agent in [(hive_a, "a1"), (hive_b, "b1")]:
-            h.promote_fact(agent, HiveFact(
-                fact_id="shared", content="shared fact", concept="t"
-            ))
+            h.promote_fact(agent, HiveFact(fact_id="shared", content="shared fact", concept="t"))
 
         # Retract in b
         hive_b.retract_fact("shared")
@@ -1350,7 +1348,9 @@ class TestPromotionPolicyEdgeCases:
     def test_just_below_threshold_blocks(self) -> None:
         policy = DefaultPromotionPolicy(promote_threshold=0.5)
         fact = HiveFact(
-            fact_id="f1", content="t", concept="t",
+            fact_id="f1",
+            content="t",
+            concept="t",
             confidence=0.4999999,
         )
         assert policy.should_promote(fact, "a1") is False
@@ -1373,8 +1373,11 @@ class TestPromotionPolicyEdgeCases:
             broadcast_threshold=0.0,
         )
         fact = HiveFact(
-            fact_id="f1", content="t", concept="t",
-            confidence=1.0, status="retracted",
+            fact_id="f1",
+            content="t",
+            concept="t",
+            confidence=1.0,
+            status="retracted",
         )
         assert policy.should_promote(fact, "a1") is False
         assert policy.should_gossip(fact, "a1") is False

@@ -19,9 +19,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from amplihack.fleet._admiral_types import ActionType, DirectorAction
 from amplihack.fleet._constants import DEFAULT_STUCK_THRESHOLD_SECONDS
 from amplihack.fleet._coordination import CoordinationReasoner
-from amplihack.fleet._admiral_types import ActionType, DirectorAction
 from amplihack.fleet.fleet_state import AgentStatus, FleetState
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue, TaskStatus
 
@@ -80,7 +80,11 @@ class LifecycleReasoner:
         actions: list[DirectorAction] = []
 
         # Prune stale entries for tasks no longer active
-        active_keys = {f"{t.assigned_vm}:{t.assigned_session}" for t in queue.active_tasks() if t.assigned_vm and t.assigned_session}
+        active_keys = {
+            f"{t.assigned_vm}:{t.assigned_session}"
+            for t in queue.active_tasks()
+            if t.assigned_vm and t.assigned_session
+        }
         stale_keys = [k for k in self._missing_session_counts if k not in active_keys]
         for k in stale_keys:
             del self._missing_session_counts[k]

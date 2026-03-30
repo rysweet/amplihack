@@ -242,4 +242,3 @@ E   ModuleNotFoundError: No module named 'missing_dep'
 
         assert result.status == "completed"
         assert result.diagnostics[0]["diagnostic_code"] == "pytest-config-divergence"
-

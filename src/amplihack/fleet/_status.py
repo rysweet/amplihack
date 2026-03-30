@@ -49,7 +49,7 @@ def infer_agent_status(tmux_text: str) -> str:
         stripped = line.strip()
         if stripped.startswith("\u276f"):
             has_prompt = True
-            prompt_line_text = stripped[len("\u276f"):].strip()
+            prompt_line_text = stripped[len("\u276f") :].strip()
             break
 
     # STATUS BAR "(running)" detection (high priority)

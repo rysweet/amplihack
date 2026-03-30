@@ -15,7 +15,6 @@ import json
 import logging
 import platform
 import shutil
-import stat
 import subprocess
 import tarfile
 import tempfile
@@ -266,10 +265,16 @@ def ensure_xpia_binary(*, force: bool = False) -> Path:
                     timeout=5,
                 )
                 if result.returncode == 0:
-                    logger.debug("xpia-defend %s already installed at %s", installed_version, installed_binary)
+                    logger.debug(
+                        "xpia-defend %s already installed at %s",
+                        installed_version,
+                        installed_binary,
+                    )
                     return installed_binary
             except (subprocess.TimeoutExpired, OSError):
-                logger.warning("Installed binary at %s is not functional, re-installing", installed_binary)
+                logger.warning(
+                    "Installed binary at %s is not functional, re-installing", installed_binary
+                )
         else:
             return installed_binary
 

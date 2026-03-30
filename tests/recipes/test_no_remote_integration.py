@@ -116,8 +116,11 @@ class TestRemoteGuardPattern:
         remote.mkdir()
         subprocess.run(["git", "init", "--bare", str(remote)], check=True, capture_output=True)
         subprocess.run(["git", "init", "-b", "main", str(repo)], check=True, capture_output=True)
-        subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", str(remote)],
-                        check=True, capture_output=True)
+        subprocess.run(
+            ["git", "-C", str(repo), "remote", "add", "origin", str(remote)],
+            check=True,
+            capture_output=True,
+        )
 
         result = _run_bash(self.GUARD_SCRIPT, repo)
         assert result.returncode == 0
@@ -278,6 +281,7 @@ class TestConsensusWorkflowNoRemoteBehavior:
         assert result.returncode == 0
 
         import json
+
         # Find the JSON object in stdout
         for line in result.stdout.strip().split("\n"):
             line = line.strip()
@@ -286,8 +290,7 @@ class TestConsensusWorkflowNoRemoteBehavior:
                     data = json.loads(line)
                     if "pushed" in data:
                         assert data["pushed"] is False, (
-                            f"step9 JSON must report pushed=false when no remote, "
-                            f"got: {data}"
+                            f"step9 JSON must report pushed=false when no remote, got: {data}"
                         )
                         assert "push_reason" in data, (
                             f"step9 JSON must include push_reason field, got: {data}"
@@ -300,8 +303,7 @@ class TestConsensusWorkflowNoRemoteBehavior:
                     continue
 
         pytest.fail(
-            f"step9-commit stdout must contain JSON with 'pushed' field.\n"
-            f"stdout: {result.stdout}"
+            f"step9-commit stdout must contain JSON with 'pushed' field.\nstdout: {result.stdout}"
         )
 
     def test_step10_succeeds_without_remote(self, consensus_steps, no_remote_repo):
@@ -312,8 +314,7 @@ class TestConsensusWorkflowNoRemoteBehavior:
 
         result = _run_bash(cmd, no_remote_repo)
         assert result.returncode == 0, (
-            f"step10 must succeed without remote.\n"
-            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+            f"step10 must succeed without remote.\nstdout: {result.stdout}\nstderr: {result.stderr}"
         )
 
     def test_step12_succeeds_without_remote(self, consensus_steps, no_remote_repo):
@@ -324,8 +325,7 @@ class TestConsensusWorkflowNoRemoteBehavior:
 
         result = _run_bash(cmd, no_remote_repo)
         assert result.returncode == 0, (
-            f"step12 must succeed without remote.\n"
-            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+            f"step12 must succeed without remote.\nstdout: {result.stdout}\nstderr: {result.stderr}"
         )
 
     def test_step14_succeeds_without_remote(self, consensus_steps, no_remote_repo):
@@ -336,6 +336,5 @@ class TestConsensusWorkflowNoRemoteBehavior:
 
         result = _run_bash(cmd, no_remote_repo)
         assert result.returncode == 0, (
-            f"step14 must succeed without remote.\n"
-            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+            f"step14 must succeed without remote.\nstdout: {result.stdout}\nstderr: {result.stderr}"
         )

@@ -31,21 +31,21 @@ LifecycleReasoner → PreemptionReasoner → CoordinationReasoner → BatchAssig
 Each reasoner sees prior decisions and can add its own. Adding a new reasoner
 is one class + one append to the chain.
 
-| Reasoner | Purpose |
-|----------|---------|
-| Lifecycle | Detect completions, failures, stuck agents. Respects protected (deep work) tasks. |
-| Preemption | Pause low-priority work when CRITICAL tasks arrive with no idle capacity. |
-| Coordination | Write shared context files so agents on same repo don't duplicate work. |
-| BatchAssign | Dependency-aware batch assignment (not greedy one-at-a-time). |
+| Reasoner     | Purpose                                                                           |
+| ------------ | --------------------------------------------------------------------------------- |
+| Lifecycle    | Detect completions, failures, stuck agents. Respects protected (deep work) tasks. |
+| Preemption   | Pause low-priority work when CRITICAL tasks arrive with no idle capacity.         |
+| Coordination | Write shared context files so agents on same repo don't duplicate work.           |
+| BatchAssign  | Dependency-aware batch assignment (not greedy one-at-a-time).                     |
 
 ## Scaling Path
 
-| Scale | Architecture |
-|-------|-------------|
-| 6-15 VMs | Current centralized admiral |
-| 15-30 VMs | Add parallel Bastion tunnels + push-based heartbeats |
-| 30-50 VMs | SQLite task queue + persistent SSH tunnels |
-| 50+ VMs | Hub-spoke: regional admirals reporting to coordinator |
+| Scale     | Architecture                                          |
+| --------- | ----------------------------------------------------- |
+| 6-15 VMs  | Current centralized admiral                           |
+| 15-30 VMs | Add parallel Bastion tunnels + push-based heartbeats  |
+| 30-50 VMs | SQLite task queue + persistent SSH tunnels            |
+| 50+ VMs   | Hub-spoke: regional admirals reporting to coordinator |
 
 ## Future Directions
 

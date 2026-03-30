@@ -204,11 +204,11 @@ MUST apply the documented resilience patterns when encountering these steps.
 
 The workflow creates automatic checkpoints at these points to prevent work loss:
 
-| Checkpoint | After Step | Preserves |
-|---|---|---|
-| `checkpoint-after-design` | 5e (Design Consolidation) | Architecture decisions, API design, DB schema |
-| `checkpoint-after-implementation` | 8b (Integration) | Tests, implementation code, integration work |
-| `checkpoint-after-review-feedback` | 11b (Implement Feedback) | Review-addressed changes |
+| Checkpoint                         | After Step                | Preserves                                     |
+| ---------------------------------- | ------------------------- | --------------------------------------------- |
+| `checkpoint-after-design`          | 5e (Design Consolidation) | Architecture decisions, API design, DB schema |
+| `checkpoint-after-implementation`  | 8b (Integration)          | Tests, implementation code, integration work  |
+| `checkpoint-after-review-feedback` | 11b (Implement Feedback)  | Review-addressed changes                      |
 
 If a step fails after a checkpoint, the worktree branch retains all committed work. Agents can resume from the latest checkpoint by re-running the workflow with the existing worktree.
 

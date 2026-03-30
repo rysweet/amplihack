@@ -41,6 +41,7 @@ def _validate_session_id(session_id: str) -> str:
         )
     return session_id
 
+
 # Clean import setup
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))

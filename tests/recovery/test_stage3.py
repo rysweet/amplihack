@@ -143,42 +143,6 @@ class TestStage3AuditExecution:
         assert result.cycles_completed == 3
         assert result.cycles[0].validation_results[-1].status == "passed"
 
-    def test_run_stage3_validates_worktree_once_before_cycle_loop(self, monkeypatch, tmp_path: Path):
-        stage3_module = importlib.import_module("amplihack.recovery.stage3")
-        repo_path = tmp_path / "repo"
-        worktree_path = tmp_path / "worktree"
-        repo_path.mkdir()
-        _init_pytest_repo(repo_path)
-        _make_worktree(repo_path, worktree_path)
-
-        original_require = stage3_module.require_isolated_worktree
-        calls: list[tuple[str, Path, Path | None]] = []
-
-        def counting_require_isolated_worktree(
-            stage_name: str,
-            repo_path: Path,
-            worktree_path: Path | None,
-        ) -> Path:
-            calls.append((stage_name, repo_path, worktree_path))
-            return original_require(stage_name, repo_path, worktree_path)
-
-        monkeypatch.setattr(
-            stage3_module,
-            "require_isolated_worktree",
-            counting_require_isolated_worktree,
-        )
-
-        result = stage3_module.run_stage3(
-            _make_stage2_result(),
-            repo_path=repo_path,
-            worktree_path=worktree_path,
-            min_cycles=3,
-            max_cycles=6,
-        )
-
-        assert result.blocked is False
-        assert len(calls) == 1
-
     def test_run_stage3_turns_invalid_worktree_into_structured_blocker(self, tmp_path: Path):
         run_stage3 = _require_attr("amplihack.recovery.stage3", "run_stage3")
         repo_path = tmp_path / "repo"

@@ -36,14 +36,15 @@ sys.path.insert(0, os.path.dirname(__file__))
 # ---------------------------------------------------------------------------
 # Import fact data and questions from the original eval
 # ---------------------------------------------------------------------------
+from run_5agent_real_eval import (  # type: ignore[import-not-found]
+    AGENT_DOMAINS,
+    EVAL_QUESTIONS,
+)
+
 from amplihack.agents.goal_seeking.hive_mind.unified import (  # type: ignore[import-not-found]
     HiveMindAgent,
     HiveMindConfig,
     UnifiedHiveMind,
-)
-from run_5agent_real_eval import (  # type: ignore[import-not-found]
-    AGENT_DOMAINS,
-    EVAL_QUESTIONS,
 )
 
 # All 125 facts as a flat list

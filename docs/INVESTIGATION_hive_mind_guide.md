@@ -43,12 +43,13 @@ The system is organized into four composable layers, each with a single responsi
 
 The foundation. HiveGraph is a **protocol** (interface), not a concrete class. Two implementations exist:
 
-| Implementation | When to Use | Scales To |
-|---|---|---|
-| `InMemoryHiveGraph` | Single-process, testing, small deployments | ~50 agents |
-| `DistributedHiveGraph` | Multi-process, production | 100+ agents |
+| Implementation         | When to Use                                | Scales To   |
+| ---------------------- | ------------------------------------------ | ----------- |
+| `InMemoryHiveGraph`    | Single-process, testing, small deployments | ~50 agents  |
+| `DistributedHiveGraph` | Multi-process, production                  | 100+ agents |
 
 Key operations:
+
 - `register_agent(agent_id, domain)` — Add an agent to the hive
 - `promote_fact(agent_id, fact)` — Store a fact (the primary write operation)
 - `query_facts(query, limit)` — Search facts by keyword or vector similarity
@@ -63,6 +64,7 @@ Key operations:
 When a fact is promoted, a `FACT_PROMOTED` event is published. Other agents subscribe and incorporate peer facts (with a 10% confidence discount — peer knowledge is slightly less trusted than self-learned knowledge).
 
 Three backends:
+
 - **LocalEventBus** — In-process queues (testing/single-process)
 - **RedisEventBus** — Redis pub/sub (multi-process, same machine)
 - **ServiceBusEventBus** — Azure Service Bus (cloud deployment)
@@ -72,6 +74,7 @@ Three backends:
 **File**: `src/amplihack/agents/goal_seeking/hive_mind/gossip.py`
 
 Epidemic-style dissemination. Each gossip round:
+
 1. Select 2 peers (trust-weighted random)
 2. Share top-10 facts by confidence (min 0.3)
 3. Skip facts the peer already has (content dedup)
@@ -84,6 +87,7 @@ Convergence: O(log N) rounds for N agents to share all knowledge.
 **File**: `src/amplihack/agents/goal_seeking/hive_mind/reranker.py`
 
 When querying, results come from multiple sources (local, peers, federation). Layer 4:
+
 1. Deduplicates by content hash (MD5, not for security)
 2. Reranks using RRF (Reciprocal Rank Fusion) if available
 3. Falls back to confidence-based sorting otherwise
@@ -137,6 +141,7 @@ class PromotionPolicy(Protocol):
 ```
 
 Default thresholds:
+
 - **Promote** (Layer 1): confidence ≥ 0.3
 - **Gossip** (Layer 3): confidence ≥ 0.3
 - **Broadcast** (Federation): confidence ≥ 0.9
@@ -168,6 +173,7 @@ The system uses Conflict-Free Replicated Data Types so replicas can merge withou
 ### Distributed Hash Table (DHT)
 
 For 100+ agents, facts are sharded across agents using consistent hashing:
+
 - **HashRing**: 64 virtual nodes per agent for even distribution
 - **ShardStore**: Each agent stores O(F/N) facts
 - **Replication factor**: 3 copies per fact (configurable)
@@ -176,12 +182,15 @@ For 100+ agents, facts are sharded across agents using consistent hashing:
 ## Three Deployment Topologies
 
 ### 1. Single Agent (No Hive)
+
 One agent, one Kuzu DB. No networking. Baseline for comparison.
 
 ### 2. Flat (N Agents, Shared Hive)
+
 All agents share one HiveGraph instance. Every fact is visible to all agents immediately. Simple but doesn't scale past ~50 agents.
 
 ### 3. Federated (Tree of Hives)
+
 Agents grouped into domain-specific hives. High-confidence facts bubble up to root and broadcast to siblings. Scales to 100+ agents.
 
 ```
@@ -201,21 +210,22 @@ The hive mind integrates with the OODA (Observe-Orient-Decide-Act) cognitive loo
 4. **Act**: `Memory.store()` → promotes to hive; or `Memory.recall()` → queries hive
 
 The `Memory` facade (`memory/facade.py`) provides a clean interface:
+
 - `remember(content)` → LLM extracts facts, stores locally + promotes to hive
 - `recall(query)` → Hybrid search across local + hive knowledge
 
 ## Key Constants
 
-| Constant | Value | Purpose |
-|---|---|---|
-| `DEFAULT_CONFIDENCE_GATE` | 0.3 | Min confidence to promote to hive |
-| `DEFAULT_BROADCAST_THRESHOLD` | 0.9 | Min confidence for federation broadcast |
-| `PEER_CONFIDENCE_DISCOUNT` | 0.9 | Peer facts get 10% confidence reduction |
-| `DEFAULT_GOSSIP_FANOUT` | 2 | Peers contacted per gossip round |
-| `DEFAULT_GOSSIP_TOP_K` | 10 | Facts shared per gossip round |
-| `DEFAULT_REPLICATION_FACTOR` | 3 | DHT copies per fact |
-| `DEFAULT_QUERY_FANOUT` | 5 | Agents queried per DHT search |
-| `RRF_K` | 60 | Reciprocal Rank Fusion constant |
+| Constant                      | Value | Purpose                                 |
+| ----------------------------- | ----- | --------------------------------------- |
+| `DEFAULT_CONFIDENCE_GATE`     | 0.3   | Min confidence to promote to hive       |
+| `DEFAULT_BROADCAST_THRESHOLD` | 0.9   | Min confidence for federation broadcast |
+| `PEER_CONFIDENCE_DISCOUNT`    | 0.9   | Peer facts get 10% confidence reduction |
+| `DEFAULT_GOSSIP_FANOUT`       | 2     | Peers contacted per gossip round        |
+| `DEFAULT_GOSSIP_TOP_K`        | 10    | Facts shared per gossip round           |
+| `DEFAULT_REPLICATION_FACTOR`  | 3     | DHT copies per fact                     |
+| `DEFAULT_QUERY_FANOUT`        | 5     | Agents queried per DHT search           |
+| `RRF_K`                       | 60    | Reciprocal Rank Fusion constant         |
 
 ## Known Issues (as of 2026-03-06)
 
@@ -226,21 +236,21 @@ The `Memory` facade (`memory/facade.py`) provides a clean interface:
 
 ## File Map
 
-| File | LOC | Purpose |
-|---|---|---|
-| `hive_graph.py` | 1,098 | Protocol + InMemoryHiveGraph |
-| `in_memory_hive.py` | 874 | Dict-based backend |
-| `controller.py` | 912 | Declarative reconciliation from YAML |
-| `distributed.py` | 830 | AgentNode, HiveCoordinator |
-| `event_bus.py` | 662 | Pub/sub transport |
-| `dht.py` | 586 | Consistent hash ring + shard routing |
-| `orchestrator.py` | 522 | Four-layer coordination |
-| `reranker.py` | 305 | RRF merge + hybrid scoring |
-| `gossip.py` | 249 | Epidemic dissemination |
-| `crdt.py` | 215 | ORSet, LWWRegister, GSet |
-| `quality.py` | 204 | Content quality evaluation |
-| `query_expansion.py` | 202 | Query synonym expansion |
-| `fact_lifecycle.py` | 156 | TTL + confidence decay |
-| `constants.py` | 142 | Centralized thresholds |
-| `embeddings.py` | 144 | Vector embedding support |
-| `bloom.py` | 123 | Space-efficient set membership |
+| File                 | LOC   | Purpose                              |
+| -------------------- | ----- | ------------------------------------ |
+| `hive_graph.py`      | 1,098 | Protocol + InMemoryHiveGraph         |
+| `in_memory_hive.py`  | 874   | Dict-based backend                   |
+| `controller.py`      | 912   | Declarative reconciliation from YAML |
+| `distributed.py`     | 830   | AgentNode, HiveCoordinator           |
+| `event_bus.py`       | 662   | Pub/sub transport                    |
+| `dht.py`             | 586   | Consistent hash ring + shard routing |
+| `orchestrator.py`    | 522   | Four-layer coordination              |
+| `reranker.py`        | 305   | RRF merge + hybrid scoring           |
+| `gossip.py`          | 249   | Epidemic dissemination               |
+| `crdt.py`            | 215   | ORSet, LWWRegister, GSet             |
+| `quality.py`         | 204   | Content quality evaluation           |
+| `query_expansion.py` | 202   | Query synonym expansion              |
+| `fact_lifecycle.py`  | 156   | TTL + confidence decay               |
+| `constants.py`       | 142   | Centralized thresholds               |
+| `embeddings.py`      | 144   | Vector embedding support             |
+| `bloom.py`           | 123   | Space-efficient set membership       |

@@ -34,7 +34,10 @@ except ImportError:
         from .context_manager import run_automation
     except ImportError:
         # If we can't import, the hook won't be registered (graceful degradation)
-        print("WARNING: context_manager/tool_registry not available - context automation hook disabled", file=sys.stderr)
+        print(
+            "WARNING: context_manager/tool_registry not available - context automation hook disabled",
+            file=sys.stderr,
+        )
         HookResult = None
         register_tool_hook = None
         run_automation = None

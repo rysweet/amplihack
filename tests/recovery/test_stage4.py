@@ -6,24 +6,13 @@ import importlib
 import subprocess
 from pathlib import Path
 
+from amplihack.utils.process import CommandResult
 
 
 def _require_attr(module_name: str, attr_name: str):
     module = importlib.import_module(module_name)
     assert hasattr(module, attr_name), f"{module_name} must define {attr_name}"
     return getattr(module, attr_name)
-
-
-def _command_result(*, args: list[str], returncode: int, stdout: str, stderr: str):
-    CommandResult = _require_attr("amplihack.utils.process", "CommandResult")
-    return CommandResult(
-        args=tuple(args),
-        returncode=returncode,
-        stdout=stdout,
-        stderr=stderr,
-    )
-
-
 
 
 def _git(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -127,8 +116,8 @@ class TestStage4AtlasProvenance:
                 raise subprocess.TimeoutExpired(cmd=command, timeout=timeout)
             output_path = Path(command[-1])
             output_path.write_text('{"ok": true}\n')
-            return _command_result(
-                args=command,
+            return CommandResult(
+                args=tuple(command),
                 returncode=0,
                 stdout="",
                 stderr="",
@@ -156,8 +145,8 @@ class TestStage4AtlasProvenance:
         repo_path.mkdir()
 
         def fake_run_command_with_timeout(command, *, cwd, timeout):
-            return _command_result(
-                args=command,
+            return CommandResult(
+                args=tuple(command),
                 returncode=23,
                 stdout="",
                 stderr="temporary upstream failure",
@@ -187,8 +176,8 @@ class TestStage4AtlasProvenance:
         repo_path.mkdir()
 
         def fake_run_command_with_timeout(command, *, cwd, timeout):
-            return _command_result(
-                args=command,
+            return CommandResult(
+                args=tuple(command),
                 returncode=0,
                 stdout="completed",
                 stderr="",
@@ -201,4 +190,3 @@ class TestStage4AtlasProvenance:
         assert result.status == "blocked"
         assert result.blockers[0].code == "code-atlas-failed"
         assert "without creating atlas.json" in result.blockers[0].message
-

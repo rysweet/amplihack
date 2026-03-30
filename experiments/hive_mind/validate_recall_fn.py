@@ -15,21 +15,21 @@ Steps:
 Usage:
     uv run python experiments/hive_mind/validate_recall_fn.py
 """
+
 from __future__ import annotations
 
-import sys
 import os
+import sys
 import tempfile
 import time
-import threading
 from typing import Any
 
 # Allow running from repo root
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
+from amplihack.agents.goal_seeking.cognitive_adapter import CognitiveAdapter
 from amplihack.memory.memory_store import InMemoryGraphStore
 from amplihack.memory.network_store import NetworkGraphStore
-from amplihack.agents.goal_seeking.cognitive_adapter import CognitiveAdapter
 
 # ---------------------------------------------------------------------------
 # 100-turn content corpus (same pool as feed_content.py)
@@ -137,11 +137,13 @@ class HiveAgent:
                 for r in cognitive_hits:
                     content = r.get("outcome") or r.get("content") or r.get("fact") or ""
                     if content:
-                        results.append({
-                            "content": content,
-                            "concept": r.get("context") or r.get("concept") or "",
-                            "confidence": r.get("confidence", 0.8),
-                        })
+                        results.append(
+                            {
+                                "content": content,
+                                "concept": r.get("context") or r.get("concept") or "",
+                                "confidence": r.get("confidence", 0.8),
+                            }
+                        )
             except Exception as e:
                 print(f"  WARN: recall_fn failed: {e}")
         return results
@@ -236,7 +238,7 @@ def main() -> int:
         sq = sq_results[q]
         r_ok = "OK" if rc > 0 else "FAIL"
         s_ok = "OK" if sq > 0 else "FAIL"
-        print(f"  Q{i+1:>2}  [{r_ok}]{rc:>4}    [{s_ok}]{sq:>4}        {q[:40]}")
+        print(f"  Q{i + 1:>2}  [{r_ok}]{rc:>4}    [{s_ok}]{sq:>4}        {q[:40]}")
         if rc == 0:
             failed_recall.append(q)
         if sq == 0:
@@ -250,14 +252,13 @@ def main() -> int:
             print(f"FAILED (search_query): {len(failed_sq)} questions returned 0 results")
         print("=" * 60)
         return 1
-    else:
-        total_recall = sum(recall_results.values())
-        total_sq = sum(sq_results.values())
-        print(f"PASSED: All {len(EVAL_QUESTIONS)} questions returned results > 0")
-        print(f"  recall()      total: {total_recall} results")
-        print(f"  search_query  total: {total_sq} results (via recall_fn → Kuzu)")
-        print("=" * 60)
-        return 0
+    total_recall = sum(recall_results.values())
+    total_sq = sum(sq_results.values())
+    print(f"PASSED: All {len(EVAL_QUESTIONS)} questions returned results > 0")
+    print(f"  recall()      total: {total_recall} results")
+    print(f"  search_query  total: {total_sq} results (via recall_fn → Kuzu)")
+    print("=" * 60)
+    return 0
 
 
 if __name__ == "__main__":

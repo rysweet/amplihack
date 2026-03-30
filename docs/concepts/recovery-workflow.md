@@ -26,12 +26,12 @@ It does not collapse everything into one pass. Instead, it records what was prot
 
 Each stage answers a different question:
 
-| Stage | Question |
-| --- | --- |
-| Stage 1 | What user work is already staged and must be protected? |
-| Stage 2 | What does the authoritative collect-only baseline say right now? |
+| Stage   | Question                                                                            |
+| ------- | ----------------------------------------------------------------------------------- |
+| Stage 1 | What user work is already staged and must be protected?                             |
+| Stage 2 | What does the authoritative collect-only baseline say right now?                    |
 | Stage 3 | Does repeated validation confirm the Stage 2 result, and can FIX+VERIFY run safely? |
-| Stage 4 | Can we generate a code atlas, and where did it actually run? |
+| Stage 4 | Can we generate a code atlas, and where did it actually run?                        |
 
 That split matters because these are different failure domains. A clean Stage 2 does not prove a safe worktree exists. A valid worktree does not prove `code-atlas` is available. The ledger keeps those facts separate.
 

@@ -17,7 +17,6 @@ import json
 import sys
 from pathlib import Path
 from types import ModuleType
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -78,7 +77,6 @@ def _load_hook_module(path: Path, module_name: str) -> ModuleType:
 
 def _call_hook_function(hook_path: Path, module_name: str, input_data: dict) -> dict:
     """Call the hook's main() with mocked stdin/stdout and return parsed output."""
-    import io
     import subprocess
 
     result = subprocess.run(
@@ -168,9 +166,7 @@ class TestR1FailSecure:
         """The canonical hook's except block must call _deny, not _allow."""
         content = CANONICAL_HOOK.read_text()
         # Look for the error handling pattern — must deny on exception.
-        assert "_deny" in content, (
-            "R1: canonical hook must call _deny() in its exception handler"
-        )
+        assert "_deny" in content, "R1: canonical hook must call _deny() in its exception handler"
         # Verify the except clause body does not call _allow() — only _deny().
         lines = content.splitlines()
         in_except_block = False
@@ -193,6 +189,6 @@ class TestR1FailSecure:
                 # Inside the block: _allow() must not be called.
                 if "_allow(" in stripped:
                     pytest.fail(
-                        f"R1: except block at line {i+1} calls _allow(), violating fail-secure:\n"
+                        f"R1: except block at line {i + 1} calls _allow(), violating fail-secure:\n"
                         f"{line}"
                     )

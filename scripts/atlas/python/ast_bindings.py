@@ -19,7 +19,6 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 from scripts.atlas.common import (
-    load_manifest,
     parse_file_safe,
     resolve_internal_import,
     walk_calls,
@@ -61,7 +60,9 @@ def _extract_blarify_definitions(root: Path) -> tuple[list[dict], list[dict], di
         print(f"  Blarify: {len(non_python_defs)} non-Python defs for merge")
         if rel_summary.get("total", 0) > 0:
             # Show all relationship types found (not just code references)
-            type_parts = ", ".join(f"{k}={v}" for k, v in sorted(rel_summary.items()) if k != "total")
+            type_parts = ", ".join(
+                f"{k}={v}" for k, v in sorted(rel_summary.items()) if k != "total"
+            )
             print(f"  Blarify: {rel_summary['total']} relationships ({type_parts})")
 
         return non_python_defs, all_rels, rel_summary
@@ -109,11 +110,13 @@ def extract(manifest: dict, root: Path) -> dict:
 
         tree = parse_file_safe(Path(filepath))
         if tree is None:
-            files_failed_parse.append({
-                "file": filepath,
-                "rel_path": rel_path,
-                "reason": "SyntaxError",
-            })
+            files_failed_parse.append(
+                {
+                    "file": filepath,
+                    "rel_path": rel_path,
+                    "reason": "SyntaxError",
+                }
+            )
             files_analyzed += 1
             continue
 
@@ -134,7 +137,9 @@ def extract(manifest: dict, root: Path) -> dict:
             resolved = None
             if imp["category"] == "internal":
                 module = imp["module"]
-                resolved = resolve_internal_import(module, imp.get("names", []), root, importing_file=filepath)
+                resolved = resolve_internal_import(
+                    module, imp.get("names", []), root, importing_file=filepath
+                )
             imp["resolved_target"] = resolved
             all_imports.append(imp)
 
@@ -154,11 +159,13 @@ def extract(manifest: dict, root: Path) -> dict:
         # Detect importlib.import_module() calls
         for call in file_calls:
             if call["name"] in ("importlib.import_module", "import_module"):
-                importlib_calls.append({
-                    "file": filepath,
-                    "lineno": call["lineno"],
-                    "call": call["name"],
-                })
+                importlib_calls.append(
+                    {
+                        "file": filepath,
+                        "lineno": call["lineno"],
+                        "call": call["name"],
+                    }
+                )
 
     # --- Phase 2: Cross-references ---
     # Build: for each definition, which files import it?
@@ -281,12 +288,14 @@ def extract(manifest: dict, root: Path) -> dict:
         available = file_def_names | file_import_names
         missing = [n for n in exp["all_names"] if n not in available]
 
-        exports_out.append({
-            "file": exp["file"],
-            "all_names": exp["all_names"],
-            "valid": len(missing) == 0,
-            "missing_definitions": missing,
-        })
+        exports_out.append(
+            {
+                "file": exp["file"],
+                "all_names": exp["all_names"],
+                "valid": len(missing) == 0,
+                "missing_definitions": missing,
+            }
+        )
 
     # --- Phase 4: Dead code detection (conservative) ---
     # Pre-compute file sets for skipping
@@ -337,13 +346,15 @@ def extract(manifest: dict, root: Path) -> dict:
         if defn.get("decorators"):
             continue
 
-        potentially_dead.append({
-            "file": filepath,
-            "name": name,
-            "type": defn["type"],
-            "lineno": defn["lineno"],
-            "reason": "no_imports_no_exports_no_intra_file_calls",
-        })
+        potentially_dead.append(
+            {
+                "file": filepath,
+                "name": name,
+                "type": defn["type"],
+                "lineno": defn["lineno"],
+                "reason": "no_imports_no_exports_no_intra_file_calls",
+            }
+        )
 
     # --- Phase 5: Merge blarify non-Python definitions ---
     # Non-Python definitions from blarify get added to the unified list.
@@ -433,9 +444,7 @@ def extract(manifest: dict, root: Path) -> dict:
     # Include blarify relationship summary as a top-level section
     # Map all relationship types from blarify (uppercase) to lowercase output keys
     if blarify_rel_summary:
-        result["blarify_relationships"] = {
-            k.lower(): v for k, v in blarify_rel_summary.items()
-        }
+        result["blarify_relationships"] = {k.lower(): v for k, v in blarify_rel_summary.items()}
 
     return result
 
@@ -462,9 +471,11 @@ def _extract_all_exports(tree: ast.Module, filepath: str) -> dict | None:
                             "all_names": names,
                         }
         elif isinstance(node, ast.AnnAssign):
-            if (isinstance(node.target, ast.Name)
-                    and node.target.id == "__all__"
-                    and node.value is not None):
+            if (
+                isinstance(node.target, ast.Name)
+                and node.target.id == "__all__"
+                and node.value is not None
+            ):
                 names = _extract_string_list(node.value)
                 if names is not None:
                     return {
@@ -518,9 +529,11 @@ def main():
     manifest_path = output_dir / "manifest.json"
     if manifest_path.exists():
         from scripts.atlas.common import load_manifest
+
         manifest = load_manifest(output_dir)
     else:
         from scripts.atlas.common import build_manifest
+
         print("Building manifest...")
         manifest = build_manifest(root)
         manifest_path.write_text(json.dumps(manifest, indent=2))
@@ -541,7 +554,9 @@ def main():
     print(f"  Potentially dead: {s['potentially_dead_count']}")
     print(f"  Dynamic imports (importlib): {s['importlib_dynamic_imports']}")
     if s.get("language_counts"):
-        lang_parts = ", ".join(f"{lang}={count}" for lang, count in sorted(s["language_counts"].items()))
+        lang_parts = ", ".join(
+            f"{lang}={count}" for lang, count in sorted(s["language_counts"].items())
+        )
         print(f"  Languages: {lang_parts}")
 
     brel = layer_data.get("blarify_relationships")

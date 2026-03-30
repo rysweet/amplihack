@@ -165,6 +165,7 @@ Use this format:
 Verdict: MERGE_READY | NOT_MERGE_READY
 
 Criteria:
+
 - QA-team: pass | fail
 - Docs: pass | fail | not-applicable
 - Quality-audit: pass | fail
@@ -173,6 +174,7 @@ Criteria:
 - PR description evidence: pass | fail
 
 Blockers:
+
 - <concrete missing item or `none`>
 ```
 

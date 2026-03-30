@@ -19,11 +19,11 @@ Usage:
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import threading
 import uuid
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,6 @@ from amplihack.memory.bloom import BloomFilter
 from amplihack.memory.hash_ring import HashRing
 
 from .memory_store import InMemoryGraphStore
-
 
 # ---------------------------------------------------------------------------
 # Internal shard wrapper
@@ -68,15 +67,14 @@ class _AgentShard:
             return
         try:
             import numpy as np
+
             emb = np.array(embedding, dtype=float)
             with self._lock:
                 n = self._embedding_count
                 if self._summary_embedding is None:
                     self._summary_embedding = emb.copy()
                 else:
-                    self._summary_embedding = (
-                        self._summary_embedding * n + emb
-                    ) / (n + 1)
+                    self._summary_embedding = (self._summary_embedding * n + emb) / (n + 1)
                 self._embedding_count += 1
         except ImportError:
             logger.warning("numpy not available for shard embedding computation")
@@ -167,8 +165,7 @@ class DistributedGraphStore:
                 self._shards[agent_id] = _AgentShard(agent_id, store)
         # If other agents already have data, populate this shard from peers
         has_peers_with_data = any(
-            s.agent_id != agent_id and s._bloom.count > 0
-            for s in self._all_shards()
+            s.agent_id != agent_id and s._bloom.count > 0 for s in self._all_shards()
         )
         if has_peers_with_data:
             self.rebuild_shard(agent_id)
@@ -217,6 +214,7 @@ class DistributedGraphStore:
             return []
         try:
             import numpy as np
+
             query_emb = self._embedding_generator(text)
             if query_emb is None:
                 return []
@@ -402,19 +400,15 @@ class DistributedGraphStore:
     ) -> None:
         # Store edge on shards that own either endpoint
         shards_with_from = [
-            s for s in self._all_shards()
-            if s.store.get_node(from_table, from_id) is not None
+            s for s in self._all_shards() if s.store.get_node(from_table, from_id) is not None
         ]
         shards_with_to = [
-            s for s in self._all_shards()
-            if s.store.get_node(to_table, to_id) is not None
+            s for s in self._all_shards() if s.store.get_node(to_table, to_id) is not None
         ]
         target_shards = {s.agent_id: s for s in shards_with_from + shards_with_to}
 
         for shard in target_shards.values():
-            shard.store.create_edge(
-                rel_type, from_table, from_id, to_table, to_id, properties
-            )
+            shard.store.create_edge(rel_type, from_table, from_id, to_table, to_id, properties)
 
     def get_edges(
         self,
@@ -493,7 +487,8 @@ class DistributedGraphStore:
             # Pull nodes that the DHT ring assigns to this agent
             # Use stored _content_key for correct routing (same key used at create_node time)
             nodes_for_agent = [
-                nid for nid in peer_node_ids
+                nid
+                for nid in peer_node_ids
                 if agent_id in self._owners_for_key(self._node_content_keys.get(nid, nid))
             ]
             if not nodes_for_agent:
@@ -525,10 +520,7 @@ class DistributedGraphStore:
 
     def get_stats(self) -> dict[str, Any]:
         with self._lock:
-            shard_counts = {
-                aid: shard._bloom.count
-                for aid, shard in self._shards.items()
-            }
+            shard_counts = {aid: shard._bloom.count for aid, shard in self._shards.items()}
         return {
             "agent_count": self._ring.agent_count,
             "replication_factor": self._replication_factor,

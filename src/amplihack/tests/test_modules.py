@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """Basic tests to verify amplihack modules load correctly."""
 
-import os
 import sys
 from pathlib import Path
 

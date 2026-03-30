@@ -14,23 +14,23 @@ Overall: :material-alert-circle:{ .atlas-health--warn } **PASS_WITH_WARNINGS** |
 
 ## Check Results
 
-| Check | Status | Details |
-|-------|--------|---------|
-| FILE_COVERAGE | :material-check-circle:{ .atlas-health--pass } | 2356 .py files covered across layers 1, 2, 7 |
-| CLI_COMMAND_COVERAGE | :material-check-circle:{ .atlas-health--pass } | 83 CLI commands all have journeys |
-| EXPORT_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | 17 exported names missing definitions |
-| DEPENDENCY_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | 18 declared deps appear unused |
-| IO_TRACEABILITY | :material-alert-circle:{ .atlas-health--warn } | 542/926 I/O files in unreachable packages |
-| SUBPROCESS_TRACEABILITY | :material-alert-circle:{ .atlas-health--warn } | 191/338 subprocess files in unreachable packages |
-| PACKAGE_CONSISTENCY | :material-alert-circle:{ .atlas-health--warn } | layer1 vs manifest: 66 differences; layer3 vs manifest: 0 missing, 2129 extra |
-| ROUTE_COVERAGE | :material-check-circle:{ .atlas-health--pass } | 21 HTTP routes all have journeys |
-| IMPORT_RESOLUTION | :material-alert-circle:{ .atlas-health--warn } | 83/3024 imports unresolved |
-| CLI_HANDLER_REACHABILITY | :material-check-circle:{ .atlas-health--pass } | 171 CLI commands have reachable handlers |
-| DEAD_DEP_CROSS_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 1 deps marked unused in layer3 but found in layer2 |
-| CIRCULAR_IMPORT_SEVERITY | :material-alert-circle:{ .atlas-health--warn } | 12 circular dependency cycles found (10 internal, 2 vendor) |
-| ENV_VAR_COMPLETENESS | :material-alert-circle:{ .atlas-health--warn } | 254 env vars found but no .env.example file |
-| ROUTE_TEST_COVERAGE | :material-alert-circle:{ .atlas-health--warn } | 15/33 routes without test references |
-| REEXPORT_CHAIN_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 14 broken re-export chains |
+| Check                     | Status                                         | Details                                                                       |
+| ------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| FILE_COVERAGE             | :material-check-circle:{ .atlas-health--pass } | 2356 .py files covered across layers 1, 2, 7                                  |
+| CLI_COMMAND_COVERAGE      | :material-check-circle:{ .atlas-health--pass } | 83 CLI commands all have journeys                                             |
+| EXPORT_CONSISTENCY        | :material-alert-circle:{ .atlas-health--warn } | 17 exported names missing definitions                                         |
+| DEPENDENCY_CONSISTENCY    | :material-alert-circle:{ .atlas-health--warn } | 18 declared deps appear unused                                                |
+| IO_TRACEABILITY           | :material-alert-circle:{ .atlas-health--warn } | 542/926 I/O files in unreachable packages                                     |
+| SUBPROCESS_TRACEABILITY   | :material-alert-circle:{ .atlas-health--warn } | 191/338 subprocess files in unreachable packages                              |
+| PACKAGE_CONSISTENCY       | :material-alert-circle:{ .atlas-health--warn } | layer1 vs manifest: 66 differences; layer3 vs manifest: 0 missing, 2129 extra |
+| ROUTE_COVERAGE            | :material-check-circle:{ .atlas-health--pass } | 21 HTTP routes all have journeys                                              |
+| IMPORT_RESOLUTION         | :material-alert-circle:{ .atlas-health--warn } | 83/3024 imports unresolved                                                    |
+| CLI_HANDLER_REACHABILITY  | :material-check-circle:{ .atlas-health--pass } | 171 CLI commands have reachable handlers                                      |
+| DEAD_DEP_CROSS_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 1 deps marked unused in layer3 but found in layer2                            |
+| CIRCULAR_IMPORT_SEVERITY  | :material-alert-circle:{ .atlas-health--warn } | 12 circular dependency cycles found (10 internal, 2 vendor)                   |
+| ENV_VAR_COMPLETENESS      | :material-alert-circle:{ .atlas-health--warn } | 254 env vars found but no .env.example file                                   |
+| ROUTE_TEST_COVERAGE       | :material-alert-circle:{ .atlas-health--warn } | 15/33 routes without test references                                          |
+| REEXPORT_CHAIN_VALIDATION | :material-alert-circle:{ .atlas-health--warn } | 14 broken re-export chains                                                    |
 
 ## Warnings
 

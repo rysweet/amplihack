@@ -208,4 +208,3 @@ class TestRecoveryCoordinator:
             build_parser().parse_args(["run", "--help"])
 
         assert exc.value.code == 0
-

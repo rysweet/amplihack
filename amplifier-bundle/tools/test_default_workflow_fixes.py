@@ -1016,8 +1016,15 @@ class TestStep4Bootstrap(unittest.TestCase):
         """Origin exists but ls-remote fails (non-2 exit) → exit 1 with ERROR."""
         # Point origin to a non-existent host to simulate network error
         subprocess.run(
-            ["git", "-C", self.repo, "remote", "add", "origin",
-             "https://nonexistent.invalid/repo.git"],
+            [
+                "git",
+                "-C",
+                self.repo,
+                "remote",
+                "add",
+                "origin",
+                "https://nonexistent.invalid/repo.git",
+            ],
             capture_output=True,
             check=True,
         )

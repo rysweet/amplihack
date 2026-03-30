@@ -180,4 +180,3 @@ class TestRecoveryLedgerRendering:
 
         payload = json.loads(output_path.read_text())
         assert payload == recovery_run_to_json(run)
-

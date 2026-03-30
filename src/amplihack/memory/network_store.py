@@ -32,7 +32,8 @@ import logging
 import threading
 import time
 import uuid
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .graph_store import GraphStore
 
@@ -454,7 +455,9 @@ class NetworkGraphStore:
                 except Exception:
                     logger.debug(
                         "[%s] ensure_table failed for table=%s (may already exist)",
-                        self._agent_id, table, exc_info=True,
+                        self._agent_id,
+                        table,
+                        exc_info=True,
                     )
                 # Only apply if we don't already have this node
                 node_id = props.get("node_id")
@@ -487,7 +490,9 @@ class NetworkGraphStore:
             if not query_id or not table:
                 logger.warning(
                     "[%s] search_query missing query_id or table, dropping (query_id=%r table=%r)",
-                    self._agent_id, query_id, table,
+                    self._agent_id,
+                    query_id,
+                    table,
                 )
                 return
 
@@ -506,7 +511,7 @@ class NetworkGraphStore:
             # so that facts stored under different table names are still reachable.
             results = []
             seen_ids: set[str] = set()
-            for search_table in ([table] + [t for t in _QUERY_SEARCH_TABLES if t != table]):
+            for search_table in [table] + [t for t in _QUERY_SEARCH_TABLES if t != table]:
                 try:
                     hits = self._local.search_nodes(search_table, text, fields, limit)
                     for h in hits:
@@ -518,11 +523,15 @@ class NetworkGraphStore:
                 except Exception:
                     logger.debug(
                         "[%s] search_nodes failed for table=%s (table may not exist yet)",
-                        self._agent_id, search_table, exc_info=True,
+                        self._agent_id,
+                        search_table,
+                        exc_info=True,
                     )
             logger.debug(
                 "[%s] search_query query_id=%s: local graph store returned %d result(s)",
-                self._agent_id, query_id, len(results),
+                self._agent_id,
+                query_id,
+                len(results),
             )
 
             # Also search via recall_fn (CognitiveAdapter → Kuzu) when available
@@ -553,18 +562,27 @@ class NetworkGraphStore:
                     logger.debug(
                         "[%s] search_query query_id=%s: recall_fn added %d cognitive result(s) "
                         "(total=%d)",
-                        self._agent_id, query_id, len(results) - before, len(results),
+                        self._agent_id,
+                        query_id,
+                        len(results) - before,
+                        len(results),
                     )
                 except Exception:
                     logger.debug(
                         "[%s] recall_fn failed for search_query query_id=%s",
-                        self._agent_id, query_id, exc_info=True,
+                        self._agent_id,
+                        query_id,
+                        exc_info=True,
                     )
 
             logger.info(
                 "[%s] search_query query_id=%s text=%r: responding with %d result(s) "
                 "(recall_fn=%s)",
-                self._agent_id, query_id, text, len(results), self._recall_fn is not None,
+                self._agent_id,
+                query_id,
+                text,
+                len(results),
+                self._recall_fn is not None,
             )
             self._publish(
                 _OP_SEARCH_RESPONSE,
@@ -584,12 +602,16 @@ class NetworkGraphStore:
                 pending["event"].set()
                 logger.debug(
                     "[%s] search_response query_id=%s: received %d result(s) from %s",
-                    self._agent_id, query_id, len(results), event.source_agent,
+                    self._agent_id,
+                    query_id,
+                    len(results),
+                    event.source_agent,
                 )
             else:
                 logger.debug(
                     "[%s] search_response query_id=%s: no pending waiter (already timed out?)",
-                    self._agent_id, query_id,
+                    self._agent_id,
+                    query_id,
                 )
 
         elif op == "LEARN_CONTENT":

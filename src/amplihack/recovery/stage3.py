@@ -133,6 +133,7 @@ def _stage2_alignment_validation(
 
 def _fix_verify_validation(
     *,
+    repo_path: Path,
     worktree_path: Path | None,
     blockers: list[RecoveryBlocker],
     stage2_result: Stage2Result,
@@ -154,7 +155,20 @@ def _fix_verify_validation(
             details="FIX+VERIFY requires an isolated worktree",
         )
 
-    _returncode, output = _run_collect_only(worktree_path, timeout=_COLLECT_ONLY_TIMEOUT)
+    try:
+        validated_worktree = require_isolated_worktree(
+            stage_name="FIX+VERIFY",
+            repo_path=repo_path,
+            worktree_path=worktree_path,
+        )
+    except ValueError as exc:
+        return Stage3ValidatorResult(
+            name="fix-verify-worktree",
+            status="blocked",
+            details=str(exc),
+        )
+
+    _returncode, output = _run_collect_only(validated_worktree, timeout=_COLLECT_ONLY_TIMEOUT)
     signatures = build_error_signatures(output)
     current_count = sum(signature.occurrences for signature in signatures)
     status = "passed" if current_count <= stage2_result.final_collection_errors else "failed"
@@ -162,10 +176,10 @@ def _fix_verify_validation(
         name="fix-verify-worktree",
         status=status,
         details=(
-            f"validated isolated worktree at {worktree_path}; "
+            f"validated isolated worktree at {validated_worktree}; "
             f"collect-only count={current_count}"
         ),
-        metadata={"worktree_path": str(worktree_path), "collection_errors": current_count},
+        metadata={"worktree_path": str(validated_worktree), "collection_errors": current_count},
     )
 
 
@@ -220,6 +234,7 @@ def run_stage3(
         )
         alignment_validation = _stage2_alignment_validation(stage2_result, current_signatures)
         fix_verify_validation = _fix_verify_validation(
+            repo_path=repo_path,
             worktree_path=validated_worktree,
             blockers=blockers,
             stage2_result=stage2_result,

@@ -80,15 +80,12 @@ A representative planned payload looks like this:
 
 ```jsonc
 {
-  "protected_staged_files": [
-    "docs/index.md",
-    "uv.lock"
-  ],
+  "protected_staged_files": ["docs/index.md", "uv.lock"],
   "stage1_status": "completed",
   "stage2_delta_verdict": "reduced",
   "stage3_fix_verify_mode": "isolated-worktree",
   "stage4_provenance": "isolated-worktree",
-  "blocker_codes": []
+  "blocker_codes": [],
 }
 ```
 

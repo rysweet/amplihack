@@ -71,9 +71,7 @@ class TestNoSilentFallback:
                 if stripped.startswith("#"):
                     continue
                 if stripped.startswith("cd {{repo_path}}"):
-                    pytest.fail(
-                        f"Step '{step['id']}' uses 'cd {{{{repo_path}}}}' after step-04."
-                    )
+                    pytest.fail(f"Step '{step['id']}' uses 'cd {{{{repo_path}}}}' after step-04.")
 
 
 class TestWorktreeValidationStep:
@@ -104,9 +102,7 @@ class TestWorktreeValidationStep:
         assert "EXPECTED_BRANCH" in cmd and "ACTUAL_BRANCH" in cmd
 
     def test_step_04b_has_output(self, step_map):
-        assert (
-            step_map["step-04b-validate-worktree"].get("output") == "worktree_validation"
-        )
+        assert step_map["step-04b-validate-worktree"].get("output") == "worktree_validation"
 
 
 class TestStep15CleanWorktreeInvariant:

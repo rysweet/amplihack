@@ -200,9 +200,7 @@ class TestRunRecipeViaRust:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("subprocess.run")
-    def test_forwards_pythonpath_and_seeds_claude_project_dir(
-        self, mock_run, mock_find
-    ):
+    def test_forwards_pythonpath_and_seeds_claude_project_dir(self, mock_run, mock_find):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
             returncode=0,

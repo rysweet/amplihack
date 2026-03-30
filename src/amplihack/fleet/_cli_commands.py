@@ -10,8 +10,9 @@ fleet_cli.py's create_fleet_cli() instead.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import click
 
@@ -19,15 +20,6 @@ from amplihack.fleet._cli_copilot_ops import register_copilot_ops
 from amplihack.fleet._cli_fleet_ops import register_fleet_ops
 from amplihack.fleet._cli_scout_advance import register_scout_advance_ops
 from amplihack.fleet._cli_session_ops import register_session_ops
-from amplihack.fleet.fleet_auth import AuthPropagator
-from amplihack.fleet.fleet_observer import FleetObserver
-from amplihack.fleet._backends import (
-    AnthropicBackend,
-    CopilotBackend,
-    auto_detect_backend,
-)
-from amplihack.fleet.fleet_session_reasoner import SessionReasoner
-from amplihack.fleet.fleet_state import FleetState
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
 
 __all__ = ["register_commands", "COPILOT_LOCK_DIR", "COPILOT_LOG_DIR"]
@@ -317,13 +309,26 @@ def register_commands(
                 if proj.identity:
                     subprocess.run(
                         ["gh", "auth", "switch", "--user", proj.identity],
-                        capture_output=True, text=True, timeout=10,
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
                     )
                 result = subprocess.run(
-                    ["gh", "issue", "view", str(issue_number),
-                     "--repo", proj.repo_url, "--json", "title,url",
-                     "--jq", '.title + "\\n" + .url'],
-                    capture_output=True, text=True, timeout=15,
+                    [
+                        "gh",
+                        "issue",
+                        "view",
+                        str(issue_number),
+                        "--repo",
+                        proj.repo_url,
+                        "--json",
+                        "title,url",
+                        "--jq",
+                        '.title + "\\n" + .url',
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
                 )
                 if result.returncode == 0 and result.stdout.strip():
                     lines = result.stdout.strip().split("\n")
@@ -370,13 +375,27 @@ def register_commands(
             if proj.identity:
                 subprocess.run(
                     ["gh", "auth", "switch", "--user", proj.identity],
-                    capture_output=True, text=True, timeout=10,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
                 )
             result = subprocess.run(
-                ["gh", "issue", "list", "--repo", proj.repo_url,
-                 "--label", label, "--json", "number,title,state,url",
-                 "--jq", '.[]|[.number,.title,.state,.url]|@tsv'],
-                capture_output=True, text=True, timeout=15,
+                [
+                    "gh",
+                    "issue",
+                    "list",
+                    "--repo",
+                    proj.repo_url,
+                    "--label",
+                    label,
+                    "--json",
+                    "number,title,state,url",
+                    "--jq",
+                    ".[]|[.number,.title,.state,.url]|@tsv",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=15,
             )
         except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
             click.echo(f"Failed to query GitHub: {exc}")
@@ -402,4 +421,3 @@ def register_commands(
 
         save_projects(projects)
         click.echo(f"Synced {count} objectives for {project_name} (label: {label})")
-

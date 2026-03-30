@@ -59,7 +59,7 @@ def is_safe_to_delete(directory: Path) -> DirectorySafetyCheck:
 
     # Check 3: Must be readable
     try:
-        entries = list(directory.iterdir())
+        list(directory.iterdir())
     except (PermissionError, OSError) as e:
         return DirectorySafetyCheck(
             status="uncertain",
@@ -75,7 +75,7 @@ def is_safe_to_delete(directory: Path) -> DirectorySafetyCheck:
 
     # Check 5: All subdirectories must be amplihack skills
     custom_skills = []
-    for item in entries:
+    for item in directory.iterdir():
         # Skip hidden files except .git (already checked)
         if item.name.startswith("."):
             if item.name != ".gitkeep":  # .gitkeep is safe
