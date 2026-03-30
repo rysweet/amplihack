@@ -649,6 +649,7 @@ steps:
   # losing it to a later failure wastes hours of agent work.
   # --------------------------------------------------------------------------
   - id: "checkpoint-after-design"
+    fatal: false
     type: "bash"
     command: |
       cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}" && \
@@ -656,7 +657,7 @@ steps:
       git add -A && \
       STAGED=$(git diff --cached --name-only) && \
       if [ -n "$STAGED" ]; then \
-        git commit -m "wip: checkpoint after design consolidation (steps 5-5e)
+        git commit --no-verify -m "wip: checkpoint after design consolidation (steps 5-5e)
 
       Automatic checkpoint to preserve design artifacts.
       Architecture, API design, and database schema saved before documentation phase." && \
@@ -807,6 +808,7 @@ steps:
   # CHECKPOINT: Stage implementation work to prevent loss if later steps fail
   # --------------------------------------------------------------------------
   - id: "checkpoint-after-implementation"
+    fatal: false
     type: "bash"
     command: |
       cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}" && \
@@ -814,7 +816,7 @@ steps:
       git add -A && \
       STAGED=$(git diff --cached --name-only) && \
       if [ -n "$STAGED" ]; then \
-        git commit -m "wip: checkpoint after implementation (steps 7-8)
+        git commit --no-verify -m "wip: checkpoint after implementation (steps 7-8)
 
       Automatic checkpoint to preserve work in progress.
       Tests and implementation saved before refactoring phase." && \
@@ -993,6 +995,7 @@ steps:
   # CHECKPOINT: Stage review feedback changes before pre-commit hooks
   # --------------------------------------------------------------------------
   - id: "checkpoint-after-review-feedback"
+    fatal: false
     type: "bash"
     command: |
       cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}" && \
@@ -1000,7 +1003,7 @@ steps:
       git add -A && \
       STAGED=$(git diff --cached --name-only) && \
       if [ -n "$STAGED" ]; then \
-        git commit -m "wip: checkpoint after review feedback (steps 10-11)
+        git commit --no-verify -m "wip: checkpoint after review feedback (steps 10-11)
 
       Automatic checkpoint to preserve review-addressed changes.
       Saved before running pre-commit hooks and tests." && \
