@@ -1387,10 +1387,16 @@ def main(argv: list[str] | None = None) -> int:
                             )
 
         # Smart PROJECT.md initialization for UVX mode.
-        # Skip in nested agent sessions — nested agents should not contaminate
-        # the working directory with .claude/context/PROJECT.md writes (#3769).
+        # Skip when running inside a workflow/recipe context — agents should not
+        # contaminate worktrees with .claude/context/PROJECT.md writes (#3769).
+        # Detected by: AMPLIHACK_SESSION_DEPTH > 0 (nested agent) OR
+        # AMPLIHACK_TREE_ID set (recipe in flight) OR
+        # launched with -p flag (non-interactive agent step).
         session_depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
-        if session_depth == 0:
+        in_recipe = bool(os.environ.get("AMPLIHACK_TREE_ID"))
+        is_prompt_mode = any(a in sys.argv for a in ["-p", "--prompt"])
+        skip_project_md = session_depth > 0 or in_recipe or is_prompt_mode
+        if not skip_project_md:
             try:
                 from .utils.project_initializer import InitMode, initialize_project_md
 
@@ -1401,9 +1407,6 @@ def main(argv: list[str] | None = None) -> int:
             except Exception as e:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                     print(f"Warning: PROJECT.md initialization failed: {e}")
-        else:
-            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                print(f"Skipping PROJECT.md init (nested agent, depth={session_depth})")
 
     if not args.command:
         # If we have claude_args but no command, default to launching Claude directly
