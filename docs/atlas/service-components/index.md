@@ -9,7 +9,7 @@ title: "Layer 7: Service Components"
 # Layer 7: Service Components
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-30T07:29:24.911526+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-30T07:54:09.438823+00:00
 </div>
 
 ## Map
@@ -109,193 +109,196 @@ Category: <strong>Structural</strong> | Generated: 2026-03-30T07:29:24.911526+00
             P84["python<br/>9 files<br/>I=0.00"]
             P85["amplihack<br/>23 files<br/>I=0.89"]
             P86["agent<br/>1 files<br/>I=0.00"]
-            P87["goal_seeking<br/>19 files<br/>I=0.57"]
-            P88["hive_mind<br/>20 files<br/>I=0.50"]
-            P89["prompts<br/>1 files<br/>I=0.00"]
-            P90["sdk<br/>1 files<br/>I=0.00"]
-            P91["sdk_adapters<br/>6 files<br/>I=0.00"]
-            P92["sub_agents<br/>6 files<br/>I=0.67"]
-            P93["bundle_generator<br/>17 files<br/>I=0.00"]
-            P94["cli<br/>3 files<br/>I=0.00"]
-            P95["tests<br/>2 files<br/>I=0.00"]
-            P96["adaptive<br/>3 files<br/>I=0.00"]
-            P97["docker<br/>3 files<br/>I=0.00"]
-            P98["eval<br/>26 files<br/>I=0.50"]
-            P99["self_improve<br/>5 files<br/>I=0.50"]
-            P100["fleet<br/>54 files<br/>I=0.00"]
-            P101["prompts<br/>1 files<br/>I=0.00"]
-            P102["tests<br/>32 files<br/>I=0.00"]
-            P103["goal_agent_generator<br/>9 files<br/>I=0.33"]
-            P104["templates<br/>3 files<br/>I=0.00"]
-            P105["hooks<br/>5 files<br/>I=0.00"]
-            P106["strategies<br/>4 files<br/>I=0.00"]
-            P107["knowledge_builder<br/>3 files<br/>I=0.00"]
-            P108["modules<br/>4 files<br/>I=0.00"]
-            P109["launcher<br/>26 files<br/>I=0.85"]
-            P110["tests<br/>4 files<br/>I=0.00"]
-            P111["llm<br/>2 files<br/>I=0.00"]
-            P112["lsp_detector<br/>2 files<br/>I=0.00"]
-            P113["memory<br/>23 files<br/>I=0.50"]
-            P114["evaluation<br/>5 files<br/>I=0.50"]
-            P115["indexing<br/>11 files<br/>I=0.33"]
-            P116["tests<br/>2 files<br/>I=0.00"]
-            P117["meta_delegation<br/>9 files<br/>I=0.00"]
-            P118["mode_detector<br/>3 files<br/>I=0.00"]
-            P119["path_resolver<br/>2 files<br/>I=0.00"]
-            P120["plugin_cli<br/>4 files<br/>I=0.50"]
-            P121["plugin_manager<br/>2 files<br/>I=0.00"]
-            P122["power_steering<br/>2 files<br/>I=0.33"]
-            P123["proxy<br/>2 files<br/>I=0.00"]
-            P124["recipe_cli<br/>5 files<br/>I=0.00"]
-            P125["recipes<br/>10 files<br/>I=0.00"]
-            P126["tests<br/>4 files<br/>I=0.00"]
-            P127["recovery<br/>8 files<br/>I=0.00"]
-            P128["remote<br/>1 files<br/>I=0.00"]
-            P129["safety<br/>4 files<br/>I=0.00"]
-            P130["security<br/>10 files<br/>I=0.00"]
-            P131["settings_generator<br/>2 files<br/>I=0.00"]
-            P132["testing<br/>3 files<br/>I=0.00"]
-            P133["tracing<br/>2 files<br/>I=0.50"]
-            P134["utils<br/>24 files<br/>I=0.33"]
-            P135["uvx<br/>2 files<br/>I=0.50"]
-            P136["vendor<br/>1 files<br/>I=0.00"]
-            P137["blarify<br/>7 files<br/>I=0.50"]
-            P138["agents<br/>4 files<br/>I=0.50"]
-            P139["prompt_templates<br/>17 files<br/>I=0.00"]
-            P140["rotating_provider<br/>5 files<br/>I=0.00"]
-            P141["cli<br/>3 files<br/>I=0.00"]
-            P142["code_hierarchy<br/>2 files<br/>I=0.80"]
-            P143["languages<br/>13 files<br/>I=0.25"]
-            P144["code_references<br/>4 files<br/>I=0.80"]
-            P145["queries<br/>3 files<br/>I=0.00"]
-            P146["utils<br/>2 files<br/>I=0.50"]
-            P147["node<br/>10 files<br/>I=0.44"]
-            P148["relationship<br/>5 files<br/>I=0.50"]
-            P149["integrations<br/>2 files<br/>I=0.00"]
-            P150["mcp_server<br/>4 files<br/>I=0.00"]
-            P151["tools<br/>2 files<br/>I=0.00"]
-            P152["project_file_explorer<br/>5 files<br/>I=0.00"]
-            P153["repositories<br/>1 files<br/>I=0.00"]
-            P154["graph_db_manager<br/>6 files<br/>I=0.00"]
-            P155["dtos<br/>10 files<br/>I=0.00"]
-            P156["graph_queries<br/>2 files<br/>I=0.00"]
-            P157["version_control<br/>3 files<br/>I=0.00"]
-            P158["utils<br/>2 files<br/>I=0.00"]
-            P159["experimental<br/>2 files<br/>I=0.00"]
-            P160["multilspy<br/>9 files<br/>I=0.00"]
-            P161["workflows<br/>6 files<br/>I=0.00"]
-            P162["hive<br/>5 files<br/>I=0.00"]
-            P163["worktree<br/>2 files<br/>I=0.00"]
-            P164["agents<br/>3 files<br/>I=0.00"]
-            P165["domain_agents<br/>8 files<br/>I=0.00"]
-            P166["goal_seeking<br/>21 files<br/>I=0.00"]
-            P167["eval<br/>20 files<br/>I=0.00"]
-            P168["generator<br/>3 files<br/>I=0.00"]
-            P169["harness<br/>2 files<br/>I=0.00"]
-            P170["hive_mind<br/>29 files<br/>I=0.00"]
-            P171["hooks<br/>9 files<br/>I=0.00"]
-            P172["integration<br/>19 files<br/>I=0.00"]
-            P173["harness<br/>4 files<br/>I=0.00"]
-            P174["knowledge_builder<br/>4 files<br/>I=0.00"]
-            P175["launcher<br/>10 files<br/>I=0.00"]
-            P176["framework<br/>6 files<br/>I=0.00"]
-            P177["scenarios<br/>4 files<br/>I=0.00"]
-            P178["microservice_project<br/>1 files<br/>I=0.00"]
-            P179["models<br/>3 files<br/>I=0.00"]
-            P180["services<br/>4 files<br/>I=0.50"]
-            P181["utils<br/>3 files<br/>I=0.00"]
-            P182["tools<br/>1 files<br/>I=0.00"]
-            P183["memory<br/>8 files<br/>I=0.00"]
-            P184["meta_delegation<br/>9 files<br/>I=0.00"]
-            P185["e2e<br/>7 files<br/>I=0.00"]
-            P186["integration<br/>3 files<br/>I=0.00"]
-            P187["plugin<br/>8 files<br/>I=0.00"]
-            P188["skills<br/>20 files<br/>I=0.00"]
-            P189["tracing<br/>6 files<br/>I=0.00"]
-            P190["hygiene<br/>2 files<br/>I=0.00"]
-            P191["recipes<br/>11 files<br/>I=0.00"]
-            P192["tools<br/>1 files<br/>I=0.00"]
-            P193["version_check<br/>6 files<br/>I=0.00"]
-            P194["workflows<br/>2 files<br/>I=0.00"]
-            P195["workloads<br/>2 files<br/>I=0.00"]
+            P87["domain_agents<br/>3 files<br/>I=0.00"]
+            P88["code_review<br/>4 files<br/>I=0.00"]
+            P89["meeting_synthesizer<br/>4 files<br/>I=0.00"]
+            P90["goal_seeking<br/>19 files<br/>I=0.57"]
+            P91["hive_mind<br/>20 files<br/>I=0.50"]
+            P92["prompts<br/>1 files<br/>I=0.00"]
+            P93["sdk<br/>1 files<br/>I=0.00"]
+            P94["sdk_adapters<br/>6 files<br/>I=0.00"]
+            P95["sub_agents<br/>6 files<br/>I=0.67"]
+            P96["bundle_generator<br/>17 files<br/>I=0.00"]
+            P97["cli<br/>3 files<br/>I=0.00"]
+            P98["tests<br/>2 files<br/>I=0.00"]
+            P99["adaptive<br/>3 files<br/>I=0.00"]
+            P100["docker<br/>3 files<br/>I=0.00"]
+            P101["eval<br/>26 files<br/>I=0.50"]
+            P102["self_improve<br/>5 files<br/>I=0.50"]
+            P103["fleet<br/>54 files<br/>I=0.00"]
+            P104["prompts<br/>1 files<br/>I=0.00"]
+            P105["tests<br/>32 files<br/>I=0.00"]
+            P106["goal_agent_generator<br/>9 files<br/>I=0.33"]
+            P107["templates<br/>3 files<br/>I=0.00"]
+            P108["hooks<br/>5 files<br/>I=0.00"]
+            P109["strategies<br/>4 files<br/>I=0.00"]
+            P110["knowledge_builder<br/>3 files<br/>I=0.00"]
+            P111["modules<br/>4 files<br/>I=0.00"]
+            P112["launcher<br/>26 files<br/>I=0.85"]
+            P113["tests<br/>4 files<br/>I=0.00"]
+            P114["llm<br/>2 files<br/>I=0.00"]
+            P115["lsp_detector<br/>2 files<br/>I=0.00"]
+            P116["memory<br/>23 files<br/>I=0.50"]
+            P117["evaluation<br/>5 files<br/>I=0.50"]
+            P118["indexing<br/>11 files<br/>I=0.33"]
+            P119["tests<br/>2 files<br/>I=0.00"]
+            P120["meta_delegation<br/>9 files<br/>I=0.00"]
+            P121["mode_detector<br/>3 files<br/>I=0.00"]
+            P122["path_resolver<br/>2 files<br/>I=0.00"]
+            P123["plugin_cli<br/>4 files<br/>I=0.50"]
+            P124["plugin_manager<br/>2 files<br/>I=0.00"]
+            P125["power_steering<br/>2 files<br/>I=0.33"]
+            P126["proxy<br/>2 files<br/>I=0.00"]
+            P127["recipe_cli<br/>5 files<br/>I=0.00"]
+            P128["recipes<br/>10 files<br/>I=0.00"]
+            P129["tests<br/>4 files<br/>I=0.00"]
+            P130["recovery<br/>8 files<br/>I=0.00"]
+            P131["remote<br/>1 files<br/>I=0.00"]
+            P132["safety<br/>4 files<br/>I=0.00"]
+            P133["security<br/>10 files<br/>I=0.00"]
+            P134["settings_generator<br/>2 files<br/>I=0.00"]
+            P135["testing<br/>3 files<br/>I=0.00"]
+            P136["tracing<br/>2 files<br/>I=0.50"]
+            P137["utils<br/>24 files<br/>I=0.33"]
+            P138["uvx<br/>2 files<br/>I=0.50"]
+            P139["vendor<br/>1 files<br/>I=0.00"]
+            P140["blarify<br/>7 files<br/>I=0.50"]
+            P141["agents<br/>4 files<br/>I=0.50"]
+            P142["prompt_templates<br/>17 files<br/>I=0.00"]
+            P143["rotating_provider<br/>5 files<br/>I=0.00"]
+            P144["cli<br/>3 files<br/>I=0.00"]
+            P145["code_hierarchy<br/>2 files<br/>I=0.80"]
+            P146["languages<br/>13 files<br/>I=0.25"]
+            P147["code_references<br/>4 files<br/>I=0.80"]
+            P148["queries<br/>3 files<br/>I=0.00"]
+            P149["utils<br/>2 files<br/>I=0.50"]
+            P150["node<br/>10 files<br/>I=0.44"]
+            P151["relationship<br/>5 files<br/>I=0.50"]
+            P152["integrations<br/>2 files<br/>I=0.00"]
+            P153["mcp_server<br/>4 files<br/>I=0.00"]
+            P154["tools<br/>2 files<br/>I=0.00"]
+            P155["project_file_explorer<br/>5 files<br/>I=0.00"]
+            P156["repositories<br/>1 files<br/>I=0.00"]
+            P157["graph_db_manager<br/>6 files<br/>I=0.00"]
+            P158["dtos<br/>10 files<br/>I=0.00"]
+            P159["graph_queries<br/>2 files<br/>I=0.00"]
+            P160["version_control<br/>3 files<br/>I=0.00"]
+            P161["utils<br/>2 files<br/>I=0.00"]
+            P162["experimental<br/>2 files<br/>I=0.00"]
+            P163["multilspy<br/>9 files<br/>I=0.00"]
+            P164["workflows<br/>6 files<br/>I=0.00"]
+            P165["hive<br/>5 files<br/>I=0.00"]
+            P166["worktree<br/>2 files<br/>I=0.00"]
+            P167["agents<br/>3 files<br/>I=0.00"]
+            P168["domain_agents<br/>8 files<br/>I=0.00"]
+            P169["goal_seeking<br/>21 files<br/>I=0.00"]
+            P170["eval<br/>20 files<br/>I=0.00"]
+            P171["generator<br/>3 files<br/>I=0.00"]
+            P172["harness<br/>2 files<br/>I=0.00"]
+            P173["hive_mind<br/>29 files<br/>I=0.00"]
+            P174["hooks<br/>9 files<br/>I=0.00"]
+            P175["integration<br/>19 files<br/>I=0.00"]
+            P176["harness<br/>4 files<br/>I=0.00"]
+            P177["knowledge_builder<br/>4 files<br/>I=0.00"]
+            P178["launcher<br/>10 files<br/>I=0.00"]
+            P179["framework<br/>6 files<br/>I=0.00"]
+            P180["scenarios<br/>4 files<br/>I=0.00"]
+            P181["microservice_project<br/>1 files<br/>I=0.00"]
+            P182["models<br/>3 files<br/>I=0.00"]
+            P183["services<br/>4 files<br/>I=0.50"]
+            P184["utils<br/>3 files<br/>I=0.00"]
+            P185["tools<br/>1 files<br/>I=0.00"]
+            P186["memory<br/>8 files<br/>I=0.00"]
+            P187["meta_delegation<br/>9 files<br/>I=0.00"]
+            P188["e2e<br/>7 files<br/>I=0.00"]
+            P189["integration<br/>3 files<br/>I=0.00"]
+            P190["plugin<br/>8 files<br/>I=0.00"]
+            P191["skills<br/>20 files<br/>I=0.00"]
+            P192["tracing<br/>6 files<br/>I=0.00"]
+            P193["hygiene<br/>2 files<br/>I=0.00"]
+            P194["recipes<br/>11 files<br/>I=0.00"]
+            P195["tools<br/>1 files<br/>I=0.00"]
+            P196["version_check<br/>6 files<br/>I=0.00"]
+            P197["workflows<br/>2 files<br/>I=0.00"]
+            P198["workloads<br/>2 files<br/>I=0.00"]
         end
 
         subgraph leaf["Leaf Packages"]
-            P196["builders<br/>4 files<br/>I=1.00"]
-            P197["tests<br/>76 files<br/>I=1.00"]
-            P198["memory<br/>5 files<br/>I=1.00"]
-            P199["patterns<br/>6 files<br/>I=1.00"]
-            P200["tests<br/>10 files<br/>I=1.00"]
-            P201["examples<br/>3 files<br/>I=1.00"]
-            P202["tests<br/>5 files<br/>I=1.00"]
-            P203["tests<br/>7 files<br/>I=1.00"]
-            P204["builders<br/>4 files<br/>I=1.00"]
-            P205["memory<br/>5 files<br/>I=1.00"]
-            P206["patterns<br/>6 files<br/>I=1.00"]
-            P207["tests<br/>10 files<br/>I=1.00"]
-            P208["examples<br/>3 files<br/>I=1.00"]
-            P209["tests<br/>5 files<br/>I=1.00"]
-            P210["tests<br/>7 files<br/>I=1.00"]
-            P211["builders<br/>4 files<br/>I=1.00"]
-            P212["memory<br/>5 files<br/>I=1.00"]
-            P213["patterns<br/>6 files<br/>I=1.00"]
-            P214["tests<br/>10 files<br/>I=1.00"]
-            P215["examples<br/>3 files<br/>I=1.00"]
-            P216["tests<br/>5 files<br/>I=1.00"]
-            P217["tests<br/>9 files<br/>I=1.00"]
-            P218["commands<br/>2 files<br/>I=1.00"]
-            P219["documentation<br/>4 files<br/>I=1.00"]
-            P220["prebuilt<br/>2 files<br/>I=1.00"]
-            P221["tools<br/>11 files<br/>I=1.00"]
-            P222["workloads<br/>1 files<br/>I=1.00"]
-            P223["tests<br/>116 files<br/>I=1.00"]
-            P224["uvx<br/>8 files<br/>I=1.00"]
-            P225["mcp_evaluation<br/>4 files<br/>I=1.00"]
-            P226["handlers<br/>5 files<br/>I=1.00"]
-            P227["cli<br/>7 files<br/>I=1.00"]
-            P228["workflows<br/>8 files<br/>I=1.00"]
+            P199["builders<br/>4 files<br/>I=1.00"]
+            P200["tests<br/>76 files<br/>I=1.00"]
+            P201["memory<br/>5 files<br/>I=1.00"]
+            P202["patterns<br/>6 files<br/>I=1.00"]
+            P203["tests<br/>10 files<br/>I=1.00"]
+            P204["examples<br/>3 files<br/>I=1.00"]
+            P205["tests<br/>5 files<br/>I=1.00"]
+            P206["tests<br/>7 files<br/>I=1.00"]
+            P207["builders<br/>4 files<br/>I=1.00"]
+            P208["memory<br/>5 files<br/>I=1.00"]
+            P209["patterns<br/>6 files<br/>I=1.00"]
+            P210["tests<br/>10 files<br/>I=1.00"]
+            P211["examples<br/>3 files<br/>I=1.00"]
+            P212["tests<br/>5 files<br/>I=1.00"]
+            P213["tests<br/>7 files<br/>I=1.00"]
+            P214["builders<br/>4 files<br/>I=1.00"]
+            P215["memory<br/>5 files<br/>I=1.00"]
+            P216["patterns<br/>6 files<br/>I=1.00"]
+            P217["tests<br/>10 files<br/>I=1.00"]
+            P218["examples<br/>3 files<br/>I=1.00"]
+            P219["tests<br/>5 files<br/>I=1.00"]
+            P220["tests<br/>9 files<br/>I=1.00"]
+            P221["commands<br/>2 files<br/>I=1.00"]
+            P222["documentation<br/>4 files<br/>I=1.00"]
+            P223["prebuilt<br/>2 files<br/>I=1.00"]
+            P224["tools<br/>11 files<br/>I=1.00"]
+            P225["workloads<br/>1 files<br/>I=1.00"]
+            P226["tests<br/>116 files<br/>I=1.00"]
+            P227["uvx<br/>8 files<br/>I=1.00"]
+            P228["mcp_evaluation<br/>4 files<br/>I=1.00"]
+            P229["handlers<br/>5 files<br/>I=1.00"]
+            P230["cli<br/>7 files<br/>I=1.00"]
+            P231["workflows<br/>8 files<br/>I=1.00"]
         end
 
         P20 -->|1| P21
         P21 -->|8| P20
         P27 -->|1| P0
-        P196 -->|2| P27
-        P196 -->|2| P0
-        P197 -->|2| P28
-        P198 -->|2| P0
-        P199 -->|7| P30
-        P200 -->|24| P33
-        P201 -->|4| P34
-        P202 -->|6| P34
-        P203 -->|7| P35
+        P199 -->|2| P27
+        P199 -->|2| P0
+        P200 -->|2| P28
+        P201 -->|2| P0
+        P202 -->|7| P30
+        P203 -->|24| P33
+        P204 -->|4| P34
+        P205 -->|6| P34
+        P206 -->|7| P35
         P57 -->|1| P0
-        P204 -->|2| P57
-        P204 -->|2| P0
-        P205 -->|2| P0
-        P206 -->|7| P58
-        P207 -->|24| P61
-        P208 -->|4| P62
-        P209 -->|6| P62
-        P210 -->|7| P63
+        P207 -->|2| P57
+        P207 -->|2| P0
+        P208 -->|2| P0
+        P209 -->|7| P58
+        P210 -->|24| P61
+        P211 -->|4| P62
+        P212 -->|6| P62
+        P213 -->|7| P63
         P75 -->|1| P0
-        P211 -->|2| P0
-        P211 -->|2| P75
-        P212 -->|2| P0
-        P213 -->|7| P76
-        P214 -->|24| P79
-        P215 -->|4| P80
-        P216 -->|6| P80
-        P85 -->|21| P109
-        P85 -->|7| P134
+        P214 -->|2| P0
+        P214 -->|2| P75
+        P215 -->|2| P0
+        P216 -->|7| P76
+        P217 -->|24| P79
+        P218 -->|4| P80
+        P219 -->|6| P80
+        P85 -->|21| P112
+        P85 -->|7| P137
         P85 -->|4| P0
-        P87 -->|4| P88
-        P87 -->|1| P89
-        P87 -->|1| P91
-        P88 -->|3| P87
-        P92 -->|8| P87
-        P92 -->|1| P91
-        P98 -->|2| P99
-        P99 -->|1| P98
+        P90 -->|4| P91
+        P90 -->|1| P92
+        P90 -->|1| P94
+        P91 -->|3| P90
+        P95 -->|8| P90
+        P95 -->|1| P94
+        P101 -->|2| P102
+        P102 -->|1| P101
 
         click P0 "../service-components/" "View details"
     ```
@@ -356,7 +359,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-30T07:29:24.911526+00
 
 ## Key Findings
 
-- 229 packages analyzed
+- 232 packages analyzed
 - 33 leaf packages (no dependents)
 
 ## Detail
@@ -365,15 +368,15 @@ Category: <strong>Structural</strong> | Generated: 2026-03-30T07:29:24.911526+00
 
     **Summary metrics:**
 
-    - **Total Packages**: 229
+    - **Total Packages**: 232
     - **By Classification**:
-        - `feature`: 193
+        - `feature`: 196
         - `leaf`: 33
         - `utility`: 3
     - **Core Packages**: 0
     - **Leaf Packages**: 33
     - **Utility Packages**: 3
-    - **Feature Packages**: 193
+    - **Feature Packages**: 196
     - **Avg Instability**: 0.463
     - **Most Coupled Pair**: 2 items
         - `.claude.tools.amplihack.remote.tests`
