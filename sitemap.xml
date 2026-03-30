@@ -2309,6 +2309,10 @@
          <lastmod>2026-03-30</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/features/workflow-execution-guardrails/</loc>
+         <lastmod>2026-03-30</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/features/power-steering/</loc>
          <lastmod>2026-03-30</lastmod>
     </url>
@@ -2426,6 +2430,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/howto/configure-memory-consent/</loc>
+         <lastmod>2026-03-30</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/howto/configure-workflow-execution-guardrails/</loc>
          <lastmod>2026-03-30</lastmod>
     </url>
     <url>
@@ -2805,6 +2813,10 @@
          <lastmod>2026-03-30</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/reference/workflow-execution-guardrails/</loc>
+         <lastmod>2026-03-30</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/remote-sessions/</loc>
          <lastmod>2026-03-30</lastmod>
     </url>
@@ -2942,6 +2954,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/tutorials/session-start-workflow-classification/</loc>
+         <lastmod>2026-03-30</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/tutorials/workflow-execution-guardrails/</loc>
          <lastmod>2026-03-30</lastmod>
     </url>
 </urlset>
