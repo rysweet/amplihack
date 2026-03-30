@@ -2,6 +2,140 @@
 
 This document tracks recent bug fixes and improvements to the Recipe Runner and Skills systems following the Diátaxis framework.
 
+## Late March 2026 — Worktree Execution, Hook Isolation & Workflow Resilience
+
+### Agent Steps Now Run from Dedicated Worktree (PRs #3778, #3771, #3779, #3781)
+
+**Problem**: All `type: agent` steps in `default-workflow` and `consensus-workflow`
+ran from the repo root instead of the worktree created for the task, causing
+*hollow-context execution* — agents read the repo root state, not their assigned
+branch — and CWD conflicts when two parallel workflows ran simultaneously.
+
+**Fix**:
+
+- `default-workflow.yaml` and `consensus-workflow.yaml`: Added
+  `working_dir: {{worktree_path}}` to all 75 agent steps.
+- `MIN_RUNNER_VERSION` bumped through three releases:
+
+| Version | Fix |
+|---|---|
+| 0.3.1 (PR #3771) | Resolve orchestrator from `AMPLIHACK_HOME`, not CWD |
+| 0.3.2 (PR #3779) | Relative worktree path resolution |
+| 0.3.3 (PR #3781) | Template rendering for `working_dir` field |
+
+**Impact**: Nested agent sessions now inherit the correct working directory.
+Parallel workflows no longer overwrite each other's lock files or context.
+
+**Rule**: Every `type: agent` step in a worktree-using workflow must set
+`working_dir: {{worktree_path}}` — the runner does not propagate it.
+
+---
+
+### Nested Recipe Hook Reinjection Suppressed (PR #3792)
+
+**Problem**: The workflow-classification reminder and `AMPLIHACK.md` framework
+injection hooks fired unconditionally for every agent session — including
+child sessions started by the recipe runner. Child agents re-classified their
+subtask and re-invoked `dev-orchestrator`, producing recursive orchestration.
+
+**Fix**:
+
+- `workflow_classification_reminder.py`: Skip injection inside
+  recipe-managed child sessions.
+- `user_prompt_submit.py`: Skip `AMPLIHACK.md` framework reinjection for
+  nested sessions; preserve normal preference injection.
+- `USER_PREFERENCES` parser updated to read the current markdown-table format
+  (the old key-value parser silently dropped all preferences).
+
+**Impact**: Child sessions stay on their assigned task instead of re-routing.
+Preference loading is reliable again.
+
+---
+
+### Step-15 Retries Commit After Pre-commit Hook Modification (PR #3791)
+
+**Problem**: Pre-commit hooks reformatted files and exited 1. Step-15 treated
+any non-zero exit as a permanent commit failure and aborted, losing the work.
+
+**Fix**: Step-15 now detects the modify-then-exit-1 pattern (exit code 1 +
+newly modified files), re-stages the modified files, and retries the commit.
+
+**Impact**: Workflows no longer abort at the final commit step when
+pre-commit hooks do their normal job of reformatting code.
+
+---
+
+### Checkpoint Commits Skip Pre-commit Hooks and Are Non-fatal (PR #3786)
+
+**Problem**: Checkpoint steps (internal workflow bookmarks) ran pre-commit
+hooks. Hook failure killed the step, aborting 2-hour workflows.
+
+**Fix**: Checkpoint commits use `--no-verify` and `fatal: false`.
+
+**Rule**: Distinguish user commits (run hooks) from workflow bookkeeping
+commits (skip hooks, non-fatal).
+
+---
+
+### Built-in `context_validation` in Core Recipe YAMLs (PR #3753)
+
+**Problem**: Core recipes failed deep into execution with cryptic errors when
+required context variables were missing.
+
+**Fix**: All 4 core recipes (`default-workflow`, `consensus-workflow`,
+`investigation-workflow`, `smart-orchestrator`) now use the `context_validation`
+built-in field. The runner validates all required variables at step-00 and
+emits clear errors with restart commands.
+
+**Impact**: Missing-context failures are caught at the start, not mid-workflow.
+
+---
+
+### Non-Critical Steps Marked `fatal: false` (PR #3750)
+
+**Problem**: Pre-commit, cleanup, and status-check steps had `fatal: true`
+(default). A hook or status-check failure aborted entire multi-hour workflows.
+
+**Fix**: All non-critical steps now carry `fatal: false`. Failures are logged
+but do not abort the workflow. Requires recipe-runner-rs ≥ 0.2.10.
+
+**Taxonomy**:
+
+| Step category | `fatal` setting |
+|---|---|
+| Core implementation steps | `true` (default) |
+| Pre-commit / lint steps | `false` |
+| Checkpoint / status-check steps | `false` |
+| Cleanup steps | `false` |
+
+---
+
+### File-Based Context Passing — Runner 0.2.9 (PR #3747)
+
+**Problem**: Large context payloads passed via environment variables exceeded
+OS argument list limits, causing `Argument list too long` errors at runtime.
+
+**Fix**: `MIN_RUNNER_VERSION` bumped to 0.2.9. Context is now passed through
+a temporary file (`AMPLIHACK_CONTEXT_FILE`) instead of env vars.
+Auto-update installs the new binary on next `amplihack` startup.
+
+---
+
+### `find_recipe()` Precedence Aligned with `discover_recipes()` (PR #3785)
+
+**Problem**: `find_recipe()` did not use the same last-path-wins precedence
+as `discover_recipes()`. When a recipe name existed in both a bundled path and
+a local override path, `find_recipe()` could return the wrong one.
+
+**Fix**: `find_recipe()` now iterates all search directories and returns the
+last match, identical to `discover_recipes()`. A regression test for duplicate
+recipe names across search directories was added.
+
+**Impact**: Local recipe overrides now reliably win over bundled recipes.
+Closes #3784.
+
+---
+
 ## Rust Runner Env Propagation & Investigation Routing (PR #3512, Issue #3496)
 
 **Problem**: Nested workflow sessions started in temp cwds with wrong environment,
@@ -476,6 +610,17 @@ amplihack recipe run investigation --context task_description="How does auth wor
 ---
 
 ## Version History
+
+Fixes released in **amplihack v0.6.99+** (Late March 2026):
+
+- **Agent Step CWD** (PRs #3778, #3771, #3779, #3781) - `working_dir` on all 75 agent steps + runner 0.3.x
+- **Nested Hook Suppression** (PR #3792) - Skip routing injection in child sessions
+- **Step-15 Pre-commit Retry** (PR #3791) - Retry commit after hook reformats files
+- **Checkpoint Non-fatal** (PR #3786) - Checkpoint commits use `--no-verify` + `fatal: false`
+- **Context Validation** (PR #3753) - Built-in `context_validation` in 4 core recipes
+- **Non-critical Fatal: false** (PR #3750) - Pre-commit/cleanup/status steps non-fatal
+- **File-based Context** (PR #3747) - Runner 0.2.9 passes context via file, not env
+- **find_recipe Precedence** (PR #3785) - Last-path-wins aligned with discover_recipes
 
 All fixes released in **amplihack v0.9.1** (March 2026):
 
