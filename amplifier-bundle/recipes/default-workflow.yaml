@@ -538,6 +538,7 @@ steps:
   # ==========================================================================
   - id: "step-05-architecture"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5: Research and Design - Architecture
 
@@ -561,6 +562,7 @@ steps:
 
   - id: "step-05b-api-design"
     agent: "amplihack:api-designer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5b: API Design (if applicable)
 
@@ -578,6 +580,7 @@ steps:
 
   - id: "step-05c-database-design"
     agent: "amplihack:database"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5c: Database Design (if applicable)
 
@@ -595,6 +598,7 @@ steps:
 
   - id: "step-05d-security-review"
     agent: "amplihack:security"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5d: Security Requirements Review
 
@@ -614,6 +618,7 @@ steps:
 
   - id: "step-05e-design-consolidation"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5e: Design Consolidation
 
@@ -667,6 +672,7 @@ steps:
   # ==========================================================================
   - id: "step-06-documentation"
     agent: "amplihack:documentation-writer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 6: Retcon Documentation Writing
 
@@ -688,6 +694,7 @@ steps:
 
   - id: "step-06b-documentation-review"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 6b: Documentation Review
 
@@ -704,6 +711,7 @@ steps:
 
   - id: "step-06c-documentation-refinement"
     agent: "amplihack:documentation-writer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 6c: Documentation Refinement
 
@@ -719,6 +727,7 @@ steps:
   # ==========================================================================
   - id: "step-07-write-tests"
     agent: "amplihack:tester"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 7: TDD - Write Tests First
 
@@ -748,6 +757,7 @@ steps:
   # ==========================================================================
   - id: "step-08-implement"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 8: Implement the Solution
 
@@ -777,6 +787,7 @@ steps:
 
   - id: "step-08b-integration"
     agent: "amplihack:integration"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 8b: External Service Integration
 
@@ -819,6 +830,7 @@ steps:
   # ==========================================================================
   - id: "step-09-refactor"
     agent: "amplihack:cleanup"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 9: Refactor and Simplify
 
@@ -847,6 +859,7 @@ steps:
 
   - id: "step-09b-optimize"
     agent: "amplihack:optimizer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 9b: Performance Optimization
 
@@ -867,6 +880,7 @@ steps:
   # ==========================================================================
   - id: "step-10-pre-commit-review"
     agent: "amplihack:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 10: Review Pass Before Commit
 
@@ -898,6 +912,7 @@ steps:
 
   - id: "step-10b-security-review"
     agent: "amplihack:security"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 10b: Security Review
 
@@ -917,6 +932,7 @@ steps:
 
   - id: "step-10c-philosophy-check"
     agent: "amplihack:philosophy-guardian"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 10c: Philosophy Compliance Check
 
@@ -938,6 +954,7 @@ steps:
   # ==========================================================================
   - id: "step-11-incorporate-feedback"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 11: Assess Review Feedback
 
@@ -955,6 +972,7 @@ steps:
 
   - id: "step-11b-implement-feedback"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 11b: Implement Review Feedback
 
@@ -999,6 +1017,7 @@ steps:
   - id: "step-12-run-precommit"
     fatal: false
     agent: "amplihack:pre-commit-diagnostic"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 12: Run Tests and Pre-commit Hooks
 
@@ -1036,6 +1055,7 @@ steps:
   # ==========================================================================
   - id: "step-13-local-testing"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 13: Mandatory Outside-In Testing (CANNOT BE SKIPPED)
 
@@ -1118,6 +1138,7 @@ steps:
   # ==========================================================================
   - id: "step-14-bump-version"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 14: Bump Version in pyproject.toml (MANDATORY - DO NOT SKIP)
 
@@ -1356,6 +1377,7 @@ steps:
   # ==========================================================================
   - id: "step-16b-outside-in-fix-loop"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 16b: Outside-In Testing and Fix Loop (MANDATORY)
 
@@ -1463,6 +1485,7 @@ steps:
 
   - id: "step-17b-reviewer-agent"
     agent: "amplihack:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 17b: Comprehensive Code Review (MANDATORY)
 
@@ -1490,6 +1513,7 @@ steps:
 
   - id: "step-17c-security-review"
     agent: "amplihack:security"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 17c: Security Review (MANDATORY)
 
@@ -1513,6 +1537,7 @@ steps:
 
   - id: "step-17d-philosophy-guardian"
     agent: "amplihack:philosophy-guardian"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 17d: Philosophy Guardian Review (MANDATORY)
 
@@ -1536,6 +1561,7 @@ steps:
 
   - id: "step-17e-address-blocking-issues"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 17e: Address Blocking Issues (MANDATORY)
 
@@ -1578,6 +1604,7 @@ steps:
   # ==========================================================================
   - id: "step-18a-analyze-feedback"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 18a: Analyze Review Feedback (MANDATORY)
 
@@ -1595,6 +1622,7 @@ steps:
 
   - id: "step-18b-implement-feedback"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 18b: Implement Review Feedback (MANDATORY)
 
@@ -1689,6 +1717,7 @@ steps:
   # ==========================================================================
   - id: "step-19a-philosophy-check"
     agent: "amplihack:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 19a: Philosophy Compliance Review (MANDATORY)
 
@@ -1708,6 +1737,7 @@ steps:
 
   - id: "step-19b-patterns-check"
     agent: "amplihack:patterns"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 19b: Pattern Compliance Review (MANDATORY)
 
@@ -1790,6 +1820,7 @@ steps:
   - id: "step-20-final-cleanup"
     fatal: false
     agent: "amplihack:cleanup"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 20: Final Cleanup and Verification
 
@@ -1860,6 +1891,7 @@ steps:
   # ==========================================================================
   - id: "step-20c-quality-audit"
     agent: "amplihack:core:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 20c: Quality Audit Loop
 
@@ -1963,6 +1995,7 @@ steps:
   # ==========================================================================
   - id: "step-22-ensure-mergeable"
     agent: "amplihack:ci-diagnostic-workflow"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 21: Ensure PR is Mergeable (TASK COMPLETION POINT)
 

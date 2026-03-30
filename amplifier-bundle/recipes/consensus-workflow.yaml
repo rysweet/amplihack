@@ -538,6 +538,7 @@ steps:
 
   - id: "step3-setup-worktree"
     agent: "amplihack:worktree-manager"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       Setup git worktree and branch for isolated development:
 
@@ -672,6 +673,7 @@ steps:
 
   - id: "step4-design-round1-architect"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       MANDATORY ARCHITECTURE DEBATE - ROUND 1: Independent Design (Architect)
 
@@ -709,6 +711,7 @@ steps:
 
   - id: "step4-design-round1-api"
     agent: "amplihack:api-designer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       MANDATORY ARCHITECTURE DEBATE - ROUND 1: Independent Design (API Designer)
 
@@ -746,6 +749,7 @@ steps:
 
   - id: "step4-design-round1-database"
     agent: "amplihack:database"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       MANDATORY ARCHITECTURE DEBATE - ROUND 1: Independent Design (Database)
 
@@ -783,6 +787,7 @@ steps:
 
   - id: "step4-design-round1-security"
     agent: "amplihack:security"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       MANDATORY ARCHITECTURE DEBATE - ROUND 1: Independent Design (Security)
 
@@ -824,6 +829,7 @@ steps:
 
   - id: "step4-design-round1-tester"
     agent: "amplihack:tester"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       MANDATORY ARCHITECTURE DEBATE - ROUND 1: Independent Design (Tester)
 
@@ -863,6 +869,7 @@ steps:
 
   - id: "step4-design-round2-cross-examination"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       MANDATORY ARCHITECTURE DEBATE - ROUND 2: Cross-Examination
 
@@ -911,6 +918,7 @@ steps:
 
   - id: "step4-design-round3-consensus"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       MANDATORY ARCHITECTURE DEBATE - ROUND 3: Consensus Building
 
@@ -981,6 +989,7 @@ steps:
 
   - id: "step4-write-tests"
     agent: "amplihack:tester"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       Write comprehensive failing tests based on consensus design (TDD):
 
@@ -1028,6 +1037,7 @@ steps:
   - id: "step5-standard-implementation"
     condition: "is_critical_code == 'false'"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       Implement the solution following the consensus design:
 
@@ -1064,6 +1074,7 @@ steps:
   - id: "step5-nversion-identify-critical"
     condition: "is_critical_code == 'true'"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       Identify critical code sections for N-Version programming:
 
@@ -1098,6 +1109,7 @@ steps:
   - id: "step5-nversion-builder1-conservative"
     condition: "is_critical_code == 'true'"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       N-VERSION IMPLEMENTATION - Version 1: CONSERVATIVE Approach
 
@@ -1130,6 +1142,7 @@ steps:
   - id: "step5-nversion-builder2-pragmatic"
     condition: "is_critical_code == 'true'"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       N-VERSION IMPLEMENTATION - Version 2: PRAGMATIC Approach
 
@@ -1162,6 +1175,7 @@ steps:
   - id: "step5-nversion-builder3-minimalist"
     condition: "is_critical_code == 'true'"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       N-VERSION IMPLEMENTATION - Version 3: MINIMALIST Approach
 
@@ -1194,6 +1208,7 @@ steps:
   - id: "step5-nversion-compare"
     condition: "is_critical_code == 'true'"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       N-VERSION COMPARISON: Evaluate all implementations
 
@@ -1240,6 +1255,7 @@ steps:
   - id: "step5-nversion-synthesize"
     condition: "is_critical_code == 'true'"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       N-VERSION SYNTHESIS: Create final implementation
 
@@ -1262,6 +1278,7 @@ steps:
   - id: "step5-nversion-vote"
     condition: "is_critical_code == 'true'"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       N-VERSION CONSENSUS VOTE: Final approval for critical code
 
@@ -1300,6 +1317,7 @@ steps:
 
   - id: "step6-panel-cleanup"
     agent: "amplihack:cleanup"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       EXPERT PANEL REVIEW - Cleanup Agent
 
@@ -1339,6 +1357,7 @@ steps:
 
   - id: "step6-panel-optimizer"
     agent: "amplihack:optimizer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       EXPERT PANEL REVIEW - Optimizer Agent
 
@@ -1376,6 +1395,7 @@ steps:
 
   - id: "step6-panel-reviewer"
     agent: "amplihack:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       EXPERT PANEL REVIEW - Reviewer Agent
 
@@ -1414,6 +1434,7 @@ steps:
 
   - id: "step6-panel-patterns"
     agent: "amplihack:patterns"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       EXPERT PANEL REVIEW - Patterns Agent
 
@@ -1450,6 +1471,7 @@ steps:
 
   - id: "step6-panel-consensus"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       EXPERT PANEL CONSENSUS - Refactoring Approval
 
@@ -1495,6 +1517,7 @@ steps:
 
   - id: "step6-apply-refactoring"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       Apply consensus-approved refactoring:
 
@@ -1532,6 +1555,7 @@ steps:
   - id: "step7-fix-issues"
     condition: "test_results.tests_run == 'true'"
     agent: "amplihack:pre-commit-diagnostic"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       Diagnose and fix any test or pre-commit failures:
 
@@ -1560,6 +1584,7 @@ steps:
 
   - id: "step8-local-testing"
     agent: "amplihack:tester"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       Perform mandatory local testing:
 
@@ -1720,6 +1745,7 @@ steps:
 
   - id: "step11-pr-review-reviewer"
     agent: "amplihack:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       EXPERT PANEL PR REVIEW - Reviewer Agent
 
@@ -1750,6 +1776,7 @@ steps:
 
   - id: "step11-pr-review-security"
     agent: "amplihack:security"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       EXPERT PANEL PR REVIEW - Security Agent
 
@@ -1780,6 +1807,7 @@ steps:
 
   - id: "step11-pr-review-optimizer"
     agent: "amplihack:optimizer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       EXPERT PANEL PR REVIEW - Optimizer Agent
 
@@ -1807,6 +1835,7 @@ steps:
 
   - id: "step11-pr-review-patterns"
     agent: "amplihack:patterns"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       EXPERT PANEL PR REVIEW - Patterns Agent
 
@@ -1834,6 +1863,7 @@ steps:
 
   - id: "step11-pr-review-tester"
     agent: "amplihack:tester"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       EXPERT PANEL PR REVIEW - Tester Agent
 
@@ -1863,6 +1893,7 @@ steps:
 
   - id: "step11-pr-review-consensus"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       EXPERT PANEL CONSENSUS - PR Review Approval
 
@@ -1909,6 +1940,7 @@ steps:
   - id: "step12-implement-feedback"
     condition: "pr_review_consensus.final_verdict == 'needs_work'"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       Implement required changes from PR review:
 
@@ -1950,6 +1982,7 @@ steps:
 
   - id: "step13-philosophy-reviewer"
     agent: "amplihack:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       PHILOSOPHY COMPLIANCE - Reviewer Agent
 
@@ -1976,6 +2009,7 @@ steps:
 
   - id: "step13-philosophy-patterns"
     agent: "amplihack:patterns"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       PHILOSOPHY COMPLIANCE - Patterns Agent
 
@@ -2003,6 +2037,7 @@ steps:
 
   - id: "step13-philosophy-cleanup"
     agent: "amplihack:cleanup"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       PHILOSOPHY COMPLIANCE - Cleanup Agent
 
@@ -2029,6 +2064,7 @@ steps:
 
   - id: "step13-philosophy-guardian"
     agent: "amplihack:philosophy-guardian"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       PHILOSOPHY GUARDIAN - Final Validation
 
@@ -2088,6 +2124,7 @@ steps:
   - id: "step14-diagnose-ci"
     condition: "ci_status.ci_checked == 'true'"
     agent: "amplihack:ci-diagnostic-workflow"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       Diagnose any CI failures:
 
@@ -2113,6 +2150,7 @@ steps:
 
   - id: "step14-verify-mergeable"
     agent: "amplihack:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       Verify PR is mergeable:
 
@@ -2159,6 +2197,7 @@ steps:
 
   - id: "step15-final-cleanup"
     agent: "amplihack:cleanup"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       FINAL QUALITY PANEL - Cleanup Agent
 
@@ -2187,6 +2226,7 @@ steps:
 
   - id: "step15-final-reviewer"
     agent: "amplihack:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       FINAL QUALITY PANEL - Reviewer Agent
 
@@ -2215,6 +2255,7 @@ steps:
 
   - id: "step15-final-patterns"
     agent: "amplihack:patterns"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       FINAL QUALITY PANEL - Patterns Agent
 
@@ -2244,6 +2285,7 @@ steps:
 
   - id: "step15-final-consensus"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       FINAL QUALITY CONSENSUS - Unanimous Approval Required
 
