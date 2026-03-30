@@ -19,7 +19,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 try:
     from amplihack.utils.paths import FrameworkPathResolver
 except ImportError:
-    print("WARNING: FrameworkPathResolver not available - using fallback path resolution", file=sys.stderr)
+    print(
+        "WARNING: FrameworkPathResolver not available - using fallback path resolution",
+        file=sys.stderr,
+    )
     FrameworkPathResolver = None
 
 
@@ -33,6 +36,14 @@ class UserPromptSubmitHook(HookProcessor):
         self._cache_timestamp: float | None = None
         self._amplihack_cache: str | None = None
         self._amplihack_cache_timestamp: tuple[float, float] | None = None
+
+    @staticmethod
+    def _is_nested_recipe_session() -> bool:
+        """Return True when running inside a recipe-managed child agent session."""
+        try:
+            return int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0")) > 0
+        except ValueError:
+            return False
 
     def find_user_preferences(self) -> Path | None:
         """Find USER_PREFERENCES.md file using FrameworkPathResolver or fallback."""
@@ -89,6 +100,31 @@ class UserPromptSubmitHook(HookProcessor):
                 # Skip empty or placeholder values
                 if value and value not in ["", "(not set)", "not set"]:
                     preferences[pref_name] = value
+
+        # Also support the current markdown-table format used by USER_PREFERENCES.md.
+        table_values = {}
+        for match in re.finditer(
+            r"^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|$",
+            content,
+            re.MULTILINE,
+        ):
+            key = match.group(1).strip()
+            value = match.group(2).strip()
+            if key.lower() == "setting" or set(key) == {"-"} or set(value) == {"-"}:
+                continue
+            table_values[key] = value
+
+        for pref_name in key_prefs:
+            if pref_name in preferences:
+                continue
+            value = table_values.get(pref_name)
+            if value and value not in ["", "(not set)", "not set"]:
+                preferences[pref_name] = value
+
+        if "Workflow Preferences" not in preferences:
+            selected_match = re.search(r"\*\*Selected\*\*:\s*([A-Za-z0-9_-]+)", content)
+            if selected_match:
+                preferences["Workflow Preferences"] = selected_match.group(1).strip()
 
         # Extract learned patterns (brief mention only)
         if "## Learned Patterns" in content:
@@ -384,10 +420,13 @@ class UserPromptSubmitHook(HookProcessor):
             self.log(f"Memory injection failed (non-fatal): {e}", "WARNING")
 
         # 3. Inject AMPLIHACK.md framework instructions (if CLAUDE.md differs)
-        amplihack_context = self._inject_amplihack_if_different()
-        if amplihack_context:
-            context_parts.append(amplihack_context)
-            self.log("Injected AMPLIHACK.md framework instructions")
+        if self._is_nested_recipe_session():
+            self.log("Nested recipe session detected - skipping AMPLIHACK.md injection")
+        else:
+            amplihack_context = self._inject_amplihack_if_different()
+            if amplihack_context:
+                context_parts.append(amplihack_context)
+                self.log("Injected AMPLIHACK.md framework instructions")
 
         # Combine all context parts
         full_context = "\n\n".join(context_parts)

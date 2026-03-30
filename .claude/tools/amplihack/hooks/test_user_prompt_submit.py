@@ -84,10 +84,10 @@ def test_context_building():
     context = hook.build_preference_context(preferences)
 
     # Verify context structure
-    assert "🎯 ACTIVE USER PREFERENCES (MANDATORY):" in context
+    assert "🎯 ACTIVE USER PREFERENCES (MANDATORY - Apply to all responses):" in context
     assert "Communication Style: pirate" in context
     assert "Use this style in your response" in context
-    assert "These preferences MUST be applied" in context
+    assert "Apply these preferences to this response." in context
 
     print(f"✓ Context built ({len(context)} chars)")
 
