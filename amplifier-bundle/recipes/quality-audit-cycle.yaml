@@ -671,6 +671,43 @@ steps:
     output: "recurse_decision"
 
   # ========================================================================
+  # STEP 5b: SELF-RECURSE if CONTINUE
+  # Re-invoke the quality-audit-cycle recipe with incremented cycle_number.
+  # This step is skipped when recurse_decision starts with "STOP".
+  # ========================================================================
+  - id: "recurse-next-cycle"
+    type: "bash"
+    condition: "'CONTINUE' in str(recurse_decision)"
+    command: |
+      # Extract next cycle number from recurse_decision (format: "CONTINUE:N")
+      NEXT_CYCLE=$(echo "{{recurse_decision}}" | grep -oP 'CONTINUE:\K[0-9]+' || echo "")
+      if [ -z "$NEXT_CYCLE" ]; then
+        echo "No next cycle found in recurse_decision. Stopping."
+        exit 0
+      fi
+      echo "=== Launching cycle $NEXT_CYCLE ===" >&2
+      # Self-invoke with incremented cycle_number
+      AMPLIHACK_HOME="${AMPLIHACK_HOME:-$HOME/.amplihack}" \
+        python3 -c "
+from amplihack.recipes import run_recipe_by_name
+result = run_recipe_by_name(
+    'quality-audit-cycle',
+    user_context={
+        'task_description': '''{{task_description}}''',
+        'repo_path': '{{repo_path}}',
+        'target_path': '{{target_path}}',
+        'min_cycles': '{{min_cycles}}',
+        'max_cycles': '{{max_cycles}}',
+        'cycle_number': '$NEXT_CYCLE',
+        'cycle_history': '''{{cycle_history}}\nCycle {{cycle_number}}: {{recurse_decision}}''',
+    },
+    progress=True,
+)
+print(f'Sub-cycle result: {result.success}')
+"
+    output: "subcycle_result"
+
+  # ========================================================================
   # STEP 6: SUMMARY — Final report across all cycles
   # ========================================================================
   - id: "summary"
