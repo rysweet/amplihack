@@ -16,6 +16,7 @@ Usage:
 """
 
 import json
+import logging
 import os
 import re
 import shlex
@@ -54,6 +55,8 @@ VALID_DELEGATES: frozenset[str] = frozenset(
 # Log size cap: prevent /tmp exhaustion from runaway subprocesses.
 # Configurable via AMPLIHACK_MAX_LOG_BYTES env var.
 MAX_LOG_BYTES: int = int(os.environ.get("AMPLIHACK_MAX_LOG_BYTES", str(100 * 1024 * 1024)))
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -124,6 +127,10 @@ class ParallelOrchestrator:
         with self._stdout_lock:
             sys.stdout.write(msg)
             sys.stdout.flush()
+
+    def _emit_stderr_event(self, event: dict[str, object]) -> None:
+        """Emit a compact JSONL liveness event to stderr."""
+        print(json.dumps(event, separators=(",", ":")), file=sys.stderr, flush=True)
 
     def _safe_log_path(self, issue_id: object) -> Path:
         """Return a log file path guaranteed to be within tmp_base.
@@ -566,7 +573,7 @@ class ParallelOrchestrator:
             data = json.loads(real_path.read_text(encoding="utf-8"))
             return data.get("step_name", "unknown")
         except (OSError, json.JSONDecodeError, KeyError) as exc:
-            print(f"[debug] Could not read progress for {ws.recipe}: {exc}", file=sys.stderr)
+            logger.debug("Could not read progress for %s: %s", ws.recipe, exc)
             return "unknown"
 
     def monitor(self, check_interval: int = 10, max_runtime: int = 7200) -> None:
@@ -607,48 +614,23 @@ class ParallelOrchestrator:
                         "elapsed_s": int(ws.runtime_seconds or 0),
                     }
                 )
-            print(
-                json.dumps(
-                    {
-                        "type": "heartbeat",
-                        "elapsed_s": elapsed,
-                        "workstreams": ws_summaries,
-                    }
-                ),
-                flush=True,
-            )
-
-            # Machine-readable heartbeat for caller freshness detection (#3626)
             heartbeat = {
-                "type": "workstream_heartbeat",
-                "timestamp": time.time(),
+                "type": "heartbeat",
+                "ts": time.time(),
                 "elapsed_seconds": elapsed,
+                "elapsed_s": elapsed,
                 "summary": {
                     "running": len(status["running"]),
                     "completed": len(status["completed"]),
                     "failed": len(status["failed"]),
                     "total": len(self.workstreams),
                 },
-                "workstreams": [
-                    {
-                        "issue": ws.issue,
-                        "description": ws.description,
-                        "status": (
-                            "running"
-                            if ws.issue in status["running"]
-                            else "completed"
-                            if ws.issue in status["completed"]
-                            else "failed"
-                        ),
-                        "runtime_seconds": round(ws.runtime_seconds, 1)
-                        if ws.runtime_seconds
-                        else 0,
-                        "exit_code": ws.exit_code,
-                    }
-                    for ws in self.workstreams
-                ],
+                "workstreams": ws_summaries,
             }
-            print(f"  ::heartbeat::{json.dumps(heartbeat)}")
+            parent_step = os.environ.get("AMPLIHACK_PARENT_STEP")
+            if parent_step:
+                heartbeat["parent_step"] = parent_step
+            self._emit_stderr_event(heartbeat)
 
             # Auto-cleanup completed and failed workstream directories
             for ws in self.workstreams:

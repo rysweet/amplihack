@@ -811,25 +811,7 @@ def _execute_rust_command(
                 )
             # For non-signal failures, show only the last few lines of stderr
             # (not the full progress log which can be thousands of lines).
-            stderr_tail = ""
-            if stderr:
-                lines = stderr.strip().splitlines()
-                # Skip progress/heartbeat/JSONL lines, show last 5 meaningful lines
-                meaningful = [
-                    ln
-                    for ln in lines
-                    if not ln.strip().startswith(
-                        (
-                            "▶",
-                            "✓",
-                            "⊘",
-                            "✗",
-                            "[agent]",
-                            rust_runner_execution._STEP_TRANSITION_PREFIX,
-                        )
-                    )
-                ]
-                stderr_tail = "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
+            stderr_tail = rust_runner_execution._meaningful_stderr_tail(stderr) if stderr else ""
             raise RuntimeError(
                 f"Rust recipe runner failed (exit {returncode}): {stderr_tail or 'no stderr'}"
                 + (f"\n\n  Log file: {log_path}" if log_path else "")
@@ -937,6 +919,16 @@ def _resolve_recipe_target(
     return name
 
 
+def _emit_recipe_source_diagnostic(requested_name: str, resolved_target: str) -> None:
+    """Emit the recipe source selected for this run."""
+    candidate = Path(resolved_target)
+    if candidate.is_absolute() or candidate.suffix in {".yaml", ".yml"}:
+        selected = str(candidate.resolve())
+    else:
+        selected = f"unresolved name '{requested_name}' (Rust discovery path selection)"
+    print(f"Selected recipe source: {selected}", file=sys.stderr, flush=True)
+
+
 def run_recipe_via_rust(
     name: str,
     user_context: dict[str, Any] | None = None,
@@ -981,6 +973,8 @@ def run_recipe_via_rust(
         recipe_dirs=effective_recipe_dirs,
         working_dir=working_dir,
     )
+    if progress or emit_startup_banner:
+        _emit_recipe_source_diagnostic(name, resolved_name)
 
     # Create a process-scoped temp directory for context value spill files.
     # tempfile.mkdtemp() creates it atomically (O_CREAT|O_EXCL) with 0o700
