@@ -1386,17 +1386,24 @@ def main(argv: list[str] | None = None) -> int:
                                 "Plugin install timed out"
                             )
 
-        # Smart PROJECT.md initialization for UVX mode
-        try:
-            from .utils.project_initializer import InitMode, initialize_project_md
+        # Smart PROJECT.md initialization for UVX mode.
+        # Skip in nested agent sessions — nested agents should not contaminate
+        # the working directory with .claude/context/PROJECT.md writes (#3769).
+        session_depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
+        if session_depth == 0:
+            try:
+                from .utils.project_initializer import InitMode, initialize_project_md
 
-            result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
-            if result.success and result.action_taken.value in ["initialized", "regenerated"]:
+                result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
+                if result.success and result.action_taken.value in ["initialized", "regenerated"]:
+                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                        print(f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}")
+            except Exception as e:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}")
-        except Exception as e:
+                    print(f"Warning: PROJECT.md initialization failed: {e}")
+        else:
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                print(f"Warning: PROJECT.md initialization failed: {e}")
+                print(f"Skipping PROJECT.md init (nested agent, depth={session_depth})")
 
     if not args.command:
         # If we have claude_args but no command, default to launching Claude directly
