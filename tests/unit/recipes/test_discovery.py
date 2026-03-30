@@ -90,6 +90,20 @@ class TestFindRecipe:
         """find_recipe returns None for a non-existent recipe."""
         assert find_recipe("this-recipe-does-not-exist-12345") is None
 
+    def test_later_search_dir_overrides_earlier_match(self, tmp_path: Path) -> None:
+        """find_recipe should mirror discover_recipes() last-path-wins precedence."""
+        early = tmp_path / "early"
+        late = tmp_path / "late"
+        early.mkdir()
+        late.mkdir()
+
+        (early / "shadowed.yaml").write_text("name: shadowed\ndescription: early\nsteps: []\n")
+        (late / "shadowed.yaml").write_text("name: shadowed\ndescription: late\nsteps: []\n")
+
+        path = find_recipe("shadowed", [early, late])
+
+        assert path == late / "shadowed.yaml"
+
 
 class TestParseFile:
     """Test RecipeParser.parse_file method."""
