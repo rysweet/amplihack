@@ -19,6 +19,11 @@ from .repo_checkout import checkout_repository
 logger = logging.getLogger(__name__)
 
 
+def get_claude_command() -> str:
+    """Compatibility wrapper used by tracing tests."""
+    return get_claude_cli_path(auto_install=False) or "claude"
+
+
 def _is_noninteractive() -> bool:
     """Check if running in non-interactive mode.
 
@@ -1265,3 +1270,39 @@ class ClaudeLauncher:
             logger.error("Blarify indexing failed: %s", e)
             print(f"\n❌ Indexing failed: {e}")
             return False
+
+
+def launch_claude(
+    *,
+    enable_trace: bool = False,
+    trace_file: str | None = None,
+    args: list[str] | None = None,
+) -> int:
+    """Launch Claude through the lightweight compatibility facade expected by tests."""
+
+    manager = ClaudeBinaryManager()
+    binary = manager.detect_native_binary()
+    trace_callback = None
+    unregister = None
+
+    if enable_trace:
+        TraceLogger(enabled=True, log_file=Path(trace_file) if trace_file else None)
+        from ..proxy.litellm_callbacks import register_trace_callbacks, unregister_trace_callbacks
+
+        trace_callback = register_trace_callbacks(enabled=True, trace_file=trace_file)
+        unregister = unregister_trace_callbacks
+
+    if binary is not None:
+        cmd = manager.build_command(binary, enable_trace=enable_trace, trace_file=trace_file)
+    else:
+        cmd = [get_claude_command()]
+
+    if args:
+        cmd.extend(args)
+
+    try:
+        result = subprocess.run(cmd, check=False)
+        return result.returncode
+    finally:
+        if unregister is not None and trace_callback is not None:
+            unregister(trace_callback)

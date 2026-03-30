@@ -1,6 +1,6 @@
-"""Compatibility shim for the Claude tools hook package."""
+"""Top-level compatibility shim for tests that import ``copilot_stop_handler`` directly."""
 
-from amplihack.hooks._copilot_stop_handler_impl import (
+from amplihack.hooks.copilot_stop_handler import (
     _log_decision,
     disable_lock_files,
     get_copilot_continuation,

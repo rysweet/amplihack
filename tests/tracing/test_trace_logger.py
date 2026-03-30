@@ -13,6 +13,8 @@ Coverage Focus (60% of test suite):
 """
 
 import json
+import os
+import stat
 import time
 from pathlib import Path
 from unittest.mock import patch
@@ -166,8 +168,8 @@ def test_log_sanitizes_api_keys(tmp_path):
         logger.log(
             {
                 "event": "api_call",
-                "api_key": "sk-1234567890abcdefghij",
-                "message": "Using key sk-1234567890abcdefghij",
+                "api_key": "sk-1234567890abcdefghij",  # pragma: allowlist secret
+                "message": "Using key sk-1234567890abcdefghij",  # pragma: allowlist secret
             }
         )
 
@@ -175,8 +177,8 @@ def test_log_sanitizes_api_keys(tmp_path):
     entry = json.loads(lines[0])
 
     # API key should be sanitized
-    assert "sk-1234567890abcdefghij" not in json.dumps(entry)
-    assert entry["api_key"] == "sk-***"
+    assert "sk-1234567890abcdefghij" not in json.dumps(entry)  # pragma: allowlist secret
+    assert entry["api_key"] == "sk-***"  # pragma: allowlist secret
     assert "sk-***" in entry["message"]
 
 
@@ -205,19 +207,20 @@ def test_log_sanitizes_github_tokens(tmp_path):
     """Test that GitHub tokens are sanitized."""
     log_file = tmp_path / "trace.jsonl"
     logger = TraceLogger(enabled=True, log_file=log_file)
+    fake_github_token = "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE"  # pragma: allowlist secret
 
     with logger:
         logger.log(
             {
                 "event": "git_operation",
-                "token": "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE",
+                "token": fake_github_token,
             }
         )
 
     lines = log_file.read_text().strip().split("\n")
     entry = json.loads(lines[0])
 
-    assert "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE" not in json.dumps(entry)
+    assert fake_github_token not in json.dumps(entry)
     assert entry["token"] == "ghp_***"
 
 
@@ -232,12 +235,12 @@ def test_log_sanitizes_nested_credentials(tmp_path):
                 "event": "config",
                 "settings": {
                     "api": {
-                        "key": "sk-1234567890abcdefghij",
+                        "key": "sk-1234567890abcdefghij",  # pragma: allowlist secret
                         "endpoint": "https://api.example.com",
                     },
                     "auth": {
-                        "password": "secret123",
-                        "token": "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE",
+                        "password": "secret123",  # pragma: allowlist secret
+                        "token": "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE",  # pragma: allowlist secret
                     },
                 },
             }
@@ -248,9 +251,9 @@ def test_log_sanitizes_nested_credentials(tmp_path):
 
     # All sensitive data should be sanitized
     raw_json = json.dumps(entry)
-    assert "sk-1234567890abcdefghij" not in raw_json
+    assert "sk-1234567890abcdefghij" not in raw_json  # pragma: allowlist secret
     assert "secret123" not in raw_json
-    assert "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE" not in raw_json
+    assert "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE" not in raw_json  # pragma: allowlist secret
 
 
 # =============================================================================
@@ -295,9 +298,10 @@ def test_enabled_overhead_under_10_milliseconds(tmp_path):
 def test_performance_no_sanitization_overhead_when_disabled():
     """Test that TokenSanitizer is not called when disabled."""
     logger = TraceLogger(enabled=False)
+    fake_api_key = "sk-1234567890abcdefghij"  # pragma: allowlist secret
 
     with patch("amplihack.tracing.trace_logger.TokenSanitizer.sanitize_dict") as mock_sanitize:
-        logger.log({"event": "test", "api_key": "sk-1234567890abcdefghij"})
+        logger.log({"event": "test", "api_key": fake_api_key})
 
         # Sanitizer should NOT be called when disabled
         mock_sanitize.assert_not_called()
@@ -517,6 +521,20 @@ def test_log_appends_to_existing_file(tmp_path):
     assert len(lines) == 2
 
 
+def test_trace_logger_uses_owner_only_permissions(tmp_path):
+    """Trace logs should be created with 0700 directories and 0600 files."""
+    log_file = tmp_path / "secure" / "trace.jsonl"
+    logger = TraceLogger(enabled=True, log_file=log_file)
+
+    with logger:
+        logger.log({"event": "test"})
+
+    dir_mode = stat.S_IMODE(os.stat(log_file.parent).st_mode)
+    file_mode = stat.S_IMODE(os.stat(log_file).st_mode)
+    assert dir_mode == 0o700, f"Expected 0700, got {oct(dir_mode)}"
+    assert file_mode == 0o600, f"Expected 0600, got {oct(file_mode)}"
+
+
 def test_log_handles_permission_errors_gracefully(tmp_path):
     """Test graceful handling of permission errors - logs warning to stderr and disables."""
     log_file = tmp_path / "readonly.jsonl"
@@ -539,12 +557,8 @@ def test_log_handles_disk_full_errors(tmp_path):
     logger = TraceLogger(enabled=True, log_file=log_file)
 
     with logger:
-        # Simulate disk full by writing huge data
-        # This test is aspirational - actual implementation should handle gracefully
-        try:
-            logger.log({"event": "test", "data": "x" * (10**9)})  # 1GB
-        except OSError:
-            pass  # Expected
+        with patch.object(logger._file_handle, "write", side_effect=OSError("disk full")):
+            logger.log({"event": "test", "data": "small payload"})
 
 
 # =============================================================================
@@ -559,6 +573,7 @@ def test_trace_logger_respects_env_variable(monkeypatch, tmp_path):
     monkeypatch.setenv("AMPLIHACK_TRACE_FILE", str(log_file))
 
     logger = TraceLogger.from_env()
+    assert isinstance(logger, TraceLogger)
 
     assert logger.enabled is True
     assert logger.log_file == log_file
@@ -578,7 +593,7 @@ def test_trace_logger_env_handles_invalid_path(monkeypatch):
     monkeypatch.setenv("AMPLIHACK_TRACE_LOGGING", "true")
     monkeypatch.setenv("AMPLIHACK_TRACE_FILE", "/invalid/path/trace.jsonl")
 
-    logger = TraceLogger.from_env()
+    _ = TraceLogger.from_env()
 
     # Should handle gracefully - either disable or raise clear error
     # Exact behavior TBD in implementation

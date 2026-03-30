@@ -88,26 +88,14 @@ class TestLauncherDetection:
 
     def test_detect_codex_from_env(self):
         """Test Codex detection from environment variables."""
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}):  # pragma: allowlist secret
             launcher_type = LauncherDetector._detect_launcher_type()
             assert launcher_type == "codex"
 
     def test_detect_unknown_when_no_markers(self):
         """Test unknown detection when no markers present."""
-        # Clear environment
-        env_vars = [
-            "CLAUDE_CODE_SESSION",
-            "CLAUDE_SESSION_ID",
-            "ANTHROPIC_API_KEY",
-            "GITHUB_COPILOT_TOKEN",
-            "GITHUB_TOKEN",
-            "COPILOT_SESSION",
-            "OPENAI_API_KEY",
-            "CODEX_SESSION",
-        ]
-        env_patch = dict.fromkeys(env_vars)
-
-        with patch.dict(os.environ, env_patch, clear=False):
+        # Use clear=True and empty dict to remove all env vars including the markers
+        with patch.dict(os.environ, {}, clear=True):
             with patch.object(LauncherDetector, "_get_parent_process_name", return_value=None):
                 launcher_type = LauncherDetector._detect_launcher_type()
                 assert launcher_type == "unknown"
@@ -148,17 +136,20 @@ class TestEnvironmentGathering:
 
     def test_gather_environment_sanitizes_keys(self):
         """Test that API keys are sanitized."""
-        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk_test_1234567890abcdefghij"}):
+        with patch.dict(
+            os.environ,
+            {"ANTHROPIC_API_KEY": "sk_test_1234567890abcdefghij"},  # pragma: allowlist secret
+        ):
             env = LauncherDetector._gather_environment()
             # Should be sanitized
-            assert env["ANTHROPIC_API_KEY"] == "sk_t...ghij"
+            assert env["ANTHROPIC_API_KEY"] == "sk_t...ghij"  # pragma: allowlist secret
 
     def test_gather_environment_short_key_not_sanitized(self):
         """Test that short keys are not sanitized."""
-        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "short"}):
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "short"}):  # pragma: allowlist secret
             env = LauncherDetector._gather_environment()
             # Too short to sanitize
-            assert env["ANTHROPIC_API_KEY"] == "short"
+            assert env["ANTHROPIC_API_KEY"] == "short"  # pragma: allowlist secret
 
     def test_gather_environment_includes_non_sensitive(self):
         """Test that non-sensitive vars are included as-is."""
@@ -208,16 +199,16 @@ class TestStalenessCheck:
         assert LauncherDetector.is_stale(context)
 
     def test_is_stale_at_threshold(self):
-        """Test staleness exactly at threshold (300 seconds)."""
-        threshold_time = datetime.now() - timedelta(seconds=300)
+        """Test staleness just below threshold (299 seconds) should not be stale."""
+        # Use 299 seconds to avoid timing races at exactly 300 seconds
+        threshold_time = datetime.now() - timedelta(seconds=299)
         context = LauncherInfo(
             launcher_type="claude",
             command="test",
             detected_at=threshold_time.isoformat(),
             environment={},
         )
-        # Exactly at threshold should not be stale
-        # (uses > not >=)
+        # Below threshold should not be stale
         assert not LauncherDetector.is_stale(context)
 
 

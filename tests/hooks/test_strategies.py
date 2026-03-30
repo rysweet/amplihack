@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
 from amplihack.hooks.strategies.base import HookStrategy
 from amplihack.hooks.strategies.claude_strategy import ClaudeStrategy
 from amplihack.hooks.strategies.copilot_strategy import CopilotStrategy
@@ -84,17 +85,17 @@ code here
         result = strategy.inject_context(context)
         assert result["hookSpecificOutput"]["additionalContext"] == context
 
-    def test_power_steer_returns_true(self):
-        """Test that power_steer returns True for Claude."""
+    def test_power_steer_fails_explicitly(self):
+        """Claude should fail explicitly instead of pretending push steering works."""
         strategy = ClaudeStrategy()
-        result = strategy.power_steer("test prompt")
-        assert result is True
+        with pytest.raises(RuntimeError, match="inject_context"):
+            strategy.power_steer("test prompt")
 
-    def test_power_steer_ignores_session_id(self):
-        """Test that power_steer ignores session_id parameter."""
+    def test_power_steer_rejects_session_id_calls(self):
+        """Claude should reject power steering even when session_id is provided."""
         strategy = ClaudeStrategy()
-        result = strategy.power_steer("test prompt", session_id="ignored")
-        assert result is True
+        with pytest.raises(RuntimeError, match="inject_context"):
+            strategy.power_steer("test prompt", session_id="ignored")
 
     def test_get_launcher_name(self):
         """Test launcher name for Claude."""
@@ -292,14 +293,12 @@ Implementing adaptive hooks
         assert "Implementing adaptive hooks" in injected
 
     def test_complete_power_steering_flow(self):
-        """Test complete Claude power steering."""
+        """Claude should reject fake push-steering flows explicitly."""
         strategy = ClaudeStrategy()
         prompt = "Continue with implementation of feature X"
 
-        result = strategy.power_steer(prompt, session_id="test-123")
-
-        assert result is True
-        # For Claude, steering is handled by hook return value
+        with pytest.raises(RuntimeError, match="inject_context"):
+            strategy.power_steer(prompt, session_id="test-123")
 
 
 class TestCopilotStrategyIntegration:
@@ -359,7 +358,7 @@ class TestStrategyEndToEnd:
     """End-to-end tests for strategy workflows."""
 
     def test_claude_complete_workflow(self):
-        """Test Claude strategy from context injection to power steering."""
+        """Test Claude strategy from context injection through explicit steering failure."""
         strategy = ClaudeStrategy()
 
         # Step 1: Inject context
@@ -369,11 +368,9 @@ class TestStrategyEndToEnd:
         assert "hookSpecificOutput" in inject_result
         assert inject_result["hookSpecificOutput"]["additionalContext"] == context
 
-        # Step 2: Power steer
-        prompt = "Continue with next step in workflow"
-        steer_result = strategy.power_steer(prompt)
-
-        assert steer_result is True
+        # Step 2: Power steering is intentionally unsupported for Claude.
+        with pytest.raises(RuntimeError, match="inject_context"):
+            strategy.power_steer("Continue with next step in workflow")
 
     def test_copilot_complete_workflow(self, tmp_path):
         """Test Copilot strategy from context injection to power steering."""

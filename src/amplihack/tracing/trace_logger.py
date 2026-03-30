@@ -18,6 +18,7 @@ Created for Issue #2071: Native Binary Migration with Optional Trace Logging
 
 import json
 import os
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -60,6 +61,8 @@ class TraceLogger:
         self.enabled = enabled
         self.log_file = log_file
         self._file_handle = None
+        self._lock = threading.RLock()
+        self._context_depth = 0
 
     @classmethod
     def from_env(cls) -> "TraceLogger":
@@ -73,12 +76,13 @@ class TraceLogger:
         Returns:
             Configured TraceLogger instance
         """
-        enabled_str = os.getenv("AMPLIHACK_TRACE_LOGGING", "").lower()
+        enabled_str = os.getenv("CLAUDE_TRACE_ENABLED") or os.getenv("AMPLIHACK_TRACE_LOGGING", "")
+        enabled_str = enabled_str.lower()
         enabled = enabled_str in ("true", "1", "yes")
 
         log_file = None
         if enabled:
-            log_file_str = os.getenv("AMPLIHACK_TRACE_FILE")
+            log_file_str = os.getenv("CLAUDE_TRACE_FILE") or os.getenv("AMPLIHACK_TRACE_FILE")
             if log_file_str:
                 log_file = Path(log_file_str)
             else:
@@ -89,34 +93,46 @@ class TraceLogger:
     def __enter__(self):
         """Enter context manager - open log file if enabled."""
         if self.enabled and self.log_file:
-            try:
-                # Create parent directories if needed
-                self.log_file.parent.mkdir(parents=True, exist_ok=True)
-                # Open in append mode
-                self._file_handle = open(self.log_file, "a", encoding="utf-8")
-            except (OSError, PermissionError) as e:
-                # Clean up and disable logging rather than failing
-                self._file_handle = None
-                self.enabled = False
-                # Log to stderr since we can't log to file
-                import sys
+            with self._lock:
+                if self._context_depth == 0:
+                    try:
+                        self.log_file.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+                        os.chmod(self.log_file.parent, 0o700)
+                        fd = os.open(
+                            self.log_file,
+                            os.O_CREAT | os.O_APPEND | os.O_WRONLY,
+                            0o600,
+                        )
+                        os.chmod(self.log_file, 0o600)
+                        self._file_handle = os.fdopen(fd, "a", encoding="utf-8")
+                    except (OSError, PermissionError) as e:
+                        # Clean up and disable logging rather than failing
+                        self._file_handle = None
+                        self.enabled = False
+                        # Log to stderr since we can't log to file
+                        import sys
 
-                print(
-                    f"Warning: Could not open trace log file {self.log_file}: {e}", file=sys.stderr
-                )
+                        print(
+                            f"Warning: Could not open trace log file {self.log_file}: {e}",
+                            file=sys.stderr,
+                        )
+                self._context_depth += 1
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit context manager - close log file."""
-        if self._file_handle:
-            try:
-                self._file_handle.flush()
-                self._file_handle.close()
-            except OSError:
-                # Ignore errors on close - best effort cleanup
-                pass
-            finally:
-                self._file_handle = None
+        with self._lock:
+            if self._context_depth > 0:
+                self._context_depth -= 1
+            if self._context_depth == 0 and self._file_handle:
+                try:
+                    self._file_handle.flush()
+                    self._file_handle.close()
+                except OSError:
+                    # Ignore errors on close - best effort cleanup
+                    pass
+                finally:
+                    self._file_handle = None
         return False
 
     async def __aenter__(self):
@@ -147,49 +163,50 @@ class TraceLogger:
         if not self.enabled:
             return
 
-        # Validate context manager is active
-        if self._file_handle is None:
-            # Instead of raising, just return silently - logging is optional
-            return
+        with self._lock:
+            # Validate context manager is active
+            if self._file_handle is None:
+                # Instead of raising, just return silently - logging is optional
+                return
 
-        # Handle None or empty data
-        if data is None:
-            data = {}
+            # Handle None or empty data
+            if data is None:
+                data = {}
 
-        # Create a copy to avoid mutating original
-        entry = dict(data)
+            # Create a copy to avoid mutating original
+            entry = dict(data)
 
-        # Add timestamp if not present
-        if "timestamp" not in entry:
-            entry["timestamp"] = datetime.now(UTC).isoformat()
+            # Add timestamp if not present
+            if "timestamp" not in entry:
+                entry["timestamp"] = datetime.now(UTC).isoformat()
 
-        # Sanitize sensitive data
-        sanitized_entry = TokenSanitizer.sanitize_dict(entry)
+            # Sanitize sensitive data
+            sanitized_entry = TokenSanitizer.sanitize_dict(entry)
 
-        # Serialize to JSON and write
-        try:
-            json_line = json.dumps(sanitized_entry, ensure_ascii=False, default=_json_default)
-            self._file_handle.write(json_line + "\n")
-            self._file_handle.flush()  # Ensure immediate write
-        except (TypeError, ValueError) as e:
-            # Handle non-serializable data gracefully
+            # Serialize to JSON and write
             try:
-                error_entry = {
-                    "timestamp": datetime.now(UTC).isoformat(),
-                    "event": "trace_logger_error",
-                    "error": str(e),
-                    "original_event": str(entry.get("event", "unknown")),
-                }
-                json_line = json.dumps(error_entry, ensure_ascii=False)
+                json_line = json.dumps(sanitized_entry, ensure_ascii=False, default=_json_default)
                 self._file_handle.write(json_line + "\n")
-                self._file_handle.flush()
+                self._file_handle.flush()  # Ensure immediate write
+            except (TypeError, ValueError) as e:
+                # Handle non-serializable data gracefully
+                try:
+                    error_entry = {
+                        "timestamp": datetime.now(UTC).isoformat(),
+                        "event": "trace_logger_error",
+                        "error": str(e),
+                        "original_event": str(entry.get("event", "unknown")),
+                    }
+                    json_line = json.dumps(error_entry, ensure_ascii=False)
+                    self._file_handle.write(json_line + "\n")
+                    self._file_handle.flush()
+                except OSError:
+                    # If we can't even log the error, silently give up
+                    pass
             except OSError:
-                # If we can't even log the error, silently give up
+                # Handle I/O errors (disk full, permissions, etc.)
+                # Trace logging is optional, so silently fail rather than break the caller
                 pass
-        except OSError:
-            # Handle I/O errors (disk full, permissions, etc.)
-            # Trace logging is optional, so silently fail rather than break the caller
-            pass
 
 
 def _json_default(obj: Any) -> str:

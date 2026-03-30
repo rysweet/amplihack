@@ -40,6 +40,14 @@ def _initialize_paths():
         if path not in sys.path:
             sys.path.insert(0, path)
 
+    # Make source subpackages importable even when the Claude tools package
+    # wins the initial ``import amplihack`` race during test collection.
+    src_package_dir = _PROJECT_ROOT / "src" / "amplihack"
+    if src_package_dir.exists():
+        src_package_str = str(src_package_dir)
+        if src_package_str not in __path__:
+            __path__.append(src_package_str)
+
     _PATHS_INITIALIZED = True
     return _PROJECT_ROOT
 
