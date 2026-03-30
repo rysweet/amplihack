@@ -118,6 +118,7 @@ steps:
   # ==========================================================================
   - id: "scope-definition"
     agent: "amplihack:prompt-writer"
+    working_dir: "{{repo_path}}"
     prompt: |
       Define the scope for this investigation task.
 
@@ -171,6 +172,7 @@ steps:
 
   - id: "clarify-ambiguities"
     agent: "amplihack:ambiguity"
+    working_dir: "{{repo_path}}"
     # Guard against scope being empty string (default) or non-dict when
     # parse_json fails — dot-notation raises AttributeDoesNotExist on
     # non-dict values. Short-circuit on falsy scope (fix #3570).
@@ -214,6 +216,7 @@ steps:
   # ==========================================================================
   - id: "exploration-strategy"
     agent: "amplihack:architect"
+    working_dir: "{{repo_path}}"
     prompt: |
       Design an exploration strategy for this investigation.
 
@@ -276,6 +279,7 @@ steps:
 
   - id: "check-past-investigations"
     agent: "amplihack:patterns"
+    working_dir: "{{repo_path}}"
     prompt: |
       Check for similar past investigations and reusable patterns.
 
@@ -314,6 +318,7 @@ steps:
 
   - id: "historical-research"
     agent: "amplihack:knowledge-archaeologist"
+    working_dir: "{{repo_path}}"
     condition: "strategy and strategy.historical_context_needed"
     prompt: |
       Research historical context for this investigation.
@@ -353,6 +358,7 @@ steps:
   # ==========================================================================
   - id: "deep-dive-primary"
     agent: "amplihack:architect"
+    working_dir: "{{repo_path}}"
     prompt: |
       Conduct a deep dive exploration as the PRIMARY investigator.
 
@@ -381,6 +387,7 @@ steps:
 
   - id: "deep-dive-secondary"
     agent: "amplihack:patterns"
+    working_dir: "{{repo_path}}"
     prompt: |
       Conduct a deep dive exploration as the SECONDARY investigator.
 
@@ -408,6 +415,7 @@ steps:
 
   - id: "deep-dive-tertiary"
     agent: "amplihack:architect"
+    working_dir: "{{repo_path}}"
     prompt: |
       Conduct a deep dive exploration as the TERTIARY investigator.
 
@@ -434,6 +442,7 @@ steps:
 
   - id: "deep-dive-specialist"
     agent: "amplihack:security"
+    working_dir: "{{repo_path}}"
     condition: "strategy and strategy.parallel_deployment and strategy.parallel_deployment.specialist_agent"
     prompt: |
       Conduct a SPECIALIST deep dive for this investigation.
@@ -456,6 +465,7 @@ steps:
 
   - id: "consolidate-findings"
     agent: "amplihack:patterns"
+    working_dir: "{{repo_path}}"
     prompt: |
       Consolidate findings from all parallel deep dives.
 
@@ -505,6 +515,7 @@ steps:
   # ==========================================================================
   - id: "formulate-hypotheses"
     agent: "amplihack:architect"
+    working_dir: "{{repo_path}}"
     prompt: |
       Formulate hypotheses based on the consolidated findings.
 
@@ -546,6 +557,7 @@ steps:
 
   - id: "execute-verification"
     agent: "amplihack:architect"
+    working_dir: "{{repo_path}}"
     prompt: |
       Execute practical verification tests for each hypothesis.
 
@@ -599,6 +611,7 @@ steps:
 
   - id: "validate-verification"
     agent: "amplihack:reviewer"
+    working_dir: "{{repo_path}}"
     prompt: |
       Validate the verification results and overall understanding.
 
@@ -640,6 +653,7 @@ steps:
   # ==========================================================================
   - id: "identify-patterns"
     agent: "amplihack:patterns"
+    working_dir: "{{repo_path}}"
     prompt: |
       Identify reusable patterns discovered during this investigation.
 
@@ -683,6 +697,7 @@ steps:
 
   - id: "synthesis"
     agent: "amplihack:architect"
+    working_dir: "{{repo_path}}"
     prompt: |
       Synthesize all findings into the 5 REQUIRED outputs.
 
@@ -755,6 +770,7 @@ steps:
 
   - id: "validate-synthesis"
     agent: "amplihack:reviewer"
+    working_dir: "{{repo_path}}"
     prompt: |
       Validate the synthesis addresses all original questions.
 
@@ -828,6 +844,7 @@ steps:
   # ==========================================================================
   - id: "transition-guidance"
     agent: "amplihack:patterns"
+    working_dir: "{{repo_path}}"
     prompt: |
       Analyze whether this investigation should transition to implementation.
 

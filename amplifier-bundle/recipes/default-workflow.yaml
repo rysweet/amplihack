@@ -209,6 +209,10 @@ steps:
     prompt: |
       === [RECIPE PROGRESS] Step: step-02-clarify-requirements ===
 
+      **IMPORTANT**: You are ONLY clarifying requirements. Do NOT invoke any skills,
+      workflows, or tools. Do NOT call /dev, dev-orchestrator, or any recipe runner.
+      Do NOT create files, run commands, or make changes. Return ONLY the JSON below.
+
       # Step 2: Rewrite and Clarify Requirements
 
       **Task Description:** {{task_description}}
