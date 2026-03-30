@@ -13,14 +13,15 @@ def _default_package_recipe_dirs() -> list[str]:
     """Return bundled recipe directories visible to Python discovery."""
     try:
         from amplihack.recipes.discovery import (
-            _AMPLIHACK_HOME_BUNDLE_DIR,
+            _get_amplihack_home_bundle_dir,
             _PACKAGE_BUNDLE_DIR,
             _REPO_ROOT_BUNDLE_DIR,
         )
 
+        amplihack_home_bundle = _get_amplihack_home_bundle_dir()
         candidates = [_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR]
-        if _AMPLIHACK_HOME_BUNDLE_DIR is not None:
-            candidates.append(_AMPLIHACK_HOME_BUNDLE_DIR)
+        if amplihack_home_bundle is not None:
+            candidates.append(amplihack_home_bundle)
 
         dirs: list[str] = []
         for candidate in candidates:

@@ -8,7 +8,6 @@ execution fails immediately with a clear error.
 from __future__ import annotations
 
 import contextlib
-import functools
 import json
 import logging
 import os
@@ -232,11 +231,11 @@ def _resolve_context_value(value: str) -> str:
     return value
 
 
-@functools.lru_cache(maxsize=1)
 def _binary_search_paths() -> list[str]:
     """Return known locations to search for the Rust binary.
 
-    Evaluated lazily on first call so Path.home() is only resolved when needed.
+    Computed fresh each call so concurrent runs with different HOME or
+    tree-id values never see stale cached paths.
     """
     return [
         "recipe-runner-rs",  # PATH
@@ -871,14 +870,15 @@ def _default_package_recipe_dirs() -> list[str]:
     """
     try:
         from amplihack.recipes.discovery import (
-            _AMPLIHACK_HOME_BUNDLE_DIR,
+            _get_amplihack_home_bundle_dir,
             _PACKAGE_BUNDLE_DIR,
             _REPO_ROOT_BUNDLE_DIR,
         )
 
+        amplihack_home_bundle = _get_amplihack_home_bundle_dir()
         candidates = [_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR]
-        if _AMPLIHACK_HOME_BUNDLE_DIR is not None:
-            candidates.append(_AMPLIHACK_HOME_BUNDLE_DIR)
+        if amplihack_home_bundle is not None:
+            candidates.append(amplihack_home_bundle)
 
         dirs: list[str] = []
         for candidate in candidates:
