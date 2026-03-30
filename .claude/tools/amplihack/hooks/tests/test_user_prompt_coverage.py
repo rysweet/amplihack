@@ -6,14 +6,10 @@ AMPLIHACK.md injection, strategy delegation, caching, extract_preferences,
 build_preference_context, find_user_preferences.
 """
 
-import json
 import os
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -161,6 +157,32 @@ verbose
         prefs = hook.extract_preferences(content)
         assert prefs == {"Verbosity": "verbose"}
 
+    def test_markdown_table_preferences_supported(self, tmp_path):
+        hook = _make_user_prompt_hook(tmp_path)
+        content = """# User Preferences
+
+## Core Preferences
+
+| Setting             | Value                      |
+| ------------------- | -------------------------- |
+| Verbosity           | balanced                   |
+| Communication Style | (not set)                  |
+| Update Frequency    | regular                    |
+| Priority Type       | balanced                   |
+| Collaboration Style | autonomous and independent |
+
+## Workflow Configuration
+
+**Selected**: DEFAULT_WORKFLOW (`@~/.amplihack/.claude/workflows/DEFAULT_WORKFLOW.md`)
+"""
+        prefs = hook.extract_preferences(content)
+        assert prefs["Verbosity"] == "balanced"
+        assert prefs["Update Frequency"] == "regular"
+        assert prefs["Priority Type"] == "balanced"
+        assert prefs["Collaboration Style"] == "autonomous and independent"
+        assert prefs["Workflow Preferences"] == "DEFAULT_WORKFLOW"
+        assert "Communication Style" not in prefs
+
     def test_not_set_values_skipped(self, tmp_path):
         hook = _make_user_prompt_hook(tmp_path)
         content = """### Communication Style
@@ -275,9 +297,7 @@ class TestFindUserPreferences:
 
     def test_finds_in_src_location(self, tmp_path):
         hook = _make_user_prompt_hook(tmp_path)
-        pref_file = (
-            tmp_path / "src" / "amplihack" / ".claude" / "context" / "USER_PREFERENCES.md"
-        )
+        pref_file = tmp_path / "src" / "amplihack" / ".claude" / "context" / "USER_PREFERENCES.md"
         pref_file.parent.mkdir(parents=True, exist_ok=True)
         pref_file.write_text("# Preferences")
         with patch("user_prompt_submit.FrameworkPathResolver", None):
@@ -340,6 +360,7 @@ class TestGetCachedPreferences:
         hook.get_cached_preferences(pref_file)
         # Modify file (change mtime)
         import time
+
         time.sleep(0.05)
         pref_file.write_text("### Verbosity\nverbose")
         result = hook.get_cached_preferences(pref_file)
@@ -525,6 +546,21 @@ class TestUserPromptProcess:
         ):
             result = hook.process({"userMessage": "hello"})
         assert "additionalContext" in result
+
+    def test_nested_recipe_session_skips_amplihack_injection(self, tmp_path):
+        hook = _make_user_prompt_hook(tmp_path)
+        hook._select_strategy = MagicMock(return_value=None)
+        pref_file = tmp_path / "prefs.md"
+        pref_file.write_text("### Verbosity\nbalanced")
+        hook.find_user_preferences = MagicMock(return_value=pref_file)
+        hook._inject_amplihack_if_different = MagicMock(return_value="FRAMEWORK")
+
+        with patch.dict(os.environ, {"AMPLIHACK_SESSION_DEPTH": "1"}, clear=False):
+            result = hook.process({"userMessage": "hello"})
+
+        hook._inject_amplihack_if_different.assert_not_called()
+        assert "ACTIVE USER PREFERENCES" in result["additionalContext"]
+        assert "FRAMEWORK" not in result["additionalContext"]
 
 
 # ============================================================================

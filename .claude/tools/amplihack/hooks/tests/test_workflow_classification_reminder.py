@@ -125,8 +125,8 @@ class TestReminderGeneration:
         reminder = self.hook.build_reminder("Implement feature X")
 
         assert "Q&A" in reminder
-        assert "INVESTIGATION" in reminder
-        assert "DEFAULT" in reminder
+        assert "OPERATIONS" in reminder
+        assert "INVESTIGATION/DEVELOPMENT" in reminder
 
     def test_reminder_contains_user_prompt_excerpt(self):
         """Reminder should include excerpt of user prompt."""
@@ -140,10 +140,9 @@ class TestReminderGeneration:
         """Reminder should specify required actions."""
         reminder = self.hook.build_reminder("Add feature")
 
-        assert "WORKFLOW:" in reminder
-        assert "Reason:" in reminder
-        # Should mention execution method (recipes tool or direct execution)
-        assert "Execute recipes tool" in reminder or "Execute directly" in reminder
+        assert "dev-orchestrator" in reminder
+        assert "Entry point: /dev" in reminder
+        assert "DO NOT start implementation" in reminder
 
     def test_reminder_formatted_as_system_reminder(self):
         """Process should wrap reminder in system-reminder tags."""
@@ -188,7 +187,7 @@ class TestHookIntegration:
 
         assert "additionalContext" in result
         assert "NEW TOPIC DETECTED" in result["additionalContext"]
-        assert "Workflow Classification Required" in result["additionalContext"]
+        assert "Classify and Route" in result["additionalContext"]
 
     def test_followup_no_reminder(self):
         """Follow-up prompts should not trigger reminder."""
@@ -228,6 +227,15 @@ class TestHookIntegration:
 
         assert "additionalContext" in result
         assert "NEW TOPIC DETECTED" in result["additionalContext"]
+
+    def test_nested_recipe_session_skips_reminder(self, monkeypatch):
+        """Nested recipe-managed child sessions should not get top-level workflow reminders."""
+        monkeypatch.setenv("AMPLIHACK_SESSION_DEPTH", "1")
+        input_data = {"userMessage": "Analyze this codebase", "turnCount": 0}
+
+        result = self.hook.process(input_data)
+
+        assert result == {}
 
 
 class TestEdgeCases:

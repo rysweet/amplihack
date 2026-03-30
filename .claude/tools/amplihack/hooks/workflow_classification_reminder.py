@@ -8,6 +8,7 @@ the request into the appropriate workflow and route through dev-orchestrator.
 This hook fires on user.prompt.submitted and injects additionalContext as a system reminder.
 """
 
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -57,6 +58,14 @@ class WorkflowClassificationReminder(HookProcessor):
             or prompt_lower.startswith("/amplihack:dev")
             or prompt_lower.startswith("/.claude:amplihack:dev")
         )
+
+    @staticmethod
+    def _is_nested_recipe_session() -> bool:
+        """Return True when running inside a recipe-managed child agent session."""
+        try:
+            return int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0")) > 0
+        except (TypeError, ValueError):
+            return False
 
     def is_new_topic(self, user_prompt: str, input_data: dict) -> bool:
         """Detect if this is a new topic requiring classification.
@@ -172,6 +181,10 @@ class WorkflowClassificationReminder(HookProcessor):
             user_prompt = user_message.get("text", "")
         else:
             user_prompt = str(user_message)
+
+        if self._is_nested_recipe_session():
+            self.log("Nested recipe session detected - skipping classification reminder")
+            return {}
 
         # Check if this is a new topic
         if not self.is_new_topic(user_prompt, input_data):
