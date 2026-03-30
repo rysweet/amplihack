@@ -1245,8 +1245,12 @@ steps:
         if ! git commit -m "$COMMIT_MSG"; then \
           echo "INFO: Pre-commit hooks modified files — re-staging and retrying commit" >&2 && \
           git add -A && \
-          git commit -m "$COMMIT_MSG" || \
-          git commit --no-verify -m "$COMMIT_MSG" ; \
+          if [ -n "$(git diff --cached --name-only)" ]; then \
+            git commit -m "$COMMIT_MSG" || \
+            git commit --no-verify -m "$COMMIT_MSG" ; \
+          else \
+            echo "INFO: Hooks fixed files but commit already succeeded — continuing" >&2 ; \
+          fi ; \
         fi ; \
       else \
         echo "WARNING: Nothing to commit - changes already committed" ; \
@@ -1666,8 +1670,12 @@ steps:
       - Addressed philosophy compliance items"; then \
           echo "INFO: Pre-commit hooks modified files — re-staging and retrying" >&2 && \
           git add -A && \
-          git commit -m "address review feedback" || \
-          git commit --no-verify -m "address review feedback" ; \
+          if [ -n "$(git diff --cached --name-only)" ]; then \
+            git commit -m "address review feedback" || \
+            git commit --no-verify -m "address review feedback" ; \
+          else \
+            echo "INFO: Hooks fixed files but commit already succeeded — continuing" >&2 ; \
+          fi ; \
         fi ; \
       else \
         echo "WARNING: Nothing to commit - feedback changes already committed" ; \
@@ -1874,8 +1882,12 @@ steps:
         if ! git commit -m "final cleanup pass"; then \
           echo "INFO: Pre-commit hooks modified files — re-staging and retrying" >&2 && \
           git add -A && \
-          git commit -m "final cleanup pass" || \
-          git commit --no-verify -m "final cleanup pass" ; \
+          if [ -n "$(git diff --cached --name-only)" ]; then \
+            git commit -m "final cleanup pass" || \
+            git commit --no-verify -m "final cleanup pass" ; \
+          else \
+            echo "INFO: Hooks fixed files but commit already succeeded — continuing" >&2 ; \
+          fi ; \
         fi && \
         if git remote get-url origin >/dev/null 2>&1; then HAS_REMOTE=true; else HAS_REMOTE=false; fi && \
         if [ "$HAS_REMOTE" = "true" ]; then \
