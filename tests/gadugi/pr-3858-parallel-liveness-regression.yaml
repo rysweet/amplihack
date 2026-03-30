@@ -1,0 +1,62 @@
+# Outside-in test: PR #3858 parallel liveness regression
+# Verifies the focused regression suite proving that parallel-workstream
+# heartbeat/progress metadata stays off semantic stdout and that the runner's
+# canonical stderr metadata handling remains compatible.
+
+name: "PR #3858 - Parallel Liveness Regression"
+description: >
+  When the multitask orchestrator and recipe runner handle parallel workstreams,
+  heartbeat and transition metadata must remain on stderr while stdout stays
+  reserved for semantic output. This scenario executes the focused regression
+  suite added for PR #3858 and requires it to pass cleanly.
+version: "1.0.0"
+config:
+  timeout: 180000
+  retries: 0
+  parallel: false
+
+environment:
+  requires: []
+
+agents:
+  - name: "cli-agent"
+    type: "cli"
+    config:
+      workingDirectory: "."
+      defaultTimeout: 180000
+      executionMode: "spawn"
+      captureOutput: true
+      ioConfig:
+        encoding: "utf8"
+        handleInteractivePrompts: false
+      logConfig:
+        logCommands: true
+        logOutput: true
+        logLevel: "info"
+
+steps:
+  - name: "Run focused regression suite"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: "PYTHONPATH=src uv run pytest -q tests/recipes/test_heartbeat.py tests/recipes/test_step_transition_jsonl.py tests/test_multitask_orchestrator_local_src_bootstrap.py"
+    timeout: 180000
+
+  - name: "Verify 10 focused tests passed"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "10 passed"
+    timeout: 15000
+
+cleanup:
+  - name: "Capture full regression output"
+    agent: "cli-agent"
+    action: "save_output"
+    params:
+      outputType: "full"
+      path: "pr-3858-parallel-liveness-regression-output.txt"
+
+# Run commands:
+# gadugi-test validate -f tests/gadugi/pr-3858-parallel-liveness-regression.yaml
+# gadugi-test run -d tests/gadugi -s "pr-3858-parallel-liveness-regression" --verbose
