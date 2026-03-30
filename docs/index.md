@@ -629,6 +629,15 @@ Testing strategies, quality assurance, and validation patterns.
 - [CS Validator](cs-validator/README.md) - Code style validation
 - [Testing Strategies](testing/README.md) - Comprehensive testing guide
 
+### Recovery Workflow
+
+These pages describe the planned recovery workflow contract. The `amplihack.recovery` package is not implemented in this repository yet, so treat them as implementation targets rather than shipped commands.
+
+- **[Planned: Understanding the Recovery Workflow](concepts/recovery-workflow.md)** - Design rationale for the four-stage recovery flow and truthful blocker-driven ledgers
+- [Planned Tutorial: Run the Recovery Workflow](tutorials/recovery-workflow.md) - Planned Stage 1-4 walkthrough with ledger inspection
+- [Planned How-To: Run the Recovery Workflow](howto/run-recovery-workflow.md) - Planned operational recipes for worktree and read-only modes
+- [Planned Recovery Workflow Reference](reference/recovery-workflow.md) - Planned CLI contract, public surface, safety guarantees, and ledger schema
+
 ### Code Review
 
 - [Code Review Guide](CODE_REVIEW.md) - Review process and standards
