@@ -231,7 +231,11 @@ my_agent/
 ## Related Documentation
 
 - **Tutorial**: [Goal-Seeking Agent Tutorial](../tutorials/GOAL_SEEKING_AGENT_TUTORIAL.md)
+- **Tutorial**: [LearningAgent Refactor Walkthrough](../tutorials/learning-agent-refactor-tutorial.md)
 - **How-To**: [Goal Agent Generator Guide](../GOAL_AGENT_GENERATOR_GUIDE.md)
+- **How-To**: [Maintain the Refactored LearningAgent](../howto/maintain-learning-agent-modules.md)
 - **Reference**: [Eval System Architecture](../EVAL_SYSTEM_ARCHITECTURE.md)
+- **Reference**: [LearningAgent Module Reference](./learning-agent-module-reference.md)
 - **Explanation**: [Comprehensive Guide](../GOAL_SEEKING_AGENTS.md)
+- **Explanation**: [LearningAgent Module Architecture](../concepts/learning-agent-module-architecture.md)
 - **SDK Guide**: [SDK Adapters Guide](../SDK_ADAPTERS_GUIDE.md)
