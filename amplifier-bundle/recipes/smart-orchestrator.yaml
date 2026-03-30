@@ -499,11 +499,32 @@ steps:
         echo "ERROR: repo_path does not exist: $REPO_PATH" >&2; exit 1
       fi
       cd "$REPO_PATH"
+
+      # Resolve multitask orchestrator from AMPLIHACK_HOME, not from repo root.
+      # The orchestrator.py is an amplihack asset, not a repo file (#3762).
+      ORCH_SCRIPT=""
+      for candidate in \
+        "${AMPLIHACK_HOME:+$AMPLIHACK_HOME/.claude/skills/multitask/orchestrator.py}" \
+        "${HOME}/.amplihack/.claude/skills/multitask/orchestrator.py" \
+        "${HOME}/.copilot/skills/multitask/orchestrator.py" \
+        ".claude/skills/multitask/orchestrator.py"; do
+        if [ -n "$candidate" ] && [ -f "$candidate" ]; then
+          ORCH_SCRIPT="$candidate"
+          break
+        fi
+      done
+      if [ -z "$ORCH_SCRIPT" ]; then
+        echo "ERROR: multitask orchestrator.py not found." >&2
+        echo "  Searched: AMPLIHACK_HOME/.claude/skills/multitask/orchestrator.py" >&2
+        echo "  Set AMPLIHACK_HOME or ensure amplihack is installed." >&2
+        exit 1
+      fi
+
       echo "Launching parallel workstreams (tree: $TREE_ID, depth: $SESSION_DEPTH):"
       cat "$WS_FILE"
       echo "---"
       AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$SESSION_DEPTH" \
-        python3 .claude/skills/multitask/orchestrator.py "$WS_FILE"
+        python3 "$ORCH_SCRIPT" "$WS_FILE"
       # Clean up workstreams file now, before this step's output inflates
       # the recipe context. Doing it here avoids the E2BIG error that
       # occurs when a later bash step inherits megabytes of env vars
