@@ -122,14 +122,14 @@ class TestEvaluateCondition:
         step = self._step("val is None")
         assert step.evaluate_condition({"val": None}) is True
 
-    def test_undefined_variable_returns_true_with_warning(self) -> None:
-        """Undefined variables cause NameError — should return True (run step)."""
+    def test_undefined_variable_returns_false_with_warning(self) -> None:
+        """Undefined variables cause NameError — should fail closed and skip the step."""
         step = self._step("undefined_var == 5")
-        assert step.evaluate_condition({}) is True
+        assert step.evaluate_condition({}) is False
 
-    def test_syntax_error_returns_true_with_warning(self) -> None:
+    def test_syntax_error_returns_false_with_warning(self) -> None:
         step = self._step("this is not valid python !!!")
-        assert step.evaluate_condition({}) is True
+        assert step.evaluate_condition({}) is False
 
     def test_complex_expression(self) -> None:
         step = self._step("force == 'true' and count >= 2")
@@ -180,12 +180,11 @@ class TestEvaluateCondition:
         assert step.evaluate_condition({"bug_hunt": False, "count": 3}) is False
 
     def test_import_blocked(self) -> None:
-        """simpleeval must block __import__ — no code execution via conditions."""
+        """simpleeval must block __import__ and fail closed."""
         step = self._step("__import__('os').system('echo pwned')")
-        # Should not execute os.system; returns True (default on eval failure)
-        assert step.evaluate_condition({}) is True
+        assert step.evaluate_condition({}) is False
 
     def test_open_blocked(self) -> None:
-        """simpleeval must block open() — no file access via conditions."""
+        """simpleeval must block open() and fail closed."""
         step = self._step("open('/etc/passwd').read()")
-        assert step.evaluate_condition({}) is True
+        assert step.evaluate_condition({}) is False

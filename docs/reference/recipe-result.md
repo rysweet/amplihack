@@ -1,165 +1,146 @@
-# RecipeResult Reference
-
-`RecipeResult` represents the outcome of running a workflow recipe. It captures whether the recipe succeeded, how many steps ran, and the result of each individual step.
-
-## Contents
-
-- [Class Overview](#class-overview)
-- [Attributes](#attributes)
-- [String Representation](#string-representation)
-- [Step Results](#step-results)
-- [Usage Examples](#usage-examples)
-- [Integration with Recipe Runner](#integration-with-recipe-runner)
-
+---
+title: "RecipeResult reference"
+description: "Reference for the current `RecipeResult`, `StepResult`, and `StepStatus` dataclasses returned by Rust-backed recipe execution."
+last_updated: 2026-03-30
+review_schedule: as-needed
+owner: amplihack
+doc_type: reference
 ---
 
-## Class Overview
+# RecipeResult reference
+
+## Overview
+
+`RecipeResult` is the structured return value for recipe execution.
+
+Use it when you need programmatic access to:
+
+- overall recipe success
+- per-step results
+- aggregated output
+- final materialized context
+- the runner log path, when available
+
+## Import path
 
 ```python
-from amplihack.recipes.models import RecipeResult, StepResult, RecipeStatus
+from amplihack.recipes.models import RecipeResult, StepResult, StepStatus
 ```
 
-`RecipeResult` is a dataclass. It is returned by `RecipeRunner.run()` and by the `amplihack recipe run` CLI command when `--output json` is used.
+## `RecipeResult`
 
----
+### Fields
 
-## Attributes
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `recipe_name` | `str` | name of the executed recipe |
+| `success` | `bool` | overall success flag |
+| `step_results` | `list[StepResult]` | ordered step outcomes |
+| `context` | `dict[str, Any]` | final materialized context |
+| `log_path` | `str | None` | runner log path when emitted |
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `recipe_name` | `str` | The name of the recipe that was run (e.g. `"default-workflow"`). |
-| `status` | `RecipeStatus` | Overall outcome: `SUCCESS`, `FAILURE`, or `PARTIAL`. |
-| `step_results` | `list[StepResult]` | Ordered list of results, one per step that executed. |
-| `duration_seconds` | `float` | Wall-clock time from recipe start to finish. |
-| `error` | `str \| None` | Human-readable error message if `status` is `FAILURE`. `None` on success. |
+### Derived helpers
 
----
+| Helper | Type | Meaning |
+| --- | --- | --- |
+| `output` | `str` | aggregated step output and error text |
+| `str(result)` | `str` | human-readable summary with step lines |
+| `result[:N]` | `str` | slice of `result.output` |
 
-## String Representation
-
-`str(result)` returns a one-line summary suitable for logging:
-
-```
-RecipeResult(<recipe-name>: <STATUS>, <N> steps)
-```
-
-**Examples:**
+### Example
 
 ```python
-result = runner.run("default-workflow", context)
+from amplihack.recipes import run_recipe_by_name
 
-print(str(result))
-# RecipeResult(default-workflow: SUCCESS, 22 steps)
+result = run_recipe_by_name(
+    "smart-orchestrator",
+    user_context={
+        "task_description": "Describe the docs layout",
+        "repo_path": ".",
+    },
+    dry_run=True,
+)
 
-failed_result = runner.run("quick-fix", context)
-print(str(failed_result))
-# RecipeResult(quick-fix: FAILURE, 3 steps)
+print(result.success)
+print(result.recipe_name)
+print(result.log_path)
+print(result.output[:200])
 ```
 
-The summary includes:
-- The recipe name as written in the recipe YAML file
-- The overall `STATUS` in uppercase
-- The count of steps that **completed** (not the total steps defined in the recipe)
+## `StepResult`
 
-> **Note:** Prior to v0.9.2, `str(result)` returned a verbose multi-line representation that included individual step IDs (e.g. `step-1`). Code that parsed `str(result)` should be updated to use `result.step_results` directly for structured access.
+### Fields
 
----
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `step_id` | `str` | step identifier from the recipe |
+| `status` | `StepStatus` | `pending`, `running`, `completed`, `skipped`, or `failed` |
+| `output` | `str` | step output text |
+| `error` | `str` | step error text |
 
-## Step Results
-
-Each entry in `step_results` is a `StepResult`:
-
-```python
-@dataclass
-class StepResult:
-    step_id: str          # e.g. "step-1", "step-2"
-    step_name: str        # Human-readable step name from recipe YAML
-    status: StepStatus    # SUCCESS, FAILURE, SKIPPED
-    output: str | None    # Agent output or None if skipped
-    duration_seconds: float
-```
-
-Accessing step results directly:
+### Example
 
 ```python
-result = runner.run("default-workflow", context)
-
 for step in result.step_results:
-    print(f"{step.step_id}: {step.status.value} ({step.duration_seconds:.1f}s)")
-
-# step-1: SUCCESS (2.3s)
-# step-2: SUCCESS (8.1s)
-# step-3: FAILURE (1.0s)
+    print(step.step_id, step.status.value)
 ```
 
----
+## `StepStatus`
 
-## Usage Examples
+`StepStatus` is an enum with these values:
 
-### Check overall status
+- `pending`
+- `running`
+- `completed`
+- `skipped`
+- `failed`
+
+## String representation
+
+`str(result)` returns a compact multi-line summary.
 
 ```python
-from amplihack.recipes.runner import RecipeRunner
-from amplihack.recipes.models import RecipeStatus
-
-runner = RecipeRunner()
-result = runner.run("default-workflow", {"task_description": "add input validation"})
-
-if result.status == RecipeStatus.SUCCESS:
-    print(f"Done in {result.duration_seconds:.1f}s")
-else:
-    print(f"Failed: {result.error}")
+print(str(result))
 ```
 
-### Count successful steps
+Example shape:
 
-```python
-from amplihack.recipes.models import StepStatus
-
-successes = sum(1 for s in result.step_results if s.status == StepStatus.SUCCESS)
-print(f"{successes} of {len(result.step_results)} steps succeeded")
+```text
+RecipeResult(smart-orchestrator: SUCCESS, 28 steps)
+  [completed] preflight-validation
+  [completed] classify-and-decompose
+  [skipped] handle-qa
 ```
 
-### Serialise to JSON
+## JSON serialisation
+
+`RecipeResult` is a dataclass. Use `dataclasses.asdict()` when you need a JSON-safe structure.
 
 ```python
-import json
 import dataclasses
+import json
 
-# RecipeResult is a dataclass; convert with asdict()
-data = dataclasses.asdict(result)
-print(json.dumps(data, indent=2, default=str))
+payload = dataclasses.asdict(result)
+print(json.dumps(payload, indent=2, default=str))
 ```
 
-### Log a one-line summary
+## Relationship to the CLI
 
-```python
-import logging
+The CLI formats recipe results for humans. The Python API is the direct way to consume a `RecipeResult` object in code.
 
-log = logging.getLogger(__name__)
-log.info(str(result))
-# INFO: RecipeResult(default-workflow: SUCCESS, 22 steps)
-```
-
----
-
-## Integration with Recipe Runner
-
-`RecipeResult` is what the CLI surfaces when `--output json` is requested:
+Use the CLI when you want a formatted terminal report:
 
 ```bash
-amplihack recipe run default-workflow \
-  --context '{"task_description": "add login endpoint"}' \
-  --output json | jq '.status'
-# "SUCCESS"
+python -m amplihack recipe run amplifier-bundle/recipes/default-workflow.yaml \
+  -c task_description="Add login endpoint" \
+  -c repo_path="." \
+  --dry-run
 ```
 
-The JSON schema mirrors `dataclasses.asdict(result)` with the `status` field serialised as the string value of the `RecipeStatus` enum.
-
----
+Use the Python API when you need structured fields in-process.
 
 ## See Also
 
-- [Recipe CLI Reference](./recipe-cli-reference.md) — `amplihack recipe run` and `--output json`
-- [Recipe CLI Examples](../recipes/cli-examples.md) — real-world workflow scenarios
-- [Recipe Resilience](../RECIPE_RESILIENCE.md) — how partial failures and retries are handled
+- [Recipe CLI Reference](./recipe-cli-reference.md)
+- [Recipe Runner](../recipes/README.md)
+- [Recipe-Runner Reliability Reference](./recipe-runner-reliability.md)

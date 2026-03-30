@@ -26,6 +26,7 @@ class StepType(enum.Enum):
     BASH = "bash"
     AGENT = "agent"
     RECIPE = "recipe"
+    SKILL = "skill"
 
 
 class StepStatus(enum.Enum):
@@ -55,6 +56,7 @@ class Step:
     timeout: int | None = None
     auto_stage: bool | None = None  # None = inherit from runner default
     recipe: str | None = None  # Sub-recipe name (for StepType.RECIPE)
+    skill: str | None = None  # Skill name (for StepType.SKILL)
     sub_context: dict[str, Any] | None = None  # Context to merge into sub-recipe
 
     def evaluate_condition(self, context: dict[str, Any]) -> bool:
@@ -88,11 +90,11 @@ class Step:
             return bool(evaluator.eval(normalised))
         except Exception as exc:
             log.warning(
-                "Step condition %r could not be evaluated: %s — defaulting to True (step will run)",
+                "Step condition %r could not be evaluated: %s — failing closed (step will be skipped)",
                 self.condition,
                 exc,
             )
-            return True
+            return False
 
 
 @dataclass

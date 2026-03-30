@@ -109,12 +109,10 @@ class TestSpillLargeValue:
         assert "MY_BIG_VAR" in file_path.name
 
     def test_key_sanitization_replaces_special_chars(self, tmp_path):
-        """Non-alphanumeric/underscore chars in key are replaced with underscores."""
+        """Unsupported chars are replaced while allowlisted dots/hyphens remain intact."""
         uri = _spill_large_value("a.b-c/d", "data", tmp_path)
         file_path = Path(uri[len("file://") :])
-        # No dots, hyphens, or slashes in filename
-        assert "." not in file_path.name
-        assert "-" not in file_path.name
+        assert file_path.name == "a.b-c_d"
         assert "/" not in file_path.name
 
     def test_empty_key_uses_fallback_name(self, tmp_path):
@@ -124,13 +122,19 @@ class TestSpillLargeValue:
         assert file_path.exists()
         assert "_empty_key_" in file_path.name
 
-    def test_key_truncated_to_64_chars(self, tmp_path):
-        """Key names longer than 64 chars are truncated in the filename."""
+    def test_key_below_limit_is_not_truncated(self, tmp_path):
+        """Key names below the sanitizer limit are preserved in the filename."""
         long_key = "A" * 200
         uri = _spill_large_value(long_key, "data", tmp_path)
         file_path = Path(uri[len("file://") :])
-        # The filename portion (excluding any extension) should not exceed 64 chars
-        assert len(file_path.stem) <= 64
+        assert len(file_path.stem) == 200
+
+    def test_key_truncated_to_255_chars(self, tmp_path):
+        """Key names longer than 255 chars are truncated to the sanitizer limit."""
+        long_key = "A" * 300
+        uri = _spill_large_value(long_key, "data", tmp_path)
+        file_path = Path(uri[len("file://") :])
+        assert len(file_path.stem) <= 255
 
     def test_unicode_content_preserved(self, tmp_path):
         """Multi-byte Unicode (CJK, emoji) is preserved round-trip."""
@@ -448,7 +452,7 @@ class TestTempDirCleanup:
     @patch("amplihack.recipes.rust_runner.check_runner_version", return_value=True)
     @patch("subprocess.run")
     def test_no_temp_dir_created_when_all_small(self, mock_run, mock_ver, mock_find):
-        """When all context values are small, the temp dir is created but cleaned up with no spill files."""
+        """When all context values are small, the spill temp dir is cleaned up with no spill files."""
         mock_run.return_value = self._mock_subprocess_success()
 
         # Capture the temp dir created by tempfile.mkdtemp inside run_recipe_via_rust.
@@ -469,9 +473,11 @@ class TestTempDirCleanup:
                 },
             )
 
-        # Exactly one temp dir should have been created and then cleaned up.
-        assert len(created_dirs) == 1, f"Expected 1 temp dir, got {len(created_dirs)}"
-        tmp_dir = created_dirs[0]
+        recipe_context_dirs = [path for path in created_dirs if path.name.startswith("recipe-context-")]
+        assert len(recipe_context_dirs) == 1, (
+            f"Expected 1 recipe spill dir, got {len(recipe_context_dirs)} from {created_dirs}"
+        )
+        tmp_dir = recipe_context_dirs[0]
         assert not tmp_dir.exists(), (
             f"Temp dir {tmp_dir} was not cleaned up after execution with all-small values"
         )

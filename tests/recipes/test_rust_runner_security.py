@@ -100,21 +100,21 @@ class TestSanitizeKey:
 
     # -- Length limit --------------------------------------------------------
 
-    def test_max_length_256(self):
-        """R7: max length is 256 characters."""
+    def test_max_length_255(self):
+        """R7: max length is 255 characters to stay within filesystem limits."""
         long_key = "a" * 300
         result = _sanitize_key(long_key)
-        assert len(result) <= 256, f"R7: key truncated to {len(result)}, expected <= 256"
+        assert len(result) <= 255, f"R7: key truncated to {len(result)}, expected <= 255"
 
-    def test_exactly_256_chars_not_truncated(self):
+    def test_exactly_255_chars_not_truncated(self):
+        key = "a" * 255
+        result = _sanitize_key(key)
+        assert len(result) == 255
+
+    def test_256_chars_truncated_to_255(self):
         key = "a" * 256
         result = _sanitize_key(key)
-        assert len(result) == 256
-
-    def test_257_chars_truncated_to_256(self):
-        key = "a" * 257
-        result = _sanitize_key(key)
-        assert len(result) == 256
+        assert len(result) == 255
 
     def test_empty_key_fallback(self):
         """Empty result falls back to '_empty_key_'."""

@@ -90,8 +90,8 @@ class TestFindRecipe:
         """find_recipe returns None for a non-existent recipe."""
         assert find_recipe("this-recipe-does-not-exist-12345") is None
 
-    def test_later_search_dir_overrides_earlier_match(self, tmp_path: Path) -> None:
-        """find_recipe should mirror discover_recipes() last-path-wins precedence."""
+    def test_earlier_search_dir_wins_over_later_match(self, tmp_path: Path) -> None:
+        """find_recipe should mirror discover_recipes() first-path-wins precedence."""
         early = tmp_path / "early"
         late = tmp_path / "late"
         early.mkdir()
@@ -102,7 +102,7 @@ class TestFindRecipe:
 
         path = find_recipe("shadowed", [early, late])
 
-        assert path == late / "shadowed.yaml"
+        assert path == early / "shadowed.yaml"
 
 
 class TestParseFile:

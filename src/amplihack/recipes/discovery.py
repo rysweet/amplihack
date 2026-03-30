@@ -5,18 +5,9 @@ about each discovered recipe. Supports tracking upstream recipe bundles.
 
 Search Path Priority
 --------------------
-Recipes are discovered in a specific priority order (package → global → local):
-
-1. Installed package recipes (site-packages/amplihack/amplifier-bundle/recipes/)
-2. User home recipes (~/.amplihack/.claude/recipes/) - Global installation
-3. Global bundled recipes (amplifier-bundle/recipes/)
-4. Global source recipes (src/amplihack/amplifier-bundle/recipes/)
-5. Project local recipes (.claude/recipes/)
-
-The installed package path is resolved via ``Path(__file__)`` so that
-bundled recipes are always discoverable regardless of the current working
-directory.  Project-local recipes can still override globals by name
-(last path wins).
+Recipe discovery uses a canonical first-match-wins search policy. The
+important invariant is that editable-checkout repo-root recipes beat stale
+``src/amplihack/amplifier-bundle/recipes`` copies.
 """
 
 from __future__ import annotations
@@ -84,30 +75,56 @@ if _amplihack_home_raw:
             _amplihack_home_resolved,
         )
 
-# Directories searched for recipe files, in priority order.
-# Later entries override earlier ones when recipes share the same name.
-#
-# The installed-package path comes first so that core recipes are always
-# discoverable even when CWD is an unrelated project.  This fixes #2812
-# where recipe discovery failed outside the amplihack source tree.
-#
-# Priority (package → repo-root → AMPLIHACK_HOME → global → local):
-# 1. <site-packages>/amplihack/amplifier-bundle/recipes/ - Installed package
-# 2. <repo-root>/amplifier-bundle/recipes/               - Editable install
-# 3. $AMPLIHACK_HOME/amplifier-bundle/recipes/ - Explicit env var (resolved, bundle subdir checked)
-# 4. ~/.amplihack/.claude/recipes/       - User home (global installation)
-# 5. amplifier-bundle/recipes/           - Global bundled (CWD-relative)
-# 6. src/amplihack/amplifier-bundle/     - Global source (CWD-relative)
-# 7. .claude/recipes/                    - Project local recipes
-_DEFAULT_SEARCH_DIRS: list[Path] = [
-    _PACKAGE_BUNDLE_DIR,  # Installed package — ALWAYS available
-    _REPO_ROOT_BUNDLE_DIR,  # Editable install — repo root fallback
-    *([_AMPLIHACK_HOME_BUNDLE_DIR] if _AMPLIHACK_HOME_BUNDLE_DIR else []),
-    Path.home() / ".amplihack" / ".claude" / "recipes",  # Global user home
-    Path("amplifier-bundle") / "recipes",  # Global bundled
-    Path("src") / "amplihack" / "amplifier-bundle" / "recipes",  # Global source
-    Path(".claude") / "recipes",  # Local - LAST
-]
+
+def _canonicalize_recipe_dir(recipe_dir: Path, *, working_dir: Path) -> Path:
+    """Resolve *recipe_dir* against *working_dir* and canonicalize the result."""
+    candidate = recipe_dir if recipe_dir.is_absolute() else working_dir / recipe_dir
+    return candidate.resolve()
+
+
+def _default_search_dir_candidates(*, working_dir: Path) -> list[Path]:
+    """Return default recipe search directories in first-match-wins order."""
+    candidates = [
+        _REPO_ROOT_BUNDLE_DIR,
+        Path("amplifier-bundle") / "recipes",
+    ]
+    if _AMPLIHACK_HOME_BUNDLE_DIR is not None:
+        candidates.append(_AMPLIHACK_HOME_BUNDLE_DIR)
+    candidates.extend(
+        [
+            Path.home() / ".amplihack" / ".claude" / "recipes",
+            _PACKAGE_BUNDLE_DIR,
+            Path("src") / "amplihack" / "amplifier-bundle" / "recipes",
+            Path(".claude") / "recipes",
+        ]
+    )
+    return [_canonicalize_recipe_dir(candidate, working_dir=working_dir) for candidate in candidates]
+
+
+def get_recipe_search_dirs(
+    search_dirs: list[Path] | None = None,
+    *,
+    working_dir: str | Path = ".",
+) -> list[Path]:
+    """Return canonical recipe search directories with stable precedence."""
+    base_dir = Path(working_dir).resolve()
+    raw_dirs = (
+        [_canonicalize_recipe_dir(Path(directory), working_dir=base_dir) for directory in search_dirs]
+        if search_dirs is not None
+        else _default_search_dir_candidates(working_dir=base_dir)
+    )
+
+    seen: set[Path] = set()
+    canonical_dirs: list[Path] = []
+    for directory in raw_dirs:
+        if directory in seen:
+            continue
+        seen.add(directory)
+        canonical_dirs.append(directory)
+    return canonical_dirs
+
+
+_DEFAULT_SEARCH_DIRS: list[Path] = get_recipe_search_dirs()
 
 
 @dataclass
@@ -129,8 +146,7 @@ def discover_recipes(
     """Find all recipe YAML files in the search directories.
 
     Returns a dict mapping recipe name to RecipeInfo. When the same recipe
-    name appears in multiple directories, the last one wins (user recipes
-    override bundled ones).
+    name appears in multiple directories, the first matching directory wins.
 
     Debug Logging
     -------------
@@ -148,7 +164,7 @@ def discover_recipes(
     Returns:
         Dict of recipe name -> RecipeInfo.
     """
-    dirs = search_dirs or _DEFAULT_SEARCH_DIRS
+    dirs = get_recipe_search_dirs(search_dirs)
     recipes: dict[str, RecipeInfo] = {}
 
     logger.debug("Searching for recipes in %d directories", len(dirs))
@@ -161,6 +177,9 @@ def discover_recipes(
         for yaml_path in sorted(search_dir.glob("*.yaml")):
             info = _load_recipe_info(yaml_path)
             if info is not None:
+                if info.name in recipes:
+                    logger.debug("    Skipping shadowed recipe: %s", info.name)
+                    continue
                 logger.debug("    Found: %s", info.name)
                 recipes[info.name] = info
                 dir_recipe_count += 1
@@ -238,7 +257,7 @@ def find_recipe(name: str, search_dirs: list[Path] | None = None) -> Path | None
     """Find a recipe by name and return its file path.
 
     Searches for ``{name}.yaml`` in each search directory. When multiple
-    directories contain the same recipe name, the last matching path wins
+    directories contain the same recipe name, the first matching path wins
     so resolution stays consistent with ``discover_recipes()``.
 
     Args:
@@ -248,13 +267,11 @@ def find_recipe(name: str, search_dirs: list[Path] | None = None) -> Path | None
     Returns:
         Path to the recipe file, or None.
     """
-    dirs = search_dirs or _DEFAULT_SEARCH_DIRS
-    found: Path | None = None
-    for search_dir in dirs:
+    for search_dir in get_recipe_search_dirs(search_dirs):
         candidate = search_dir / f"{name}.yaml"
         if candidate.is_file():
-            found = candidate
-    return found
+            return candidate
+    return None
 
 
 def check_upstream_changes(
@@ -469,7 +486,7 @@ def _load_manifest(recipe_dir: Path) -> dict[str, str]:
 
 def _find_first_recipe_dir() -> Path | None:
     """Return the first existing recipe directory from the search list."""
-    for d in _DEFAULT_SEARCH_DIRS:
+    for d in get_recipe_search_dirs():
         if d.is_dir():
             return d
     return None

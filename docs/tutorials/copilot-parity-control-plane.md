@@ -84,9 +84,10 @@ printf '%s\n' '{"tool_name":"Bash","tool_input":{"command":"pwd"}}' \
 Use a dry run first. This validates Rust-runner discovery, environment construction, and recipe targeting without starting a long nested agent session.
 
 ```bash
-AMPLIHACK_AGENT_BINARY=copilot amplihack recipe run investigation-workflow \
+AMPLIHACK_AGENT_BINARY=copilot python -m amplihack recipe run amplifier-bundle/recipes/investigation-workflow.yaml \
   --dry-run \
-  --context '{"task_description":"Describe the top-level docs layout","repo_path":"."}'
+  -c task_description="Describe the top-level docs layout" \
+  -c repo_path="."
 ```
 
 **Checkpoint**: you see the recipe-runner startup banner and the recipe is resolved without argument-normalization errors.
@@ -96,8 +97,9 @@ AMPLIHACK_AGENT_BINARY=copilot amplihack recipe run investigation-workflow \
 When the dry run looks correct, remove `--dry-run` to exercise a full nested Copilot launch.
 
 ```bash
-AMPLIHACK_AGENT_BINARY=copilot amplihack recipe run investigation-workflow \
-  --context '{"task_description":"Describe the top-level docs layout","repo_path":"."}'
+AMPLIHACK_AGENT_BINARY=copilot python -m amplihack recipe run amplifier-bundle/recipes/investigation-workflow.yaml \
+  -c task_description="Describe the top-level docs layout" \
+  -c repo_path="."
 ```
 
 **Checkpoint**: nested Copilot execution starts without `--system-prompt`, `--append-system-prompt`, or permission-flag compatibility errors.

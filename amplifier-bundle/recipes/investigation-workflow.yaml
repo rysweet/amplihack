@@ -111,6 +111,24 @@ steps:
     output: "tracking"
     parse_json: true
 
+  - id: "normalize-investigation-question"
+    type: "bash"
+    command: |
+      INVESTIGATION_QUESTION=$(cat <<EOFINVESTIGATIONQUESTION
+      {{investigation_question}}
+      EOFINVESTIGATIONQUESTION
+      )
+      TASK_DESC=$(cat <<EOFTASKDESC
+      {{task_description}}
+      EOFTASKDESC
+      )
+      if [ -n "$INVESTIGATION_QUESTION" ]; then
+        printf '%s' "$INVESTIGATION_QUESTION"
+      else
+        printf '%s' "$TASK_DESC"
+      fi
+    output: "investigation_question"
+
   # ==========================================================================
   # PHASE 1: SCOPE DEFINITION
   # Define investigation boundaries and success criteria

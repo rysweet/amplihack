@@ -105,8 +105,9 @@ amplihack
 ### Run a workflow recipe non-interactively
 
 ```bash
-amplihack recipe run default-workflow \
-  --context '{"task_description": "Add input validation to the login endpoint"}'
+python -m amplihack recipe run amplifier-bundle/recipes/default-workflow.yaml \
+  -c task_description="Add input validation to the login endpoint" \
+  -c repo_path="."
 ```
 
 ### Enable blarify code indexing for a session

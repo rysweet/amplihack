@@ -73,6 +73,24 @@ steps:
 
         assert recipe.steps[0].step_type == StepType.BASH
 
+    def test_parse_infer_step_type_from_skill(self) -> None:
+        """A step with a 'skill' field but no explicit type defaults to StepType.SKILL."""
+        yaml_str = """\
+name: "infer-skill"
+description: "test"
+version: "1.0.0"
+steps:
+  - id: "step-01"
+    skill: "code-atlas"
+    prompt: "Generate an atlas"
+    output: "result"
+"""
+        parser = RecipeParser()
+        recipe = parser.parse(yaml_str)
+
+        assert recipe.steps[0].step_type == StepType.SKILL
+        assert recipe.steps[0].skill == "code-atlas"
+
 
 class TestParseValidation:
     """Test that invalid recipes are rejected with clear errors."""
@@ -212,6 +230,21 @@ steps:
 
         assert len(warnings) > 0
         assert any("prompt" in w.lower() for w in warnings)
+
+    def test_validate_warns_on_missing_skill_name(self) -> None:
+        """A skill step without a 'skill' field should produce a warning."""
+        yaml_str = """\
+name: "missing-skill"
+steps:
+  - id: "step-01"
+    type: "skill"
+    prompt: "Do something"
+"""
+        parser = RecipeParser()
+        recipe = parser.parse(yaml_str)
+        warnings = parser.validate(recipe)
+
+        assert any("skill step is missing a 'skill' field" in w for w in warnings)
 
     def test_validate_warns_on_unrecognized_fields(self) -> None:
         """Unrecognized YAML fields should produce a warning to catch typos."""

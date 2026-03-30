@@ -205,30 +205,22 @@ Branch name generation uses three context variables supplied when invoking the w
 ### Run default-workflow with a simple description
 
 ```bash
-amplihack recipe run default-workflow --context '{
-  "task_description": "Add user authentication with OAuth",
-  "issue_number": "123",
-  "branch_prefix": "feat",
-  "repo_path": "/home/user/myapp"
-}'
+amplihack recipe run amplifier-bundle/recipes/default-workflow.yaml \
+  -c task_description="Add user authentication with OAuth" \
+  -c issue_number="123" \
+  -c branch_prefix="feat" \
+  -c repo_path="/home/user/myapp"
 # Creates branch: feat/issue-123-add-user-authentication-with-oauth
 ```
 
 ### Run with a multi-paragraph description
 
 ```bash
-amplihack recipe run default-workflow --context-file task.json
-```
-
-Where `task.json` contains:
-
-```json
-{
-  "task_description": "Fix login timeout\n\nUsers are logged out after 5 minutes instead of 30.\nThis happens on all browsers. The session cookie is set correctly\nbut the server-side token expires too early.",
-  "issue_number": "456",
-  "branch_prefix": "fix",
-  "repo_path": "/home/user/myapp"
-}
+amplihack recipe run amplifier-bundle/recipes/default-workflow.yaml \
+  -c task_description="Fix login timeout Users are logged out after 5 minutes instead of 30. This happens on all browsers. The session cookie is set correctly but the server-side token expires too early." \
+  -c issue_number="456" \
+  -c branch_prefix="fix" \
+  -c repo_path="/home/user/myapp"
 ```
 
 Generated branch: `fix/issue-456-fix-login-timeout-users-are-logged-out`
@@ -238,12 +230,11 @@ The pipeline converts newlines to spaces and truncates to 50 characters, so the 
 ### Dry-run to preview the branch name
 
 ```bash
-amplihack recipe run default-workflow --dry-run --context '{
-  "task_description": "Refactor the authentication module",
-  "issue_number": "789",
-  "branch_prefix": "refactor",
-  "repo_path": "/home/user/myapp"
-}'
+amplihack recipe run amplifier-bundle/recipes/default-workflow.yaml --dry-run \
+  -c task_description="Refactor the authentication module" \
+  -c issue_number="789" \
+  -c branch_prefix="refactor" \
+  -c repo_path="/home/user/myapp"
 # Shows the generated branch name without creating the worktree
 ```
 
@@ -297,7 +288,7 @@ The branch name pipeline provides several layers of protection against malicious
 1. Check that `issue_number` is set and non-empty:
 
    ```bash
-   amplihack recipe show default-workflow --steps-only | grep issue_number
+   python -m amplihack recipe show amplifier-bundle/recipes/default-workflow.yaml | grep issue_number
    ```
 
 2. Check that `branch_prefix` is a valid git component (no spaces, slashes, or special characters):

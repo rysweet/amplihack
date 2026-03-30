@@ -9,25 +9,16 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-def _default_package_recipe_dirs() -> list[str]:
+def _default_package_recipe_dirs(*, working_dir: str = ".") -> list[str]:
     """Return bundled recipe directories visible to Python discovery."""
     try:
-        from amplihack.recipes.discovery import (
-            _AMPLIHACK_HOME_BUNDLE_DIR,
-            _PACKAGE_BUNDLE_DIR,
-            _REPO_ROOT_BUNDLE_DIR,
-        )
+        from amplihack.recipes.discovery import get_recipe_search_dirs
 
-        candidates = [_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR]
-        if _AMPLIHACK_HOME_BUNDLE_DIR is not None:
-            candidates.append(_AMPLIHACK_HOME_BUNDLE_DIR)
-
-        dirs: list[str] = []
-        for candidate in candidates:
-            if candidate.is_dir():
-                candidate_str = str(candidate)
-                if candidate_str not in dirs:
-                    dirs.append(candidate_str)
+        dirs = [
+            str(candidate)
+            for candidate in get_recipe_search_dirs(working_dir=working_dir)
+            if candidate.is_dir()
+        ]
         if dirs:
             return dirs
     except Exception as error:
@@ -40,14 +31,9 @@ def _normalize_recipe_dirs(recipe_dirs: list[str] | None, *, working_dir: str) -
     if recipe_dirs is None:
         return None
 
-    base_dir = Path(working_dir).resolve()
-    normalized: list[str] = []
-    for recipe_dir in recipe_dirs:
-        candidate = Path(recipe_dir)
-        if not candidate.is_absolute():
-            candidate = base_dir / candidate
-        normalized.append(str(candidate.resolve()))
-    return normalized
+    from amplihack.recipes.discovery import get_recipe_search_dirs
+
+    return [str(candidate) for candidate in get_recipe_search_dirs([Path(d) for d in recipe_dirs], working_dir=working_dir)]
 
 
 def _resolve_recipe_target(
@@ -67,9 +53,13 @@ def _resolve_recipe_target(
         return str((working_path / candidate).resolve())
 
     try:
-        from amplihack.recipes.discovery import find_recipe
+        from amplihack.recipes.discovery import find_recipe, get_recipe_search_dirs
 
-        search_dirs = [Path(directory) for directory in recipe_dirs] if recipe_dirs else None
+        search_dirs = (
+            get_recipe_search_dirs([Path(directory) for directory in recipe_dirs], working_dir=working_dir)
+            if recipe_dirs
+            else None
+        )
         resolved = find_recipe(name, search_dirs=search_dirs)
         if resolved is not None:
             return str(resolved.resolve())

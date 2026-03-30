@@ -128,9 +128,10 @@ amplihack recipe --version
 If your top-level shell already uses a different agent, set the variable only for the recipe invocation:
 
 ```bash
-AMPLIHACK_AGENT_BINARY=copilot amplihack recipe run investigation-workflow \
+AMPLIHACK_AGENT_BINARY=copilot python -m amplihack recipe run amplifier-bundle/recipes/investigation-workflow.yaml \
   --dry-run \
-  --context '{"task_description":"Describe the docs tree","repo_path":"."}'
+  -c task_description="Describe the docs tree" \
+  -c repo_path="."
 ```
 
 ## Troubleshooting

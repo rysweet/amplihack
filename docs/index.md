@@ -236,6 +236,10 @@ Code-enforced workflow execution engine with declarative YAML recipes.
 - [Run a Quality Audit](howto/run-quality-audit.md) - Invoke quality-audit-cycle recipe, target subdirectories, filter categories
 - [CLI Reference](reference/cli.md) - Top-level `amplihack` command, `--version` flag, global environment variables
 - [Recipe CLI Reference](reference/recipe-cli-reference.md) - Complete command-line documentation
+- [Tutorial: Validate Recipe-Runner Reliability](tutorials/recipe-runner-reliability-validation.md) - Run a real merged-worktree validation end to end
+- [How to Validate Recipe-Runner Reliability](howto/validate-recipe-runner-reliability.md) - Short task guide for smart-orchestrator reliability checks
+- [Understanding Recipe-Runner Reliability](concepts/recipe-runner-reliability.md) - Why transport, dereference, resolution, and conditions are separate guarantees
+- [Recipe-Runner Reliability Reference](reference/recipe-runner-reliability.md) - Contracts, evidence, and pass/fail rubric
 - [Quality Audit Cycle Recipe](reference/quality-audit-cycle-recipe.md) - Context variables, step reference, bash step safety patterns
 - [Token Sanitizer](reference/token-sanitizer.md) - Pattern ordering, audit labels, and custom patterns for secret redaction
 - [RecipeResult](reference/recipe-result.md) - `RecipeResult` and `StepResult` dataclasses, `str()` format, JSON serialisation
@@ -248,14 +252,15 @@ Code-enforced workflow execution engine with declarative YAML recipes.
 amplihack recipe list
 
 # Execute a workflow recipe
-amplihack recipe run default-workflow \
-  --context '{"task_description": "Add user authentication", "repo_path": "."}'
+python -m amplihack recipe run amplifier-bundle/recipes/default-workflow.yaml \
+  -c task_description="Add user authentication" \
+  -c repo_path="."
 
 # Validate recipe YAML
 amplihack recipe validate my-workflow.yaml
 
 # Show recipe details
-amplihack recipe show default-workflow
+python -m amplihack recipe show amplifier-bundle/recipes/default-workflow.yaml
 ```
 
 ### Advanced Workflows

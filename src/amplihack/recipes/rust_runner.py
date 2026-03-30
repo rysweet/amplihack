@@ -24,10 +24,17 @@ from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from amplihack.recipes.models import RecipeResult, StepResult, StepStatus
 
 from . import rust_runner_binary as runner_binary
 from . import rust_runner_copilot, rust_runner_execution
+from .rust_runner_recipe_resolution import (
+    _default_package_recipe_dirs,
+    _normalize_recipe_dirs,
+    _resolve_recipe_target,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +74,7 @@ _FAST_PATH_CHAR_LIMIT: int = _ENV_VAR_SIZE_LIMIT // 4  # 8 192
 def _sanitize_key(key: str) -> str:
     """Return a filesystem-safe name derived from an env-var key.
 
-    R7 (allowlist): accepts only ``[a-zA-Z0-9_.-]`` up to 256 characters.
+    R7 (allowlist): accepts only ``[a-zA-Z0-9_.-]`` up to 255 characters.
     Raises ``ValueError`` on null bytes (which cannot appear in valid keys).
     Falls back to ``_empty_key_`` when the result would otherwise be empty.
 
@@ -76,7 +83,7 @@ def _sanitize_key(key: str) -> str:
     """
     if "\x00" in key:
         raise ValueError(f"Null byte in key is not allowed: {key!r}")
-    safe = _KEY_SANITIZE_RE.sub("_", key)[:256]
+    safe = _KEY_SANITIZE_RE.sub("_", key)[:255]
     return safe if safe else "_empty_key_"
 
 
@@ -230,6 +237,84 @@ def _resolve_context_value(value: str) -> str:
     if value.startswith("file://"):
         return Path(value[7:]).read_text(encoding="utf-8")
     return value
+
+
+def _partition_user_context(
+    user_context: dict[str, Any] | None,
+    *,
+    tmp_dir: Path,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, str]]:
+    """Split user context into inline values and spilled values.
+
+    Returns ``(inline_context, spilled_context, spill_refs)`` where:
+
+    - ``inline_context`` is safe to pass via ``--set`` without hitting argv size limits
+    - ``spilled_context`` contains the original Python values for large entries
+    - ``spill_refs`` maps the same keys to trusted internal ``file://`` refs
+    """
+    if not user_context:
+        return {}, {}, {}
+
+    inline_context: dict[str, Any] = {}
+    spilled_context: dict[str, Any] = {}
+    spill_refs: dict[str, str] = {}
+
+    for key, value in user_context.items():
+        serialized = _serialize_context_value(value)
+
+        if len(serialized) < _FAST_PATH_CHAR_LIMIT:
+            inline_context[key] = value
+            continue
+
+        encoded = serialized.encode("utf-8")
+        if len(encoded) < _ENV_VAR_SIZE_LIMIT:
+            inline_context[key] = value
+            continue
+
+        spill_refs[key] = _write_spill_bytes(key, encoded, tmp_dir)
+        spilled_context[key] = value
+
+    return inline_context, spilled_context, spill_refs
+
+
+def _materialize_spilled_context(spill_refs: dict[str, str], spilled_context: dict[str, Any]) -> dict[str, Any]:
+    """Dereference trusted spill refs back into context values for recipe materialization."""
+    materialized: dict[str, Any] = {}
+    for key, original_value in spilled_context.items():
+        spill_ref = spill_refs[key]
+        if isinstance(original_value, str):
+            materialized[key] = _resolve_context_value(spill_ref)
+        else:
+            materialized[key] = original_value
+    return materialized
+
+
+def _materialize_recipe_context(
+    recipe_path: str,
+    *,
+    context_overrides: dict[str, Any],
+    tmp_dir: Path,
+) -> str:
+    """Write a temp recipe file whose top-level context includes *context_overrides*."""
+    source_path = Path(recipe_path).resolve()
+    recipe_data = yaml.safe_load(source_path.read_text(encoding="utf-8"))
+    if not isinstance(recipe_data, dict):
+        raise RuntimeError(f"Recipe {source_path} did not parse to a YAML mapping.")
+
+    raw_context = recipe_data.get("context")
+    if raw_context in (None, ""):
+        raw_context = {}
+    if not isinstance(raw_context, dict):
+        raise RuntimeError(
+            f"Recipe {source_path} has invalid top-level context {type(raw_context).__name__}; "
+            "expected a YAML mapping."
+        )
+
+    recipe_data["context"] = {**raw_context, **context_overrides}
+    materialized_path = tmp_dir / f"{source_path.stem}-materialized.yaml"
+    materialized_path.write_text(yaml.safe_dump(recipe_data, sort_keys=False), encoding="utf-8")
+    materialized_path.chmod(0o600)
+    return str(materialized_path.resolve())
 
 
 @functools.lru_cache(maxsize=1)
@@ -857,86 +942,6 @@ def _execute_rust_command(
 # -- Public entry point ------------------------------------------------------
 
 
-def _default_package_recipe_dirs() -> list[str]:
-    """Return bundled recipe directories visible to Python discovery.
-
-    In editable installs, ``src/amplihack/amplifier-bundle/recipes`` may exist
-    but only contain a subset of recipes, while the full bundle lives at the
-    repo root ``amplifier-bundle/recipes``.  The Rust runner needs both paths
-    to match Python-side discovery in real environments (issue #3002).
-
-    Also includes ``$AMPLIHACK_HOME/amplifier-bundle/recipes/`` when the env
-    var is set, so recipes are found when running from non-amplihack repos
-    (issue #3237).
-    """
-    try:
-        from amplihack.recipes.discovery import (
-            _AMPLIHACK_HOME_BUNDLE_DIR,
-            _PACKAGE_BUNDLE_DIR,
-            _REPO_ROOT_BUNDLE_DIR,
-        )
-
-        candidates = [_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR]
-        if _AMPLIHACK_HOME_BUNDLE_DIR is not None:
-            candidates.append(_AMPLIHACK_HOME_BUNDLE_DIR)
-
-        dirs: list[str] = []
-        for candidate in candidates:
-            if candidate.is_dir():
-                candidate_str = str(candidate)
-                if candidate_str not in dirs:
-                    dirs.append(candidate_str)
-        if dirs:
-            return dirs
-    except Exception as exc:
-        logger.debug("Could not resolve default recipe dirs: %s", exc)
-    return []
-
-
-def _normalize_recipe_dirs(recipe_dirs: list[str] | None, *, working_dir: str) -> list[str] | None:
-    """Return absolute recipe directories rooted at ``working_dir`` when needed."""
-    if recipe_dirs is None:
-        return None
-
-    base_dir = Path(working_dir).resolve()
-    normalized: list[str] = []
-    for recipe_dir in recipe_dirs:
-        candidate = Path(recipe_dir)
-        if not candidate.is_absolute():
-            candidate = base_dir / candidate
-        normalized.append(str(candidate.resolve()))
-    return normalized
-
-
-def _resolve_recipe_target(
-    name: str,
-    *,
-    recipe_dirs: list[str] | None,
-    working_dir: str,
-) -> str:
-    """Resolve a recipe name to a concrete YAML path when Python discovery can find it."""
-    working_path = Path(working_dir).resolve()
-    candidate = Path(name)
-
-    if candidate.is_absolute():
-        return str(candidate.resolve())
-
-    if candidate.suffix in {".yaml", ".yml"} or os.sep in name or (os.altsep and os.altsep in name):
-        return str((working_path / candidate).resolve())
-
-    try:
-        from amplihack.recipes.discovery import find_recipe
-
-        search_dirs = [Path(d) for d in recipe_dirs] if recipe_dirs else None
-        resolved = find_recipe(name, search_dirs=search_dirs)
-        if resolved is not None:
-            return str(resolved.resolve())
-    except Exception as exc:
-        logger.debug("Could not resolve recipe path for %s: %s", name, exc)
-
-    return name
-
-
 def run_recipe_via_rust(
     name: str,
     user_context: dict[str, Any] | None = None,
@@ -973,7 +978,7 @@ def run_recipe_via_rust(
     effective_recipe_dirs = _normalize_recipe_dirs(recipe_dirs, working_dir=working_dir)
     if effective_recipe_dirs is None:
         effective_recipe_dirs = _normalize_recipe_dirs(
-            _default_package_recipe_dirs() or None,
+            _default_package_recipe_dirs(working_dir=working_dir) or None,
             working_dir=working_dir,
         )
     resolved_name = _resolve_recipe_target(
@@ -989,6 +994,27 @@ def run_recipe_via_rust(
     tmp_dir = Path(tempfile.mkdtemp(prefix=f"recipe-context-{os.getpid()}-"))
 
     try:
+        inline_context, spilled_context, spill_refs = _partition_user_context(
+            user_context,
+            tmp_dir=tmp_dir,
+        )
+        if spilled_context:
+            resolved_recipe_path = Path(resolved_name)
+            if resolved_recipe_path.is_file():
+                resolved_name = _materialize_recipe_context(
+                    resolved_name,
+                    context_overrides=_materialize_spilled_context(spill_refs, spilled_context),
+                    tmp_dir=tmp_dir,
+                )
+            else:
+                logger.warning(
+                    "Large context values for recipe %s could not be materialized because %r did not "
+                    "resolve to a recipe file. Falling back to legacy file:// transport.",
+                    name,
+                    resolved_name,
+                )
+                inline_context = user_context or {}
+
         cmd = _build_rust_command(
             binary,
             resolved_name,
@@ -997,7 +1023,7 @@ def run_recipe_via_rust(
             auto_stage=auto_stage,
             progress=progress,
             recipe_dirs=effective_recipe_dirs,
-            user_context=user_context,
+            user_context=inline_context,
             tmp_dir=tmp_dir,
         )
 

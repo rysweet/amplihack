@@ -21,8 +21,8 @@ class RecipeParser:
     """Parses YAML recipe strings into Recipe objects.
 
     Supports:
-    - Explicit ``type`` field on steps (``bash`` or ``agent``)
-    - Inference from ``agent`` or ``command`` field presence
+    - Explicit ``type`` field on steps (``bash``, ``agent``, ``recipe``, ``skill``)
+    - Inference from ``agent``, ``recipe``, ``skill``, or ``command`` field presence
     - Validation of required fields and uniqueness constraints
     """
 
@@ -140,6 +140,7 @@ class RecipeParser:
             "timeout",
             "auto_stage",
             "recipe",
+            "skill",
             "context",
         }
     )
@@ -163,6 +164,8 @@ class RecipeParser:
                 warnings.append(f"Step '{step.id}': bash step is missing a 'command' field")
             if step.step_type == StepType.RECIPE and not step.recipe:
                 warnings.append(f"Step '{step.id}': recipe step is missing a 'recipe' field")
+            if step.step_type == StepType.SKILL and not step.skill:
+                warnings.append(f"Step '{step.id}': skill step is missing a 'skill' field")
             if step.step_type == StepType.BASH and step.agent:
                 warnings.append(
                     f"Step '{step.id}': bash step has 'agent' field set (did you mean type: agent?)"
@@ -264,6 +267,7 @@ class RecipeParser:
             timeout=timeout,
             auto_stage=auto_stage,
             recipe=raw.get("recipe"),
+            skill=raw.get("skill"),
             sub_context=raw.get("context") if isinstance(raw.get("context"), dict) else None,
         )
 
@@ -280,6 +284,9 @@ class RecipeParser:
         explicit = raw.get("type")
         if explicit:
             return StepType(explicit.lower())
+
+        if "skill" in raw:
+            return StepType.SKILL
 
         if "recipe" in raw:
             return StepType.RECIPE
