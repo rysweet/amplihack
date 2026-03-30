@@ -7,7 +7,18 @@ Classifies user requests into 4 workflows:
 - DEFAULT_WORKFLOW: Development tasks, features, bugs
 """
 
+import json
+import os
+import time
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
+
+# Maximum prompt chars stored in log entries (privacy)
+_LOG_PROMPT_MAX_CHARS = 200
+
+# Performance threshold for logging overhead
+_LOG_PERF_THRESHOLD_MS = 5
 
 
 class WorkflowClassifier:
@@ -117,6 +128,9 @@ class WorkflowClassifier:
         if context:
             result["context"] = context
 
+        # Log classification result (fail-open)
+        self._log_classification(request, result)
+
         return result
 
     def _extract_keywords(self, request: str) -> list[str]:
@@ -172,6 +186,57 @@ class WorkflowClassifier:
 
         # No keywords matched - default to DEFAULT_WORKFLOW with low confidence
         return "DEFAULT_WORKFLOW", "ambiguous request, defaulting to default workflow", 0.5
+
+    @staticmethod
+    def _get_classifier_log_dir() -> Path:
+        """Return the log directory for classifier decisions."""
+        project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+        base = Path(project_dir) if project_dir else Path.cwd()
+        return base / ".claude" / "runtime" / "logs" / "dev_intent_router"
+
+    @staticmethod
+    def _get_classifier_log_path() -> Path:
+        """Return the log file path for classifier decisions."""
+        return WorkflowClassifier._get_classifier_log_dir() / "routing_decisions.jsonl"
+
+    def _log_classification(self, request: str, result: dict[str, Any]) -> None:
+        """Log a classification decision (JSONL, append-only, fail-open).
+
+        Never raises — logging must not affect classification behavior.
+        """
+        try:
+            start = time.perf_counter()
+
+            log_dir = self._get_classifier_log_dir()
+            if not log_dir.exists():
+                log_dir.mkdir(parents=True, exist_ok=True)
+
+            entry = {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "event": "classification",
+                "workflow": result.get("workflow", ""),
+                "reason": result.get("reason", ""),
+                "confidence": result.get("confidence", 0.0),
+                "keywords": result.get("keywords", []),
+                "prompt_preview": request[:_LOG_PROMPT_MAX_CHARS],
+                "prompt_length": len(request),
+            }
+
+            log_path = self._get_classifier_log_path()
+            with open(log_path, "a") as f:
+                f.write(json.dumps(entry) + "\n")
+
+            duration_ms = (time.perf_counter() - start) * 1000
+            if duration_ms > _LOG_PERF_THRESHOLD_MS:
+                import sys
+
+                print(
+                    f"Warning: classifier log overhead {duration_ms:.2f}ms exceeds "
+                    f"{_LOG_PERF_THRESHOLD_MS}ms threshold",
+                    file=sys.stderr,
+                )
+        except OSError:
+            pass  # fail-open: never break classification due to logging
 
     def format_announcement(
         self, result: dict[str, Any], recipe_runner_available: bool = False

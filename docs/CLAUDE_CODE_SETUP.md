@@ -81,7 +81,7 @@ claude --version
 amplihack
 
 # Launch Claude Code with amplihack agents
-amplihack launch
+amplihack claude
 ```
 
 ## Next Steps

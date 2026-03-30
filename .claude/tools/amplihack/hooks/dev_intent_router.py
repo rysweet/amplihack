@@ -24,6 +24,9 @@ import json as _json
 import os
 import re as _re
 import tempfile as _tempfile
+import time as _time
+from datetime import UTC as _UTC
+from datetime import datetime as _datetime
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -49,6 +52,62 @@ _WELCOME_BANNER = ""  # Deprecated: visible notice now shown by session_start ho
 
 # Minimum prompt length to inject routing (saves ~400 tokens on trivial turns)
 _MIN_PROMPT_LENGTH = 10
+
+# Maximum prompt chars stored in log entries (privacy)
+_LOG_PROMPT_MAX_CHARS = 200
+
+# Performance threshold for logging overhead
+_LOG_PERF_THRESHOLD_MS = 5
+
+
+# ---------------------------------------------------------------------------
+# Provenance logging — append-only JSONL, fail-open, no locks
+# ---------------------------------------------------------------------------
+
+
+def _get_routing_log_dir() -> Path:
+    """Return the log directory for routing decisions."""
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+    base = Path(project_dir) if project_dir else Path.cwd()
+    return base / ".claude" / "runtime" / "logs" / "dev_intent_router"
+
+
+def _get_routing_log_path() -> Path:
+    """Return the log file path for routing decisions."""
+    return _get_routing_log_dir() / "routing_decisions.jsonl"
+
+
+def _log_routing_decision(entry: dict) -> None:
+    """Write a routing decision log entry (JSONL, append-only, fail-open).
+
+    Follows the same pattern as workflow_tracker._write_log_entry().
+    Never raises — logging must not affect routing behavior.
+    """
+    try:
+        start = _time.perf_counter()
+
+        log_dir = _get_routing_log_dir()
+        if not log_dir.exists():
+            log_dir.mkdir(parents=True, exist_ok=True)
+
+        if "timestamp" not in entry:
+            entry["timestamp"] = _datetime.now(_UTC).isoformat()
+
+        log_path = _get_routing_log_path()
+        with open(log_path, "a") as f:
+            f.write(_json.dumps(entry) + "\n")
+
+        duration_ms = (_time.perf_counter() - start) * 1000
+        if duration_ms > _LOG_PERF_THRESHOLD_MS:
+            import sys
+
+            print(
+                f"Warning: routing log overhead {duration_ms:.2f}ms exceeds "
+                f"{_LOG_PERF_THRESHOLD_MS}ms threshold",
+                file=sys.stderr,
+            )
+    except OSError:
+        pass  # fail-open: never break routing due to logging
 
 
 # ---------------------------------------------------------------------------
@@ -208,30 +267,46 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
     4. Prompt starts with / (existing slash command)
     5. Prompt is very short (< 10 chars) — likely conversational, not a task
     """
+    prompt_preview = ""
+    prompt_length = 0
+    if isinstance(prompt, str):
+        prompt_preview = prompt[:_LOG_PROMPT_MAX_CHARS]
+        prompt_length = len(prompt)
+
+    def _log_skip(reason: str) -> tuple[bool, str]:
+        _log_routing_decision({
+            "event": "routing_decision",
+            "should_inject": False,
+            "reason": reason,
+            "prompt_preview": prompt_preview,
+            "prompt_length": prompt_length,
+        })
+        return False, ""
+
     # 1. Check disable flag (semaphore file or env var)
     if not is_auto_dev_enabled():
-        return False, ""
+        return _log_skip("skip:disabled")
 
     # 1b. Skip if a workflow is already running (avoid re-classification mid-task)
     if is_workflow_active():
-        return False, ""
+        return _log_skip("skip:workflow_active")
 
     # 2. Type guard
     if not isinstance(prompt, str):
-        return False, ""
+        return _log_skip("skip:not_string")
 
     # 3. Empty / whitespace
     stripped = prompt.strip()
     if not stripped:
-        return False, ""
+        return _log_skip("skip:empty")
 
     # 4. Slash commands
     if stripped.startswith("/"):
-        return False, ""
+        return _log_skip("skip:slash_command")
 
     # 5. Short conversational messages (saves ~400 tokens per turn)
     if len(stripped) < _MIN_PROMPT_LENGTH:
-        return False, ""
+        return _log_skip("skip:too_short")
 
     # 6. Ensure semaphore file exists on first injection (prevents the locks
     #    dir being created by other code from accidentally disabling routing).
@@ -242,6 +317,13 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
     except OSError:
         pass  # fail-open
 
+    _log_routing_decision({
+        "event": "routing_decision",
+        "should_inject": True,
+        "reason": "inject",
+        "prompt_preview": prompt_preview,
+        "prompt_length": prompt_length,
+    })
     return True, _ROUTING_PROMPT
 
 

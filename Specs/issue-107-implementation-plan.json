@@ -1,0 +1,114 @@
+{
+  "components": [
+    {
+      "name": "Observer stall detection",
+      "action": "modify",
+      "purpose": "Keep liveness and stall interpretation entirely in the observer layer, separate from workflow safety enforcement.",
+      "primary_files": [
+        "src/amplihack/recipes/rust_runner_execution.py",
+        ".claude/tools/amplihack/hooks/dev_intent_router.py"
+      ],
+      "planned_changes": [
+        "Add a pure stall-evaluation helper.",
+        "Define stalled as 300 continuous seconds with no stdout/stderr activity and no step/status transition.",
+        "Use runner heartbeat/progress signals as inputs without moving workflow policy into observer code.",
+        "Preserve structured progress/status exposure needed for deterministic tests."
+      ]
+    },
+    {
+      "name": "Canonical execution root contract",
+      "action": "modify",
+      "purpose": "Make default-workflow step 04 the single source of truth for downstream execution cwd.",
+      "primary_files": [
+        "amplifier-bundle/recipes/default-workflow.yaml",
+        "amplifier-bundle/recipes/smart-orchestrator.yaml",
+        "amplifier-bundle/tools/orch_helper.py"
+      ],
+      "planned_changes": [
+        "Emit structured `worktree_setup.execution_root` from step 04.",
+        "Retain `worktree_path` only as a temporary compatibility alias.",
+        "Remove all post-step-04 cwd/workspace fallback logic.",
+        "Require all downstream steps and helpers to consume `execution_root` only."
+      ]
+    },
+    {
+      "name": "Execution root validation helper",
+      "action": "create",
+      "purpose": "Centralize path computation, canonicalization, trust checks, and safe worktree/branch setup.",
+      "primary_files": [
+        "amplifier-bundle/tools/setup_execution_root.py"
+      ],
+      "planned_changes": [
+        "Create a shared helper that computes and emits structured execution-root metadata.",
+        "Reject `/tmp/amplihack-rs-npx-wrapper*` paths.",
+        "Reject non-absolute, missing, non-writable, symlink-ambiguous, untrusted, or otherwise unsafe paths.",
+        "Create or reuse worktree/branch state safely and audit the resolved root and branch."
+      ]
+    },
+    {
+      "name": "GitHub identity enforcement",
+      "action": "create/modify",
+      "purpose": "Require exact authenticated GitHub identity match before any `gh` mutation is allowed.",
+      "primary_files": [
+        "amplifier-bundle/recipes/smart-orchestrator.yaml",
+        "amplifier-bundle/recipes/default-workflow.yaml",
+        "amplifier-bundle/tools/validate_gh_account.py"
+      ],
+      "planned_changes": [
+        "Propagate `expected_gh_account` through orchestrator/workflow inputs and state.",
+        "Add a shared validator that resolves the authenticated `gh` login and enforces exact match.",
+        "Guard issue creation, PR creation, and all other in-scope GitHub mutation call sites.",
+        "Fail closed on unauthenticated, mismatched, or unverifiable identity."
+      ]
+    }
+  ],
+  "files_to_change": [
+    "amplifier-bundle/recipes/smart-orchestrator.yaml",
+    "amplifier-bundle/recipes/default-workflow.yaml",
+    "src/amplihack/recipes/rust_runner_execution.py",
+    ".claude/tools/amplihack/hooks/dev_intent_router.py",
+    "amplifier-bundle/tools/orch_helper.py"
+  ],
+  "new_files": [
+    "amplifier-bundle/tools/setup_execution_root.py",
+    "amplifier-bundle/tools/validate_gh_account.py"
+  ],
+  "test_files": [
+    "tests/recipes/test_rust_runner_execution.py",
+    "tests/unit/recipes/test_worktree_isolation_3684_3673.py",
+    "tests/recipes/test_no_remote_guards.py",
+    "tests/test_orch_helper.py",
+    "tests/test_setup_execution_root.py",
+    "tests/test_validate_gh_account.py",
+    ".claude/tools/amplihack/hooks/tests/test_dev_intent_router.py"
+  ],
+  "implementation_order": [
+    "Preserve the API and database review outcomes: no new external API surface, schema, migration, or persistence work is required for issue 107, so implementation stays confined to workflow/runtime internals.",
+    "Implement `amplifier-bundle/tools/setup_execution_root.py` to canonicalize and validate execution roots, reject wrapper tmp paths, enforce trusted absolute existing writable paths, and safely create or reuse worktree/branch state.",
+    "Update default-workflow step 04 to call `setup_execution_root.py` and emit structured `execution_root`, while preserving `worktree_path` only as a temporary compatibility alias.",
+    "Remove every post-step-04 cwd/workspace fallback path and make all downstream execution depend strictly on `execution_root`.",
+    "Update `smart-orchestrator.yaml` and `orch_helper.py` to propagate and consume `execution_root` consistently.",
+    "Implement `amplifier-bundle/tools/validate_gh_account.py` with exact-login enforcement, fail-closed behavior, redaction of sensitive auth output, and auditable structured output.",
+    "Thread `expected_gh_account` through smart-orchestrator and default-workflow and guard all in-scope `gh` mutation sites with the shared validator.",
+    "Add the pure stall-evaluation logic in `rust_runner_execution.py` and preserve the needed progress/status signals in `dev_intent_router.py`.",
+    "Add or update tests in `tests/test_setup_execution_root.py`, `tests/test_validate_gh_account.py`, `tests/unit/recipes/test_worktree_isolation_3684_3673.py`, `tests/recipes/test_no_remote_guards.py`, `tests/recipes/test_rust_runner_execution.py`, `tests/test_orch_helper.py`, and `.claude/tools/amplihack/hooks/tests/test_dev_intent_router.py` covering active-output, status-transition, threshold-boundary, true-stall, execution-root enforcement, identity validation, and regressions proving removed fallback behavior stays removed.",
+    "Run the touched test slices and JSON validation, then verify that no execution path can proceed via ambient cwd or unverifiable GitHub identity."
+  ],
+  "risks": [
+    "Removing cwd fallbacks may expose hidden downstream assumptions previously masked by ambient working-directory behavior.",
+    "Execution-root trust rules may be either too strict or too permissive across developer environments unless ownership, writability, canonicalization, and trust semantics are defined carefully.",
+    "Temporary dual support for `execution_root` and `worktree_path` may create source-of-truth confusion if migration is incomplete or undocumented.",
+    "Exact `gh` account matching may break existing automation if `expected_gh_account` is not propagated to every mutation path in scope.",
+    "Stall detection may false-positive or false-negative if step/status transitions are not captured consistently at the observer boundary.",
+    "Existing workflow YAML assertions and helper tests that still reference `worktree_path` may fail during the `execution_root` migration unless compatibility handling is staged carefully."
+  ],
+  "security_considerations": [
+    "Fail closed on invalid, ambiguous, or unverifiable execution roots and GitHub identities.",
+    "Never fall back to ambient cwd after workflow step 04.",
+    "Reject `/tmp/amplihack-rs-npx-wrapper*` and any symlink-ambiguous or untrusted execution root.",
+    "Require absolute, existing, writable, trusted paths before execution proceeds.",
+    "Use safe subprocess argument passing only; do not use shell-string interpolation in validation helpers.",
+    "Redact sensitive authentication output while still auditing resolved login, execution root, and branch decisions.",
+    "Ensure no GitHub mutation can proceed unless the authenticated `gh` login exactly matches `expected_gh_account`."
+  ]
+}

@@ -19,6 +19,10 @@ Complete command-line reference for the `amplihack` top-level command.
 amplihack [--version] [--help] <subcommand> [<args>]
 ```
 
+Running `amplihack` with no subcommand launches Claude Code directly. In
+user-facing docs, prefer the explicit `amplihack claude` form;
+`amplihack launch` remains a compatibility alias.
+
 ---
 
 ## Global Flags
@@ -45,13 +49,25 @@ The version string comes from the `__version__` attribute in `amplihack/__init__
 
 ## Subcommands
 
-| Subcommand | Description                                                                      |
-| ---------- | -------------------------------------------------------------------------------- |
-| `launch`   | Start an interactive amplihack session (default when called with no subcommand). |
-| `recipe`   | Run, list, validate, and inspect workflow recipes.                               |
-| `memory`   | Manage the amplihack memory backend.                                             |
-| `plugin`   | Install, uninstall, and list amplihack plugins.                                  |
-| `version`  | Alias for `--version`. Prints version and exits.                                 |
+| Subcommand   | Description                                                                      |
+| ------------ | -------------------------------------------------------------------------------- |
+| `version`    | Show amplihack version.                                                          |
+| `install`    | Install amplihack agents and tools to `~/.claude`.                               |
+| `uninstall`  | Remove amplihack agents and tools from `~/.claude`.                              |
+| `update`     | Update amplihack, delegating to the Rust CLI when one is installed.              |
+| `claude`     | Launch Claude Code. Preferred explicit launcher in user-facing docs.             |
+| `launch`     | Compatibility alias for `claude`; `amplihack` with no subcommand also launches Claude Code. |
+| `RustyClawd` | Launch RustyClawd (Rust implementation).                                         |
+| `copilot`    | Launch GitHub Copilot CLI.                                                       |
+| `codex`      | Launch OpenAI Codex CLI.                                                         |
+| `amplifier`  | Launch Microsoft Amplifier with amplihack bundle.                                |
+| `uvx-help`   | Get help with UVX deployment.                                                    |
+| `plugin`     | Install, uninstall, and list amplihack plugins.                                  |
+| `memory`     | Manage the amplihack memory backend.                                             |
+| `new`        | Generate a new goal-seeking agent.                                               |
+| `recipe`     | Run, list, validate, and inspect workflow recipes.                               |
+| `mode`       | Claude installation mode commands.                                               |
+| `fleet`      | Manage coding agents across VMs.                                                 |
 
 See the documentation for each subcommand:
 
@@ -94,12 +110,23 @@ amplihack --version
 # amplihack 0.9.2
 ```
 
-### Launch an interactive session
+### Launch an interactive Claude session
+
+Prefer `amplihack claude` in user-facing docs. `amplihack launch` remains
+supported as a compatibility alias.
 
 ```bash
-amplihack launch
+amplihack claude
 # or simply:
 amplihack
+# compatibility alias:
+amplihack launch
+```
+
+### Launch an interactive Copilot session
+
+```bash
+amplihack copilot
 ```
 
 ### Run a workflow recipe non-interactively
@@ -112,7 +139,7 @@ amplihack recipe run default-workflow \
 ### Enable blarify code indexing for a session
 
 ```bash
-AMPLIHACK_ENABLE_BLARIFY=1 amplihack launch
+AMPLIHACK_ENABLE_BLARIFY=1 amplihack claude
 ```
 
 ---

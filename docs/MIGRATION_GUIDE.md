@@ -6,6 +6,8 @@ Guide fer migratin' from per-project `~/.amplihack/.claude/` installations t' th
 
 This guide helps ye transition from copyin' `~/.amplihack/.claude/` into each project t' usin' the global plugin at `~/.amplihack/.claude/`.
 
+**Command note:** This guide uses `amplihack claude` in examples. `amplihack launch` still works as a compatibility alias, but `claude` be the preferred explicit command in user-facing docs.
+
 **Migration Path:**
 
 ```
@@ -60,9 +62,9 @@ Before (Per-Project)              After (Plugin)
 amplihack plugin install
 
 # All projects use plugin automatically
-cd ~/project1 && amplihack launch  # Uses plugin
-cd ~/project2 && amplihack launch  # Uses same plugin
-cd ~/project3 && amplihack launch  # Still uses plugin
+cd ~/project1 && amplihack claude  # Uses plugin
+cd ~/project2 && amplihack claude  # Uses same plugin
+cd ~/project3 && amplihack claude  # Still uses plugin
 ```
 
 ### Keep Per-Project Mode
@@ -78,8 +80,8 @@ cd ~/project3 && amplihack launch  # Still uses plugin
 
 ```bash
 # Each project has own .claude/
-cd ~/project1 && amplihack launch  # Uses project1/.claude/
-cd ~/project2 && amplihack launch  # Uses project2/.claude/
+cd ~/project1 && amplihack claude  # Uses project1/.claude/
+cd ~/project2 && amplihack claude  # Uses project2/.claude/
 ```
 
 ## Migration Methods
@@ -167,7 +169,7 @@ amplihack plugin install
 ```bash
 cd ~/new-test-project
 # No .claude/ directory here
-amplihack launch
+amplihack claude
 ```
 
 Plugin be used automatically (no local `~/.amplihack/.claude/` exists).
@@ -183,7 +185,7 @@ amplihack mode migrate-to-plugin
 
 ```bash
 # Run typical workflow
-amplihack launch -- -p "implement simple feature"
+amplihack claude -- -p "implement simple feature"
 
 # Verify agents work
 # Verify commands work
@@ -228,7 +230,7 @@ amplihack mode migrate-to-plugin
 ```bash
 cd ~/custom-project
 # Leave .claude/ directory intact
-amplihack launch  # Uses local .claude/ (precedence)
+amplihack claude  # Uses local .claude/ (precedence)
 ```
 
 **Mode Detection:**
@@ -339,7 +341,7 @@ Plugin: amplihack
 
 ```bash
 cd ~/project
-amplihack launch -- -p "analyze src/file.py"
+amplihack claude -- -p "analyze src/file.py"
 ```
 
 Verify:
@@ -353,10 +355,10 @@ Verify:
 
 ```bash
 cd ~/project1
-amplihack launch -- -p "quick test"
+amplihack claude -- -p "quick test"
 
 cd ~/project2
-amplihack launch -- -p "quick test"
+amplihack claude -- -p "quick test"
 ```
 
 Both should use same plugin.

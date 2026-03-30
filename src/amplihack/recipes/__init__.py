@@ -17,6 +17,7 @@ from typing import Any
 
 from amplihack.recipes.agent_resolver import AgentNotFoundError, AgentResolver
 from amplihack.recipes.discovery import (
+    RecipeCache,
     RecipeInfo,
     check_upstream_changes,
     discover_recipes,
@@ -49,6 +50,7 @@ from amplihack.utils import _agent_binary_context
 __all__ = [
     "AgentNotFoundError",
     "AgentResolver",
+    "RecipeCache",
     "RecipeInfo",
     "RecipeParser",
     "Recipe",
