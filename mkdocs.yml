@@ -163,6 +163,13 @@ nav:
           - Eval Operator Guide: hive_mind/EVAL_OPERATOR_GUIDE.md
           - Eval Components: hive_mind/EVAL_COMPONENTS.md
           - Investigation Guide: INVESTIGATION_hive_mind_guide.md
+      - Goal-Seeking Agents:
+          - Overview: GOAL_SEEKING_AGENTS.md
+          - Generator Tutorial: tutorials/GOAL_SEEKING_AGENT_TUTORIAL.md
+          - LearningAgent Architecture: concepts/learning-agent-module-architecture.md
+          - Maintaining LearningAgent Modules: howto/maintain-learning-agent-modules.md
+          - LearningAgent Module Reference: reference/learning-agent-module-reference.md
+          - LearningAgent Refactor Tutorial: tutorials/learning-agent-refactor-tutorial.md
       - Agent Memory Integration: AGENT_MEMORY_INTEGRATION.md
       - Memory Quickstart: AGENT_MEMORY_QUICKSTART.md
       - External Knowledge: external_knowledge_integration.md

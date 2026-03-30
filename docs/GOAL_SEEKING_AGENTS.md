@@ -33,6 +33,15 @@ The system provides a single `GoalSeekingAgent` base class that works identicall
 
 **Core design**: The `GoalSeekingAgent` ABC defines the interface. All SDK implementations delegate learning and answering to a shared `LearningAgent` instance, which contains the eval intelligence: LLM-based fact extraction, intent detection, retrieval strategy selection, and answer synthesis. This means every SDK gets the same quality of fact extraction and question answering regardless of the underlying LLM provider.
 
+### LearningAgent contributor docs
+
+Use these pages when you are working on the refactored `LearningAgent` internals:
+
+- [Understanding the LearningAgent module architecture](concepts/learning-agent-module-architecture.md)
+- [LearningAgent module reference](reference/learning-agent-module-reference.md)
+- [How to maintain and extend the refactored LearningAgent](howto/maintain-learning-agent-modules.md)
+- [Tutorial: trace the refactored LearningAgent end to end](tutorials/learning-agent-refactor-tutorial.md)
+
 ---
 
 ## Quick Start

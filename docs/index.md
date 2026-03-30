@@ -156,6 +156,11 @@ Understand the philosophy and architecture behind amplihack.
 - [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
 - [Framework Injection Architecture](concepts/framework-injection-architecture.md) - How AMPLIHACK.md injection works
 - [Unified Distributed Cognitive Memory](concepts/unified-distributed-cognitive-memory.md) - Planned architecture for deterministic cluster-wide memory retrieval
+- [Goal-Seeking Agents](GOAL_SEEKING_AGENTS.md) - Overview of generated agents and the shared LearningAgent engine
+- [LearningAgent Module Architecture](concepts/learning-agent-module-architecture.md) - How the refactored LearningAgent is split into focused modules
+- [LearningAgent Refactor Tutorial](tutorials/learning-agent-refactor-tutorial.md) - Walk through learning, retrieval, and temporal answering in the split module design
+- [Maintain the Refactored LearningAgent](howto/maintain-learning-agent-modules.md) - Contributor workflow for changing ingestion, retrieval, temporal logic, and synthesis
+- [LearningAgent Module Reference](reference/learning-agent-module-reference.md) - Public API, configuration knobs, ownership map, and validation commands
 - [How to Use Blarify Code Graph](howto/blarify-code-graph.md) - Enable, query, and configure
 - [Enable Blarify Code Indexing](howto/enable-blarify.md) - `AMPLIHACK_ENABLE_BLARIFY`, non-interactive skip, staleness detection
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
