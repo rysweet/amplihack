@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-30T07:29:24.315714+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-30T07:49:04.351710+00:00
 </div>
 
 ## Map
@@ -65,11 +65,11 @@ Category: <strong>Structural</strong> | Generated: 2026-03-30T07:29:24.315714+00
 
     | Metric | Value |
     |--------|-------|
-    | Total definitions | 14628 |
-    | Total exports | 2255 |
-    | Total imports | 16375 |
-    | Potentially dead | 420 |
-    | Files with `__all__` | 423 |
+    | Total definitions | 14670 |
+    | Total exports | 2263 |
+    | Total imports | 16412 |
+    | Potentially dead | 426 |
+    | Files with `__all__` | 426 |
 
 ## Legend
 
@@ -85,9 +85,9 @@ Category: <strong>Structural</strong> | Generated: 2026-03-30T07:29:24.315714+00
 
 ## Key Findings
 
-- 14628 total definitions across all files
-- 420 potentially dead definitions (2.9% of total)
-- 1919 files without `__all__` exports
+- 14670 total definitions across all files
+- 426 potentially dead definitions (2.9% of total)
+- 1927 files without `__all__` exports
 
 ## Detail
 
@@ -95,15 +95,15 @@ Category: <strong>Structural</strong> | Generated: 2026-03-30T07:29:24.315714+00
 
     **Summary metrics:**
 
-    - **Total Definitions**: 14628
-    - **Total Exports**: 2255
-    - **Total Imports**: 16375
-    - **Potentially Dead Count**: 420
-    - **Files With All**: 423
-    - **Files Without All**: 1919
+    - **Total Definitions**: 14670
+    - **Total Exports**: 2263
+    - **Total Imports**: 16412
+    - **Potentially Dead Count**: 426
+    - **Files With All**: 426
+    - **Files Without All**: 1927
     - **Importlib Dynamic Imports**: 43
     - **Language Counts**:
-        - `python`: 14628
+        - `python`: 14670
 
 ## Cross-References
 
