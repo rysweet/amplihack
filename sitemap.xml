@@ -2121,6 +2121,10 @@
          <lastmod>2026-03-30</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/concepts/learning-agent-module-architecture/</loc>
+         <lastmod>2026-03-30</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/concepts/memory-enabled-agents-architecture/</loc>
          <lastmod>2026-03-30</lastmod>
     </url>
@@ -2457,6 +2461,10 @@
          <lastmod>2026-03-30</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/howto/maintain-learning-agent-modules/</loc>
+         <lastmod>2026-03-30</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/howto/platform-bridge-workflows/</loc>
          <lastmod>2026-03-30</lastmod>
     </url>
@@ -2753,6 +2761,10 @@
          <lastmod>2026-03-30</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/reference/learning-agent-module-reference/</loc>
+         <lastmod>2026-03-30</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/reference/memory-cli-reference/</loc>
          <lastmod>2026-03-30</lastmod>
     </url>
@@ -2942,6 +2954,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/tutorials/first-docs-site/</loc>
+         <lastmod>2026-03-30</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/tutorials/learning-agent-refactor-tutorial/</loc>
          <lastmod>2026-03-30</lastmod>
     </url>
     <url>
