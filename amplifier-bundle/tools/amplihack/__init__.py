@@ -40,6 +40,15 @@ def _initialize_paths():
         if path not in sys.path:
             sys.path.insert(0, path)
 
+    # Make source subpackages importable even when the bundle package wins the
+    # initial ``import amplihack`` race during pytest collection.
+    package_path = globals().get("__path__")
+    src_package_dir = _PROJECT_ROOT / "src" / "amplihack"
+    if package_path is not None and src_package_dir.exists():
+        src_package_str = str(src_package_dir)
+        if src_package_str not in package_path:
+            package_path.append(src_package_str)
+
     _PATHS_INITIALIZED = True
     return _PROJECT_ROOT
 

@@ -14,6 +14,15 @@ import pytest
 from amplihack.launcher.claude_binary_manager import ClaudeBinaryManager
 from amplihack.utils.prerequisites import PrerequisiteChecker, ToolCheckResult
 
+
+@pytest.fixture(autouse=True)
+def native_binary_presence():
+    """The copied prerequisites tracing tests assume mocked which() paths are runnable binaries."""
+    with patch("pathlib.Path.exists", return_value=True):
+        with patch("os.access", return_value=True):
+            yield
+
+
 # =============================================================================
 # Native Binary Detection in Prerequisites Tests
 # =============================================================================

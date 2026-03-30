@@ -106,11 +106,51 @@ class InstallationAuditEntry:
 class ToolCheckResult:
     """Result of checking a single tool prerequisite."""
 
-    tool: str
-    available: bool
+    tool: str | None = None
+    available: bool | None = None
     path: str | None = None
     version: str | None = None
     error: str | None = None
+    supports_trace: bool | None = None
+    message: str | None = None
+    installation_guide: str | None = None
+    name: str | None = None
+    installed: bool | None = None
+
+    def __post_init__(self) -> None:
+        if self.tool is None and self.name is not None:
+            self.tool = self.name
+        if self.name is None and self.tool is not None:
+            self.name = self.tool
+        if self.available is None and self.installed is not None:
+            self.available = self.installed
+        if self.installed is None and self.available is not None:
+            self.installed = self.available
+        if self.available is None:
+            self.available = False
+        if self.installed is None:
+            self.installed = self.available
+        if self.tool is None:
+            self.tool = "unknown"
+        if self.name is None:
+            self.name = self.tool
+        if self.message is None:
+            self.message = self.error
+
+    def __str__(self) -> str:
+        parts = [self.name or self.tool or "unknown"]
+        parts.append("installed" if self.installed else "missing")
+        if self.version:
+            parts.append(f"version={self.version}")
+        if self.path:
+            parts.append(f"path={self.path}")
+        if self.supports_trace is not None:
+            parts.append(f"supports_trace={self.supports_trace}")
+        if self.message:
+            parts.append(self.message)
+        if self.installation_guide:
+            parts.append(self.installation_guide)
+        return ", ".join(parts)
 
 
 @dataclass
@@ -120,6 +160,16 @@ class PrerequisiteResult:
     all_available: bool
     missing_tools: list[ToolCheckResult] = field(default_factory=list)
     available_tools: list[ToolCheckResult] = field(default_factory=list)
+    optional_tools: list[ToolCheckResult] = field(default_factory=list)
+
+    @property
+    def tools(self) -> list[ToolCheckResult]:
+        return [*self.available_tools, *self.missing_tools, *self.optional_tools]
+
+    def __str__(self) -> str:
+        tool_summary = ", ".join(str(tool) for tool in self.tools)
+        status = "all_available" if self.all_available else "missing_required_tools"
+        return f"{status}: {tool_summary}" if tool_summary else status
 
 
 def safe_subprocess_call(
@@ -220,13 +270,13 @@ class InteractiveInstaller:
         ...     print("Node.js installed successfully")
     """
 
-    def __init__(self, platform: Platform):
+    def __init__(self, platform: Platform | None = None):
         """Initialize interactive installer for a platform.
 
         Args:
             platform: Target platform for installation
         """
-        self.platform = platform
+        self.platform = platform or PrerequisiteChecker().platform
         self.audit_log_path = (
             Path.home() / ".claude" / "runtime" / "logs" / "installation_audit.jsonl"
         )
@@ -469,6 +519,14 @@ class InteractiveInstaller:
                 message=error_msg,
             )
 
+    def install_native_binary(self) -> InstallationResult:
+        """Compatibility wrapper for installing the optional native binary."""
+        return self.install_tool("rustyclawd")
+
+    def get_native_binary_install_instructions(self) -> str:
+        """Return installation guidance for the optional native binary."""
+        return PrerequisiteChecker().get_native_binary_guidance()
+
 
 class PrerequisiteChecker:
     """Check for required prerequisites and provide installation guidance.
@@ -517,6 +575,7 @@ class PrerequisiteChecker:
             "rg": "brew install ripgrep",
             "tmux": "brew install tmux",
             "claude": "brew install --cask claude-code",
+            "rustyclawd": "cargo install rustyclawd",
         },
         Platform.LINUX: {
             "node": "# Ubuntu/Debian:\nsudo apt install nodejs\n# Fedora/RHEL:\nsudo dnf install nodejs\n# Arch:\nsudo pacman -S nodejs",
@@ -526,6 +585,7 @@ class PrerequisiteChecker:
             "rg": "# Ubuntu/Debian:\nsudo apt install ripgrep\n# Fedora/RHEL:\nsudo dnf install ripgrep\n# Arch:\nsudo pacman -S ripgrep",
             "tmux": "# Ubuntu/Debian:\nsudo apt install tmux\n# Fedora/RHEL:\nsudo dnf install tmux\n# Arch:\nsudo pacman -S tmux",
             "claude": "curl -fsSL https://claude.ai/install.sh | bash",
+            "rustyclawd": "cargo install rustyclawd",
         },
         Platform.WSL: {
             "node": "# Ubuntu/Debian:\nsudo apt install nodejs\n# Fedora/RHEL:\nsudo dnf install nodejs",
@@ -535,6 +595,7 @@ class PrerequisiteChecker:
             "rg": "sudo apt install ripgrep",
             "tmux": "sudo apt install tmux",
             "claude": "curl -fsSL https://claude.ai/install.sh | bash",
+            "rustyclawd": "cargo install rustyclawd",
         },
         Platform.WINDOWS: {
             "node": "winget install OpenJS.NodeJS\n# Or: choco install nodejs",
@@ -543,6 +604,7 @@ class PrerequisiteChecker:
             "git": "winget install Git.Git\n# Or: choco install git",
             "rg": "winget install BurntSushi.ripgrep.MSVC\n# Or: choco install ripgrep",
             "claude": "winget install Anthropic.ClaudeCode",
+            "rustyclawd": "cargo install rustyclawd",
         },
         Platform.UNKNOWN: {
             "node": "Please install Node.js from https://nodejs.org/",
@@ -551,6 +613,7 @@ class PrerequisiteChecker:
             "git": "Please install git from https://git-scm.com/",
             "rg": "Please install ripgrep from https://github.com/BurntSushi/ripgrep",
             "claude": "See https://code.claude.com/docs/en/setup for platform-specific installation",
+            "rustyclawd": "cargo install rustyclawd",
         },
     }
 
@@ -565,6 +628,7 @@ class PrerequisiteChecker:
             "rg": ["brew", "install", "ripgrep"],
             "tmux": ["brew", "install", "tmux"],
             "claude": ["brew", "install", "--cask", "claude-code"],
+            "rustyclawd": ["cargo", "install", "rustyclawd"],
         },
         Platform.LINUX: {
             "node": ["sudo", "apt", "install", "-y", "nodejs"],  # Default to apt
@@ -574,6 +638,7 @@ class PrerequisiteChecker:
             "rg": ["sudo", "apt", "install", "-y", "ripgrep"],
             "tmux": ["sudo", "apt", "install", "-y", "tmux"],
             "claude": ["sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"],
+            "rustyclawd": ["cargo", "install", "rustyclawd"],
         },
         Platform.WSL: {
             "node": ["sudo", "apt", "install", "-y", "nodejs"],
@@ -583,6 +648,7 @@ class PrerequisiteChecker:
             "rg": ["sudo", "apt", "install", "-y", "ripgrep"],
             "tmux": ["sudo", "apt", "install", "-y", "tmux"],
             "claude": ["sh", "-c", "curl -fsSL https://claude.ai/install.sh | bash"],
+            "rustyclawd": ["cargo", "install", "rustyclawd"],
         },
         Platform.WINDOWS: {
             "node": ["winget", "install", "OpenJS.NodeJS"],
@@ -591,6 +657,7 @@ class PrerequisiteChecker:
             "git": ["winget", "install", "Git.Git"],
             "rg": ["winget", "install", "BurntSushi.ripgrep.MSVC"],
             "claude": ["winget", "install", "Anthropic.ClaudeCode"],
+            "rustyclawd": ["cargo", "install", "rustyclawd"],
         },
         Platform.UNKNOWN: {},  # No automatic commands for unknown platforms
     }
@@ -604,6 +671,7 @@ class PrerequisiteChecker:
         "rg": "https://github.com/BurntSushi/ripgrep",
         "tmux": "https://github.com/tmux/tmux",
         "claude": "https://code.claude.com/docs/en/setup",
+        "rustyclawd": "https://github.com/anthropics/claude-code",
     }
 
     def __init__(self):
@@ -683,6 +751,43 @@ class PrerequisiteChecker:
             version=version,
         )
 
+    def _native_binary_name(self) -> str:
+        return "rustyclawd.exe" if sys.platform == "win32" else "rustyclawd"
+
+    def get_native_binary_guidance(self) -> str:
+        """Explain the optional native binary and how to install it."""
+        command = self.get_install_command("rustyclawd")
+        return (
+            "The optional native binary provides faster native performance and trace logging support. "
+            f"You can install it with:\n{command}\n"
+            "If it is unavailable, the Python implementation remains available as a fallback."
+        )
+
+    def check_native_binary(self) -> ToolCheckResult:
+        """Compatibility wrapper for checking the optional native binary."""
+        binary_name = self._native_binary_name()
+        try:
+            result = self.check_tool(binary_name, "--version")
+        except Exception as exc:
+            return ToolCheckResult(
+                tool=binary_name,
+                available=False,
+                supports_trace=True,
+                error=str(exc),
+                message=f"native binary detection error: {exc}",
+                installation_guide=self.get_native_binary_guidance(),
+            )
+
+        result.supports_trace = True
+        if result.available:
+            result.message = "Optional native binary available with trace support."
+        else:
+            result.message = (
+                "Optional native binary not installed; Python fallback remains available."
+            )
+            result.installation_guide = self.get_native_binary_guidance()
+        return result
+
     def check_all_prerequisites(self) -> PrerequisiteResult:
         """Check all required prerequisites including Claude CLI with auto-install.
 
@@ -740,6 +845,12 @@ class PrerequisiteChecker:
             available_tools=available_tools,
         )
 
+    def check_all(self) -> PrerequisiteResult:
+        """Compatibility wrapper that includes the optional native binary in the summary."""
+        result = self.check_all_prerequisites()
+        result.optional_tools.append(self.check_native_binary())
+        return result
+
     def get_install_command(self, tool: str) -> str:
         """Get platform-specific installation command for a tool (display format).
 
@@ -778,7 +889,7 @@ class PrerequisiteChecker:
         lines.append("\nInstallation commands:")
 
         for result in missing_tools:
-            tool = result.tool
+            tool = result.tool or "unknown"
             install_cmd = self.get_install_command(tool)
             lines.append(f"\n{tool}:")
             # Indent multi-line commands
@@ -868,7 +979,7 @@ class PrerequisiteChecker:
         # Attempt to install each missing tool
         installation_results: dict[str, InstallationResult] = {}
         for tool_result in result.missing_tools:
-            tool = tool_result.tool
+            tool = tool_result.tool or "unknown"
             install_result = installer.install_tool(tool)
             installation_results[tool] = install_result
 

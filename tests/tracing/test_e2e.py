@@ -12,6 +12,7 @@ Coverage Focus (10% of test suite):
 """
 
 import json
+import subprocess
 import time
 from unittest.mock import patch
 
@@ -293,7 +294,7 @@ def test_trace_file_can_be_processed_by_tools(tmp_path):
             timeout=5,
         )
         if result.returncode == 0:
-            events = json.loads(result.stdout)
+            events = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
             assert "test1" in events
             assert "test2" in events
     except FileNotFoundError:
@@ -353,7 +354,7 @@ def test_unclean_shutdown_recovery(tmp_path):
 
 
 @pytest.mark.e2e
-def test_cli_flag_enables_trace(tmp_path):
+def test_cli_flag_enables_trace(tmp_path, monkeypatch):
     """Test that CLI flag enables trace."""
     trace_file = tmp_path / "trace.jsonl"
 
@@ -361,10 +362,8 @@ def test_cli_flag_enables_trace(tmp_path):
     # This would be tested with actual CLI in real E2E
     # For now, test the configuration path
 
-    import os
-
-    os.environ["CLAUDE_TRACE_ENABLED"] = "true"
-    os.environ["CLAUDE_TRACE_FILE"] = str(trace_file)
+    monkeypatch.setenv("CLAUDE_TRACE_ENABLED", "true")
+    monkeypatch.setenv("CLAUDE_TRACE_FILE", str(trace_file))
 
     from amplihack.tracing.trace_logger import TraceLogger
 
