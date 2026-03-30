@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-30T03:57:44.129434+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-30T07:00:31.579177+00:00
 </div>
 
 ## Map
@@ -28,29 +28,29 @@ Category: <strong>Structural</strong> | Generated: 2026-03-30T03:57:44.129434+00
         F7["errors<br/>refs: 29"]
         F8["errors<br/>refs: 29"]
         F9["models<br/>refs: 28"]
-        F10["file_utils<br/>refs: 24"]
+        F10["models<br/>refs: 27"]
         F11["file_utils<br/>refs: 24"]
         F12["file_utils<br/>refs: 24"]
-        F13["base<br/>refs: 23"]
-        F14["common<br/>refs: 22"]
-        F15["utils<br/>refs: 22"]
-        F16["xpia_defense_interface<br/>refs: 22"]
-        F17["event_bus<br/>refs: 20"]
-        F18["uvx_launcher<br/>refs: 19"]
-        F19["uvx_models<br/>refs: 18"]
-        F20["considerations<br/>refs: 17"]
-        F21["orchestrator<br/>refs: 17"]
+        F13["file_utils<br/>refs: 24"]
+        F14["base<br/>refs: 23"]
+        F15["common<br/>refs: 22"]
+        F16["utils<br/>refs: 22"]
+        F17["xpia_defense_interface<br/>refs: 22"]
+        F18["event_bus<br/>refs: 20"]
+        F19["uvx_launcher<br/>refs: 19"]
+        F20["uvx_models<br/>refs: 18"]
+        F21["considerations<br/>refs: 17"]
         F22["orchestrator<br/>refs: 17"]
         F23["orchestrator<br/>refs: 17"]
-        F24["__init__<br/>refs: 17"]
-        F25["exceptions<br/>refs: 17"]
-        F26["output_validator<br/>refs: 17"]
-        F27["models<br/>refs: 16"]
+        F24["orchestrator<br/>refs: 17"]
+        F25["__init__<br/>refs: 17"]
+        F26["exceptions<br/>refs: 17"]
+        F27["output_validator<br/>refs: 17"]
         F28["models<br/>refs: 16"]
         F29["models<br/>refs: 16"]
-        F21 --> F6
-        F22 --> F7
-        F23 --> F8
+        F22 --> F6
+        F23 --> F7
+        F24 --> F8
 
         click F0 "../ast-lsp-bindings/" "View AST bindings"
     ```
@@ -65,11 +65,11 @@ Category: <strong>Structural</strong> | Generated: 2026-03-30T03:57:44.129434+00
 
     | Metric | Value |
     |--------|-------|
-    | Total definitions | 14458 |
-    | Total exports | 2149 |
-    | Total imports | 16223 |
-    | Potentially dead | 412 |
-    | Files with `__all__` | 408 |
+    | Total definitions | 14574 |
+    | Total exports | 2211 |
+    | Total imports | 16321 |
+    | Potentially dead | 419 |
+    | Files with `__all__` | 415 |
 
 ## Legend
 
@@ -85,9 +85,9 @@ Category: <strong>Structural</strong> | Generated: 2026-03-30T03:57:44.129434+00
 
 ## Key Findings
 
-- 14458 total definitions across all files
-- 412 potentially dead definitions (2.8% of total)
-- 1908 files without `__all__` exports
+- 14574 total definitions across all files
+- 419 potentially dead definitions (2.9% of total)
+- 1915 files without `__all__` exports
 
 ## Detail
 
@@ -95,15 +95,15 @@ Category: <strong>Structural</strong> | Generated: 2026-03-30T03:57:44.129434+00
 
     **Summary metrics:**
 
-    - **Total Definitions**: 14458
-    - **Total Exports**: 2149
-    - **Total Imports**: 16223
-    - **Potentially Dead Count**: 412
-    - **Files With All**: 408
-    - **Files Without All**: 1908
-    - **Importlib Dynamic Imports**: 23
+    - **Total Definitions**: 14574
+    - **Total Exports**: 2211
+    - **Total Imports**: 16321
+    - **Potentially Dead Count**: 419
+    - **Files With All**: 415
+    - **Files Without All**: 1915
+    - **Importlib Dynamic Imports**: 40
     - **Language Counts**:
-        - `python`: 14458
+        - `python`: 14574
 
 ## Cross-References
 
