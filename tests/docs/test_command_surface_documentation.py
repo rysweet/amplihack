@@ -167,6 +167,9 @@ class TestCommandSurfaceContract:
         assert not surface.command_examples("amplihack launch"), (
             "docs/CLAUDE_CODE_SETUP.md should not teach `amplihack launch` anymore"
         )
+        assert not surface.prose_mentions("amplihack launch"), (
+            "docs/CLAUDE_CODE_SETUP.md should not mention `amplihack launch` in setup prose"
+        )
 
     @pytest.mark.parametrize("doc_path", USER_FACING_GUIDES, ids=_relative)
     def test_user_facing_guides_do_not_teach_launch_as_primary_command(self, doc_path: Path):
