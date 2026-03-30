@@ -38,6 +38,10 @@ Intelligent guidance system that prevents common mistakes and ensures work compl
 
 Additional amplihack capabilities:
 
+- [Workflow Execution Guardrails](workflow-execution-guardrails.md) - Canonical `execution_root`, exact `gh` login enforcement, and observer-only stall detection for recipe-driven workflows
+  - [Configuration Guide](../howto/configure-workflow-execution-guardrails.md) - Supply `expected_gh_account`, inspect `execution_root`, and understand fail-closed behavior
+  - [Tutorial](../tutorials/workflow-execution-guardrails.md) - Run a guarded workflow end to end
+  - [Reference](../reference/workflow-execution-guardrails.md) - Field contract, signal formats, and compatibility rules
 - [LSP Auto-Configuration](lsp-auto-configuration.md) - Zero-configuration Language Server Protocol setup
   - **Automatic**: Configures LSP when you run `amplihack claude`
   - **Multi-Language**: Supports 16 programming languages
