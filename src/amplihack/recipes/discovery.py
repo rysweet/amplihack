@@ -237,8 +237,9 @@ def verify_global_installation() -> dict[str, Any]:
 def find_recipe(name: str, search_dirs: list[Path] | None = None) -> Path | None:
     """Find a recipe by name and return its file path.
 
-    Searches for ``{name}.yaml`` in each search directory. Returns the
-    first match, or None if not found.
+    Searches for ``{name}.yaml`` in each search directory. When multiple
+    directories contain the same recipe name, the last matching path wins
+    so resolution stays consistent with ``discover_recipes()``.
 
     Args:
         name: Recipe name (without .yaml extension).
@@ -248,11 +249,12 @@ def find_recipe(name: str, search_dirs: list[Path] | None = None) -> Path | None
         Path to the recipe file, or None.
     """
     dirs = search_dirs or _DEFAULT_SEARCH_DIRS
+    found: Path | None = None
     for search_dir in dirs:
         candidate = search_dir / f"{name}.yaml"
         if candidate.is_file():
-            return candidate
-    return None
+            found = candidate
+    return found
 
 
 def check_upstream_changes(
