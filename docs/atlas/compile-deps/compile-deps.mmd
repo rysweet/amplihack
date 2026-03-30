@@ -1,58 +1,59 @@
 graph LR
-    subgraph ext["External Dependencies"]
-        E0["pytest<br/>imports: 608"]
-        E1["rich<br/>imports: 29"]
-        E2["requests<br/>imports: 27"]
-        E3["tree-sitter<br/>imports: 16"]
-        E4["claude-agent-sdk<br/>imports: 14"]
-        E5["kuzu<br/>imports: 13"]
-        E6["typing-extensions<br/>imports: 13"]
-        E7["fastapi<br/>imports: 12"]
-        E8["aiohttp<br/>imports: 11"]
-        E9["amplifier-core<br/>imports: 9"]
-        E10["psutil<br/>imports: 8"]
-        E11["python-dotenv<br/>imports: 7"]
-        E12["uvicorn<br/>imports: 4"]
-        E13["langchain-openai<br/>imports: 3"]
-        E14["tomli<br/>imports: 3"]
-        E15["langchain-anthropic<br/>imports: 2"]
-        E16["langchain-google-genai<br/>imports: 2"]
-        E17["flask<br/>imports: 1"]
-        E18["json-repair<br/>imports: 1"]
-        E19["tree-sitter-python<br/>imports: 1"]
+    subgraph ext["External Dependencies (pyproject.toml)"]
+        E0["rich<br/>imports: 20"]
+        E1["requests<br/>imports: 9"]
+        E2["tree-sitter<br/>imports: 16"]
+        E3["claude-agent-sdk<br/>imports: 8"]
+        E4["kuzu<br/>imports: 10"]
+        E5["typing-extensions<br/>imports: 13"]
+        E6["fastapi<br/>imports: 6"]
+        E7["aiohttp<br/>imports: 5"]
+        E8["psutil<br/>imports: 5"]
+        E9["python-dotenv<br/>imports: 4"]
+        E10["uvicorn<br/>imports: 3"]
+        E11["simpleeval<br/>imports: 4"]
+        E12["flask<br/>imports: 1"]
+        E13["json-repair<br/>imports: 2"]
+        E14["langchain<br/>imports: 26"]
+        E15["docker<br/>imports: 3"]
+        E16["azure-identity<br/>imports: 11"]
+        E17["neo4j<br/>imports: 4"]
+        E18["packaging<br/>imports: 3"]
+        E19["protobuf<br/>imports: 1"]
     end
 
-    subgraph int["Internal Packages"]
-        P0["claude"]
-        P1["check_point_in_time_docs"]
-        P2["check_root_files"]
-        P3["check_unrelated_changes"]
-        P4["builders"]
-        P5["transcripts"]
-        P6["ab_audit_cycle"]
-        P7["ab_comparison_harness"]
-        P8["basic_usage"]
-        P9["test_analyzer"]
-        P10["tool"]
-        P11["basic_usage"]
-        P12["test_analyzer"]
-        P13["tool"]
-        P14["az-devops-tools"]
-        P15["auth_check"]
-        P16["common"]
-        P17["create_pr"]
-        P18["create_work_item"]
-        P19["delete_work_item"]
-        P20["format_html"]
-        P21["get_work_item"]
-        P22["link_parent"]
-        P23["list_repos"]
-        P24["list_types"]
-        P25["list_work_items"]
-        P26["query_wiql"]
-        P27["tests"]
-        P28["conftest"]
-        P29["update_work_item"]
+    subgraph sibling["Sibling Packages"]
+        S0["amplihack-memory-lib<br/>imports: 12"]
+        S1["amplihack-agent-eval<br/>imports: 14"]
+        S2["github-copilot-sdk<br/>imports: 2"]
     end
 
-    click P0 "../compile-deps/" "View compile deps"
+    subgraph runtime["Runtime Dependencies"]
+        R0["recipe-runner-rs<br/>(Rust binary, v0.3.4)"]
+        R1["amplihack CLI<br/>(Rust binary)"]
+        R2["amplihack-hooks<br/>(Rust binary)"]
+    end
+
+    subgraph core["amplihack Core Modules"]
+        C0["recipes/"]
+        C1["launcher/"]
+        C2["cli.py"]
+        C3["install.py"]
+        C4["memory/"]
+        C5["fleet/"]
+        C6["safety/"]
+        C7["utils/"]
+    end
+
+    C0 --> R0
+    C0 --> E11
+    C1 --> R1
+    C2 --> C0
+    C2 --> C1
+    C2 --> C3
+    C4 --> S0
+    C4 --> E4
+    C5 --> E16
+    C5 --> E15
+
+    click C0 "../../src/amplihack/recipes/" "View recipes module"
