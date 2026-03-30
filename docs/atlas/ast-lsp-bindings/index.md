@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-30T03:12:05.512120+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-30T03:57:44.129434+00:00
 </div>
 
 ## Map
@@ -67,7 +67,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-30T03:12:05.512120+00
     |--------|-------|
     | Total definitions | 14458 |
     | Total exports | 2149 |
-    | Total imports | 16225 |
+    | Total imports | 16223 |
     | Potentially dead | 412 |
     | Files with `__all__` | 408 |
 
@@ -97,7 +97,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-30T03:12:05.512120+00
 
     - **Total Definitions**: 14458
     - **Total Exports**: 2149
-    - **Total Imports**: 16225
+    - **Total Imports**: 16223
     - **Potentially Dead Count**: 412
     - **Files With All**: 408
     - **Files Without All**: 1908
