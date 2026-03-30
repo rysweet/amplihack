@@ -4,9 +4,11 @@ Amplihack's profile system filters which components get staged during installati
 
 ## How It Works
 
-Profiles control **file staging** - which files get copied to `~/.amplihack/.claude/` when you run `amplihack install` or `amplihack launch`. Claude Code sees only the filtered files (no runtime awareness needed).
+Profiles control **file staging** - which files get staged when you run `amplihack install` or `amplihack claude`. Claude Code sees only the filtered files (no runtime awareness needed).
 
 **Key Principle**: Profile switching happens OUTSIDE Claude Code. To change profiles, you must exit Claude, set a new profile, and restart.
+
+User-facing docs use `amplihack claude` as the explicit launcher. `amplihack launch` still works as a compatibility alias.
 
 ## Quick Start
 
@@ -19,7 +21,7 @@ amplihack install
 # Result: Only 9/32 agents copied (72% reduction)
 
 # Or launch with profile filtering
-amplihack launch
+amplihack claude
 # Result: Only 9/32 agents staged to working directory
 ```
 
@@ -94,9 +96,9 @@ amplihack install
 export AMPLIHACK_PROFILE=amplihack://profiles/coding
 
 # 2. Install or launch
-amplihack install  # Stages to ~/.claude/
+amplihack install  # Stages filtered files globally
 # OR
-amplihack launch   # Stages to ./claude/ in working directory
+amplihack claude   # Stages filtered files for this working directory
 
 # 3. Claude Code sees only filtered components
 # (no profile awareness - just sees what files exist)
@@ -104,7 +106,7 @@ amplihack launch   # Stages to ./claude/ in working directory
 # 4. To switch profiles: Exit Claude, change profile, restart
 exit  # Exit Claude
 export AMPLIHACK_PROFILE=amplihack://profiles/research
-amplihack launch
+amplihack claude
 ```
 
 ## Creating Custom Profiles
