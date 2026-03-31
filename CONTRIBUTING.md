@@ -28,6 +28,18 @@ pre-commit install
 # 4. Copy the environment template
 cp .env.example .env
 # Edit .env with your API keys as needed
+# 
+# Required API Keys (needed to run tests):
+#   - AZURE_TENANT_ID (required)
+#   - AZURE_CLIENT_ID (required)  
+#   - AZURE_CLIENT_SECRET (required)
+#
+# Optional API Keys (only needed for specific features):
+#   - AZURE_SUBSCRIPTION_ID
+#   - AZURE_RESOURCE_GROUP
+#   - Other Azure-related keys for fleet management features
+#
+# Tip: You can run basic tests with just the required keys above.
 ```
 
 ### Running Tests
