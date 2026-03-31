@@ -1,218 +1,192 @@
 {
   "experiment_id": "tla-prompt-language-v1",
-  "matrix_mode": "smoke",
-  "output_dir": "/tmp/tla-experiment-live.pQjsmw",
-  "generated_at": "2026-03-31T07:40:10.974757+00:00",
   "total_conditions": 8,
-  "completed_conditions": 6,
-  "failed_conditions": 2,
-  "summary": {
-    "experiment_id": "tla-prompt-language-v1",
-    "total_conditions": 8,
-    "completed_conditions": 6,
-    "failed_conditions": 2,
-    "metric_summary": {
+  "completed_conditions": 8,
+  "failed_conditions": 0,
+  "metric_summary": {
+    "baseline_score": {
+      "mean": 0.6607,
+      "count": 8
+    },
+    "invariant_compliance": {
+      "mean": 0.6562,
+      "count": 8
+    },
+    "proof_alignment": {
+      "mean": 0.625,
+      "count": 8
+    },
+    "local_protocol_alignment": {
+      "mean": 0.375,
+      "count": 8
+    },
+    "progress_signal": {
+      "mean": 0.75,
+      "count": 8
+    },
+    "specification_coverage": {
+      "mean": 0.625,
+      "count": 8
+    }
+  },
+  "by_prompt_variant": {
+    "english": {
       "baseline_score": {
-        "mean": 0.6429,
-        "count": 6
+        "mean": 0.5715,
+        "count": 2
       },
       "invariant_compliance": {
         "mean": 0.625,
-        "count": 6
+        "count": 2
       },
       "proof_alignment": {
-        "mean": 0.6667,
-        "count": 6
+        "mean": 0.0,
+        "count": 2
       },
       "local_protocol_alignment": {
-        "mean": 0.3333,
-        "count": 6
+        "mean": 0.0,
+        "count": 2
       },
       "progress_signal": {
-        "mean": 0.6667,
-        "count": 6
+        "mean": 0.5,
+        "count": 2
       },
       "specification_coverage": {
-        "mean": 0.5952,
-        "count": 6
+        "mean": 0.4285,
+        "count": 2
       }
     },
-    "by_prompt_variant": {
-      "english": {
-        "baseline_score": {
-          "mean": 0.5715,
-          "count": 2
-        },
-        "invariant_compliance": {
-          "mean": 0.625,
-          "count": 2
-        },
-        "proof_alignment": {
-          "mean": 0.0,
-          "count": 2
-        },
-        "local_protocol_alignment": {
-          "mean": 0.0,
-          "count": 2
-        },
-        "progress_signal": {
-          "mean": 0.5,
-          "count": 2
-        },
-        "specification_coverage": {
-          "mean": 0.4285,
-          "count": 2
-        }
+    "tla_only": {
+      "baseline_score": {
+        "mean": 0.8571,
+        "count": 2
       },
-      "tla_only": {
-        "baseline_score": {
-          "mean": 0.8571,
-          "count": 1
-        },
-        "invariant_compliance": {
-          "mean": 0.75,
-          "count": 1
-        },
-        "proof_alignment": {
-          "mean": 1.0,
-          "count": 1
-        },
-        "local_protocol_alignment": {
-          "mean": 1.0,
-          "count": 1
-        },
-        "progress_signal": {
-          "mean": 1.0,
-          "count": 1
-        },
-        "specification_coverage": {
-          "mean": 0.8571,
-          "count": 1
-        }
+      "invariant_compliance": {
+        "mean": 0.75,
+        "count": 2
       },
-      "tla_plus_english": {
-        "baseline_score": {
-          "mean": 0.5,
-          "count": 2
-        },
-        "invariant_compliance": {
-          "mean": 0.5,
-          "count": 2
-        },
-        "proof_alignment": {
-          "mean": 1.0,
-          "count": 2
-        },
-        "local_protocol_alignment": {
-          "mean": 0.0,
-          "count": 2
-        },
-        "progress_signal": {
-          "mean": 0.5,
-          "count": 2
-        },
-        "specification_coverage": {
-          "mean": 0.5,
-          "count": 2
-        }
+      "proof_alignment": {
+        "mean": 1.0,
+        "count": 2
       },
-      "tla_plus_refinement": {
-        "baseline_score": {
-          "mean": 0.8571,
-          "count": 1
-        },
-        "invariant_compliance": {
-          "mean": 0.75,
-          "count": 1
-        },
-        "proof_alignment": {
-          "mean": 1.0,
-          "count": 1
-        },
-        "local_protocol_alignment": {
-          "mean": 1.0,
-          "count": 1
-        },
-        "progress_signal": {
-          "mean": 1.0,
-          "count": 1
-        },
-        "specification_coverage": {
-          "mean": 0.8571,
-          "count": 1
-        }
+      "local_protocol_alignment": {
+        "mean": 1.0,
+        "count": 2
+      },
+      "progress_signal": {
+        "mean": 1.0,
+        "count": 2
+      },
+      "specification_coverage": {
+        "mean": 0.8571,
+        "count": 2
       }
     },
-    "by_model": {
-      "claude-opus-4.6": {
-        "baseline_score": {
-          "mean": 0.6428,
-          "count": 4
-        },
-        "invariant_compliance": {
-          "mean": 0.625,
-          "count": 4
-        },
-        "proof_alignment": {
-          "mean": 0.75,
-          "count": 4
-        },
-        "local_protocol_alignment": {
-          "mean": 0.5,
-          "count": 4
-        },
-        "progress_signal": {
-          "mean": 0.5,
-          "count": 4
-        },
-        "specification_coverage": {
-          "mean": 0.6071,
-          "count": 4
-        }
+    "tla_plus_english": {
+      "baseline_score": {
+        "mean": 0.5,
+        "count": 2
       },
-      "gpt-5.4": {
-        "baseline_score": {
-          "mean": 0.6429,
-          "count": 2
-        },
-        "invariant_compliance": {
-          "mean": 0.625,
-          "count": 2
-        },
-        "proof_alignment": {
-          "mean": 0.5,
-          "count": 2
-        },
-        "local_protocol_alignment": {
-          "mean": 0.0,
-          "count": 2
-        },
-        "progress_signal": {
-          "mean": 1.0,
-          "count": 2
-        },
-        "specification_coverage": {
-          "mean": 0.5714,
-          "count": 2
-        }
+      "invariant_compliance": {
+        "mean": 0.5,
+        "count": 2
+      },
+      "proof_alignment": {
+        "mean": 1.0,
+        "count": 2
+      },
+      "local_protocol_alignment": {
+        "mean": 0.0,
+        "count": 2
+      },
+      "progress_signal": {
+        "mean": 0.5,
+        "count": 2
+      },
+      "specification_coverage": {
+        "mean": 0.5,
+        "count": 2
+      }
+    },
+    "tla_plus_refinement": {
+      "baseline_score": {
+        "mean": 0.7143,
+        "count": 2
+      },
+      "invariant_compliance": {
+        "mean": 0.75,
+        "count": 2
+      },
+      "proof_alignment": {
+        "mean": 0.5,
+        "count": 2
+      },
+      "local_protocol_alignment": {
+        "mean": 0.5,
+        "count": 2
+      },
+      "progress_signal": {
+        "mean": 1.0,
+        "count": 2
+      },
+      "specification_coverage": {
+        "mean": 0.7143,
+        "count": 2
       }
     }
   },
-  "replay_mode": false,
-  "evaluation_kind": "heuristic_signal_v2",
-  "tlc_validation": {
-    "runner_kind": "tlc",
-    "command": [
-      "/usr/local/bin/tlc",
-      "-config",
-      "DistributedRetrievalContract.cfg",
-      "-metadir",
-      "/tmp/tla-tlc-fmcjon58",
-      "DistributedRetrievalContract"
-    ],
-    "cwd": "experiments/hive_mind/tla_prompt_language/specs",
-    "returncode": 0,
-    "stdout": "TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)\nRunning breadth-first search Model-Checking with fp 40 and seed 8593796322212011665 with 1 worker on 32 cores with 27305MB heap and 64MB offheap memory [pid: 2607226] (Linux 6.17.0-1008-azure amd64, Ubuntu 17.0.18 x86_64, MSBDiskFPSet, DiskStateQueue).\nParsing file /home/azureuser/src/tla/experiments/hive_mind/tla_prompt_language/specs/DistributedRetrievalContract.tla\nParsing file /tmp/FiniteSets.tla\nParsing file /tmp/Naturals.tla\nParsing file /tmp/Sequences.tla\nParsing file /tmp/TLC.tla\nSemantic processing of module Naturals\nSemantic processing of module Sequences\nSemantic processing of module FiniteSets\nSemantic processing of module TLC\nSemantic processing of module DistributedRetrievalContract\nStarting... (2026-03-31 07:12:15)\nComputing initial states...\nComputed 2 initial states...\nFinished computing initial states: 3 distinct states generated at 2026-03-31 07:12:15.\nModel checking completed. No error has been found.\n  Estimates of the probability that TLC did not check all reachable states\n  because two distinct states had the same fingerprint:\n  calculated (optimistic):  val = 4.3E-10\n  based on the actual fingerprints:  val = 4.8E-11\n385572 states generated, 21720 distinct states found, 0 states left on queue.\nThe depth of the complete state graph search is 7.\nThe average outdegree of the complete state graph is 1 (minimum is 0, the maximum 31 and the 95th percentile is 3).\nFinished in 01s at (2026-03-31 07:12:16)\n",
-    "stderr": ""
+  "by_model": {
+    "claude-opus-4.6": {
+      "baseline_score": {
+        "mean": 0.6428,
+        "count": 4
+      },
+      "invariant_compliance": {
+        "mean": 0.625,
+        "count": 4
+      },
+      "proof_alignment": {
+        "mean": 0.75,
+        "count": 4
+      },
+      "local_protocol_alignment": {
+        "mean": 0.5,
+        "count": 4
+      },
+      "progress_signal": {
+        "mean": 0.5,
+        "count": 4
+      },
+      "specification_coverage": {
+        "mean": 0.6071,
+        "count": 4
+      }
+    },
+    "gpt-5.4": {
+      "baseline_score": {
+        "mean": 0.6785,
+        "count": 4
+      },
+      "invariant_compliance": {
+        "mean": 0.6875,
+        "count": 4
+      },
+      "proof_alignment": {
+        "mean": 0.5,
+        "count": 4
+      },
+      "local_protocol_alignment": {
+        "mean": 0.25,
+        "count": 4
+      },
+      "progress_signal": {
+        "mean": 1.0,
+        "count": 4
+      },
+      "specification_coverage": {
+        "mean": 0.6428,
+        "count": 4
+      }
+    }
   }
 }
