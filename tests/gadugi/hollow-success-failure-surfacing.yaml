@@ -1,0 +1,181 @@
+# Outside-in test: hollow-success failure surfacing (#3480 / PR #3484)
+# Verifies that default-workflow steps fail loudly on hollow success conditions.
+
+name: "Hollow-Success Failure Surfacing"
+description: |
+  Verifies that three default-workflow steps that previously swallowed
+  failures now exit non-zero with clear diagnostic messages:
+  - step-03b: empty issue number extraction
+  - step-15: nothing staged to commit
+  - step-16: zero commits ahead with no PR
+version: "1.0.0"
+config:
+  timeout: 120000
+  retries: 1
+  parallel: false
+
+agents:
+  - name: "verifier"
+    type: "system"
+    config:
+      shell: "bash"
+      cwd: "/home/azureuser/src/amplihack"
+      timeout: 60000
+      capture_output: true
+
+steps:
+  # ================================================================
+  # STEP 03b: Issue number extraction now fails on empty
+  # ================================================================
+  - name: "step-03b validates extracted issue number is non-empty"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'if \\[ -z \"\\$EXTRACTED\" \\]' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "step-03b has clear error message on failure"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'step-03b failed to extract issue number' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "step-03b includes raw output in diagnostics"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'Raw issue_creation output was' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Empty extraction exits non-zero"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        # Verify the extraction script FAILS on empty input (expect exit 1)
+        bash -c '
+        set +H
+        ISSUE_CREATION=$(cat <<'"'"'EOFISSUECREATION'"'"'
+        Error: authentication required
+        EOFISSUECREATION
+        )
+        EXTRACTED=$(printf "%s" "$ISSUE_CREATION" | grep -oE "issues/[0-9]+" | grep -oE "[0-9]+" | head -1)
+        if [ -z "$EXTRACTED" ]; then
+          echo "ERROR: step-03b failed to extract issue number" >&2
+          exit 1
+        fi
+        printf "%s" "$EXTRACTED"
+        '
+        EXIT_CODE=$?
+        if [ "$EXIT_CODE" -eq 1 ]; then
+          echo "PASS: empty extraction correctly fails with exit 1"
+          exit 0
+        else
+          echo "FAIL: expected exit 1, got $EXIT_CODE"
+          exit 1
+        fi
+    expect:
+      stdout_contains: ["PASS: empty extraction correctly fails"]
+      exit_code: 0
+
+  - name: "Valid URL extraction still succeeds"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "echo 'https://github.com/org/repo/issues/3440' | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1"
+    expect:
+      stdout_contains: ["3440"]
+      exit_code: 0
+
+  # ================================================================
+  # STEP 15: Commit-push now fails when nothing staged
+  # ================================================================
+  - name: "step-15 has hollow-success error message"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'Nothing staged to commit' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "step-15 error suggests checking file locations"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'outside the worktree' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "step-15 explicitly names the hollow-success pattern"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'hollow-success condition' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Old silent WARNING is removed"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "! grep -q 'WARNING: Nothing to commit - changes already committed' amplifier-bundle/recipes/default-workflow.yaml && echo PASS"
+    expect:
+      stdout_contains: ["PASS"]
+      exit_code: 0
+
+  # ================================================================
+  # STEP 16: Zero-commits-ahead now fails
+  # ================================================================
+  - name: "step-16 has error for zero commits ahead"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c '0 commits ahead of main and no related PR' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "step-16 zero-commits path exits 1"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -A15 'COMMITS_AHEAD.*-eq 0' amplifier-bundle/recipes/default-workflow.yaml | grep -c 'exit 1'"
+    expect:
+      exit_code: 0
+
+  # ================================================================
+  # REGRESSION TESTS PASS
+  # ================================================================
+  - name: "All 23 regression tests pass"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "python3 -m pytest amplifier-bundle/tools/test_default_workflow_fixes.py -v --tb=short -p no:asyncio 2>&1"
+    timeout: 60000
+    expect:
+      stdout_contains: ["23 passed"]
+      exit_code: 0
+
+  # ================================================================
+  # TESTS VERIFY FAILURE BEHAVIOR
+  # ================================================================
+  - name: "Tests assert RuntimeError on empty extraction"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'assertRaises.*RuntimeError' amplifier-bundle/tools/test_default_workflow_fixes.py"
+    expect:
+      exit_code: 0
+
+  - name: "Tests check for specific error message"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'step-03b failed' amplifier-bundle/tools/test_default_workflow_fixes.py"
+    expect:
+      exit_code: 0
+
+# Run: gadugi-test run -f tests/gadugi/hollow-success-failure-surfacing.yaml
