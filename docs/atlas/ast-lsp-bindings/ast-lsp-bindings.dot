@@ -71,6 +71,40 @@ digraph ast_lsp_bindings {
     dead4 [label="copilot_auto_install.py"];
     dead5 [label="staging_cleanup.py"];
 
+    // goal_seeking mixin refactor (PR #3894)
+    subgraph cluster_goal_seeking {
+        label="agents/goal_seeking";
+        style="filled";
+        fillcolor="#f0f8ff";
+        node [shape=record, style="filled", fillcolor="#e8f4fd"];
+
+        la [label="{learning_agent|LearningAgent (facade)\l__init__, retry, lifecycle\l}"];
+        idm [label="{intent_detector|IntentDetectorMixin\l_detect_intent()\l}"];
+        trm [label="{temporal_reasoning|TemporalReasoningMixin\l9 temporal methods\l}"];
+        csm [label="{code_synthesis|CodeSynthesisMixin\l2 code gen methods\l}"];
+        kum [label="{knowledge_utils|KnowledgeUtilsMixin\l15 utility methods\l}"];
+        rsm [label="{retrieval_strategies|RetrievalStrategiesMixin\l20 retrieval methods\l}"];
+        lim [label="{learning_ingestion|LearningIngestionMixin\l10 ingestion methods\l}"];
+        asm [label="{answer_synthesizer|AnswerSynthesizerMixin\l4 synthesis methods\l}"];
+        pu [label="{prompt_utils|_get_llm_completion()\l_load_prompt()\l}"];
+    }
+
+    la -> idm [label="inherits"];
+    la -> trm [label="inherits"];
+    la -> csm [label="inherits"];
+    la -> kum [label="inherits"];
+    la -> rsm [label="inherits"];
+    la -> lim [label="inherits"];
+    la -> asm [label="inherits"];
+    idm -> pu [label="imports"];
+    trm -> pu [label="imports"];
+    csm -> pu [label="imports"];
+    kum -> pu [label="imports"];
+    rsm -> pu [label="imports"];
+    lim -> pu [label="imports"];
+    asm -> pu [label="imports"];
+    pu -> la [label="sys.modules\nresolve", style="dashed", color="#999999"];
+
     // Test modules (bootstrap detection)
     node [shape=box, style="filled", fillcolor="#e8f5e9"];
     test_wf [label="{test_default_workflow_fixes|TestBL001\lTestBL002\lTestBL003\l}"];
