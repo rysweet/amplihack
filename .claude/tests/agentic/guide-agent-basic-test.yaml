@@ -13,6 +13,13 @@ scenario:
     - "amplihack installed (pip install amplihack)"
     - "ANTHROPIC_API_KEY set"
 
+  agents:
+    - name: "cli-agent"
+      type: "system"
+      config:
+        shell: "bash"
+        timeout: 60000
+
   steps:
     - action: launch
       target: "amplihack"

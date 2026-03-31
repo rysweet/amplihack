@@ -462,6 +462,64 @@ class TestRecipeValidation:
                 )
 
 
+class TestRecurseNextCycleYamlValidity:
+    """Regression: #3892 — run-recursive-cycle Python code must stay inside YAML block scalar."""
+
+    def test_recurse_next_cycle_indentation(self, recipe_text):
+        """All lines in run-recursive-cycle command must be indented (inside YAML block)."""
+        in_block = False
+        for line in recipe_text.splitlines():
+            stripped = line.lstrip()
+            if 'id: "run-recursive-cycle"' in line:
+                in_block = True
+                continue
+            if in_block and stripped.startswith("output:"):
+                break
+            if in_block and stripped.startswith("command: |"):
+                in_block = "command"
+                continue
+            if in_block == "command" and line and not line[0].isspace():
+                # Non-empty line at column 0 breaks the YAML block scalar
+                assert False, (
+                    f"Line at column 0 inside run-recursive-cycle command block "
+                    f"breaks YAML literal scalar: {line!r}"
+                )
+
+    def test_recurse_next_cycle_uses_heredoc_not_inline_python(self, recipe_text):
+        """Self-recursion must use heredoc pattern, not python3 -c with inline code (#3892)."""
+        import yaml
+
+        data = yaml.safe_load(recipe_text)
+        step = next(s for s in data["steps"] if s["id"] == "run-recursive-cycle")
+        command = step["command"]
+        assert "python3 -c" not in command, (
+            "run-recursive-cycle should use 'python3 - <<PYEOF' heredoc pattern, "
+            "not 'python3 -c' which requires unindented code that breaks YAML block scalars"
+        )
+        assert "<<'" in command, "run-recursive-cycle should use heredoc for Python code"
+
+    def test_recurse_next_cycle_condition_no_str_wrapper(self, recipe):
+        """Condition should not use str() wrapper (PATTERNS.md: Recipe Condition Syntax)."""
+        step = next(s for s in recipe["steps"] if s["id"] == "run-recursive-cycle")
+        condition = step.get("condition", "")
+        assert "str(" not in condition, (
+            f"Condition uses str() wrapper which is fragile: {condition!r}. "
+            "Variables are already strings in recipe context."
+        )
+
+    def test_rust_runner_parses_recipe(self):
+        """The Rust recipe runner must parse the recipe without errors."""
+        import subprocess
+
+        result = subprocess.run(
+            ["recipe-runner-rs", "--validate-only", str(RECIPE_PATH)],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.returncode == 0, f"Rust runner validation failed: {result.stderr}"
+
+
 class TestOutputTemplateVersion:
     """Bug 5: Output template version must match recipe header version."""
 

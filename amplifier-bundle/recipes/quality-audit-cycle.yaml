@@ -36,6 +36,7 @@ context:
   output_dir: "./eval_results/quality_audit"
 
   # Internal state
+  task_description: ""
   audit_findings: ""
   validated_findings: ""
   validation_agent_1: ""
