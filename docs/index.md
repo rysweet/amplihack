@@ -690,6 +690,7 @@ Fix common issues and learn from past solutions.
 - [Configure Power-Steering Merge Preferences](howto/power-steering-merge-preferences.md) - Set up merge approval workflow
 - [Platform Bridge Quick Start](tutorials/platform-bridge-quickstart.md) - Learn the basics in 10 minutes
 - [Platform Bridge Workflows](howto/platform-bridge-workflows.md) - Common workflows for GitHub and Azure DevOps
+- [Crusty Old Engineer](howto/use-crusty-old-engineer.md) - Skeptical engineering advisor for architecture and tooling decisions
 
 ---
 
