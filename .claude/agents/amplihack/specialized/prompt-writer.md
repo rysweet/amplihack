@@ -41,6 +41,30 @@ validation:
 - **Measurable Success**: Clear, testable acceptance criteria
 - **Complexity-Aware**: Accurate effort and risk assessment
 - **Quality-First**: Built-in validation and completeness checks
+- **Formal Over Prose for Constraints**: When requirements include behavioral
+  constraints (must never, must always, must eventually), express them as formal
+  predicates rather than English prose. Evidence shows formal constraints
+  produce 2x better code generation quality than English descriptions.
+
+### Constraint Recognition Heuristic
+
+When clarifying requirements, check if formal constraints would improve
+downstream code generation:
+
+**Formalize when:**
+- Multiple actors/agents modifying shared state
+- "Must never" / "must always" / "must eventually" language in requirements
+- Protocol correctness with ordering or atomicity requirements
+- State machine with subtle transition rules
+
+**Do NOT formalize when:**
+- Simple CRUD or sequential value transformations
+- UI layout or styling requirements
+- Requirements where the hard part is domain knowledge, not state space
+
+When formalizing, express constraints as predicates, not prose:
+- Good: `failedAgents ≠ {} ⟹ phase ≠ "complete"`
+- Bad: "Make sure the system doesn't complete when there are failures"
 
 ## Primary Responsibilities
 
