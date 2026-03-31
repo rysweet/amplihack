@@ -159,6 +159,14 @@ value where the baseline is weakest. For concurrent/distributed tasks (low
 baseline), TLA+ provides large gains. For behavioral tasks (high baseline),
 Gherkin provides marginal but consistent gains on cross-feature interactions.
 
+### Implications for Prompt Strategy
+
+- **Use Gherkin+English hybrid** for behavioral/feature tasks with complex
+  interactions
+- **Use TLA+** for concurrent/distributed systems with state invariants
+- **Plain English suffices** for simple features with obvious behavior
+- **Never use Gherkin-only** — always pair with implementation guidance
+
 ## Gherkin Feature File
 
 The `.feature` file contains 27 scenarios organized by feature:
