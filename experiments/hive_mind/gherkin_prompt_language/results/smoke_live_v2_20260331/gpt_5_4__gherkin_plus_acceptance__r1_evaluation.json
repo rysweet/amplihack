@@ -1,0 +1,9 @@
+{
+  "condition_id": "gpt_5_4__gherkin_plus_acceptance__r1",
+  "status": "failed",
+  "metrics": {},
+  "notes": [
+    "Live generation failed for gpt_5_4__gherkin_plus_acceptance__r1: Agent execution timed out.",
+    "runtime_error=timeout"
+  ]
+}

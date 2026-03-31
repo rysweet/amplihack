@@ -1,0 +1,35 @@
+{
+  "condition_id": "claude_opus_4_6__gherkin_only__r1",
+  "status": "completed",
+  "metrics": {
+    "baseline_score": 0.2857,
+    "specification_coverage": 0.3182,
+    "scenario_coverage": 0.375,
+    "step_implementation": 0.3158,
+    "edge_case_handling": 0.0,
+    "test_generation": 0.0,
+    "behavioral_alignment": 0.3158
+  },
+  "notes": [
+    "generation_provider=live",
+    "runtime_model_id=claude-opus-4-6",
+    "Heuristic signal only; this is not authoritative grading.",
+    "Gherkin/BDD experiment v2: evaluates recipe-step-executor generation quality.",
+    "Missing heuristic signal: condition_evaluation",
+    "Missing heuristic signal: condition_missing_key",
+    "Missing heuristic signal: skip_no_propagation",
+    "Missing heuristic signal: retry_mechanism",
+    "Missing heuristic signal: retry_exhaustion",
+    "Missing heuristic signal: timeout_enforcement",
+    "Missing heuristic signal: timeout_not_retried",
+    "Missing heuristic signal: timeout_as_failure",
+    "Missing heuristic signal: output_capture",
+    "Missing heuristic signal: sub_recipe_isolation",
+    "Missing heuristic signal: sub_recipe_failure",
+    "Missing heuristic signal: interaction_retry_output",
+    "Missing heuristic signal: interaction_timeout_dependency",
+    "Missing heuristic signal: interaction_skip_condition",
+    "Missing heuristic signal: has_tests",
+    "Missing heuristic signal: tests_cover_interactions"
+  ]
+}
