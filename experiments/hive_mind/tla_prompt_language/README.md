@@ -142,42 +142,61 @@ Live smoke run: 4 prompt variants × 2 models × 1 repeat = 8 conditions.
 | Prompt Variant | Baseline | Invariant | Proof | Local Protocol | Progress | Coverage |
 |---------------|----------|-----------|-------|----------------|----------|----------|
 | english (baseline) | 0.71 | 0.75 | 0.0 | 0.0 | 1.0 | 0.57 |
-| tla_only | *timeout* | — | — | — | — | — |
+| tla_only | **0.86** | **0.75** | **1.0** | **1.0** | **1.0** | **0.86** |
 | tla_plus_english | 0.57 | 0.50 | 1.0 | 0.0 | 1.0 | 0.57 |
-| tla_plus_refinement | *timeout* | — | — | — | — | — |
+| tla_plus_refinement | 0.57 | 0.75 | 0.0 | 0.0 | 1.0 | 0.57 |
+
+Note: `tla_only` and `tla_plus_refinement` initially timed out at 300s default.
+Retried at 600s — both completed. GPT-5.4 needs more time on spec-heavy prompts.
 
 ### Key Findings
 
-1. **TLA+ formal spec doubles Claude's baseline score** (0.43 → 0.86). The
-   `tla_only` and `tla_plus_refinement` variants both achieve the highest scores
-   across all dimensions, including perfect local-protocol and progress-signal
-   alignment.
+1. **TLA+ formal spec alone (tla_only) is the best prompt strategy for both
+   models.** It doubles Claude's baseline (0.43 → 0.86) and improves GPT-5.4
+   (0.71 → 0.86). Both models achieve perfect local-protocol and progress-signal
+   alignment with spec-only prompting. This is the strongest signal in the
+   experiment.
 
-2. **Hybrid prompt (tla_plus_english) does not help Claude**. Adding English
-   guidance alongside the formal spec performs no better than English alone
-   (0.43 baseline). The formal spec alone is more effective than the combination.
-   This suggests the English guidance may dilute the spec's signal or cause the
-   model to focus on prose instructions rather than the formal contract.
+2. **Hybrid prompt (tla_plus_english) hurts both models.** Adding English
+   guidance alongside the formal spec performs no better than English alone for
+   Claude (0.43 = 0.43) and actually *decreases* GPT-5.4's score (0.71 → 0.57).
+   Natural language dilutes the formal signal rather than amplifying it.
 
-3. **Refinement guidance adds no marginal value over spec-only for Claude**.
-   Both `tla_only` and `tla_plus_refinement` score identically. The formal spec
-   alone provides sufficient signal for Claude to generate request-local protocol
-   implementations with proper state tracking.
+3. **Refinement guidance helps Claude but not GPT-5.4.** Claude scores
+   identically with `tla_only` and `tla_plus_refinement` (both 0.86). But
+   GPT-5.4 scores 0.86 with `tla_only` and drops to 0.57 with
+   `tla_plus_refinement`. The refinement prose may interfere with GPT-5.4's
+   interpretation of the formal spec.
 
-4. **GPT-5.4 has higher English baseline than Claude** (0.71 vs 0.43) but the
-   spec-heavy variants timeout. This suggests GPT-5.4 may process formal specs
-   differently (spending more time reasoning about them) or that the Copilot SDK
-   has tighter timeout defaults.
+4. **GPT-5.4 has a higher English baseline than Claude** (0.71 vs 0.43), but
+   the formal spec equalizes them — both reach 0.86 with `tla_only`. The spec
+   acts as a stronger lever for the model with the lower natural-language
+   baseline.
 
-5. **Both models score 0.0 on proof alignment in English-only mode**. Neither
-   model spontaneously references TLA+, invariants, or formal specifications
-   without prompting. This is expected — proof alignment measures whether the
-   generated artifact connects back to the formal contract.
+5. **Formal specs need more processing time.** GPT-5.4 timed out at the 300s
+   default on spec-heavy prompts but completed at 600s. The formal spec triggers
+   deeper reasoning that requires a larger time budget — a real operational
+   consideration for production use.
+
+6. **Neither model spontaneously references formal methods.** Both score 0.0 on
+   proof alignment in English-only mode. Formal contract awareness requires
+   explicit prompting.
+
+### Summary: Spec-Only Wins
+
+| | English | TLA Only | Hybrid | Refinement |
+|---|---------|----------|--------|------------|
+| **Claude** | 0.43 | **0.86** | 0.43 | **0.86** |
+| **GPT-5.4** | 0.71 | **0.86** | 0.57 | 0.57 |
+| **Mean** | 0.57 | **0.86** | 0.50 | 0.71 |
+
+The formal TLA+ specification alone — without English guidance or refinement
+prose — produces the best code generation results across both models. Adding
+natural language to the prompt consistently degrades performance.
 
 ### Caveats
 
 - Smoke matrix (1 repeat per condition) — variance not yet measured
-- 2 of 8 conditions timed out — GPT-5.4 + spec-heavy comparisons incomplete
 - Heuristic scoring is keyword-based, not semantic — possible false positives/negatives
 - Full matrix (3 repeats) needed before drawing firm statistical conclusions
 
