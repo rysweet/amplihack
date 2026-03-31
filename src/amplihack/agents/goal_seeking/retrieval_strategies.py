@@ -149,6 +149,14 @@ class RetrievalStrategiesMixin:
         }
     )
 
+    # Infrastructure relation patterns
+    _INFRASTRUCTURE_RELATION_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
+        "subnet": (
+            re.compile(r"subnet\s+named\s+['\"]?([A-Za-z0-9_.-]+)['\"]?", re.IGNORECASE),
+            re.compile(r"\b([A-Za-z0-9_.-]+)\s+subnet\b", re.IGNORECASE),
+        ),
+    }
+
     # Entity ID pattern
     _ENTITY_ID_PATTERN = re.compile(r"\b([A-Z]{2,5}-\d{4}-\d{2,5})\b")
 

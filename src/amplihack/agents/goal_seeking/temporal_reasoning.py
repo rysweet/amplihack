@@ -17,6 +17,22 @@ logger = logging.getLogger(__name__)
 class TemporalReasoningMixin:
     """Mixin providing temporal reasoning for LearningAgent."""
 
+    # Keyword-to-index mapping for temporal state resolution
+    _TEMPORAL_KEYWORDS: dict[str, str] = {
+        "first": "0",
+        "original": "0",
+        "initial": "0",
+        "second": "1",
+        "third": "2",
+        "intermediate": "len(transitions) // 2",
+        "middle": "len(transitions) // 2",
+        "between": "len(transitions) // 2",
+        "latest": "-1",
+        "current": "-1",
+        "final": "-1",
+        "last": "-1",
+    }
+
     # Temporal pattern constants
     _TEMPORAL_DATE_VALUE_PATTERN = re.compile(
         r"\b("

@@ -54,7 +54,7 @@ class TestLearningAgent:
                 new_callable=AsyncMock,
                 side_effect=[overloaded, "answer"],
             ) as completion,
-            patch("amplihack.agents.goal_seeking.learning_agent.time.sleep") as sleep,
+            patch("amplihack.agents.goal_seeking.learning_agent.asyncio.sleep", new_callable=AsyncMock) as sleep,
         ):
             result = await agent._llm_completion_with_retry(
                 [{"role": "user", "content": "hello"}],
@@ -63,7 +63,7 @@ class TestLearningAgent:
 
         assert result == "answer"
         assert completion.call_count == 2
-        sleep.assert_called_once_with(2)
+        sleep.assert_awaited_once_with(2)
 
     @pytest.mark.asyncio
     @patch("amplihack.agents.goal_seeking.learning_agent._llm_completion", new_callable=AsyncMock)
