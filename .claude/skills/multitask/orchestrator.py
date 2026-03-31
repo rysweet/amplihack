@@ -884,8 +884,9 @@ def run(config_path: str, mode: str = "recipe", recipe: str = "default-workflow"
     )
     repo_url = result.stdout.strip() if result.returncode == 0 else ""
     if not repo_url:
-        print("ERROR: Could not determine repo URL from git remote.")
-        sys.exit(1)
+        # Fall back to env var from recipe, then to cwd (valid local clone source)
+        repo_url = os.environ.get("AMPLIHACK_REPO_PATH", "") or os.getcwd()
+        print(f"WARNING: No git remote 'origin'; using local path: {repo_url}")
 
     orchestrator = ParallelOrchestrator(repo_url=repo_url, mode=mode)
     orchestrator.setup()
