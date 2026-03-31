@@ -17,6 +17,13 @@ scenario:
     - "amplihack installed"
     - "ANTHROPIC_API_KEY set"
 
+  agents:
+    - name: "cli-agent"
+      type: "system"
+      config:
+        shell: "bash"
+        timeout: 60000
+
   context:
     student_state:
       - "Understands basic quality controls exist"

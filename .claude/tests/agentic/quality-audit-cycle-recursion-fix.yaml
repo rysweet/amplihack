@@ -1,0 +1,92 @@
+# Quality Audit Cycle Recursion Fix - Agentic Test Scenario
+# Issue #3892: Verify quality-audit-cycle recipe parses and can self-recurse
+#
+# This outside-in test verifies that the quality-audit-cycle recipe is valid
+# and that the run-recursive-cycle step is reachable by the Rust recipe runner.
+
+scenario:
+  name: "Quality Audit Cycle - Recipe Validity and Recursion"
+  description: |
+    Verifies that quality-audit-cycle.yaml parses successfully in the Rust
+    recipe runner and that the self-recursion step (run-recursive-cycle) is
+    properly recognized with its condition. Regression test for Issue #3892
+    where zero-indented Python code broke the YAML literal block scalar,
+    preventing the Rust runner from parsing the recipe at all.
+  type: cli
+  level: 1
+
+  tags: [recipe, quality-audit, regression, yaml-validity]
+
+  prerequisites:
+    - "recipe-runner-rs is installed and on PATH"
+    - "amplifier-bundle/recipes/quality-audit-cycle.yaml exists"
+
+  agents:
+    - name: "cli-agent"
+      type: "system"
+      config:
+        shell: "bash"
+        timeout: 60000
+
+  steps:
+    # Step 1: Validate recipe parses in Rust runner
+    - action: launch
+      target: "recipe-runner-rs"
+      args: ["--validate-only", "amplifier-bundle/recipes/quality-audit-cycle.yaml"]
+      description: "Verify Rust recipe runner accepts the recipe YAML"
+      timeout: 10s
+
+    - action: wait_for_output
+      contains: "is valid"
+      timeout: 5s
+      description: "Recipe must be reported as valid"
+
+    # Step 2: Verify recipe structure includes recursion step
+    - action: launch
+      target: "recipe-runner-rs"
+      args: ["--explain", "amplifier-bundle/recipes/quality-audit-cycle.yaml"]
+      description: "Show recipe structure and verify recursion step exists"
+      timeout: 10s
+
+    - action: wait_for_output
+      contains: "run-recursive-cycle"
+      timeout: 5s
+      description: "The self-recursion step must be present in the recipe"
+
+    - action: wait_for_output
+      contains: "CONTINUE"
+      timeout: 5s
+      description: "The recursion condition must reference CONTINUE"
+
+    # Step 3: Run unit tests for the recipe
+    - action: launch
+      target: "uv"
+      args:
+        [
+          "run",
+          "pytest",
+          "tests/unit/recipes/test_quality_audit_cycle_issue3638.py",
+          "-v",
+          "--tb=short",
+        ]
+      description: "Run all unit tests for the quality-audit-cycle recipe"
+      timeout: 60s
+
+    - action: wait_for_output
+      contains: "passed"
+      timeout: 60s
+      description: "All unit tests must pass"
+
+    - action: assert_no_output
+      contains: "FAILED"
+      description: "No test failures allowed"
+
+  expected_outcome:
+    summary: |
+      The quality-audit-cycle recipe is valid YAML that the Rust runner can
+      parse and execute. The run-recursive-cycle step is reachable and will
+      fire when recurse_decision contains CONTINUE. All 61 unit tests pass.
+    success_criteria:
+      - "recipe-runner-rs --validate-only reports recipe as valid"
+      - "recipe-runner-rs --explain shows run-recursive-cycle step"
+      - "All pytest tests pass with 0 failures"
