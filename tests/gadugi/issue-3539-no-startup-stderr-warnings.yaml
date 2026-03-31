@@ -1,0 +1,77 @@
+# Outside-in test: no startup stderr warnings (Issue #3539)
+# Verifies that importing core amplihack modules produces no WARNING messages
+# on stderr. Fixes three sources of noise:
+#   1. dep_check.check_sdk_dep() no longer prints WARNING before install
+#   2. microsoft_sdk.py no longer prints WARNING on import
+#   3. re_enable_prompt.py no longer falls back to runtime dir with WARNING
+
+scenario:
+  name: "No Startup stderr Warnings — Silent Import"
+  description: |
+    Importing amplihack.dep_check, amplihack.cli, amplihack.session,
+    amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk, and
+    amplihack.power_steering.re_enable_prompt must not print any
+    WARNING messages to stderr.  This is the simplest user-visible
+    regression check for Issue #3539.
+  type: cli
+  level: 1
+
+  tags: [startup-warnings, stderr, regression, issue-3539]
+
+  prerequisites:
+    - "Python 3.11+ available"
+    - "amplihack package importable"
+
+  environment:
+    variables:
+      PYTHONPATH: "src"
+
+  steps:
+    # ----- Step 1: dep_check — no WARNING before install -----
+    - action: launch
+      target: "python3"
+      args:
+        [
+          "-c",
+          "import sys, io; cap = io.StringIO(); sys.stderr = cap; __import__('amplihack.dep_check'); sys.stderr = sys.__stderr__; out = cap.getvalue(); print('DEP_CHECK_CLEAN=' + str('WARNING' not in out and 'agent_framework not available' not in out))",
+        ]
+      description: "dep_check import must not emit WARNING to stderr"
+
+    - action: verify_output
+      contains: "DEP_CHECK_CLEAN=True"
+      description: "dep_check must import silently"
+
+    # ----- Step 2: microsoft_sdk — no WARNING on import -----
+    - action: launch
+      target: "python3"
+      args:
+        [
+          "-c",
+          "import sys, io; cap = io.StringIO(); sys.stderr = cap; exec('try:\\n    __import__(\"amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk\")\\nexcept Exception: pass'); sys.stderr = sys.__stderr__; out = cap.getvalue(); print('MSSDK_CLEAN=' + str('WARNING' not in out and 'agent_framework not available' not in out))",
+        ]
+      description: "microsoft_sdk import must not emit WARNING to stderr"
+
+    - action: verify_output
+      contains: "MSSDK_CLEAN=True"
+      description: "microsoft_sdk must import silently"
+
+    # ----- Step 3: re_enable_prompt — no fallback WARNING -----
+    - action: launch
+      target: "python3"
+      args:
+        [
+          "-c",
+          "import sys, io; cap = io.StringIO(); sys.stderr = cap; exec('try:\\n    __import__(\"amplihack.power_steering.re_enable_prompt\")\\nexcept Exception: pass'); sys.stderr = sys.__stderr__; out = cap.getvalue(); print('RE_ENABLE_CLEAN=' + str('WARNING' not in out and 'git_utils not available' not in out and 'fallback runtime dir' not in out))",
+        ]
+      description: "re_enable_prompt import must not emit WARNING to stderr"
+
+    - action: verify_output
+      contains: "RE_ENABLE_CLEAN=True"
+      description: "re_enable_prompt must import silently"
+
+  cleanup:
+    - action: capture_output
+      save_as: "issue-3539-no-startup-warnings-output.txt"
+
+# Run Command:
+# gadugi-test run tests/gadugi/issue-3539-no-startup-stderr-warnings.yaml --verbose

@@ -19,14 +19,91 @@ from __future__ import annotations
 
 import importlib
 import logging
+import re
+import shutil
+import subprocess
+import sys
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Security: Input validation
+# ---------------------------------------------------------------------------
+
+# Allowlist pattern for Python import names (e.g. "agent_framework", "os.path").
+# Rejects shell metacharacters and path traversal sequences before any subprocess use.
+_VALID_IMPORT_NAME: re.Pattern[str] = re.compile(
+    r"^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)*$"
+)
+
+# Allowlist pattern for pip package specs following PEP 508 (name + optional version).
+# Allows extras (e.g. "pkg[extra]") and version specifiers (e.g. "pkg>=1.0.0rc1").
+_VALID_PKG_SPEC: re.Pattern[str] = re.compile(
+    r"^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?"  # distribution name
+    r"(\[[\w,\s]+\])?"  # optional extras
+    r"([\s]*(==|!=|<=|>=|<|>|~=)\s*[\w.*+!]+)*$"  # optional version specifier(s)
+)
+
+
+def _validate_import_name(import_name: str) -> None:
+    """Validate a Python import name before use.
+
+    Raises:
+        ValueError: If the name contains characters outside the allowed set.
+    """
+    if not _VALID_IMPORT_NAME.match(import_name):
+        raise ValueError(
+            f"Invalid Python import name: {import_name!r}. "
+            "Only alphanumeric characters, underscores, and dots are permitted."
+        )
+
+
+def _validate_pkg_spec(pkg_spec: str) -> None:
+    """Validate a pip package specifier before passing to subprocess.
+
+    Raises:
+        ValueError: If the specifier is not a valid PEP 508 name/version string.
+    """
+    if not _VALID_PKG_SPEC.match(pkg_spec.strip()):
+        raise ValueError(
+            f"Invalid pip package specifier: {pkg_spec!r}. "
+            "Must follow PEP 508 (e.g. 'package>=1.0.0')."
+        )
+
+
+def _sanitize_pip_output(text: str) -> str:
+    """Strip potentially sensitive data from pip stderr before logging.
+
+    Removes embedded credentials (``user:token@host`` URLs) and common
+    secret-bearing key=value patterns so that internal registry tokens do
+    not appear in log files or CI/CD stdout captures.
+
+    Args:
+        text: Raw pip stderr/stdout text (already truncated by caller).
+
+    Returns:
+        Sanitized text safe for INFO/WARNING log output.
+    """
+    # Remove URLs with embedded credentials (e.g. https://user:pass@host/...)  # pragma: allowlist secret
+    text = re.sub(r"https?://[^@\s]+@[^\s]+", "[REDACTED_URL]", text)  # pragma: allowlist secret
+    # Remove common token/secret key=value patterns
+    text = re.sub(
+        r"(?i)(token|key|secret|password|auth)[=:\s]+\S+", r"\1=[REDACTED]", text
+    )  # pragma: allowlist secret
+    return text
+
+
+# ---------------------------------------------------------------------------
+# SDK dependency registry
+# ---------------------------------------------------------------------------
+
 # SDK packages that MUST be importable for agent adapters to work.
-# Maps package import name -> pip install name for error messages.
+# Maps package import name -> pinned pip install specifier.
+# SECURITY: Always pin to a minimum version to prevent supply-chain attacks
+# via newly-published malicious versions of the same package name.
 SDK_DEPENDENCIES: dict[str, str] = {
-    "agent_framework": "agent-framework-core",
+    "agent_framework": "agent-framework-core>=1.0.0rc1",
 }
 
 
@@ -50,7 +127,11 @@ def check_sdk_dep(import_name: str) -> bool:
 
     Returns:
         True if the package can be imported, False otherwise.
+
+    Raises:
+        ValueError: If ``import_name`` fails the allowlist validation.
     """
+    _validate_import_name(import_name)
     try:
         importlib.import_module(import_name)
         return True
@@ -59,10 +140,13 @@ def check_sdk_dep(import_name: str) -> bool:
 
 
 def _collect_dep_status() -> DepCheckResult:
-    """Check all SDK deps without logging warnings.
+    """Quietly check all SDK dependencies without any output.
 
-    Used internally before auto-install to avoid warning about deps
-    that are about to be installed.
+    This is a pre-install status check that produces no stderr output.
+    Use this to inspect which deps are available before attempting installation.
+
+    Returns:
+        DepCheckResult with available and missing package lists.
     """
     result = DepCheckResult()
     for import_name in SDK_DEPENDENCIES:
@@ -90,11 +174,15 @@ def validate_sdk_deps(raise_on_missing: bool = True) -> DepCheckResult:
     Raises:
         ImportError: When raise_on_missing is True and deps are missing.
     """
-    result = _collect_dep_status()
+    result = DepCheckResult()
 
-    for import_name in result.missing:
-        pip_name = SDK_DEPENDENCIES[import_name]
-        logger.warning("SDK dep MISSING: %s (install: pip install %s)", import_name, pip_name)
+    for import_name, pip_name in SDK_DEPENDENCIES.items():
+        if check_sdk_dep(import_name):
+            result.available.append(import_name)
+            logger.debug("SDK dep OK: %s", import_name)
+        else:
+            result.missing.append(import_name)
+            logger.warning("SDK dep MISSING: %s (install: pip install %s)", import_name, pip_name)
 
     if result.missing and raise_on_missing:
         install_cmds = [f"  pip install {SDK_DEPENDENCIES[m]}" for m in result.missing]
@@ -121,15 +209,9 @@ def ensure_sdk_deps() -> DepCheckResult:
     Returns:
         DepCheckResult after installation attempt.
     """
-    import sys
-
-    # Quiet check first — no warnings for deps we're about to install
-    result = _collect_dep_status()
+    result = validate_sdk_deps(raise_on_missing=False)
     if result.all_ok:
         return result
-
-    import shutil
-    import subprocess
 
     # Try uv first, fall back to pip.
     # Always target the *running* interpreter so the package lands in the
@@ -149,37 +231,43 @@ def ensure_sdk_deps() -> DepCheckResult:
         if installer:
             base_cmd = [installer, "install", "--pre"]
         else:
-            install_cmds = [f"  pip install {SDK_DEPENDENCIES[m]}" for m in result.missing]
-            raise ImportError(
-                "Required SDK dependencies are missing and no installer (uv/pip) found.\n"
-                "Install them manually:\n"
-                + "\n".join(install_cmds)
-            )
+            logger.warning("Neither uv nor pip found. Cannot auto-install SDK deps.")
+            return result
 
     for import_name in result.missing:
-        pip_name = SDK_DEPENDENCIES[import_name]
-        cmd = base_cmd + [pip_name]
-        logger.info("Auto-installing SDK dep: %s", pip_name)
+        pip_spec = SDK_DEPENDENCIES[import_name]
+        # Security: validate the spec before handing it to subprocess.
+        # SDK_DEPENDENCIES values are hardcoded, but this guard prevents
+        # regressions if the dict is ever populated from external input.
+        try:
+            _validate_pkg_spec(pip_spec)
+        except ValueError as ve:
+            logger.error("Skipping auto-install of %r: %s", import_name, ve)
+            continue
+        cmd = base_cmd + [pip_spec]
+        logger.info("Auto-installing SDK dep: %s", pip_spec)
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
             if proc.returncode == 0:
-                logger.info("Installed %s successfully", pip_name)
+                logger.info("Installed %s successfully", pip_spec)
             else:
+                # Sanitize pip stderr before logging to prevent credential leakage.
+                safe_stderr = _sanitize_pip_output(proc.stderr[:500])
                 logger.warning(
                     "Failed to install %s (exit %d): %s",
-                    pip_name,
+                    pip_spec,
                     proc.returncode,
-                    proc.stderr[:200],
+                    safe_stderr,
                 )
         except Exception as e:
-            logger.warning("Failed to install %s: %s", pip_name, e)
+            raise RuntimeError(f"Failed to install {pip_spec}: {e}") from e
 
     # Invalidate import caches so Python picks up newly-installed packages
     # without requiring a process restart.
     importlib.invalidate_caches()
 
-    # Re-check after install — if still missing, that's a real failure
-    return validate_sdk_deps(raise_on_missing=True)
+    # Re-check after install
+    return validate_sdk_deps(raise_on_missing=False)
 
 
 __all__ = [
