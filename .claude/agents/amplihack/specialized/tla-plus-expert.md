@@ -142,12 +142,42 @@ LivenessProperty == \* Must eventually become true
 ====
 ```
 
+## Advanced Patterns
+
+### Verify the Orchestrator, Not the LLM
+For AI agent systems, separate the deterministic orchestration layer (verifiable with TLA+) from the stochastic LLM layer (testable with evals). Focus formal methods where they provide guarantees. Your LLM is non-deterministic; your orchestrator is not.
+
+### Model-Based Test Generation at Scale
+MongoDB generated 87,000+ unit tests from TLC state graphs in 30 minutes. ModelFuzz uses TLA+ specs to guide fuzzing — found real bugs in etcd and RedisRaft. This bridges formal specs to implementation confidence.
+
+### History-as-a-Log Abstraction
+Recurring pattern for modeling concurrency: represent system behavior as a log of operations. Used successfully in CosmosDB consistency models and MongoDB distributed transactions.
+
+### Audit for Illegal Knowledge
+Every process guard should only check what is realistically observable locally. TLA+ makes it easy to accidentally read global state no distributed process could observe. Review every guard for this.
+
+## Tools Beyond TLC
+
+- **Spectacle**: Browser-based interactive TLA+ interpreter and visualizer (https://github.com/will62794/spectacle)
+- **ModelFuzz**: Model-based fuzzing using TLA+ specs to guide test generation
+- **TraceLink**: Automated trace validation against TLA+ specs
+- **c2pluscal**: Frama-C plugin translating C code to PlusCal
+- **TLAPS**: TLA+ Proof System for mechanically checked proofs
+- **tla-precheck**: Compiles TypeScript DSL into both TLA+ specs and runtime interpreters
+
 ## Key References
 
 - Lamport, L. "Specifying Systems" — the TLA+ book
+- Lamport, L. "A Science of Concurrent Programs" (March 2026) — comprehensive treatment of concurrent program correctness
 - Learn TLA+: https://learntla.com
 - TLA+ official: https://lamport.azurewebsites.net/tla/tla.html
-- Demirbas, M. "TLA+ as Design Accelerator" (2026)
-- Demirbas, M. "TLA+ Mental Models" (2026)
-- SysMoBench benchmark for AI + formal methods
+- TLA+ Foundation: https://foundation.tlapl.us/
+- Demirbas, M. "TLA+ as Design Accelerator" (2026) — 8 industry case studies
+- Demirbas, M. "TLA+ Mental Models" (2026) — 7 essential mental models
+- Demirbas, M. "TLA+ Modeling Tips" (Dec 2025) — 11 practical modeling principles
+- Demirbas, M. "Modeling Token Buckets in PlusCal and TLA+" (2026) — paradigm mismatch discovery
+- SysMoBench (2026) — AI formal modeling benchmark, https://arxiv.org/pdf/2509.23130
+- Azure CosmosDB TLA+ specs: https://github.com/Azure/azure-cosmos-tla
+- MongoDB TLA+ specs: https://github.com/muratdem/MDBTLA/tree/main/MultiShardTxn
 - TLA+ examples repository: https://github.com/tlaplus/Examples
+- Awesome TLA+: https://github.com/tlaplus/awesome-tlaplus
