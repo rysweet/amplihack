@@ -1,0 +1,33 @@
+{
+  "evaluation_kind": "heuristic_signal_v2",
+  "metrics": {
+    "baseline_score": 1.0,
+    "specification_coverage": 1.0,
+    "scenario_coverage": 1.0,
+    "step_implementation": 1.0,
+    "edge_case_handling": 1.0,
+    "test_generation": 1.0,
+    "behavioral_alignment": 1.0
+  },
+  "checks": {
+    "registration_endpoint": true,
+    "login_endpoint": true,
+    "token_refresh_endpoint": true,
+    "protected_endpoint": true,
+    "password_change_endpoint": true,
+    "duplicate_email_handling": true,
+    "invalid_credentials_handling": true,
+    "token_expired_handling": true,
+    "invalid_token_handling": true,
+    "input_validation": true,
+    "password_hashing": true,
+    "password_not_exposed": true,
+    "has_tests": true,
+    "tests_cover_errors": true,
+    "spec_alignment": true
+  },
+  "notes": [
+    "Heuristic signal only; this is not authoritative grading.",
+    "Gherkin/BDD experiment: evaluates user-auth API generation quality."
+  ]
+}

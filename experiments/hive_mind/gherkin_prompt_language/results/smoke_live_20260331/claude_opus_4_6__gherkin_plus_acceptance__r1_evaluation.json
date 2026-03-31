@@ -1,0 +1,48 @@
+{
+  "evaluation_kind": "heuristic_signal_v2",
+  "metrics": {
+    "baseline_score": 0.0,
+    "specification_coverage": 0.0,
+    "scenario_coverage": 0.0,
+    "step_implementation": 0.0,
+    "edge_case_handling": 0.0,
+    "test_generation": 0.0,
+    "behavioral_alignment": 0.0
+  },
+  "checks": {
+    "registration_endpoint": false,
+    "login_endpoint": false,
+    "token_refresh_endpoint": false,
+    "protected_endpoint": false,
+    "password_change_endpoint": false,
+    "duplicate_email_handling": false,
+    "invalid_credentials_handling": false,
+    "token_expired_handling": false,
+    "invalid_token_handling": false,
+    "input_validation": false,
+    "password_hashing": false,
+    "password_not_exposed": false,
+    "has_tests": false,
+    "tests_cover_errors": false,
+    "spec_alignment": false
+  },
+  "notes": [
+    "Heuristic signal only; this is not authoritative grading.",
+    "Gherkin/BDD experiment: evaluates user-auth API generation quality.",
+    "Missing heuristic signal: registration_endpoint",
+    "Missing heuristic signal: login_endpoint",
+    "Missing heuristic signal: token_refresh_endpoint",
+    "Missing heuristic signal: protected_endpoint",
+    "Missing heuristic signal: password_change_endpoint",
+    "Missing heuristic signal: duplicate_email_handling",
+    "Missing heuristic signal: invalid_credentials_handling",
+    "Missing heuristic signal: token_expired_handling",
+    "Missing heuristic signal: invalid_token_handling",
+    "Missing heuristic signal: input_validation",
+    "Missing heuristic signal: password_hashing",
+    "Missing heuristic signal: password_not_exposed",
+    "Missing heuristic signal: has_tests",
+    "Missing heuristic signal: tests_cover_errors",
+    "Missing heuristic signal: spec_alignment"
+  ]
+}

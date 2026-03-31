@@ -22,8 +22,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Self
 
@@ -178,15 +179,15 @@ class PromptBundle:
     refinement_text: str | None
     append_spec: bool
     append_refinement: bool
+    spec_section_header: str = "Formal specification"
+    spec_fence_lang: str = "tla"
 
     def combined_text(self) -> str:
         sections = [self.prompt_text.rstrip()]
         if self.append_spec:
             sections.append(
-                "## Formal specification\n\n"
-                "```tla\n"
-                f"{self.spec_text.rstrip()}\n"
-                "```"
+                f"## {self.spec_section_header}\n\n"
+                f"```{self.spec_fence_lang}\n{self.spec_text.rstrip()}\n```"
             )
         if self.append_refinement:
             if self.refinement_text is None:
@@ -194,10 +195,7 @@ class PromptBundle:
                     f"Prompt variant {self.variant_id!r} requested refinement guidance "
                     "but no refinement asset was loaded."
                 )
-            sections.append(
-                "## Refinement guidance\n\n"
-                f"{self.refinement_text.rstrip()}"
-            )
+            sections.append(f"## Refinement guidance\n\n{self.refinement_text.rstrip()}")
         return "\n\n".join(section for section in sections if section) + "\n"
 
 
@@ -218,9 +216,7 @@ class ExperimentCondition:
 
     @property
     def condition_id(self) -> str:
-        return (
-            f"{_slug(self.model_id)}__{_slug(self.prompt_variant_id)}__r{self.repeat_index}"
-        )
+        return f"{_slug(self.model_id)}__{_slug(self.prompt_variant_id)}__r{self.repeat_index}"
 
     def to_dict(self) -> dict[str, Any]:
         data = {
@@ -300,6 +296,12 @@ class ConditionMetrics:
     local_protocol_alignment: float | None = None
     progress_signal: float | None = None
     specification_coverage: float | None = None
+    # Gherkin/BDD experiment metrics (None when not applicable)
+    scenario_coverage: float | None = None
+    step_implementation: float | None = None
+    edge_case_handling: float | None = None
+    test_generation: float | None = None
+    behavioral_alignment: float | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
@@ -310,17 +312,32 @@ class ConditionMetrics:
             local_protocol_alignment=data.get("local_protocol_alignment"),
             progress_signal=data.get("progress_signal"),
             specification_coverage=data.get("specification_coverage"),
+            scenario_coverage=data.get("scenario_coverage"),
+            step_implementation=data.get("step_implementation"),
+            edge_case_handling=data.get("edge_case_handling"),
+            test_generation=data.get("test_generation"),
+            behavioral_alignment=data.get("behavioral_alignment"),
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "baseline_score": self.baseline_score,
-            "invariant_compliance": self.invariant_compliance,
-            "proof_alignment": self.proof_alignment,
-            "local_protocol_alignment": self.local_protocol_alignment,
-            "progress_signal": self.progress_signal,
-            "specification_coverage": self.specification_coverage,
-        }
+        result: dict[str, Any] = {}
+        for field_name in (
+            "baseline_score",
+            "invariant_compliance",
+            "proof_alignment",
+            "local_protocol_alignment",
+            "progress_signal",
+            "specification_coverage",
+            "scenario_coverage",
+            "step_implementation",
+            "edge_case_handling",
+            "test_generation",
+            "behavioral_alignment",
+        ):
+            value = getattr(self, field_name)
+            if value is not None:
+                result[field_name] = value
+        return result
 
 
 @dataclass
@@ -407,9 +424,7 @@ class ExperimentSummaryReport:
             "total_conditions": self.total_conditions,
             "completed_conditions": self.completed_conditions,
             "failed_conditions": self.failed_conditions,
-            "metric_summary": {
-                key: value.to_dict() for key, value in self.metric_summary.items()
-            },
+            "metric_summary": {key: value.to_dict() for key, value in self.metric_summary.items()},
             "by_prompt_variant": {
                 key: {metric: summary.to_dict() for metric, summary in value.items()}
                 for key, value in self.by_prompt_variant.items()
@@ -604,7 +619,9 @@ class ExperimentManifest:
 
     def resolve_asset_path(self, relative_path: str) -> Path:
         if self._base_dir is None:
-            raise ValueError("Manifest base directory is unknown; load from a file or pass base_dir")
+            raise ValueError(
+                "Manifest base directory is unknown; load from a file or pass base_dir"
+            )
         return self._base_dir / relative_path
 
     def get_prompt_variant(self, variant_id: str) -> PromptVariantAsset:
@@ -613,7 +630,13 @@ class ExperimentManifest:
                 return item
         raise KeyError(f"Unknown prompt variant: {variant_id}")
 
-    def load_prompt_bundle(self, variant_id: str) -> PromptBundle:
+    def load_prompt_bundle(
+        self,
+        variant_id: str,
+        *,
+        spec_section_header: str = "Formal specification",
+        spec_fence_lang: str = "tla",
+    ) -> PromptBundle:
         prompt_variant = self.get_prompt_variant(variant_id)
         prompt_path = self.resolve_asset_path(prompt_variant.path)
         spec_path = self.resolve_asset_path(self.spec_asset)
@@ -634,6 +657,8 @@ class ExperimentManifest:
             refinement_text=refinement_path.read_text() if refinement_path is not None else None,
             append_spec=prompt_variant.append_spec,
             append_refinement=prompt_variant.append_refinement,
+            spec_section_header=spec_section_header,
+            spec_fence_lang=spec_fence_lang,
         )
 
     def expand_matrix(self, *, smoke: bool = False) -> list[ExperimentCondition]:
@@ -878,30 +903,13 @@ def summarize_condition_results(results: list[ConditionRunResult]) -> Experiment
     experiment_id = results[0].condition.experiment_id
 
     def bucket(items: list[ConditionRunResult]) -> dict[str, MetricSummary]:
-        metric_values: dict[str, list[float]] = {
-            "baseline_score": [],
-            "invariant_compliance": [],
-            "proof_alignment": [],
-            "local_protocol_alignment": [],
-            "progress_signal": [],
-            "specification_coverage": [],
-        }
+        metric_values: dict[str, list[float]] = {}
         for item in items:
-            metrics = item.metrics
-            if metrics.baseline_score is not None:
-                metric_values["baseline_score"].append(metrics.baseline_score)
-            if metrics.invariant_compliance is not None:
-                metric_values["invariant_compliance"].append(metrics.invariant_compliance)
-            if metrics.proof_alignment is not None:
-                metric_values["proof_alignment"].append(metrics.proof_alignment)
-            if metrics.local_protocol_alignment is not None:
-                metric_values["local_protocol_alignment"].append(metrics.local_protocol_alignment)
-            if metrics.progress_signal is not None:
-                metric_values["progress_signal"].append(metrics.progress_signal)
-            if metrics.specification_coverage is not None:
-                metric_values["specification_coverage"].append(metrics.specification_coverage)
+            for metric_name, value in item.metrics.to_dict().items():
+                if value is not None:
+                    metric_values.setdefault(metric_name, []).append(value)
         summary: dict[str, MetricSummary] = {}
-        for metric_name, values in metric_values.items():
+        for metric_name, values in sorted(metric_values.items()):
             metric_summary = _summarize_metric(values)
             if metric_summary is not None:
                 summary[metric_name] = metric_summary
@@ -1215,7 +1223,7 @@ def _generate_live_artifact(
             allowed_native_tools=[],
         )
         try:
-            response = asyncio.run(runtime.run(prompt_text))
+            response = asyncio.run(runtime.run(prompt_text))  # type: ignore[attr-defined]
             response_text = response.response
         finally:
             runtime.close()
@@ -1290,8 +1298,15 @@ def generate_experiment_markdown_report(
     """Write a markdown report for a local TLA prompt-language experiment run."""
 
     output_file = Path(output_path)
+    # Derive metric column names from actual metrics present in results.
+    metric_names: list[str] = []
+    for result in results:
+        if result.status == "completed":
+            metric_names = sorted(result.metrics.to_dict().keys())
+            break
+
     lines = [
-        "# TLA+ Prompt Language Experiment Report",
+        f"# {execution_report.experiment_id} Experiment Report",
         "",
         f"**Experiment ID**: `{execution_report.experiment_id}`",
         f"**Generated at**: `{execution_report.generated_at}`",
@@ -1308,11 +1323,14 @@ def generate_experiment_markdown_report(
         "",
         "## Condition Table",
         "",
-        "| Condition | Model | SDK | Prompt | Status | Heuristic Baseline | Heuristic Invariant | Heuristic Proof | Heuristic Local | Heuristic Progress | Heuristic Coverage |",
-        "|-----------|-------|-----|--------|--------|--------------------|---------------------|-----------------|-----------------|--------------------|--------------------|",
     ]
+    metric_headers = " | ".join(metric_names)
+    metric_separators = " | ".join("---" for _ in metric_names)
+    lines.append(f"| Condition | Model | SDK | Prompt | Status | {metric_headers} |")
+    lines.append(f"|-----------|-------|-----|--------|--------|{metric_separators}|")
     for result in results:
-        metrics = result.metrics
+        metrics_dict = result.metrics.to_dict()
+        metric_values = " | ".join(str(metrics_dict.get(name, "--")) for name in metric_names)
         lines.append(
             "| "
             f"{result.condition.condition_id} | "
@@ -1320,12 +1338,7 @@ def generate_experiment_markdown_report(
             f"{result.condition.model_sdk} | "
             f"{result.condition.prompt_variant_id} | "
             f"{result.status} | "
-            f"{metrics.baseline_score if metrics.baseline_score is not None else '--'} | "
-            f"{metrics.invariant_compliance if metrics.invariant_compliance is not None else '--'} | "
-            f"{metrics.proof_alignment if metrics.proof_alignment is not None else '--'} | "
-            f"{metrics.local_protocol_alignment if metrics.local_protocol_alignment is not None else '--'} | "
-            f"{metrics.progress_signal if metrics.progress_signal is not None else '--'} | "
-            f"{metrics.specification_coverage if metrics.specification_coverage is not None else '--'} |"
+            f"{metric_values} |"
         )
     lines.extend(
         [
@@ -1353,7 +1366,7 @@ def generate_experiment_markdown_report(
                 "",
                 f"- Runner: `{tlc['runner_kind']}`",
                 f"- Return code: `{tlc['returncode']}`",
-                f"- Command: `{ ' '.join(tlc['command']) }`",
+                f"- Command: `{' '.join(tlc['command'])}`",
             ]
         )
     failed = [item for item in results if item.status == "failed"]
@@ -1378,6 +1391,9 @@ def generate_experiment_markdown_report(
     return output_file
 
 
+EvaluatorFn = Callable[[str], HeuristicEvaluation]
+
+
 def run_tla_prompt_experiment(
     output_dir: str | Path,
     *,
@@ -1388,9 +1404,13 @@ def run_tla_prompt_experiment(
     validate_spec: bool = False,
     tlc_bin: str | None = None,
     tla2tools_jar: str | None = None,
+    evaluator: EvaluatorFn | None = None,
+    spec_section_header: str = "Formal specification",
+    spec_fence_lang: str = "tla",
 ) -> ExperimentExecutionReport:
     """Run the local first-slice experiment and emit per-condition artifacts."""
 
+    evaluate = evaluator or evaluate_generated_artifact
     resolved_manifest = manifest or load_default_experiment_manifest()
     replay_root = Path(replay_dir) if replay_dir is not None else None
     if replay_root is None and not allow_live:
@@ -1416,7 +1436,11 @@ def run_tla_prompt_experiment(
         evaluation_file = condition_dir / "evaluation.json"
         run_result_file = condition_dir / "run_result.json"
         try:
-            bundle = resolved_manifest.load_prompt_bundle(packet.condition.prompt_variant_id)
+            bundle = resolved_manifest.load_prompt_bundle(
+                packet.condition.prompt_variant_id,
+                spec_section_header=spec_section_header,
+                spec_fence_lang=spec_fence_lang,
+            )
             generated = generate_condition_artifact(
                 packet.condition,
                 bundle.combined_text(),
@@ -1426,7 +1450,7 @@ def run_tla_prompt_experiment(
             )
             generated_file.write_text(generated.response_text)
             raw_response_file.write_text(generated.response_text)
-            evaluation = evaluate_generated_artifact(generated.response_text)
+            evaluation = evaluate(generated.response_text)
             evaluation_file.write_text(json.dumps(evaluation.to_dict(), indent=2) + "\n")
             generation_notes = [f"generation_provider={generated.provider}"]
             runtime_model_id = generated.metadata.get("runtime_model_id")
@@ -1475,7 +1499,7 @@ def run_tla_prompt_experiment(
         experiment_id=resolved_manifest.experiment_id,
         matrix_mode="smoke" if smoke else "full",
         output_dir=str(output_dir),
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        generated_at=datetime.now(UTC).isoformat(),
         total_conditions=len(results),
         completed_conditions=sum(1 for item in results if item.status == "completed"),
         failed_conditions=sum(1 for item in results if item.status == "failed"),
@@ -1484,7 +1508,9 @@ def run_tla_prompt_experiment(
         tlc_validation=shared_tlc_result.to_dict() if shared_tlc_result else None,
     )
     output_root = Path(output_dir)
-    (output_root / "experiment_report.json").write_text(json.dumps(report.to_dict(), indent=2) + "\n")
+    (output_root / "experiment_report.json").write_text(
+        json.dumps(report.to_dict(), indent=2) + "\n"
+    )
     generate_experiment_markdown_report(report, results, output_root / "experiment_report.md")
     return report
 
@@ -1593,7 +1619,9 @@ def main(argv: list[str] | None = None) -> int:
         result_files = sorted(args.summarize_results.glob("*/run_result.json"))
         if not result_files:
             raise SystemExit("No run_result.json files found under the given directory")
-        summary = summarize_condition_results([load_condition_result(path) for path in result_files])
+        summary = summarize_condition_results(
+            [load_condition_result(path) for path in result_files]
+        )
         print(json.dumps(summary.to_dict(), indent=2))
         return 0
     if args.materialize_dir:

@@ -79,53 +79,62 @@ COPILOT_AGENT_TIMEOUT=600 python -m amplihack.eval.gherkin_prompt_experiment --r
 Smoke matrix (4 variants x 2 models x 1 repeat), run 2026-03-31.
 4 of 8 conditions completed (all 4 GPT-5.4 timed out via copilot SDK).
 
+**Scorer fix note**: Initial results reported 0.0 edge_case_handling across all
+variants due to a bug — `_contains_any()` uses literal substring matching, but
+interaction check patterns used regex syntax (`retry.*output`). Fixed by adding
+`_matches_any()` with `re.search()`. Results below reflect corrected scores.
+
 ### Claude Opus 4.6
 
 | Variant                 | baseline | scenario_cov | edge_case | test_gen | behavioral | spec_cov |
 | ----------------------- | -------- | ------------ | --------- | -------- | ---------- | -------- |
-| english                 | 0.71     | 0.81         | 0.0       | 1.0      | 0.68       | 0.68     |
-| gherkin_only            | 0.29     | 0.38         | 0.0       | 0.0      | 0.32       | 0.32     |
-| gherkin_plus_english    | **0.86** | **1.0**      | 0.0       | 1.0      | **0.84**   | **0.82** |
-| gherkin_plus_acceptance | 0.67     | 0.75         | 0.0       | 1.0      | 0.63       | 0.64     |
+| english                 | 0.86     | 0.81         | **1.0**   | 1.0      | 0.84       | 0.86     |
+| gherkin_only            | 0.38     | 0.44         | 0.33      | 0.0      | 0.42       | 0.41     |
+| gherkin_plus_english    | **1.0**  | **1.0**      | **1.0**   | 1.0      | **1.0**    | **1.0**  |
+| gherkin_plus_acceptance | 0.76     | 0.81         | 0.33      | 1.0      | 0.74       | 0.77     |
 
 ### GPT-5.4
 
 All 4 conditions FAILED (copilot SDK agent execution timed out with
 COPILOT_AGENT_TIMEOUT=600). This is consistent with V1 where 2 of 4 GPT-5.4
 conditions also timed out. The recipe step executor task is more complex than
-auth API, making timeouts more likely.
+auth API, making timeouts more likely. Retried with COPILOT_AGENT_TIMEOUT=900
+with the same result — this is a copilot SDK infrastructure limitation, not an
+experiment issue.
 
 ### Key Findings
 
 **1. Task is genuinely harder.** English baseline dropped from 1.0 (V1 auth) to
-0.71 (V2 executor). This confirms the task novelty hypothesis — models lack
+0.86 (V2 executor). This confirms the task novelty hypothesis — models lack
 strong priors for custom workflow engines with interacting features.
 
-**2. Gherkin + English (hybrid) outperforms English alone.**
+**2. Gherkin + English (hybrid) achieves perfect scores.**
 
-- baseline: 0.71 → 0.86 (+21%)
-- scenario_coverage: 0.81 → 1.0 (+23%)
-- behavioral_alignment: 0.68 → 0.84 (+24%)
+- baseline: 0.86 → **1.0** (+16%)
+- scenario_coverage: 0.81 → **1.0** (+23%)
+- behavioral_alignment: 0.84 → **1.0** (+19%)
+- edge_case_handling: 1.0 → **1.0** (both handle interactions)
 
-This is the first experiment where Gherkin adds measurable value. The hybrid
-prompt achieves perfect scenario coverage (1.0) where English alone misses
-features.
+The hybrid prompt is the only variant that achieves perfect scores across all
+dimensions. It provides both behavioral contracts (from Gherkin) and
+implementation guidance (from English), allowing the model to focus on coding
+rather than interpretation.
 
-**3. Gherkin alone performs poorly.** The gherkin_only variant scored 0.29 — the
-model spent tokens reasoning about spec ambiguities ("what does this scenario
-mean?") instead of generating code. The minimal prompt wrapper ("implement the
-spec below") was insufficient without implementation guidance.
+**3. Gherkin alone performs poorly.** The gherkin_only variant scored 0.38 — the
+model spent tokens reasoning about spec ambiguities instead of generating code.
+The minimal prompt wrapper ("implement the spec below") was insufficient without
+implementation guidance.
 
 **4. Acceptance criteria adds overhead without proportional benefit.**
-gherkin_plus_acceptance (0.67) scored lower than both English (0.71) and hybrid
-(0.86). The additional acceptance criteria text consumed tokens without adding
+gherkin_plus_acceptance (0.76) scored lower than both English (0.86) and hybrid
+(1.0). The additional acceptance criteria text consumed tokens without adding
 useful signal beyond what the .feature file already specified.
 
-**5. Cross-feature interactions remain universally hard.** All variants scored
-0.0 on edge_case_handling (interaction scenarios). No variant produced code that
-correctly handles retry-output-condition, timeout-dependency, or
-skip-condition interactions. This is the genuine frontier where even formal
-specs don't yet help.
+**5. Cross-feature interactions differentiate variants.** With the corrected
+scorer, interaction handling reveals real differences: the hybrid (1.0) and
+English (1.0) both handle interactions correctly, while gherkin_only (0.33) and
+gherkin_plus_acceptance (0.33) fail on most interactions. The interactions are
+not universally hard — they require sufficient implementation context.
 
 ## V1 Results (User Auth API — Archived)
 
@@ -144,15 +153,15 @@ history (initial PR #3964 commit).
 
 ## Comparison: V1 vs V2 vs TLA+ Experiment
 
-| Dimension                  | TLA+                 | Gherkin V1 (auth)       | Gherkin V2 (executor)   |
-| -------------------------- | -------------------- | ----------------------- | ----------------------- |
-| Task type                  | Distributed protocol | Auth API                | Workflow engine         |
-| Task novelty               | High (niche)         | Low (common)            | Medium-High (custom)    |
-| English baseline           | 0.43                 | 1.0                     | 0.71                    |
-| Best formal spec variant   | 0.86 (tla_only)      | 1.0 (all tied)          | **0.86** (hybrid)       |
-| Improvement over English   | +100%                | +0%                     | **+21%**                |
-| Cross-feature interactions | N/A                  | N/A                     | 0.0 (all variants)      |
-| Spec format                | TLA+ temporal logic  | Gherkin Given/When/Then | Gherkin Given/When/Then |
+| Dimension                  | TLA+                 | Gherkin V1 (auth)       | Gherkin V2 (executor)    |
+| -------------------------- | -------------------- | ----------------------- | ------------------------ |
+| Task type                  | Distributed protocol | Auth API                | Workflow engine          |
+| Task novelty               | High (niche)         | Low (common)            | Medium-High (custom)     |
+| English baseline           | 0.43                 | 1.0                     | 0.86                     |
+| Best formal spec variant   | 0.86 (tla_only)      | 1.0 (all tied)          | **1.0** (hybrid)         |
+| Improvement over English   | +100%                | +0%                     | **+16%**                 |
+| Cross-feature interactions | N/A                  | N/A                     | 1.0 (hybrid), 0.33 (avg) |
+| Spec format                | TLA+ temporal logic  | Gherkin Given/When/Then | Gherkin Given/When/Then  |
 
 ### Pattern Confirmed
 
@@ -164,7 +173,8 @@ Formal specs help when:
 
 The **hybrid** approach (formal spec as behavioral contract + English for
 implementation guidance) is the winning pattern across both TLA+ and Gherkin
-experiments.
+experiments. It achieves perfect scores (1.0) on the recipe step executor, while
+English alone scores 0.86 — a meaningful but not dramatic improvement.
 
 ## Unified Spec Strategy (Updated)
 

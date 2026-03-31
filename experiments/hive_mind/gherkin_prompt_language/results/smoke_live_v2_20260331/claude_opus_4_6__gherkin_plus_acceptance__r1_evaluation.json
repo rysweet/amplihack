@@ -2,25 +2,21 @@
   "condition_id": "claude_opus_4_6__gherkin_plus_acceptance__r1",
   "status": "completed",
   "metrics": {
-    "baseline_score": 0.6667,
-    "specification_coverage": 0.6818,
-    "scenario_coverage": 0.75,
-    "step_implementation": 0.6316,
-    "edge_case_handling": 0.0,
+    "baseline_score": 0.7619,
+    "specification_coverage": 0.7727,
+    "scenario_coverage": 0.8125,
+    "step_implementation": 0.7368,
+    "edge_case_handling": 0.3333,
     "test_generation": 1.0,
-    "behavioral_alignment": 0.6316
+    "behavioral_alignment": 0.7368
   },
   "notes": [
-    "generation_provider=live",
-    "runtime_model_id=claude-opus-4-6",
     "Heuristic signal only; this is not authoritative grading.",
     "Gherkin/BDD experiment v2: evaluates recipe-step-executor generation quality.",
-    "Missing heuristic signal: skip_no_propagation",
     "Missing heuristic signal: timeout_not_retried",
     "Missing heuristic signal: timeout_as_failure",
     "Missing heuristic signal: sub_recipe_failure",
     "Missing heuristic signal: interaction_retry_output",
-    "Missing heuristic signal: interaction_timeout_dependency",
-    "Missing heuristic signal: interaction_skip_condition"
+    "Missing heuristic signal: interaction_timeout_dependency"
   ]
 }

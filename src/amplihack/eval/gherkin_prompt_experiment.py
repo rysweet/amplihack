@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -36,6 +37,11 @@ from amplihack.eval.tla_prompt_experiment import (
 
 DEFAULT_GHERKIN_EXPERIMENT_HOME = Path("experiments/hive_mind/gherkin_prompt_language")
 DEFAULT_MANIFEST_NAME = "manifest.json"
+
+
+def _matches_any(text: str, patterns: tuple[str, ...]) -> bool:
+    """Check if text matches any of the given regex patterns."""
+    return any(re.search(p, text) for p in patterns)
 
 
 def _repo_root() -> Path:
@@ -70,9 +76,9 @@ def evaluate_gherkin_artifact(text: str) -> HeuristicEvaluation:
             ("condition", "eval", "expression"),
             ("context", "dict", "skip", "false"),
         ),
-        "condition_skip_on_false": _contains_any(
+        "condition_skip_on_false": _matches_any(
             normalized,
-            ("skipped", "skip", "status.*skip", "condition.*false", "condition.*skip"),
+            ("skipped", "skip", r"status.*skip", r"condition.*false", r"condition.*skip"),
         ),
         "condition_missing_key": _contains_any(
             normalized,
@@ -94,33 +100,33 @@ def evaluate_gherkin_artifact(text: str) -> HeuristicEvaluation:
             ("blockedby", "blocked_by", "depends", "dependencies", "dependency"),
             ("complete", "wait", "before", "dag", "order", "topological", "graph"),
         ),
-        "fail_propagation": _contains_any(
+        "fail_propagation": _matches_any(
             normalized,
             (
                 "dependency_failed",
                 "dependency failed",
                 "propagat",
-                "blocked.*fail",
-                "fail.*propagat",
+                r"blocked.*fail",
+                r"fail.*propagat",
                 "failed dependency",
             ),
         ),
-        "skip_no_propagation": _contains_any(
+        "skip_no_propagation": _matches_any(
             normalized,
             (
-                "skip.*not propagat",
-                "skip.*does not",
-                "skip.*normal",
-                "skipped.*execut",
-                "skip.*no.*propagat",
+                r"skip.*not propagat",
+                r"skip.*does not",
+                r"skip.*normal",
+                r"skipped.*execut",
+                r"skip.*no.*propagat",
                 "skip_does_not_propagate",
                 "does not propagate",
                 "not propagate",
-                "skip.*continue",
-                "skipped.*proceed",
+                r"skip.*continue",
+                r"skipped.*proceed",
                 "skipped dependency",
                 "blocked_by_skipped",
-                "blocked.*skipped.*run",
+                r"blocked.*skipped.*run",
             ),
         ),
         # --- Feature 3: Retry with backoff ---
@@ -129,15 +135,15 @@ def evaluate_gherkin_artifact(text: str) -> HeuristicEvaluation:
             ("retry", "retries", "max_retries", "attempt"),
             ("backoff", "exponential", "delay", "1s", "2s", "4s", "sleep"),
         ),
-        "retry_exhaustion": _contains_any(
+        "retry_exhaustion": _matches_any(
             normalized,
             (
                 "exhaust",
                 "all retries",
                 "max retries",
                 "max_retries",
-                "attempt.*fail",
-                "retries.*fail",
+                r"attempt.*fail",
+                r"retries.*fail",
             ),
         ),
         # --- Feature 4: Timeout handling ---
@@ -146,29 +152,29 @@ def evaluate_gherkin_artifact(text: str) -> HeuristicEvaluation:
             ("timeout", "timeout_seconds", "timed_out", "timed out"),
             ("terminat", "cancel", "kill", "wait_for", "asyncio.wait_for", "signal"),
         ),
-        "timeout_not_retried": _contains_any(
+        "timeout_not_retried": _matches_any(
             normalized,
             (
-                "timed_out.*not.*retr",
-                "timeout.*not.*retr",
-                "not retr.*timeout",
-                "not retr.*timed",
-                "timed_out.*terminal",
-                "timeout.*skip.*retry",
+                r"timed_out.*not.*retr",
+                r"timeout.*not.*retr",
+                r"not retr.*timeout",
+                r"not retr.*timed",
+                r"timed_out.*terminal",
+                r"timeout.*skip.*retry",
                 "not retried",
                 "are not retried",
             ),
         ),
-        "timeout_as_failure": _contains_any(
+        "timeout_as_failure": _matches_any(
             normalized,
             (
-                "timed_out.*fail",
-                "timeout.*dependency",
-                "timeout.*propagat",
-                "timed.*count.*fail",
-                "timed_out.*blocked",
+                r"timed_out.*fail",
+                r"timeout.*dependency",
+                r"timeout.*propagat",
+                r"timed.*count.*fail",
+                r"timed_out.*blocked",
                 "timed_out.*dependency_failed",
-                "failed.*timed_out",
+                r"failed.*timed_out",
                 '"failed", "timed_out"',
             ),
         ),
@@ -196,70 +202,78 @@ def evaluate_gherkin_artifact(text: str) -> HeuristicEvaluation:
             ("sub_recipe", "sub recipe", "child", "nested", "delegate"),
             ("context", "inherit", "execute", "run"),
         ),
-        "sub_recipe_isolation": _contains_any(
+        "sub_recipe_isolation": _matches_any(
             normalized,
             (
                 "propagate_outputs",
                 "propagate outputs",
-                "child.*not.*propagat",
+                r"child.*not.*propagat",
                 "isolat",
                 "child context",
                 "child_context",
             ),
         ),
-        "sub_recipe_failure": _contains_any(
+        "sub_recipe_failure": _matches_any(
             normalized,
             (
-                "sub.*fail.*not.*propagat",
-                "fail.*sub.*no.*propagat",
-                "failed.*child.*no.*output",
-                "sub_recipe.*fail",
-                "child.*fail.*parent",
+                r"sub.*fail.*not.*propagat",
+                r"fail.*sub.*no.*propagat",
+                r"failed.*child.*no.*output",
+                r"sub_recipe.*fail",
+                r"child.*fail.*parent",
                 "sub-recipe failed",
                 "never propagates",
                 "child_failed",
-                "failed.*no.*propagat",
+                r"failed.*no.*propagat",
             ),
         ),
         # --- Cross-feature interactions ---
-        "interaction_retry_output": _contains_any(
+        "interaction_retry_output": _matches_any(
             normalized,
             (
-                "retry.*output",
-                "retried.*output",
-                "final.*success.*output",
-                "output.*retry",
-                "attempt.*output",
-                "successful.*attempt.*value",
-                "condition.*retried",
-                "retried.*step.*output",
+                r"retry.*output",
+                r"retried.*output",
+                r"final.*success.*output",
+                r"output.*retry",
+                r"attempt.*output",
+                r"successful.*attempt.*value",
+                r"condition.*retried",
+                r"retried.*step.*output",
+                "retried_step_output",
                 "interaction_condition_on_retried",
                 "interaction_template_with_retried",
+                r"output.*retried",
+                "successful output stored",
             ),
         ),
-        "interaction_timeout_dependency": _contains_any(
+        "interaction_timeout_dependency": _matches_any(
             normalized,
             (
-                "timed.*block",
-                "timeout.*depend",
-                "timed_out.*dependency",
-                "timeout.*blocked",
+                r"timed.*block",
+                r"timeout.*depend",
+                r"timed_out.*dependency",
+                r"timeout.*blocked",
                 "interaction_timeout_blocks",
-                "timeout.*fails.*dependency",
-                "timed_out.*blocked.*fail",
+                r"timeout.*fails.*dependency",
+                r"timed_out.*blocked.*fail",
+                "timed_out_blocks",
+                r"timed.out.*propagat.*fail",
             ),
         ),
-        "interaction_skip_condition": _contains_any(
+        "interaction_skip_condition": _matches_any(
             normalized,
             (
-                "skip.*condition",
-                "condition.*skip",
-                "skipped.*output.*none",
-                "skip.*no.*output.*condition",
-                "condition.*missing.*skip",
+                r"skip.*condition",
+                r"condition.*skip",
+                r"skipped.*output.*none",
+                r"skip.*no.*output.*condition",
+                r"condition.*missing.*skip",
                 "interaction_condition_refs_skipped",
-                "condition.*refs.*skipped",
-                "skipped.*step.*condition.*false",
+                r"condition.*refs.*skipped",
+                r"skipped.*step.*condition.*false",
+                "referencing_skipped",
+                r"condition.*referenc.*skip",
+                r"skipped.*condition.*false",
             ),
         ),
         # --- Test generation ---
