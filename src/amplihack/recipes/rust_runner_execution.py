@@ -28,13 +28,17 @@ _LOG_FILE_MODE = 0o600
 
 # Shared step-transition prefix for filtering JSONL markers from meaningful stderr.
 _STEP_TRANSITION_PREFIX = '{"type":"step_transition"'
+_LEGACY_STEP_TRANSITION_PREFIX = '{"transition":"step_'
+_HEARTBEAT_PREFIX = '{"type":"heartbeat"'
+_LEGACY_HEARTBEAT_PREFIX = "::heartbeat::"
 
 
 def emit_step_transition(step_name: str, status: str) -> None:
     """Emit a machine-readable JSONL step-transition marker to stderr."""
     print(
         json.dumps(
-            {"type": "step_transition", "step": step_name, "status": status, "ts": time.time()}
+            {"type": "step_transition", "step": step_name, "status": status, "ts": time.time()},
+            separators=(",", ":"),
         ),
         file=sys.stderr,
         flush=True,
@@ -125,16 +129,6 @@ def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, in
             return
         for line in process.stdout:
             stdout_chunks.append(line)
-
-    def _emit_step_transition(step_name: str, status: str) -> None:
-        """Emit a machine-readable JSONL step-transition marker to stderr."""
-        print(
-            json.dumps(
-                {"type": "step_transition", "step": step_name, "status": status, "ts": time.time()}
-            ),
-            file=sys.stderr,
-            flush=True,
-        )
 
     def _drain_stderr() -> None:
         if process.stderr is None:
@@ -399,12 +393,30 @@ def _run_rust_process(
 
 def _meaningful_stderr_tail(stderr: str) -> str:
     lines = stderr.strip().splitlines()
-    meaningful = [
-        line
-        for line in lines
-        if not line.strip().startswith(("▶", "✓", "⊘", "✗", "[agent]", _STEP_TRANSITION_PREFIX))
-    ]
+    meaningful = [line for line in lines if not _is_progress_metadata_line(line)]
     return "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
+
+
+def _is_progress_metadata_line(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped:
+        return True
+    if stripped.startswith(("▶", "✓", "⊘", "✗", "[agent]", _LEGACY_HEARTBEAT_PREFIX)):
+        return True
+    if stripped.startswith((_STEP_TRANSITION_PREFIX, _LEGACY_STEP_TRANSITION_PREFIX)):
+        return True
+    if stripped.startswith("{"):
+        try:
+            payload = json.loads(stripped)
+        except json.JSONDecodeError:
+            return False
+        if payload.get("type") == "heartbeat":
+            return True
+        if isinstance(payload.get("transition"), str) and payload["transition"].startswith("step_"):
+            return True
+    if stripped.startswith(_HEARTBEAT_PREFIX):
+        return True
+    return False
 
 
 def _raise_process_failure(*, stderr: str, returncode: int) -> None:

@@ -307,6 +307,38 @@ class TestBug2ScalarVarsSafe:
             )
 
 
+class TestRecursiveCycleStep:
+    """Recursive re-entry must use the same safe patterns as other JSON-heavy steps."""
+
+    def test_recursive_step_exists(self, steps_by_id):
+        assert "run-recursive-cycle" in steps_by_id
+
+    def test_recursive_step_uses_tmpfile_for_cycle_history(self, steps_by_id):
+        step = steps_by_id["run-recursive-cycle"]
+        command = step.get("command", "")
+        assert "mktemp" in command
+        assert "__AMPLIHACK_SAFE_HEREDOC_HISTORY_STEP5B__" in command
+
+    def test_recursive_step_uses_run_recipe_by_name(self, steps_by_id):
+        step = steps_by_id["run-recursive-cycle"]
+        command = step.get("command", "")
+        assert "run_recipe_by_name(" in command
+        assert '"quality-audit-cycle"' in command
+        assert '"repo_path": os.environ["REPO_PATH"]' in command
+
+    def test_final_report_context_declared(self, recipe):
+        final_report = recipe["context"].get("final_report")
+        assert isinstance(final_report, dict), "final_report context must be a dict."
+        for key in (
+            "cycle_number",
+            "recurse_decision",
+            "summary",
+            "self_improvement_results",
+            "target_path",
+        ):
+            assert key in final_report, f"final_report missing {key!r}."
+
+
 # ============================================================================
 # BUG 3: SKILL.md wrong invocation pattern (#3638 problem 3)
 # ============================================================================
@@ -431,14 +463,14 @@ class TestRecipeValidation:
 
 
 class TestRecurseNextCycleYamlValidity:
-    """Regression: #3892 — recurse-next-cycle Python code must stay inside YAML block scalar."""
+    """Regression: #3892 — run-recursive-cycle Python code must stay inside YAML block scalar."""
 
     def test_recurse_next_cycle_indentation(self, recipe_text):
-        """All lines in recurse-next-cycle command must be indented (inside YAML block)."""
+        """All lines in run-recursive-cycle command must be indented (inside YAML block)."""
         in_block = False
         for line in recipe_text.splitlines():
             stripped = line.lstrip()
-            if 'id: "recurse-next-cycle"' in line:
+            if 'id: "run-recursive-cycle"' in line:
                 in_block = True
                 continue
             if in_block and stripped.startswith("output:"):
@@ -449,7 +481,7 @@ class TestRecurseNextCycleYamlValidity:
             if in_block == "command" and line and not line[0].isspace():
                 # Non-empty line at column 0 breaks the YAML block scalar
                 assert False, (
-                    f"Line at column 0 inside recurse-next-cycle command block "
+                    f"Line at column 0 inside run-recursive-cycle command block "
                     f"breaks YAML literal scalar: {line!r}"
                 )
 
@@ -458,19 +490,17 @@ class TestRecurseNextCycleYamlValidity:
         import yaml
 
         data = yaml.safe_load(recipe_text)
-        step = next(s for s in data["steps"] if s["id"] == "recurse-next-cycle")
+        step = next(s for s in data["steps"] if s["id"] == "run-recursive-cycle")
         command = step["command"]
         assert "python3 -c" not in command, (
-            "recurse-next-cycle should use 'python3 - <<PYEOF' heredoc pattern, "
+            "run-recursive-cycle should use 'python3 - <<PYEOF' heredoc pattern, "
             "not 'python3 -c' which requires unindented code that breaks YAML block scalars"
         )
-        assert "<<'PYEOF'" in command or "<<PYEOF" in command, (
-            "recurse-next-cycle should use heredoc for Python code"
-        )
+        assert "<<'" in command, "run-recursive-cycle should use heredoc for Python code"
 
     def test_recurse_next_cycle_condition_no_str_wrapper(self, recipe):
         """Condition should not use str() wrapper (PATTERNS.md: Recipe Condition Syntax)."""
-        step = next(s for s in recipe["steps"] if s["id"] == "recurse-next-cycle")
+        step = next(s for s in recipe["steps"] if s["id"] == "run-recursive-cycle")
         condition = step.get("condition", "")
         assert "str(" not in condition, (
             f"Condition uses str() wrapper which is fragile: {condition!r}. "
