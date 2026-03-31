@@ -984,6 +984,49 @@ MSG → detect ALL signals in parallel:
 
 ---
 
+## Prompt Engineering Patterns
+
+### Pattern: Formal Specification as Prompt
+
+**Challenge**: Natural language prompts for concurrent/distributed system code generation produce unreliable results because English is inherently ambiguous about safety invariants.
+
+**Solution**: Provide the TLA+ specification directly as the prompt context instead of (or in addition to) English descriptions.
+
+**Empirical Evidence** (Issue #3497, 8 conditions, 2 models):
+
+| Prompt Variant        | Baseline Score | Coverage Score |
+|----------------------|---------------|----------------|
+| english              | 0.57          | 0.43           |
+| tla_only             | **0.86**      | **0.86**       |
+| tla_plus_english     | 0.50          | 0.50           |
+| tla_plus_refinement  | 0.71          | 0.71           |
+
+**Key Finding**: The formal TLA+ spec alone produces the best results. Adding natural language to the prompt consistently *degrades* performance. Both Claude and GPT-5.4 reach 0.86 with tla_only.
+
+**When to Use**:
+
+- Concurrent components with safety invariants (mutual exclusion, ordering, liveness)
+- Distributed protocols (fan-out/merge, quorum, timeout handling)
+- State machines with non-obvious valid transitions
+- Any component where "what must always be true" matters more than "how to implement"
+
+**When NOT to Use**:
+
+- CRUD endpoints, UI components, simple data transformations
+- When no safety invariants exist to formalize
+- When the team lacks TLA+ literacy (training cost > benefit)
+
+**Key Points**:
+
+- Formal specs remove English ambiguity — the model gets unambiguous constraints
+- Hybrid prompts (TLA+ + English) perform *worse* than TLA+ alone, likely because the model resolves conflicts between the two in unpredictable ways
+- The spec doubles as a verification artifact: TLC model-checks the invariants before any code is generated
+- Proportionality applies — only formalize when invariants are non-trivial
+
+> **Origin**: #3497 experiment (2026-03-31). TLC validated: 5,927 states, 2,660 distinct, 0 errors, 7 invariants hold. See `experiments/hive_mind/tla_prompt_language/`.
+
+---
+
 ## Remember
 
 These patterns represent proven solutions from real development challenges:
