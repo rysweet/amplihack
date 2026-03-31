@@ -36,6 +36,7 @@ context:
   output_dir: "./eval_results/quality_audit"
 
   # Internal state
+  task_description: ""
   audit_findings: ""
   validated_findings: ""
   validation_agent_1: ""
@@ -46,6 +47,7 @@ context:
   cycle_number: "1"
   cycle_history: ""
   recurse_decision: ""
+  subcycle_result: ""
   summary: ""
   self_improvement_results: ""
 
@@ -677,7 +679,7 @@ steps:
   # ========================================================================
   - id: "recurse-next-cycle"
     type: "bash"
-    condition: "'CONTINUE' in str(recurse_decision)"
+    condition: "recurse_decision and 'CONTINUE' in recurse_decision"
     command: |
       # Extract next cycle number from recurse_decision (format: "CONTINUE:N")
       NEXT_CYCLE=$(echo "{{recurse_decision}}" | grep -oP 'CONTINUE:\K[0-9]+' || echo "")
@@ -686,25 +688,53 @@ steps:
         exit 0
       fi
       echo "=== Launching cycle $NEXT_CYCLE ===" >&2
+
+      # Write context values to temp files to avoid shell quoting issues (#3892).
+      # Single-quoted heredoc delimiters prevent shell expansion.
+      _TASK_DESC_TMPFILE=$(mktemp)
+      _HISTORY_TMPFILE=$(mktemp)
+      chmod 600 "$_TASK_DESC_TMPFILE" "$_HISTORY_TMPFILE"
+      trap 'rm -f "$_TASK_DESC_TMPFILE" "$_HISTORY_TMPFILE"' EXIT
+      cat > "$_TASK_DESC_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_TASKDESC_STEP5B__'
+      {{task_description}}
+      __AMPLIHACK_SAFE_HEREDOC_TASKDESC_STEP5B__
+      cat > "$_HISTORY_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_HISTORY_STEP5B__'
+      {{cycle_history}}
+      Cycle {{cycle_number}}: {{recurse_decision}}
+      __AMPLIHACK_SAFE_HEREDOC_HISTORY_STEP5B__
+
+      export TASK_DESC_FILE="$_TASK_DESC_TMPFILE"
+      export HISTORY_FILE="$_HISTORY_TMPFILE"
+      export NEXT_CYCLE
+      export REPO_PATH="{{repo_path}}"
+      export TARGET_PATH="{{target_path}}"
+      export MIN_CYCLES="{{min_cycles}}"
+      export MAX_CYCLES="{{max_cycles}}"
+
       # Self-invoke with incremented cycle_number
       AMPLIHACK_HOME="${AMPLIHACK_HOME:-$HOME/.amplihack}" \
-        python3 -c "
-from amplihack.recipes import run_recipe_by_name
-result = run_recipe_by_name(
-    'quality-audit-cycle',
-    user_context={
-        'task_description': '''{{task_description}}''',
-        'repo_path': '{{repo_path}}',
-        'target_path': '{{target_path}}',
-        'min_cycles': '{{min_cycles}}',
-        'max_cycles': '{{max_cycles}}',
-        'cycle_number': '$NEXT_CYCLE',
-        'cycle_history': '''{{cycle_history}}\nCycle {{cycle_number}}: {{recurse_decision}}''',
-    },
-    progress=True,
-)
-print(f'Sub-cycle result: {result.success}')
-"
+        python3 - <<'PYEOF'
+      import os
+      from amplihack.recipes import run_recipe_by_name
+
+      task_desc = open(os.environ['TASK_DESC_FILE']).read().strip()
+      history = open(os.environ['HISTORY_FILE']).read().strip()
+
+      result = run_recipe_by_name(
+          'quality-audit-cycle',
+          user_context={
+              'task_description': task_desc,
+              'repo_path': os.environ['REPO_PATH'],
+              'target_path': os.environ['TARGET_PATH'],
+              'min_cycles': os.environ['MIN_CYCLES'],
+              'max_cycles': os.environ['MAX_CYCLES'],
+              'cycle_number': os.environ['NEXT_CYCLE'],
+              'cycle_history': history,
+          },
+          progress=True,
+      )
+      print(f'Sub-cycle result: {result.success}')
+      PYEOF
     output: "subcycle_result"
 
   # ========================================================================
