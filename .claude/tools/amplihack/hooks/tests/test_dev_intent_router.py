@@ -15,6 +15,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -265,6 +266,9 @@ class TestRecipeProgress(unittest.TestCase):
 
     def _write_progress(self, filename: str, payload: dict) -> Path:
         path = Path(self._tmp) / filename
+        payload.setdefault("pid", os.getpid())
+        payload.setdefault("updated_at", time.time())
+        payload.setdefault("recipe_name", "smart-orchestrator")
         path.write_text(json.dumps(payload), encoding="utf-8")
         return path
 
@@ -277,7 +281,7 @@ class TestRecipeProgress(unittest.TestCase):
     def test_reads_named_recipe_progress(self, mock_gettempdir):
         mock_gettempdir.return_value = self._tmp
         self._write_progress(
-            "amplihack-progress-smart_orchestrator-123.json",
+            f"amplihack-progress-smart_orchestrator-{os.getpid()}.json",
             {
                 "recipe_name": "smart-orchestrator",
                 "current_step": 2,
@@ -299,6 +303,8 @@ class TestRecipeProgress(unittest.TestCase):
         older = self._write_progress(
             "amplihack-progress-default_workflow-100.json",
             {
+                "recipe_name": "default-workflow",
+                "pid": 100,
                 "current_step": 1,
                 "total_steps": 0,
                 "step_name": "old-step",
@@ -307,8 +313,10 @@ class TestRecipeProgress(unittest.TestCase):
             },
         )
         newer = self._write_progress(
-            "amplihack-progress-smart_orchestrator-200.json",
+            f"amplihack-progress-smart_orchestrator-{os.getpid()}.json",
             {
+                "recipe_name": "smart-orchestrator",
+                "pid": os.getpid(),
                 "current_step": 3,
                 "total_steps": 0,
                 "step_name": "new-step",
@@ -323,6 +331,59 @@ class TestRecipeProgress(unittest.TestCase):
         self.assertEqual(result["current_step"], 3)
         self.assertEqual(result["step_name"], "new-step")
         self.assertEqual(result["status"], "completed")
+
+    @patch("dev_intent_router._tempfile.gettempdir")
+    def test_ignores_newer_progress_file_with_dead_pid(self, mock_gettempdir):
+        mock_gettempdir.return_value = self._tmp
+        valid = self._write_progress(
+            f"amplihack-progress-smart_orchestrator-{os.getpid()}.json",
+            {
+                "recipe_name": "smart-orchestrator",
+                "pid": os.getpid(),
+                "current_step": 1,
+                "total_steps": 4,
+                "step_name": "trusted-step",
+                "elapsed_seconds": 2.0,
+                "status": "running",
+            },
+        )
+        spoofed = self._write_progress(
+            "amplihack-progress-smart_orchestrator-99999999.json",
+            {
+                "recipe_name": "smart-orchestrator",
+                "pid": 99999999,
+                "current_step": 99,
+                "total_steps": 99,
+                "step_name": "spoofed",
+                "elapsed_seconds": 999.0,
+                "status": "completed",
+            },
+        )
+        os.utime(valid, (1, 1))
+        os.utime(spoofed, (2, 2))
+
+        result = get_recipe_progress("smart-orchestrator")
+        self.assertIsNotNone(result)
+        self.assertEqual(result["current_step"], 1)
+        self.assertEqual(result["step_name"], "trusted-step")
+
+    @patch("dev_intent_router._tempfile.gettempdir")
+    def test_ignores_progress_file_with_pid_filename_mismatch(self, mock_gettempdir):
+        mock_gettempdir.return_value = self._tmp
+        self._write_progress(
+            "amplihack-progress-smart_orchestrator-123.json",
+            {
+                "recipe_name": "smart-orchestrator",
+                "pid": os.getpid(),
+                "current_step": 2,
+                "total_steps": 5,
+                "step_name": "spoofed",
+                "elapsed_seconds": 1.0,
+                "status": "running",
+            },
+        )
+
+        self.assertIsNone(get_recipe_progress("smart-orchestrator"))
 
 
 class TestEnvVarFallback(unittest.TestCase):

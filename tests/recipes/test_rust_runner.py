@@ -17,6 +17,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -858,3 +859,45 @@ class TestProgressFile:
         assert result is not None
         assert result["step_name"] == "first"
         assert result["status"] == "running"
+
+    def test_get_recipe_progress_ignores_spoofed_newer_file(self, tmp_path):
+        """get_recipe_progress() skips newer files whose PID cannot be trusted."""
+        pid = os.getpid()
+        with patch("amplihack.recipes.rust_runner.tempfile") as mock_tmp:
+            mock_tmp.gettempdir.return_value = str(tmp_path)
+            trusted = _write_progress_file(
+                "workflow-recipe",
+                current_step=2,
+                total_steps=7,
+                step_name="trusted-step",
+                elapsed_seconds=4.0,
+                status="running",
+                pid=pid,
+            )
+
+        spoofed = tmp_path / "amplihack-progress-workflow_recipe-99999999.json"
+        spoofed.write_text(
+            json.dumps(
+                {
+                    "recipe_name": "workflow-recipe",
+                    "current_step": 99,
+                    "total_steps": 99,
+                    "step_name": "spoofed-step",
+                    "elapsed_seconds": 999.0,
+                    "status": "completed",
+                    "pid": 99999999,
+                    "updated_at": time.time(),
+                }
+            )
+        )
+
+        os.utime(trusted, (1, 1))
+        os.utime(spoofed, (2, 2))
+
+        router = _import_dev_intent_router()
+        with patch.object(router._tempfile, "gettempdir", return_value=str(tmp_path)):
+            result = router.get_recipe_progress("workflow-recipe")
+
+        assert result is not None
+        assert result["current_step"] == 2
+        assert result["step_name"] == "trusted-step"
