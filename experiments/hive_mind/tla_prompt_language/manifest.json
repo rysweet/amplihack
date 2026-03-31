@@ -1,0 +1,68 @@
+{
+  "experiment_id": "tla-prompt-language-v1",
+  "title": "TLA+ prompt language experiment for the distributed retrieval contract",
+  "experiment_home": "experiments/hive_mind/tla_prompt_language",
+  "generation_target": {
+    "target_id": "distributed_retrieval_contract",
+    "summary": "Generate the distributed retrieval contract slice that preserves the original question, fans out across all active agents, merges results deterministically, and surfaces shard failures explicitly.",
+    "deliverables": [
+      "Preserve the original question end-to-end through distributed retrieval.",
+      "Dispatch retrieval across all active agents participating in the request.",
+      "Merge results deterministically instead of depending on arrival order.",
+      "Surface shard failures explicitly with no silent local-only fallback.",
+      "Provide focused tests that enforce the retrieval contract."
+    ],
+    "non_goals": [
+      "Do not build a full greenfield distributed hive implementation.",
+      "Do not widen scope into Azure deployment or transport-layer work.",
+      "Do not depend on changes in amplihack-agent-eval for this first slice.",
+      "Do not add new grading dimensions to the authoritative eval harness in this repo."
+    ]
+  },
+  "spec_asset": "specs/DistributedRetrievalContract.tla",
+  "tlc_config_asset": "specs/DistributedRetrievalContract.cfg",
+  "prompt_variants": [
+    {
+      "variant_id": "english",
+      "label": "English natural-language baseline",
+      "path": "prompts/distributed_retrieval_contract_english.md",
+      "append_spec": false
+    },
+    {
+      "variant_id": "tla_only",
+      "label": "TLA+ formal-spec prompt",
+      "path": "prompts/distributed_retrieval_contract_tla_only.md",
+      "append_spec": true
+    },
+    {
+      "variant_id": "tla_plus_english",
+      "label": "Hybrid TLA+ plus English guidance prompt",
+      "path": "prompts/distributed_retrieval_contract_hybrid.md",
+      "append_spec": true
+    }
+  ],
+  "models": [
+    {
+      "model_id": "claude-opus-4.6",
+      "label": "Claude Opus 4.6",
+      "sdk": "claude"
+    },
+    {
+      "model_id": "gpt-5.4",
+      "label": "GPT-5.4",
+      "sdk": "copilot"
+    }
+  ],
+  "result_schema_version": 1,
+  "smoke_repeats": 1,
+  "full_repeats": 3,
+  "fairness_rules": [
+    "All variants target the same distributed retrieval contract slice.",
+    "The hybrid prompt may add implementation guidance but must not expand the required deliverables.",
+    "Prompt reviewers should compare deliverables and non-goals before any full-matrix run."
+  ],
+  "ownership_notes": [
+    "This repo owns the experiment assets, manifest, and first-slice utilities.",
+    "Authoritative harness and packaged report changes still belong in amplihack-agent-eval."
+  ]
+}
