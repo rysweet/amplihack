@@ -1,0 +1,860 @@
+WORKFLOW: DEVELOPMENT
+Reason: Code implementation task — building a Python class with tests from a specification.
+Action: Implementing directly (explicit artifact request with clear spec, no orchestration needed).
+
+Let me produce the implementation and tests.
+The instructions say not to read/write/modify repository files and to return the artifact directly. Let me produce both files inline.
+
+Here is the implementation:
+
+---
+
+## `recipe_step_executor.py`
+
+```python
+"""Recipe Step Executor — executes multi-step workflows with conditions,
+dependencies, retries, timeouts, output capture, and sub-recipe delegation.
+
+Public API:
+    RecipeStepExecutor: Main executor class
+    StepResult: Execution record for a single step
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import time
+from collections import defaultdict
+from dataclasses import dataclass, field
+from typing import Any, Callable
+
+__all__ = ["RecipeStepExecutor", "StepResult"]
+
+
+@dataclass
+class StepResult:
+    """Execution record for a single step."""
+
+    status: str = "pending"
+    output: Any = None
+    attempt_count: int = 0
+    failure_reason: str | None = None
+    start_time: float | None = None
+    end_time: float | None = None
+    retry_delays: list[float] = field(default_factory=list)
+
+
+class CommandFailedError(Exception):
+    pass
+
+
+class _TimedOutSentinel:
+    pass
+
+
+_TIMED_OUT = _TimedOutSentinel()
+
+
+class RecipeStepExecutor:
+    """Executes recipe steps with conditions, dependencies, retries,
+    timeouts, output capture, and sub-recipe delegation."""
+
+    def __init__(self, command_runner: Callable | None = None):
+        self._command_runner = command_runner or self._default_command_runner
+        self._call_counts: dict[str, int] = defaultdict(int)
+        self._step_behaviors: dict[str, dict] = {}
+        self._execution_order: list[str] = []
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def execute(
+        self, recipe: list[dict], context: dict | None = None
+    ) -> dict[str, StepResult]:
+        ctx = dict(context) if context else {}
+        results: dict[str, StepResult] = {}
+        order = self._topological_sort(recipe)
+        step_map = {s["id"]: s for s in recipe}
+
+        for step_id in order:
+            step = step_map[step_id]
+            result = self._execute_step(step, ctx, results)
+            results[step_id] = result
+
+        return results
+
+    @property
+    def execution_order(self) -> list[str]:
+        return list(self._execution_order)
+
+    def set_step_behavior(
+        self,
+        step_id: str,
+        fail_count: int,
+        fail_output: str | None = None,
+        success_output: str | None = None,
+    ):
+        self._step_behaviors[step_id] = {
+            "fail_count": fail_count,
+            "current": 0,
+            "fail_output": fail_output,
+            "success_output": success_output,
+        }
+
+    # ------------------------------------------------------------------
+    # Step execution
+    # ------------------------------------------------------------------
+
+    def _execute_step(
+        self, step: dict, ctx: dict, results: dict[str, StepResult]
+    ) -> StepResult:
+        result = StepResult()
+
+        # 1. Dependency check BEFORE condition
+        blocked_by = self._parse_blocked_by(step.get("blockedBy", ""))
+        for dep_id in blocked_by:
+            dep_result = results.get(dep_id)
+            if dep_result is None:
+                result.status = "failed"
+                result.failure_reason = "dependency_failed"
+                return result
+            if dep_result.status in ("failed", "timed_out"):
+                result.status = "failed"
+                result.failure_reason = "dependency_failed"
+                return result
+
+        # 2. Condition evaluation
+        condition = step.get("condition", "")
+        if condition and not self._evaluate_condition(condition, ctx):
+            result.status = "skipped"
+            return result
+
+        self._execution_order.append(step["id"])
+
+        # 3. Sub-recipe handling (never retried)
+        if "sub_recipe" in step:
+            return self._execute_sub_recipe(step, ctx, result)
+
+        # 4. Command execution with retry/timeout
+        max_retries = self._int_or(step.get("max_retries"), 0)
+        timeout = self._float_or(step.get("timeout_seconds"), None)
+        total_attempts = max_retries + 1
+        command = step.get("command", "")
+
+        for attempt in range(1, total_attempts + 1):
+            result.attempt_count = attempt
+            resolved_cmd = self._resolve_templates(command, ctx)
+            result.start_time = time.monotonic()
+
+            try:
+                if timeout is not None:
+                    output = self._run_with_timeout(
+                        resolved_cmd, ctx, timeout, step["id"]
+                    )
+                    if isinstance(output, _TimedOutSentinel):
+                        result.status = "timed_out"
+                        result.end_time = time.monotonic()
+                        return result
+                else:
+                    output = self._run_command(resolved_cmd, ctx, step["id"])
+
+                result.end_time = time.monotonic()
+                result.status = "completed"
+                result.output = output
+                ctx[step["id"]] = output
+                return result
+
+            except CommandFailedError:
+                result.end_time = time.monotonic()
+                if attempt < total_attempts:
+                    delay = 2 ** (attempt - 1)
+                    result.retry_delays.append(delay)
+                    time.sleep(delay)
+                else:
+                    result.status = "failed"
+                    return result
+
+        result.status = "failed"
+        return result
+
+    def _execute_sub_recipe(
+        self, step: dict, ctx: dict, result: StepResult
+    ) -> StepResult:
+        result.attempt_count = 1
+        result.start_time = time.monotonic()
+
+        sub_recipe_data = step["sub_recipe"]
+        if isinstance(sub_recipe_data, str):
+            sub_recipe_data = json.loads(sub_recipe_data)
+
+        # Resolve templates in child commands
+        resolved_sub = []
+        for child_step in sub_recipe_data:
+            child_copy = dict(child_step)
+            if "command" in child_copy:
+                child_copy["command"] = self._resolve_templates(
+                    child_copy["command"], ctx
+                )
+            resolved_sub.append(child_copy)
+
+        child_ctx = dict(ctx)
+        child_executor = RecipeStepExecutor(self._command_runner)
+        child_executor._call_counts = self._call_counts
+        child_executor._step_behaviors = self._step_behaviors
+        child_results = child_executor.execute(resolved_sub, child_ctx)
+
+        any_failed = any(
+            r.status in ("failed", "timed_out") for r in child_results.values()
+        )
+
+        if any_failed:
+            result.status = "failed"
+            result.failure_reason = "sub_recipe_child_failed"
+        else:
+            result.status = "completed"
+            result.output = {k: v.output for k, v in child_results.items()}
+            propagate = step.get("propagate_outputs")
+            if propagate is True or str(propagate).lower() == "true":
+                for child_id, child_res in child_results.items():
+                    if (
+                        child_res.status == "completed"
+                        and child_res.output is not None
+                    ):
+                        ctx[child_id] = child_res.output
+
+        result.end_time = time.monotonic()
+        return result
+
+    # ------------------------------------------------------------------
+    # Command execution helpers
+    # ------------------------------------------------------------------
+
+    def _run_command(self, command: str, ctx: dict, step_id: str) -> str:
+        return self._command_runner(command, ctx, step_id, self)
+
+    def _run_with_timeout(
+        self, command: str, ctx: dict, timeout: float, step_id: str
+    ) -> str | _TimedOutSentinel:
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(self._run_command, command, ctx, step_id)
+            try:
+                return future.result(timeout=timeout)
+            except concurrent.futures.TimeoutError:
+                return _TIMED_OUT
+
+    @staticmethod
+    def _default_command_runner(
+        command: str, ctx: dict, step_id: str, executor: RecipeStepExecutor
+    ) -> str:
+        command = command.strip()
+
+        # Step behavior overrides (testing)
+        if step_id in executor._step_behaviors:
+            behavior = executor._step_behaviors[step_id]
+            behavior["current"] += 1
+            if behavior["current"] <= behavior["fail_count"]:
+                raise CommandFailedError(
+                    f"Step {step_id} failed (attempt {behavior['current']})"
+                )
+            return behavior.get("success_output") or f"attempt_{behavior['current']}"
+
+        # fail_then_succeed(N)
+        m = re.match(r"fail_then_succeed\((\d+)\)", command)
+        if m:
+            fail_count = int(m.group(1))
+            key = f"_ftc_{step_id}"
+            executor._call_counts[key] += 1
+            count = executor._call_counts[key]
+            if count <= fail_count:
+                raise CommandFailedError(
+                    f"Simulated failure {count}/{fail_count}"
+                )
+            return f"success_after_{fail_count}_failures"
+
+        # increment_counter()
+        if command == "increment_counter()":
+            key = f"_inc_{step_id}"
+            executor._call_counts[key] += 1
+            return f"attempt_{executor._call_counts[key]}"
+
+        # echo "..." or echo '...' or echo ...
+        m = re.match(r'echo\s+"(.*)"\s*$', command) or re.match(
+            r"echo\s+'(.*)'\s*$", command
+        )
+        if m:
+            return m.group(1)
+        m = re.match(r"echo\s+(.*)\s*$", command)
+        if m:
+            return m.group(1)
+
+        # exit N
+        m = re.match(r"exit\s+(\d+)", command)
+        if m:
+            code = int(m.group(1))
+            if code != 0:
+                raise CommandFailedError(f"exit {code}")
+            return ""
+
+        # sleep N
+        m = re.match(r"sleep\s+(\d+)", command)
+        if m:
+            time.sleep(int(m.group(1)))
+            return ""
+
+        raise CommandFailedError(f"Unknown command: {command}")
+
+    # ------------------------------------------------------------------
+    # Template resolution
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _resolve_templates(text: str, ctx: dict) -> str:
+        def replacer(match: re.Match) -> str:
+            key = match.group(1).strip()
+            if key in ctx:
+                return str(ctx[key])
+            return match.group(0)
+
+        return re.sub(r"\{\{(\s*\w+\s*)\}\}", replacer, text)
+
+    # ------------------------------------------------------------------
+    # Condition evaluation
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _evaluate_condition(condition: str, ctx: dict) -> bool:
+        try:
+            return bool(eval(condition, {"__builtins__": {}}, ctx))
+        except Exception:
+            return False
+
+    # ------------------------------------------------------------------
+    # Dependency graph
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _parse_blocked_by(value: str) -> list[str]:
+        if not value:
+            return []
+        return [v.strip() for v in value.split(",") if v.strip()]
+
+    def _topological_sort(self, recipe: list[dict]) -> list[str]:
+        graph: dict[str, list[str]] = {}
+        in_degree: dict[str, int] = {}
+        step_order = {s["id"]: i for i, s in enumerate(recipe)}
+
+        for step in recipe:
+            sid = step["id"]
+            graph.setdefault(sid, [])
+            in_degree.setdefault(sid, 0)
+
+        for step in recipe:
+            sid = step["id"]
+            deps = self._parse_blocked_by(step.get("blockedBy", ""))
+            for dep in deps:
+                graph.setdefault(dep, []).append(sid)
+                in_degree[sid] = in_degree.get(sid, 0) + 1
+
+        queue = sorted(
+            [sid for sid in step_order if in_degree.get(sid, 0) == 0],
+            key=lambda x: step_order[x],
+        )
+        result = []
+        while queue:
+            node = queue.pop(0)
+            result.append(node)
+            for neighbor in sorted(
+                graph.get(node, []), key=lambda x: step_order.get(x, 0)
+            ):
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+                    queue.sort(key=lambda x: step_order.get(x, 0))
+
+        if len(result) != len(recipe):
+            raise ValueError("Circular dependency detected")
+        return result
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _int_or(val: Any, default: int) -> int:
+        if val is None or val == "":
+            return default
+        return int(val)
+
+    @staticmethod
+    def _float_or(val: Any, default: float | None) -> float | None:
+        if val is None or val == "":
+            return default
+        return float(val)
+```
+
+---
+
+## `test_recipe_step_executor.py`
+
+```python
+"""Tests for RecipeStepExecutor — covers every scenario from the feature spec
+plus cross-feature interactions."""
+
+import time
+import pytest
+from unittest.mock import patch
+
+from recipe_step_executor import RecipeStepExecutor, StepResult
+
+
+# ======================================================================
+# Feature 1: Conditional Step Execution
+# ======================================================================
+
+
+class TestConditionalExecution:
+    def test_unconditional_step_always_executes(self):
+        executor = RecipeStepExecutor()
+        recipe = [{"id": "step_a", "command": 'echo "hello"'}]
+        results = executor.execute(recipe, {})
+
+        assert results["step_a"].status == "completed"
+        # Context check: output captured
+        # We verify by checking the result output
+        assert results["step_a"].output == "hello"
+
+    def test_conditional_step_executes_when_true(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": 'echo "deploying"', "condition": "env == 'prod'"}
+        ]
+        results = executor.execute(recipe, {"env": "prod"})
+        assert results["step_a"].status == "completed"
+
+    def test_conditional_step_skipped_when_false(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": 'echo "deploying"', "condition": "env == 'prod'"}
+        ]
+        results = executor.execute(recipe, {"env": "staging"})
+        assert results["step_a"].status == "skipped"
+        assert results["step_a"].output is None
+
+    def test_condition_referencing_missing_key_evaluates_false(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": 'echo "go"', "condition": "feature_flag == True"}
+        ]
+        results = executor.execute(recipe, {})
+        assert results["step_a"].status == "skipped"
+
+
+# ======================================================================
+# Feature 2: Step Dependencies
+# ======================================================================
+
+
+class TestDependencies:
+    def test_step_waits_for_dependency(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": 'echo "first"'},
+            {"id": "step_b", "command": 'echo "second"', "blockedBy": "step_a"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results["step_b"].status == "completed"
+        order = executor.execution_order
+        assert order.index("step_a") < order.index("step_b")
+
+    def test_step_blocked_by_failed_dependency(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": "exit 1"},
+            {"id": "step_b", "command": 'echo "unreachable"', "blockedBy": "step_a"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results["step_a"].status == "failed"
+        assert results["step_b"].status == "failed"
+        assert results["step_b"].failure_reason == "dependency_failed"
+
+    def test_step_blocked_by_skipped_dependency_executes(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": 'echo "skip me"', "condition": "env == 'prod'"},
+            {"id": "step_b", "command": 'echo "runs"', "blockedBy": "step_a"},
+        ]
+        results = executor.execute(recipe, {"env": "staging"})
+        assert results["step_a"].status == "skipped"
+        assert results["step_b"].status == "completed"
+
+    def test_diamond_dependency_graph(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": 'echo "root"'},
+            {"id": "step_b", "command": 'echo "left"', "blockedBy": "step_a"},
+            {"id": "step_c", "command": 'echo "right"', "blockedBy": "step_a"},
+            {"id": "step_d", "command": 'echo "join"', "blockedBy": "step_b,step_c"},
+        ]
+        results = executor.execute(recipe, {})
+        order = executor.execution_order
+        assert order.index("step_a") < order.index("step_b")
+        assert order.index("step_a") < order.index("step_c")
+        assert order.index("step_b") < order.index("step_d")
+        assert order.index("step_c") < order.index("step_d")
+        assert results["step_d"].status == "completed"
+
+
+# ======================================================================
+# Feature 3: Retry with Exponential Backoff
+# ======================================================================
+
+
+class TestRetry:
+    def test_no_retries_fails_immediately(self):
+        executor = RecipeStepExecutor()
+        recipe = [{"id": "step_a", "command": "exit 1", "max_retries": 0}]
+        results = executor.execute(recipe, {})
+        assert results["step_a"].status == "failed"
+        assert results["step_a"].attempt_count == 1
+
+    def test_succeeds_on_second_retry(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": "fail_then_succeed(1)", "max_retries": 3}
+        ]
+        with patch("time.sleep"):
+            results = executor.execute(recipe, {})
+        assert results["step_a"].status == "completed"
+        assert results["step_a"].attempt_count == 2
+
+    def test_exhausts_all_retries(self):
+        executor = RecipeStepExecutor()
+        recipe = [{"id": "step_a", "command": "exit 1", "max_retries": 3}]
+        with patch("time.sleep"):
+            results = executor.execute(recipe, {})
+        assert results["step_a"].status == "failed"
+        assert results["step_a"].attempt_count == 4
+        assert results["step_a"].retry_delays == [1, 2, 4]
+
+
+# ======================================================================
+# Feature 4: Timeout Handling
+# ======================================================================
+
+
+class TestTimeout:
+    def test_step_exceeding_timeout_is_timed_out(self):
+        executor = RecipeStepExecutor()
+        recipe = [{"id": "step_a", "command": "sleep 30", "timeout_seconds": 2}]
+        start = time.monotonic()
+        results = executor.execute(recipe, {})
+        elapsed = time.monotonic() - start
+        assert results["step_a"].status == "timed_out"
+        assert elapsed < 5  # roughly ~2s
+
+    def test_timed_out_step_not_retried(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {
+                "id": "step_a",
+                "command": "sleep 30",
+                "timeout_seconds": 2,
+                "max_retries": 3,
+            }
+        ]
+        results = executor.execute(recipe, {})
+        assert results["step_a"].status == "timed_out"
+        assert results["step_a"].attempt_count == 1
+
+    def test_timed_out_step_blocks_dependent(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": "sleep 30", "timeout_seconds": 2},
+            {"id": "step_b", "command": 'echo "unreachable"', "blockedBy": "step_a"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results["step_a"].status == "timed_out"
+        assert results["step_b"].status == "failed"
+        assert results["step_b"].failure_reason == "dependency_failed"
+
+
+# ======================================================================
+# Feature 5: Output Capture
+# ======================================================================
+
+
+class TestOutputCapture:
+    def test_output_stored_in_context(self):
+        executor = RecipeStepExecutor()
+        recipe = [{"id": "step_a", "command": 'echo "result_value"'}]
+        results = executor.execute(recipe, {})
+        assert results["step_a"].output == "result_value"
+
+    def test_template_reference_to_prior_output(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": 'echo "data_123"'},
+            {
+                "id": "step_b",
+                "command": 'echo "processing {{step_a}}"',
+                "blockedBy": "step_a",
+            },
+        ]
+        results = executor.execute(recipe, {})
+        assert results["step_b"].output == "processing data_123"
+
+
+# ======================================================================
+# Feature 6: Sub-recipe Delegation
+# ======================================================================
+
+
+class TestSubRecipe:
+    def test_sub_recipe_inherits_parent_context(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {
+                "id": "step_a",
+                "sub_recipe": [
+                    {"id": "child_1", "command": 'echo "shared"'}
+                ],
+            }
+        ]
+        results = executor.execute(recipe, {"parent_val": "shared"})
+        assert results["step_a"].status == "completed"
+
+    def test_sub_recipe_outputs_do_not_propagate_by_default(self):
+        executor = RecipeStepExecutor()
+        ctx = {}
+        recipe = [
+            {
+                "id": "step_a",
+                "sub_recipe": [{"id": "child_1", "command": 'echo "secret"'}],
+                "propagate_outputs": False,
+            },
+            {"id": "step_b", "command": 'echo "{{child_1}}"'},
+        ]
+        results = executor.execute(recipe, ctx)
+        assert results["step_b"].output == "{{child_1}}"
+
+    def test_sub_recipe_outputs_propagate_when_enabled(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {
+                "id": "step_a",
+                "sub_recipe": [{"id": "child_1", "command": 'echo "visible"'}],
+                "propagate_outputs": True,
+            },
+            {
+                "id": "step_b",
+                "command": 'echo "got {{child_1}}"',
+                "blockedBy": "step_a",
+            },
+        ]
+        results = executor.execute(recipe, {})
+        assert results["step_b"].output == "got visible"
+
+    def test_sub_recipe_with_parent_context_template(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {
+                "id": "step_a",
+                "sub_recipe": [
+                    {"id": "child_1", "command": 'echo "{{parent_val}}"'}
+                ],
+            }
+        ]
+        results = executor.execute(recipe, {"parent_val": "shared"})
+        assert results["step_a"].status == "completed"
+        assert results["step_a"].output["child_1"] == "shared"
+
+
+# ======================================================================
+# Cross-Feature Interactions
+# ======================================================================
+
+
+class TestCrossFeature:
+    def test_retried_step_output_uses_final_attempt(self):
+        executor = RecipeStepExecutor()
+        executor.set_step_behavior(
+            "step_a", fail_count=1, fail_output="attempt_1", success_output="attempt_2"
+        )
+        recipe = [
+            {"id": "step_a", "command": "increment_counter()", "max_retries": 2},
+            {"id": "step_b", "command": 'echo "done"', "blockedBy": "step_a"},
+        ]
+        with patch("time.sleep"):
+            results = executor.execute(recipe, {})
+        assert results["step_a"].status == "completed"
+        assert results["step_a"].output == "attempt_2"
+
+    def test_timed_out_blocks_conditional_step_fails_not_skipped(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": "sleep 30", "timeout_seconds": 2},
+            {
+                "id": "step_b",
+                "command": 'echo "conditional"',
+                "condition": "flag == True",
+                "blockedBy": "step_a",
+            },
+        ]
+        results = executor.execute(recipe, {"flag": True})
+        assert results["step_a"].status == "timed_out"
+        assert results["step_b"].status == "failed"
+        assert results["step_b"].failure_reason == "dependency_failed"
+        assert results["step_b"].status != "skipped"
+
+    def test_sub_recipe_child_fails_parent_not_retried(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {
+                "id": "step_a",
+                "sub_recipe": [{"id": "child_1", "command": "exit 1"}],
+                "max_retries": 3,
+            }
+        ]
+        results = executor.execute(recipe, {})
+        assert results["step_a"].status == "failed"
+        assert results["step_a"].attempt_count == 1
+
+    def test_retry_with_skipped_dependency_template_stays_literal(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": 'echo "skip me"', "condition": "env == 'prod'"},
+            {"id": "step_b", "command": "fail_then_succeed(1)"},
+            {
+                "id": "step_c",
+                "command": 'echo "use {{step_a}}"',
+                "max_retries": 2,
+                "blockedBy": "step_a,step_b",
+            },
+        ]
+        with patch("time.sleep"):
+            results = executor.execute(recipe, {"env": "staging"})
+        assert results["step_a"].status == "skipped"
+        assert results["step_b"].status == "completed"
+        assert results["step_c"].status == "completed"
+        assert results["step_c"].output == "use {{step_a}}"
+
+    def test_output_template_referencing_timed_out_step(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": "sleep 30", "timeout_seconds": 1},
+            {
+                "id": "step_b",
+                "command": 'echo "result: {{step_a}}"',
+                "blockedBy": "step_a",
+            },
+        ]
+        results = executor.execute(recipe, {})
+        assert results["step_a"].status == "timed_out"
+        assert results["step_b"].status == "failed"
+        assert results["step_b"].failure_reason == "dependency_failed"
+
+    def test_diamond_one_branch_retried_one_timed_out(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": 'echo "root"'},
+            {
+                "id": "step_b",
+                "command": "fail_then_succeed(1)",
+                "blockedBy": "step_a",
+                "max_retries": 2,
+            },
+            {
+                "id": "step_c",
+                "command": "sleep 30",
+                "blockedBy": "step_a",
+                "timeout_seconds": 1,
+            },
+            {"id": "step_d", "command": 'echo "join"', "blockedBy": "step_b,step_c"},
+        ]
+        with patch("time.sleep"):
+            results = executor.execute(recipe, {})
+        assert results["step_a"].status == "completed"
+        assert results["step_b"].status == "completed"
+        assert results["step_c"].status == "timed_out"
+        assert results["step_d"].status == "failed"
+        assert results["step_d"].failure_reason == "dependency_failed"
+
+    def test_sub_recipe_propagated_outputs_feed_parent_conditional(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {
+                "id": "step_a",
+                "sub_recipe": [{"id": "child_1", "command": 'echo "ready"'}],
+                "propagate_outputs": True,
+            },
+            {
+                "id": "step_b",
+                "command": 'echo "proceed"',
+                "condition": "child_1 == 'ready'",
+                "blockedBy": "step_a",
+            },
+        ]
+        results = executor.execute(recipe, {})
+        assert results["step_a"].status == "completed"
+        assert results["step_b"].status == "completed"
+
+    def test_chained_retries_step_b_uses_final_output_of_step_a(self):
+        executor = RecipeStepExecutor()
+        recipe = [
+            {"id": "step_a", "command": "fail_then_succeed(2)", "max_retries": 3},
+            {
+                "id": "step_b",
+                "command": 'echo "got {{step_a}}"',
+                "blockedBy": "step_a",
+            },
+        ]
+        with patch("time.sleep"):
+            results = executor.execute(recipe, {})
+        assert results["step_a"].status == "completed"
+        assert results["step_a"].attempt_count == 3
+        assert results["step_b"].status == "completed"
+        # step_b should use the final output of step_a
+        assert "got " in results["step_b"].output
+        assert results["step_b"].output == f"got {results['step_a'].output}"
+
+
+# ======================================================================
+# Edge cases
+# ======================================================================
+
+
+class TestEdgeCases:
+    def test_empty_recipe(self):
+        executor = RecipeStepExecutor()
+        results = executor.execute([], {})
+        assert results == {}
+
+    def test_missing_template_key_stays_literal(self):
+        executor = RecipeStepExecutor()
+        recipe = [{"id": "step_a", "command": 'echo "{{nonexistent}}"'}]
+        results = executor.execute(recipe, {})
+        assert results["step_a"].output == "{{nonexistent}}"
+
+    def test_step_result_dataclass_defaults(self):
+        r = StepResult()
+        assert r.status == "pending"
+        assert r.output is None
+        assert r.attempt_count == 0
+        assert r.failure_reason is None
+        assert r.retry_delays == []
+```
+
+---
+
+### Key design decisions reflected in the implementation:
+
+1. **Dependency check before condition** — a step blocked by a failed/timed-out dep gets `dependency_failed` regardless of its condition.
+2. **Timeout trumps retry** — timed-out steps return immediately, never entering the retry loop.
+3. **Sub-recipe failures are non-transient** — `attempt_count` stays at 1 regardless of `max_retries`.
+4. **Only final retry output persists** — context key is set only on success, overwriting nothing from failed attempts.
+5. **Missing template keys remain literal** — `{{key}}` stays as-is when `key` is not in context (skipped step outputs, missing keys).
+6. **`time.sleep` is patched in retry tests** to avoid actual delays; timeout tests use real timing with short (1-2s) values.

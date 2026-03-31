@@ -1,0 +1,42 @@
+{
+  "evaluation_kind": "heuristic_signal_v2",
+  "metrics": {
+    "baseline_score": 1.0,
+    "invariant_compliance": 0.75,
+    "proof_alignment": 0.6667,
+    "local_protocol_alignment": 0.3333,
+    "progress_signal": 1.0,
+    "specification_coverage": 1.0
+  },
+  "checks": {
+    "condition_evaluation": true,
+    "condition_skip": true,
+    "condition_missing_key": true,
+    "dependency_graph": true,
+    "failure_propagation": true,
+    "skip_no_propagation": false,
+    "dag_ordering": true,
+    "retry_mechanism": true,
+    "exponential_backoff": true,
+    "retry_exhaustion": false,
+    "timeout_mechanism": false,
+    "timeout_no_retry": false,
+    "timeout_as_failure": true,
+    "output_capture": true,
+    "template_resolution": true,
+    "sub_recipe_execution": true,
+    "context_isolation": true,
+    "sub_recipe_failure": true,
+    "retry_output_replacement": false,
+    "focused_tests": true
+  },
+  "notes": [
+    "Gherkin v2 heuristic scoring for recipe step executor (6 features).",
+    "Metric mapping: baseline_score=conditional_execution, invariant_compliance=dependency_handling, proof_alignment=retry_logic, local_protocol_alignment=timeout_semantics, progress_signal=output_capture, specification_coverage=sub_recipe_delegation.",
+    "Missing heuristic signal: skip_no_propagation",
+    "Missing heuristic signal: retry_exhaustion",
+    "Missing heuristic signal: timeout_mechanism",
+    "Missing heuristic signal: timeout_no_retry",
+    "Missing heuristic signal: retry_output_replacement"
+  ]
+}
