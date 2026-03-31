@@ -14,6 +14,7 @@ contract, not a full greenfield distributed hive implementation.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import os
 import shutil
@@ -37,7 +38,9 @@ REPLAY_ARTIFACT_FILENAMES = (
 LIVE_GENERATION_SYSTEM_PROMPT = (
     "You are participating in a controlled code-generation experiment. "
     "Follow the user prompt exactly, stay within scope, and return only the "
-    "requested implementation artifact and focused tests without extra commentary."
+    "requested implementation artifact and focused tests without extra commentary. "
+    "Do not read, write, or modify repository files. Do not run shell commands. "
+    "Return the artifact directly in your response."
 )
 
 
@@ -396,6 +399,21 @@ class PromptGenerationResult:
     response_text: str
     provider: str
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+class PromptGenerationError(RuntimeError):
+    """Raised when a replay/live generation attempt returns an unusable result."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        response_text: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.response_text = response_text
+        self.metadata = metadata or {}
 
 
 @dataclass
@@ -981,31 +999,98 @@ def _load_replay_generation(
     )
 
 
+def _resolve_runtime_model_id(model_sdk: str, model_id: str) -> str:
+    if model_sdk != "claude":
+        return model_id
+    return {
+        "claude-opus-4.6": "claude-opus-4-6",
+        "claude-sonnet-4.6": "claude-sonnet-4-6",
+    }.get(model_id, model_id)
+
+
+def _live_generation_failure_message(response_text: str) -> str | None:
+    normalized = response_text.strip().lower()
+    if not normalized:
+        return "Live generation returned an empty response."
+    patterns = (
+        "there's an issue with the selected model",
+        "agent execution encountered an error.",
+        "agent execution failed due to an internal error.",
+        "agent execution timed out.",
+        "i don't have enough information to answer that question.",
+    )
+    for pattern in patterns:
+        if pattern in normalized:
+            return response_text.strip()
+    return None
+
+
 def _generate_live_artifact(
     condition: ExperimentCondition,
     prompt_text: str,
     *,
     storage_path: Path,
+    workspace_path: Path,
 ) -> PromptGenerationResult:
     from amplihack.agents.goal_seeking.runtime_factory import create_goal_agent_runtime
 
-    runtime = create_goal_agent_runtime(
-        agent_name=f"tla-prompt-{condition.condition_id}",
-        sdk=condition.model_sdk,
-        model=condition.model_id,
-        storage_path=storage_path,
-        enable_memory=False,
-        enable_eval=True,
-        instructions=LIVE_GENERATION_SYSTEM_PROMPT,
-    )
+    runtime_model_id = _resolve_runtime_model_id(condition.model_sdk, condition.model_id)
+    workspace_path.mkdir(parents=True, exist_ok=True)
+    previous_cwd = Path.cwd()
     try:
-        response_text = runtime.answer_question(prompt_text)
+        os.chdir(workspace_path)
+        runtime = create_goal_agent_runtime(
+            agent_name=f"tla-prompt-{condition.condition_id}",
+            sdk=condition.model_sdk,
+            model=runtime_model_id,
+            storage_path=storage_path,
+            enable_memory=False,
+            enable_eval=True,
+            enable_learning_tools=False,
+            instructions=LIVE_GENERATION_SYSTEM_PROMPT,
+            allowed_native_tools=[],
+        )
+        try:
+            response = asyncio.run(runtime.run(prompt_text))
+            response_text = response.response
+        finally:
+            runtime.close()
     finally:
-        runtime.close()
+        os.chdir(previous_cwd)
+    response_metadata = dict(getattr(response, "metadata", {}) or {})
+    failure_message = _live_generation_failure_message(response_text)
+    if not getattr(response, "goal_achieved", False):
+        raise PromptGenerationError(
+            f"Live generation failed for {condition.condition_id}: "
+            f"{failure_message or response_text.strip() or 'goal not achieved'}",
+            response_text=response_text,
+            metadata={
+                "sdk": condition.model_sdk,
+                "requested_model_id": condition.model_id,
+                "runtime_model_id": runtime_model_id,
+                **response_metadata,
+            },
+        )
+    if failure_message is not None:
+        raise PromptGenerationError(
+            f"Live generation failed for {condition.condition_id}: {failure_message}",
+            response_text=response_text,
+            metadata={
+                "sdk": condition.model_sdk,
+                "requested_model_id": condition.model_id,
+                "runtime_model_id": runtime_model_id,
+                **response_metadata,
+            },
+        )
     return PromptGenerationResult(
         response_text=str(response_text),
         provider="live",
-        metadata={"sdk": condition.model_sdk, "model_id": condition.model_id},
+        metadata={
+            "sdk": condition.model_sdk,
+            "model_id": condition.model_id,
+            "runtime_model_id": runtime_model_id,
+            **response_metadata,
+        },
     )
 
 
@@ -1029,6 +1114,7 @@ def generate_condition_artifact(
         condition,
         prompt_text,
         storage_path=work_dir / "agent_state",
+        workspace_path=work_dir / "workspace",
     )
 
 
@@ -1175,6 +1261,10 @@ def run_tla_prompt_experiment(
             raw_response_file.write_text(generated.response_text)
             evaluation = evaluate_generated_artifact(generated.response_text)
             evaluation_file.write_text(json.dumps(evaluation.to_dict(), indent=2) + "\n")
+            generation_notes = [f"generation_provider={generated.provider}"]
+            runtime_model_id = generated.metadata.get("runtime_model_id")
+            if runtime_model_id and runtime_model_id != packet.condition.model_id:
+                generation_notes.append(f"runtime_model_id={runtime_model_id}")
             result = ConditionRunResult(
                 condition=packet.condition,
                 status="completed",
@@ -1182,7 +1272,25 @@ def run_tla_prompt_experiment(
                 generated_artifact_path=str(generated_file),
                 evaluation_artifact_path=str(evaluation_file),
                 raw_response_path=str(raw_response_file),
-                notes=[f"generation_provider={generated.provider}", *evaluation.notes],
+                notes=[*generation_notes, *evaluation.notes],
+                tlc_validation=shared_tlc_result.to_dict() if shared_tlc_result else None,
+            )
+        except PromptGenerationError as exc:
+            if exc.response_text:
+                raw_response_file.write_text(exc.response_text)
+            failure_notes = [str(exc)]
+            runtime_model_id = exc.metadata.get("runtime_model_id")
+            if runtime_model_id and runtime_model_id != packet.condition.model_id:
+                failure_notes.append(f"runtime_model_id={runtime_model_id}")
+            if exc.metadata.get("error"):
+                failure_notes.append(f"runtime_error={exc.metadata['error']}")
+            if exc.metadata.get("error_type"):
+                failure_notes.append(f"runtime_error_type={exc.metadata['error_type']}")
+            result = ConditionRunResult(
+                condition=packet.condition,
+                status="failed",
+                notes=failure_notes,
+                raw_response_path=str(raw_response_file) if exc.response_text else None,
                 tlc_validation=shared_tlc_result.to_dict() if shared_tlc_result else None,
             )
         except Exception as exc:

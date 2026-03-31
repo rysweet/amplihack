@@ -74,7 +74,9 @@ The local first-slice runner can now execute a matrix in two modes:
 - **replay mode** via `--replay-dir`, which reads pre-generated artifacts per
   condition and does **not** consume the raw packet output from
   `--materialize-dir`
-- **live mode** via `--run-dir --allow-live`, which invokes the configured SDK-backed runtime
+- **live mode** via `--run-dir --allow-live`, which invokes the configured
+  SDK-backed runtime inside a per-condition workspace and expects the provider
+  to return the artifact text directly instead of mutating the repo
 
 Each run writes:
 
@@ -93,6 +95,9 @@ The validation command fails explicitly if no TLC runner is configured.
 
 The current scores are **heuristic signals**, not authoritative benchmark scores.
 Official harness grading and packaged reports still belong in `amplihack-agent-eval`.
+A condition marked `completed` means the provider returned generation output that
+the runner accepted for heuristic scoring; it does **not** mean the artifact was
+high quality.
 
 For stricter local validation, a real TLC-backed pytest smoke is available when
 `TLA_TLC_BIN` or `TLA2TOOLS_JAR` is configured in the environment.

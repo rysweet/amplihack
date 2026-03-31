@@ -1,5 +1,6 @@
 import json
 import os
+from types import SimpleNamespace
 
 import pytest
 
@@ -341,11 +342,65 @@ def test_generate_condition_artifact_live_mode_uses_runtime_factory(tmp_path, mo
     condition = manifest.expand_matrix(smoke=True)[0]
     bundle = manifest.load_prompt_bundle(condition.prompt_variant_id)
     captured: dict[str, object] = {}
+    original_cwd = os.getcwd()
 
     class DummyRuntime:
-        def answer_question(self, prompt: str) -> str:
+        async def run(self, prompt: str) -> SimpleNamespace:
             captured["prompt"] = prompt
-            return "generated retrieval contract artifact"
+            captured["cwd_at_run"] = os.getcwd()
+            return SimpleNamespace(
+                response="generated retrieval contract artifact",
+                goal_achieved=True,
+                metadata={},
+            )
+
+        def close(self) -> None:
+            captured["closed"] = True
+
+    def fake_create_goal_agent_runtime(**kwargs: object) -> DummyRuntime:
+        captured["kwargs"] = kwargs
+        captured["cwd_at_factory"] = os.getcwd()
+        return DummyRuntime()
+
+    monkeypatch.setattr(
+        "amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime",
+        fake_create_goal_agent_runtime,
+    )
+
+    result = generate_condition_artifact(
+        condition,
+        bundle.combined_text(),
+        work_dir=tmp_path,
+        allow_live=True,
+    )
+
+    assert result.provider == "live"
+    assert result.response_text == "generated retrieval contract artifact"
+    assert captured["closed"] is True
+    assert os.getcwd() == original_cwd
+    assert (tmp_path / "workspace").is_dir()
+    assert captured["cwd_at_factory"] == str(tmp_path / "workspace")
+    assert captured["cwd_at_run"] == str(tmp_path / "workspace")
+    kwargs = captured["kwargs"]
+    assert isinstance(kwargs, dict)
+    assert kwargs["sdk"] == condition.model_sdk
+    assert kwargs["model"] == "claude-opus-4-6"
+    assert kwargs["enable_memory"] is False
+    assert kwargs["enable_learning_tools"] is False
+    assert kwargs["allowed_native_tools"] == []
+    assert "Do not read, write, or modify repository files." in kwargs["instructions"]
+
+
+def test_generate_condition_artifact_live_mode_normalizes_claude_runtime_model(tmp_path, monkeypatch):
+    manifest = load_default_experiment_manifest()
+    condition = manifest.expand_matrix(smoke=True)[0]
+    bundle = manifest.load_prompt_bundle(condition.prompt_variant_id)
+    captured: dict[str, object] = {}
+
+    class DummyRuntime:
+        async def run(self, prompt: str) -> SimpleNamespace:
+            captured["prompt"] = prompt
+            return SimpleNamespace(response="generated retrieval contract artifact", goal_achieved=True)
 
         def close(self) -> None:
             captured["closed"] = True
@@ -366,14 +421,75 @@ def test_generate_condition_artifact_live_mode_uses_runtime_factory(tmp_path, mo
         allow_live=True,
     )
 
-    assert result.provider == "live"
-    assert result.response_text == "generated retrieval contract artifact"
-    assert captured["closed"] is True
+    assert result.metadata["runtime_model_id"] == "claude-opus-4-6"
     kwargs = captured["kwargs"]
     assert isinstance(kwargs, dict)
-    assert kwargs["sdk"] == condition.model_sdk
-    assert kwargs["model"] == condition.model_id
-    assert kwargs["enable_memory"] is False
+    assert kwargs["model"] == "claude-opus-4-6"
+
+
+def test_generate_condition_artifact_live_mode_raises_on_failed_agent_result(tmp_path, monkeypatch):
+    manifest = load_default_experiment_manifest()
+    condition = manifest.expand_matrix(smoke=True)[1]
+    bundle = manifest.load_prompt_bundle(condition.prompt_variant_id)
+    original_cwd = os.getcwd()
+
+    class DummyRuntime:
+        async def run(self, prompt: str) -> SimpleNamespace:
+            return SimpleNamespace(
+                response="Agent execution encountered an error.",
+                goal_achieved=False,
+                metadata={"error": "RuntimeError"},
+            )
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(
+        "amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime",
+        lambda **kwargs: DummyRuntime(),
+    )
+
+    with pytest.raises(RuntimeError, match="Live generation failed"):
+        generate_condition_artifact(
+            condition,
+            bundle.combined_text(),
+            work_dir=tmp_path,
+            allow_live=True,
+        )
+    assert os.getcwd() == original_cwd
+
+
+def test_generate_condition_artifact_live_mode_raises_on_model_error_text(tmp_path, monkeypatch):
+    manifest = load_default_experiment_manifest()
+    condition = manifest.expand_matrix(smoke=True)[0]
+    bundle = manifest.load_prompt_bundle(condition.prompt_variant_id)
+
+    class DummyRuntime:
+        async def run(self, prompt: str) -> SimpleNamespace:
+            return SimpleNamespace(
+                response=(
+                    "There's an issue with the selected model (claude-opus-4.6). "
+                    "It may not exist or you may not have access to it."
+                ),
+                goal_achieved=True,
+                metadata={},
+            )
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(
+        "amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime",
+        lambda **kwargs: DummyRuntime(),
+    )
+
+    with pytest.raises(RuntimeError, match="selected model"):
+        generate_condition_artifact(
+            condition,
+            bundle.combined_text(),
+            work_dir=tmp_path,
+            allow_live=True,
+        )
 
 
 def test_main_returns_nonzero_when_run_report_has_failed_conditions(tmp_path, capsys):

@@ -51,6 +51,7 @@ class ClaudeGoalSeekingAgent(GoalSeekingAgent):
         storage_path: Path | None = None,
         enable_memory: bool = True,
         enable_eval: bool = False,
+        enable_learning_tools: bool = True,
         allowed_native_tools: list[str] | None = None,
     ):
         if not HAS_CLAUDE_SDK:
@@ -79,6 +80,9 @@ class ClaudeGoalSeekingAgent(GoalSeekingAgent):
             enable_memory=enable_memory,
             enable_eval=enable_eval,
         )
+        if not enable_learning_tools:
+            self._tools = []
+            self._create_sdk_agent()
 
     def _create_sdk_agent(self) -> None:
         """Store config for ClaudeSDKClient (created per-run)."""
@@ -89,28 +93,37 @@ class ClaudeGoalSeekingAgent(GoalSeekingAgent):
 
     def _build_system_prompt(self) -> str:
         """Build comprehensive system prompt for goal-seeking learning agent."""
-        base = (
-            "You are a goal-seeking learning agent. Your capabilities:\n\n"
-            "GOAL SEEKING:\n"
-            "1. Determine the user's intent from their message\n"
-            "2. Form a specific, evaluable goal\n"
-            "3. Make a plan to achieve the goal\n"
-            "4. Execute the plan iteratively, adjusting based on results\n"
-            "5. Evaluate whether the goal was achieved\n\n"
-            "LEARNING:\n"
-            "- Use learn_from_content to extract and store facts from text\n"
-            "- Use search_memory to retrieve relevant stored knowledge\n"
-            "- Use verify_fact to check claims against your knowledge\n"
-            "- Use find_knowledge_gaps to identify what you don't know\n\n"
-            "TEACHING:\n"
-            "- Use explain_knowledge to generate explanations at varying depth\n"
-            "- Adapt your explanations to the learner's level\n"
-            "- Ask probing questions to verify understanding\n\n"
-            "APPLYING:\n"
-            "- Use stored knowledge to solve new problems\n"
-            "- Use native tools (bash, file operations) to take real actions\n"
-            "- Verify your work using verify_fact and search_memory\n"
-        )
+        if self._tools:
+            base = (
+                "You are a goal-seeking learning agent. Your capabilities:\n\n"
+                "GOAL SEEKING:\n"
+                "1. Determine the user's intent from their message\n"
+                "2. Form a specific, evaluable goal\n"
+                "3. Make a plan to achieve the goal\n"
+                "4. Execute the plan iteratively, adjusting based on results\n"
+                "5. Evaluate whether the goal was achieved\n\n"
+                "LEARNING:\n"
+                "- Use learn_from_content to extract and store facts from text\n"
+                "- Use search_memory to retrieve relevant stored knowledge\n"
+                "- Use verify_fact to check claims against your knowledge\n"
+                "- Use find_knowledge_gaps to identify what you don't know\n\n"
+                "TEACHING:\n"
+                "- Use explain_knowledge to generate explanations at varying depth\n"
+                "- Adapt your explanations to the learner's level\n"
+                "- Ask probing questions to verify understanding\n\n"
+                "APPLYING:\n"
+                "- Use stored knowledge to solve new problems\n"
+                "- Use native tools (bash, file operations) to take real actions\n"
+                "- Verify your work using verify_fact and search_memory\n"
+            )
+        else:
+            base = (
+                "You are a goal-seeking code-generation agent.\n\n"
+                "1. Determine the user's intent from their message.\n"
+                "2. Produce the requested artifact directly.\n"
+                "3. Do not rely on external tools or memory lookups.\n"
+                "4. Keep the response tightly scoped to the requested output.\n"
+            )
 
         if self.instructions:
             base += f"\nADDITIONAL INSTRUCTIONS:\n{self.instructions}\n"
