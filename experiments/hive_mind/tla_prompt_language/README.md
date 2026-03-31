@@ -15,6 +15,9 @@ The chosen scope is intentionally narrow:
 - `specs/DistributedRetrievalRefinement.md` — companion refinement guidance that
   turns the abstract contract into request-local protocol expectations
 - `specs/DistributedRetrievalContract.cfg` — TLC model config for the scoped spec
+- `specs/DistributedRetrievalBestEffort.tla` — refined best-effort semantics spec
+  (TLC validated: 5,927 states, 2,660 distinct, 0 errors, 7 invariants)
+- `specs/DistributedRetrievalBestEffort.cfg` — TLC model config for the best-effort spec
 - `prompts/` — English baseline, TLA-only, hybrid, and refinement-aware prompt variants
 
 ## Why this scope

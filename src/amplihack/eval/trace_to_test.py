@@ -328,7 +328,11 @@ def main() -> None:
     args = parser.parse_args()
 
     dot_path = Path(args.dot)
+    if not dot_path.exists():
+        raise SystemExit(f"DOT file not found: {dot_path}")
     states, edges = parse_dot_states(dot_path)
+    if not states:
+        raise SystemExit(f"No states parsed from {dot_path} — is this a valid TLC DOT dump?")
     print(f"Parsed {len(states)} states, {sum(len(v) for v in edges.values())} edges")
 
     traces = extract_traces(states, edges, max_traces=args.max_traces)

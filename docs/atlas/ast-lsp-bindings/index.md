@@ -80,6 +80,11 @@ Category: <strong>Structural</strong> | Generated: 2026-03-31T07:15:00.000000+00
         ASM --> PU
         PU -.->|"sys.modules resolve"| LA
 
+        %% TLA+ trace-to-test pipeline (PR #3959)
+        subgraph eval_tla["eval/tla"]
+            TTT["trace_to_test<br/>TLC DOT → pytest"]
+        end
+
         click F0 "../ast-lsp-bindings/" "View AST bindings"
     ```
 

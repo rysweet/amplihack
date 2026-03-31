@@ -984,8 +984,6 @@ MSG → detect ALL signals in parallel:
 
 ---
 
-## Prompt Engineering Patterns
-
 ### Pattern: Formal Specification as Prompt
 
 **Challenge**: Natural language prompts for concurrent/distributed system code generation produce unreliable results because English is inherently ambiguous about safety invariants.
