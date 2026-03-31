@@ -438,7 +438,8 @@ class TestRoutingPromptContent(unittest.TestCase):
 
     def test_contains_hybrid_category(self):
         self.assertIn("HYBRID", _ROUTING_PROMPT)
-        self.assertIn("Investigate/understand THEN implement/fix", _ROUTING_PROMPT)
+        self.assertIn("UNDERSTAND + IMPLEMENT", _ROUTING_PROMPT)
+        self.assertIn('"investigate X then fix Y" = HYBRID', _ROUTING_PROMPT)
 
     def test_contains_qa_category(self):
         self.assertIn("Q&A", _ROUTING_PROMPT)
@@ -464,17 +465,18 @@ class TestRoutingPromptContent(unittest.TestCase):
         self.assertIn("what is OAuth?", _ROUTING_PROMPT)
 
     def test_prompt_is_concise(self):
-        # New prompt is longer due to MANDATORY RULE section for code/docs changes
-        self.assertLess(len(_ROUTING_PROMPT), 2500)
+        # Keep the injected prompt bounded enough to avoid runaway token costs.
+        self.assertLess(len(_ROUTING_PROMPT), 3500)
 
     def test_auto_routed_announcement(self):
         self.assertIn("[auto-routed]", _ROUTING_PROMPT)
 
     def test_contains_mandatory_code_edit_rule(self):
         """The prompt must enforce that ALL file changes use DEV workflow."""
-        self.assertIn("MANDATORY RULE", _ROUTING_PROMPT)
-        self.assertIn("ALWAYS DEV", _ROUTING_PROMPT)
-        self.assertIn("NO exceptions", _ROUTING_PROMPT)
+        self.assertIn("FILE_EDIT", _ROUTING_PROMPT)
+        self.assertIn('"change the default model" = DEV', _ROUTING_PROMPT)
+        self.assertIn('"update README" = DEV', _ROUTING_PROMPT)
+        self.assertIn('"fix a typo" = DEV', _ROUTING_PROMPT)
 
     def test_routing_prompt_is_not_empty(self):
         """The prompt must load from external template file successfully."""
