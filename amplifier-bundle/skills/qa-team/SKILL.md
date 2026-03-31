@@ -191,16 +191,26 @@ sudo apt-get install -y build-essential python3
 
 **Install the framework:**
 
+The gadugi-agentic-test framework is not published to npm. Install it from GitHub:
+
 ```bash
-# Install globally for CLI access
-npm install -g @gadugi/agentic-test
+# Clone the repository
+git clone https://github.com/rysweet/gadugi-agentic-test.git
+cd gadugi-agentic-test
 
-# Or install locally in your project
-npm install @gadugi/agentic-test
+# Install dependencies and build
+npm install
+npm run build
 
-# Verify installation
-gadugi-test --version
+# Verify the build succeeded
+node dist/cli.js --version
 ```
+
+> **Tip**: If you want CLI-style access from anywhere, you can add an alias:
+>
+> ```bash
+> alias gadugi-test="node /path/to/gadugi-agentic-test/dist/cli.js"
+> ```
 
 ### Your First Test (CLI Example)
 
@@ -229,7 +239,7 @@ scenario:
 Run the test:
 
 ```bash
-gadugi-test run test-hello.yaml
+node dist/cli.js run -s test-hello -d ./
 ```
 
 Output:
@@ -2085,12 +2095,12 @@ need to compare two things:
 
 Located in `.claude/scenarios/ab-comparison/`:
 
-| File | Purpose |
-|------|---------|
-| `ab_comparison_harness.py` | Run two CLIs side-by-side in isolated sandboxes |
-| `ab_audit_cycle.py` | Self-improving loop: identify → categorize → fix → re-validate |
-| `SCENARIO_FORMAT.md` | YAML scenario format specification |
-| `example_scenario.yaml` | Example scenario for a calculator CLI |
+| File                       | Purpose                                                        |
+| -------------------------- | -------------------------------------------------------------- |
+| `ab_comparison_harness.py` | Run two CLIs side-by-side in isolated sandboxes                |
+| `ab_audit_cycle.py`        | Self-improving loop: identify → categorize → fix → re-validate |
+| `SCENARIO_FORMAT.md`       | YAML scenario format specification                             |
+| `example_scenario.yaml`    | Example scenario for a calculator CLI                          |
 
 ### Quick Start
 
@@ -2133,20 +2143,20 @@ python .claude/scenarios/ab-comparison/ab_comparison_harness.py \
 ```yaml
 cases:
   - name: "unique-test-name"
-    category: "install"                     # For audit grouping
-    argv: ["subcommand", "--flag"]          # Same args for both sides
-    timeout: 15                             # Seconds
+    category: "install" # For audit grouping
+    argv: ["subcommand", "--flag"] # Same args for both sides
+    timeout: 15 # Seconds
     env:
-      PATH: "${SANDBOX_ROOT}/bin:${PATH}"   # Template variables
-    setup: |                                # Bash script run in both sandboxes
+      PATH: "${SANDBOX_ROOT}/bin:${PATH}" # Template variables
+    setup: | # Bash script run in both sandboxes
       mkdir -p bin
       echo '#!/bin/bash' > bin/stub && chmod +x bin/stub
     compare:
-      - exit_code                           # Integer match
-      - stdout                              # Text or JSON-semantic
-      - stderr                              # Text match
-      - "fs:path/to/file"                  # File/dir hash comparison
-      - "jsonfs:path/to/file.json"         # JSON semantic comparison
+      - exit_code # Integer match
+      - stdout # Text or JSON-semantic
+      - stderr # Text match
+      - "fs:path/to/file" # File/dir hash comparison
+      - "jsonfs:path/to/file.json" # JSON semantic comparison
 ```
 
 See `SCENARIO_FORMAT.md` for the full specification.
@@ -2205,6 +2215,7 @@ See `SCENARIO_FORMAT.md` for the full specification.
 ### Real-World Results
 
 Used for `amplihack-rs` migration validation (rysweet/amplihack-rs#25):
+
 - **118/118** comparison tests across 12 tiers
 - **619/619** hook golden file tests
 - **9/9** shadow harness cases
