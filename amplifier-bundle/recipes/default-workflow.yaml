@@ -298,65 +298,54 @@ steps:
       {{task_description}}
       EOFTASKDESC
       )
-      ISSUE_TITLE=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | cut -c1-200)
-      ISSUE_TASK=$(printf '%s' "$TASK_DESC")
+      # Bash builtins replace tr|cut pipeline — avoids 2 subprocess spawns (matches step-16)
+      ISSUE_TITLE="${TASK_DESC//$'\n'/ }"
+      ISSUE_TITLE="${ISSUE_TITLE//$'\r'/ }"
+      ISSUE_TITLE="${ISSUE_TITLE:0:200}"
       ISSUE_REQS=$(cat <<EOFREQS
       {{final_requirements}}
       EOFREQS
       )
 
-      # ======================================================================
       # Idempotency Guard 1: Reuse issue referenced in task_description (#NNNN)
-      # Mirrors step-16-create-draft-pr idempotency pattern (added in #3324).
-      # ======================================================================
-      REF_ISSUE_NUM=$(printf '%s' "$TASK_DESC" | grep -oE '#[0-9]+' | head -1 | tr -d '#' || true)
-      # SECURITY: Validate REF_ISSUE_NUM is numeric before interpolating into gh command.
-      # The grep -oE '#[0-9]+' already constrains to digits, but explicit validation
-      # provides defense-in-depth, consistent with step-16-create-draft-pr (#3324).
+      # Mirrors step-16-create-draft-pr idempotency pattern (#3324).
+      # Bash regex replaces printf|grep|head|tr pipeline — avoids 4 subprocess spawns
+      if [[ "$TASK_DESC" =~ \#([0-9]+) ]]; then
+          REF_ISSUE_NUM="${BASH_REMATCH[1]}"
+      else
+          REF_ISSUE_NUM=""
+      fi
+      # Defense-in-depth: validate numeric before interpolating into gh command
       if [ -n "$REF_ISSUE_NUM" ] && ! [[ "$REF_ISSUE_NUM" =~ ^[0-9]+$ ]]; then
           echo "WARN: Extracted issue reference is not numeric: $REF_ISSUE_NUM — skipping guard 1" >&2
           REF_ISSUE_NUM=""
       fi
       if [ -n "$REF_ISSUE_NUM" ]; then
           echo "INFO: task_description references issue #$REF_ISSUE_NUM — verifying it exists" >&2
-          # timeout 60: prevents hanging if GitHub API is unresponsive
-          # 2>/dev/null: suppress gh stderr noise (auth warnings, rate limits)
           EXISTING_URL=$(timeout 60 gh issue view "$REF_ISSUE_NUM" --json url --jq '.url // ""' 2>/dev/null || echo '')
           if [ -n "$EXISTING_URL" ]; then
               echo "INFO: Reusing existing issue #$REF_ISSUE_NUM — skipping creation" >&2
-              echo "Existing issue: $EXISTING_URL" >&2
-              # Output in issues/NNNN format for step-03b extraction compatibility
               printf '%s\n' "$EXISTING_URL"
               exit 0
           fi
           echo "WARN: Referenced issue #$REF_ISSUE_NUM not found — will search or create" >&2
       fi
 
-      # ======================================================================
       # Idempotency Guard 2: Search open issues for similar title
-      # Prevents duplicate issue creation on workflow re-runs.
-      # ======================================================================
-      # Use first 100 chars of title for search (GitHub search has length limits)
-      SEARCH_QUERY=$(printf '%s' "$ISSUE_TITLE" | cut -c1-100)
+      SEARCH_QUERY="${ISSUE_TITLE:0:100}"
       if [ -n "$SEARCH_QUERY" ]; then
           echo "INFO: Searching open issues for similar title" >&2
-          # timeout 60: cap GitHub API wait
-          # 2>/dev/null: suppress gh stderr noise
           FOUND_URL=$(timeout 60 gh issue list --state open --search "$SEARCH_QUERY" --json url --jq '.[0].url // ""' 2>/dev/null || echo '')
           if [ -n "$FOUND_URL" ]; then
               echo "INFO: Found existing open issue matching title — skipping creation" >&2
-              echo "Existing issue: $FOUND_URL" >&2
-              # Output in issues/NNNN format for step-03b extraction compatibility
               printf '%s\n' "$FOUND_URL"
               exit 0
           fi
           echo "INFO: No matching open issue found — proceeding to create" >&2
       fi
 
-      # ======================================================================
-      # Normal path: No existing issue found — create a new one
-      # ======================================================================
-      ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$ISSUE_TASK" "$ISSUE_REQS")
+      # Normal path: create a new issue
+      ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$TASK_DESC" "$ISSUE_REQS")
       LABEL_NAME="workflow:default"
       if ! gh label list --limit 1000 2>/dev/null | grep -qw "$LABEL_NAME"; then
         gh label create "$LABEL_NAME" \
