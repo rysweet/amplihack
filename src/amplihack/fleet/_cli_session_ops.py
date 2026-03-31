@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import sys
 
-import click
+import click  # type: ignore[reportMissingImports]
 
 # Re-export formatters and helpers for backward compatibility
 from amplihack.fleet._cli_formatters import (
@@ -28,6 +28,8 @@ from amplihack.fleet._cli_formatters import (
     format_advance_report,
     format_scout_report,
 )
+from amplihack.fleet._cli_scout_advance import _parse_session_target
+from amplihack.fleet._error_sanitizer import sanitize_external_error_detail
 from amplihack.fleet._session_lifecycle import (
     FleetConfig,
     FleetSession,
@@ -38,7 +40,6 @@ from amplihack.fleet._session_lifecycle import (
     start_fleet_session,
     stop_fleet_session,
 )
-from amplihack.fleet._cli_scout_advance import _parse_session_target
 
 __all__ = [
     "register_session_ops",
@@ -100,7 +101,8 @@ def register_session_ops(fleet_cli: click.Group) -> None:
                 click.echo(result.stdout)
                 click.echo("--- end ---")
             else:
-                click.echo(f"Failed to capture: {result.stderr[:200]}")
+                detail = sanitize_external_error_detail(result.stderr)
+                click.echo(f"Failed to capture: {detail}")
         except subprocess.TimeoutExpired:
             click.echo("Timeout connecting to VM")
 
@@ -111,11 +113,11 @@ def register_session_ops(fleet_cli: click.Group) -> None:
     @fleet_cli.command("snapshot")
     def snapshot():
         """Point-in-time capture of all managed sessions."""
-        state = _cmd.FleetState(azlin_path=_cmd._get_azlin())
+        state = _cmd.FleetState(azlin_path=_cmd._get_azlin())  # pyright: ignore[reportAttributeAccessIssue]
         state.exclude_vms(*_cmd._existing_vms)
         state.refresh()
 
-        observer = _cmd.FleetObserver(azlin_path=_cmd._get_azlin())
+        observer = _cmd.FleetObserver(azlin_path=_cmd._get_azlin())  # pyright: ignore[reportAttributeAccessIssue]
 
         click.echo(f"Fleet Snapshot ({len(state.managed_vms())} managed VMs)")
         click.echo("=" * 60)
@@ -193,7 +195,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
     def propagate_auth(vm_name, services):
         """Propagate authentication tokens to a VM."""
         # Use _cmd.AuthPropagator so tests can patch _cli_commands.AuthPropagator
-        auth = _cmd.AuthPropagator(azlin_path=_cmd._get_azlin())
+        auth = _cmd.AuthPropagator(azlin_path=_cmd._get_azlin())  # pyright: ignore[reportAttributeAccessIssue]
         results = auth.propagate_all(vm_name, services=list(services))
 
         for r in results:
@@ -217,7 +219,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
     @click.argument("vm_name", callback=_cmd._validate_vm_name_cli)
     def observe(vm_name):
         """Observe agent sessions on a VM."""
-        state = _cmd.FleetState(azlin_path=_cmd._get_azlin())
+        state = _cmd.FleetState(azlin_path=_cmd._get_azlin())  # pyright: ignore[reportAttributeAccessIssue]
         state.refresh()
 
         vm = state.get_vm(vm_name)
@@ -229,7 +231,7 @@ def register_session_ops(fleet_cli: click.Group) -> None:
             click.echo(f"No tmux sessions on {vm_name}")
             return
 
-        observer = _cmd.FleetObserver(azlin_path=_cmd._get_azlin())
+        observer = _cmd.FleetObserver(azlin_path=_cmd._get_azlin())  # pyright: ignore[reportAttributeAccessIssue]
         results = observer.observe_all(vm.tmux_sessions)
 
         for obs in results:

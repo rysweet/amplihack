@@ -11,10 +11,7 @@ from __future__ import annotations
 import subprocess as sp
 from unittest.mock import MagicMock, patch
 
-import pytest
-
-from amplihack.fleet.fleet_setup import RepoSetup, SetupResult
-
+from amplihack.fleet.fleet_setup import RepoSetup
 
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — _generate_setup_script
@@ -209,6 +206,27 @@ class TestSetupRepo:
         assert "repository not found" in result.error
 
     @patch("amplihack.fleet.fleet_setup.subprocess.run")
+    def test_failed_setup_sanitizes_error_detail(self, mock_run):
+        fake_token = "ghp_" + "abcdefghijklmnopqrstuvwxyz123456"  # pragma: allowlist secret
+        fake_path = "/home/tester/.config/gh/hosts.yml"
+        mock_run.return_value = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr=f"fatal: copy failed for {fake_path} Authorization: Bearer {fake_token}",
+        )
+
+        setup = RepoSetup()
+        result = setup.setup_repo(
+            vm_name="vm-01",
+            repo_url="https://github.com/org/private.git",
+        )
+
+        assert result.success is False
+        assert "<path>" in result.error
+        assert fake_token not in result.error
+        assert "Authorization: Bearer ***" in result.error
+
+    @patch("amplihack.fleet.fleet_setup.subprocess.run")
     def test_setup_without_setup_ok_marker(self, mock_run):
         """If SETUP_OK is missing from stdout, it's a failure."""
         mock_run.return_value = MagicMock(
@@ -244,8 +262,6 @@ class TestSetupResult:
     """Unit tests for SetupResult dataclass."""
 
     def test_project_name_extraction(self):
-        setup = RepoSetup()
-        result = setup.setup_repo.__wrapped__ if hasattr(setup.setup_repo, '__wrapped__') else None
         # Just verify RepoSetup extracts project name from URL
         repo_url = "https://github.com/org/my-project.git"
         project_name = repo_url.rstrip("/").split("/")[-1].replace(".git", "")

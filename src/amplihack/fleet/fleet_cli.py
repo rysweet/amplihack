@@ -24,12 +24,13 @@ import logging
 import shutil
 from pathlib import Path
 
-import click
+import click  # type: ignore[reportMissingImports]
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 from amplihack.fleet._constants import DEFAULT_CAPTURE_LINES, DEFAULT_DASHBOARD_REFRESH_SECONDS
 from amplihack.fleet._defaults import DEFAULT_EXCLUDE_VMS, get_azlin_path
+from amplihack.fleet._error_sanitizer import sanitize_external_error_detail
 from amplihack.fleet._validation import validate_vm_name
 from amplihack.fleet.fleet_admiral import FleetAdmiral
 from amplihack.fleet.fleet_state import FleetState
@@ -207,11 +208,11 @@ def setup():
                 version = result.stdout.strip() or "unknown"
                 click.echo(f"  azlin version: {version}")
             else:
-                click.echo(
-                    f"  azlin: found but --version failed ({result.stderr.strip()})", err=True
-                )
+                detail = sanitize_external_error_detail(result.stderr)
+                click.echo(f"  azlin: found but --version failed ({detail})", err=True)
         except Exception as exc:
-            click.echo(f"  azlin: found but verification failed — {exc}", err=True)
+            detail = sanitize_external_error_detail(str(exc))
+            click.echo(f"  azlin: found but verification failed — {detail}", err=True)
 
     # Check Azure CLI (optional but helpful)
     az_path = shutil.which("az")
@@ -287,4 +288,4 @@ def create_fleet_cli() -> click.Group:
 
 
 if __name__ == "__main__":
-    fleet_cli()
+    fleet_cli()  # pyright: ignore[reportCallIssue]
