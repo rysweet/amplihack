@@ -21,6 +21,7 @@ import subprocess
 from dataclasses import dataclass, field
 
 from amplihack.fleet._defaults import get_azlin_path
+from amplihack.fleet._error_sanitizer import sanitize_external_error_detail
 from amplihack.fleet._validation import validate_vm_name
 
 __all__ = ["RepoSetup", "SetupResult"]
@@ -103,7 +104,10 @@ class RepoSetup:
             success = result.returncode == 0 and "SETUP_OK" in (result.stdout or "")
             error = ""
             if not success:
-                error = (result.stderr or result.stdout or "Unknown error")[-500:]
+                error = sanitize_external_error_detail(
+                    result.stderr or result.stdout,
+                    max_len=500,
+                )
 
             return SetupResult(
                 vm_name=vm_name,

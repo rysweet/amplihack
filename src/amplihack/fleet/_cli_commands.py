@@ -11,23 +11,15 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-import click
+import click  # type: ignore[reportMissingImports]
 
 from amplihack.fleet._cli_copilot_ops import register_copilot_ops
 from amplihack.fleet._cli_fleet_ops import register_fleet_ops
 from amplihack.fleet._cli_scout_advance import register_scout_advance_ops
 from amplihack.fleet._cli_session_ops import register_session_ops
-from amplihack.fleet.fleet_auth import AuthPropagator
-from amplihack.fleet.fleet_observer import FleetObserver
-from amplihack.fleet._backends import (
-    AnthropicBackend,
-    CopilotBackend,
-    auto_detect_backend,
-)
-from amplihack.fleet.fleet_session_reasoner import SessionReasoner
-from amplihack.fleet.fleet_state import FleetState
+from amplihack.fleet._error_sanitizer import sanitize_external_error_detail
 from amplihack.fleet.fleet_tasks import TaskPriority, TaskQueue
 
 __all__ = ["register_commands", "COPILOT_LOCK_DIR", "COPILOT_LOG_DIR"]
@@ -36,14 +28,26 @@ logger = logging.getLogger(__name__)
 
 # Module-level references set by register_commands().
 # These allow tests to patch e.g. "amplihack.fleet._cli_commands._get_director".
-_get_director: Callable[..., Any] = lambda: None  # type: ignore[assignment]
-_get_azlin: Callable[[], str] = lambda: ""
+
+
+def _get_director() -> Any:
+    return None
+
+
+def _get_azlin() -> str:
+    return ""
+
+
 _validate_vm_name_cli: Any = None
 _existing_vms: tuple[str, ...] = ()
 _default_queue_path: Path = Path()
 _default_dashboard_path: Path = Path()
 _default_graph_path: Path = Path()
-_adopt_all_sessions: Callable[..., None] = lambda d: None
+
+
+def _adopt_all_sessions(_director: Any) -> None:
+    return None
+
 
 # Copilot lock/log directory functions -- resolved at call time, not import time.
 # Tests patch these module-level vars for filesystem isolation.
@@ -317,13 +321,26 @@ def register_commands(
                 if proj.identity:
                     subprocess.run(
                         ["gh", "auth", "switch", "--user", proj.identity],
-                        capture_output=True, text=True, timeout=10,
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
                     )
                 result = subprocess.run(
-                    ["gh", "issue", "view", str(issue_number),
-                     "--repo", proj.repo_url, "--json", "title,url",
-                     "--jq", '.title + "\\n" + .url'],
-                    capture_output=True, text=True, timeout=15,
+                    [
+                        "gh",
+                        "issue",
+                        "view",
+                        str(issue_number),
+                        "--repo",
+                        proj.repo_url,
+                        "--json",
+                        "title,url",
+                        "--jq",
+                        '.title + "\\n" + .url',
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
                 )
                 if result.returncode == 0 and result.stdout.strip():
                     lines = result.stdout.strip().split("\n")
@@ -370,20 +387,36 @@ def register_commands(
             if proj.identity:
                 subprocess.run(
                     ["gh", "auth", "switch", "--user", proj.identity],
-                    capture_output=True, text=True, timeout=10,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
                 )
             result = subprocess.run(
-                ["gh", "issue", "list", "--repo", proj.repo_url,
-                 "--label", label, "--json", "number,title,state,url",
-                 "--jq", '.[]|[.number,.title,.state,.url]|@tsv'],
-                capture_output=True, text=True, timeout=15,
+                [
+                    "gh",
+                    "issue",
+                    "list",
+                    "--repo",
+                    proj.repo_url,
+                    "--label",
+                    label,
+                    "--json",
+                    "number,title,state,url",
+                    "--jq",
+                    ".[]|[.number,.title,.state,.url]|@tsv",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=15,
             )
         except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
-            click.echo(f"Failed to query GitHub: {exc}")
+            detail = sanitize_external_error_detail(str(exc))
+            click.echo(f"Failed to query GitHub: {detail}")
             return
 
         if result.returncode != 0:
-            click.echo(f"gh issue list failed: {result.stderr.strip()}")
+            detail = sanitize_external_error_detail(result.stderr)
+            click.echo(f"gh issue list failed: {detail}")
             return
 
         count = 0
@@ -402,4 +435,3 @@ def register_commands(
 
         save_projects(projects)
         click.echo(f"Synced {count} objectives for {project_name} (label: {label})")
-

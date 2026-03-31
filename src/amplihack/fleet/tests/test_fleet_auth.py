@@ -117,6 +117,21 @@ class TestAuthPropagatorIdentitySwitch:
         assert "failed" in result.error.lower()
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    def test_switch_identity_verify_failure(self, mock_run):
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="Switched", stderr=""),
+            MagicMock(returncode=1, stdout="wrong account active", stderr=""),
+        ]
+
+        auth = AuthPropagator()
+        identity = GitHubIdentity(username="octocat")
+
+        result = auth.switch_github_identity("test-vm", identity)
+
+        assert result.success is False
+        assert result.error == "gh auth verify failed: wrong account active"
+
+    @patch("amplihack.fleet.fleet_auth.subprocess.run")
     def test_list_identities(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,
