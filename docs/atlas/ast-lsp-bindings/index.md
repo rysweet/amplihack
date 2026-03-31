@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-31T04:37:16.553364+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-31T04:37:30.162903+00:00
 </div>
 
 ## Map
@@ -51,7 +51,7 @@ Category: <strong>Structural</strong> | Generated: 2026-03-31T04:37:16.553364+00
         F22 --> F6
         F23 --> F7
         F24 --> F8
-
+    
         click F0 "../ast-lsp-bindings/" "View AST bindings"
     ```
 
@@ -65,27 +65,27 @@ Category: <strong>Structural</strong> | Generated: 2026-03-31T04:37:16.553364+00
 
     | Metric | Value |
     |--------|-------|
-    | Total definitions | 14806 |
-    | Total exports | 2264 |
-    | Total imports | 16551 |
+    | Total definitions | 14801 |
+    | Total exports | 2265 |
+    | Total imports | 16541 |
     | Potentially dead | 426 |
-    | Files with `__all__` | 426 |
+    | Files with `__all__` | 427 |
 
 ## Legend
 
 <div class="atlas-legend" markdown>
 
-| Symbol    | Meaning               |
-| --------- | --------------------- |
-| Rectangle | Source file           |
-| Arrow     | Import dependency     |
+| Symbol | Meaning |
+|--------|---------|
+| Rectangle | Source file |
+| Arrow | Import dependency |
 | `refs: N` | Total reference count |
 
 </div>
 
 ## Key Findings
 
-- 14806 total definitions across all files
+- 14801 total definitions across all files
 - 426 potentially dead definitions (2.9% of total)
 - 1936 files without `__all__` exports
 
@@ -94,16 +94,16 @@ Category: <strong>Structural</strong> | Generated: 2026-03-31T04:37:16.553364+00
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-
-    - **Total Definitions**: 14806
-    - **Total Exports**: 2264
-    - **Total Imports**: 16551
+    
+    - **Total Definitions**: 14801
+    - **Total Exports**: 2265
+    - **Total Imports**: 16541
     - **Potentially Dead Count**: 426
-    - **Files With All**: 426
+    - **Files With All**: 427
     - **Files Without All**: 1936
     - **Importlib Dynamic Imports**: 43
     - **Language Counts**:
-        - `python`: 14806
+        - `python`: 14801
 
 ## Cross-References
 
