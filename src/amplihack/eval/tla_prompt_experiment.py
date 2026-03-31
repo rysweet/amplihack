@@ -18,6 +18,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -962,8 +963,21 @@ def _load_replay_generation(
                 provider="replay",
                 metadata={"source_path": str(artifact_file)},
             )
+    expected_files = ", ".join(REPLAY_ARTIFACT_FILENAMES)
+    packet_only_hint = ""
+    if condition_dir.is_dir():
+        present_files = {item.name for item in condition_dir.iterdir()}
+        if {"condition.json", "prompt.md"}.issubset(present_files):
+            packet_only_hint = (
+                " Replay mode expects a generated artifact file in each condition "
+                f"directory (for example: {expected_files}). The output of "
+                "--materialize-dir contains prompt/spec packets only and cannot be "
+                "used as replay input until you add a generated artifact per condition."
+            )
     raise FileNotFoundError(
-        f"No replay artifact found for {condition.condition_id} under {condition_dir}"
+        "No replay artifact found for "
+        f"{condition.condition_id} under {condition_dir}. "
+        f"Expected one of: {expected_files}.{packet_only_hint}"
     )
 
 
@@ -1237,7 +1251,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--replay-dir",
         type=Path,
-        help="Read pre-generated condition artifacts from this directory instead of invoking live model generation.",
+        help=(
+            "Read pre-generated condition artifacts (for example: "
+            "generated_artifact.md) from this directory instead of invoking live "
+            "model generation. The output of --materialize-dir is not sufficient "
+            "on its own."
+        ),
     )
     parser.add_argument(
         "--allow-live",
@@ -1278,6 +1297,14 @@ def main(argv: list[str] | None = None) -> int:
             tla2tools_jar=str(args.tla2tools_jar) if args.tla2tools_jar else None,
         )
         print(json.dumps(report.to_dict(), indent=2))
+        if report.failed_conditions:
+            print(
+                "Experiment run recorded "
+                f"{report.failed_conditions} failed condition(s). "
+                f"See {args.run_dir}/*/run_result.json for details.",
+                file=sys.stderr,
+            )
+            return 1
         return 0
     if args.validate_spec:
         result = validate_spec_assets(

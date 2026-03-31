@@ -41,12 +41,19 @@ PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --smoke
 PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --variant tla_plus_english
 PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --smoke --output /tmp/tla-matrix.json
 PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --smoke --materialize-dir /tmp/tla-packets
-PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --summarize-results /tmp/tla-packets
-PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --smoke --run-dir /tmp/tla-run --replay-dir /tmp/tla-packets
+PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --smoke --run-dir /tmp/tla-run --replay-dir /tmp/tla-replay-artifacts
+PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --summarize-results /tmp/tla-run
 PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --smoke --run-dir /tmp/tla-live-run --allow-live
 PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --validate-spec --tlc-bin /path/to/tlc
 PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --validate-spec --tla2tools-jar /path/to/tla2tools.jar
 ```
+
+`--materialize-dir` writes prompt/spec packets only. Replay mode is different:
+`--replay-dir` must already contain one generated artifact file per condition
+directory (for example `generated_artifact.md`, `generated_response.md`,
+`output.md`, or `output.txt`). Use `--summarize-results` against a completed
+`--run-dir`, not against a packet directory. The runner exits non-zero if any
+condition fails.
 
 ## First-slice status
 
@@ -64,7 +71,9 @@ aggregator so downstream runs have a stable place to record:
 
 The local first-slice runner can now execute a matrix in two modes:
 
-- **replay mode** via `--replay-dir`, which reads pre-generated artifacts per condition
+- **replay mode** via `--replay-dir`, which reads pre-generated artifacts per
+  condition and does **not** consume the raw packet output from
+  `--materialize-dir`
 - **live mode** via `--run-dir --allow-live`, which invokes the configured SDK-backed runtime
 
 Each run writes:

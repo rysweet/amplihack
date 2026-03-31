@@ -13,6 +13,7 @@ from amplihack.eval.tla_prompt_experiment import (
     generate_condition_artifact,
     load_condition_result,
     load_default_experiment_manifest,
+    main,
     materialize_condition_packets,
     run_tla_prompt_experiment,
     summarize_condition_results,
@@ -317,6 +318,24 @@ def test_run_tla_prompt_experiment_requires_live_opt_in(tmp_path):
         run_tla_prompt_experiment(tmp_path / "run", smoke=True, manifest=manifest)
 
 
+def test_generate_condition_artifact_replay_mode_explains_packet_only_dirs(tmp_path):
+    manifest = load_default_experiment_manifest()
+    packets_dir = tmp_path / "packets"
+    packet = materialize_condition_packets(packets_dir, smoke=True, manifest=manifest)[0]
+    bundle = manifest.load_prompt_bundle(packet.condition.prompt_variant_id)
+
+    with pytest.raises(
+        FileNotFoundError,
+        match="--materialize-dir contains prompt/spec packets only",
+    ):
+        generate_condition_artifact(
+            packet.condition,
+            bundle.combined_text(),
+            work_dir=tmp_path / "work",
+            replay_dir=packets_dir,
+        )
+
+
 def test_generate_condition_artifact_live_mode_uses_runtime_factory(tmp_path, monkeypatch):
     manifest = load_default_experiment_manifest()
     condition = manifest.expand_matrix(smoke=True)[0]
@@ -355,6 +374,29 @@ def test_generate_condition_artifact_live_mode_uses_runtime_factory(tmp_path, mo
     assert kwargs["sdk"] == condition.model_sdk
     assert kwargs["model"] == condition.model_id
     assert kwargs["enable_memory"] is False
+
+
+def test_main_returns_nonzero_when_run_report_has_failed_conditions(tmp_path, capsys):
+    manifest = load_default_experiment_manifest()
+    packets_dir = tmp_path / "packets"
+    materialize_condition_packets(packets_dir, smoke=True, manifest=manifest)
+
+    exit_code = main(
+        [
+            "--manifest",
+            str(default_manifest_path()),
+            "--smoke",
+            "--run-dir",
+            str(tmp_path / "run"),
+            "--replay-dir",
+            str(packets_dir),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert '"failed_conditions": 6' in captured.out
+    assert "failed condition(s)" in captured.err
 
 
 def test_run_tla_prompt_experiment_replay_mode_writes_reports(tmp_path):
