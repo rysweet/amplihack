@@ -68,6 +68,40 @@ The implementation mirrors step-16's idempotency pattern:
 | Validate Code         | IN_PROGRESS        |
 | All other checks (23) | SUCCESS or SKIPPED |
 
+## Security Review
+
+Performed Step 5d security review on the idempotency guards.
+
+### Command Injection Analysis
+
+| Vector                                             | Status   | Reasoning                                                                                                                          |
+| -------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Guard 1: `REF_ISSUE_NUM` → `gh issue view`         | **Safe** | `grep -oE '#[0-9]+'` + `tr -d '#'` constrains to digits. Explicit `^[0-9]+$` validation added (defense-in-depth, matches step-16). |
+| Guard 2: `SEARCH_QUERY` → `gh issue list --search` | **Safe** | Double-quoted variable prevents shell splitting. `gh` CLI handles API-level escaping.                                              |
+
+### stderr Suppression (`2>/dev/null`)
+
+Lines 324/345 suppress only stderr (not stdout). Failure falls through to
+creation via `|| echo ''`. Matches step-16 precedent (REL-003). Acceptable
+per philosophy — these are advisory guards, not data-loss paths.
+
+### TOCTOU Race Condition
+
+Between Guard 2's search and `gh issue create`, another workflow could create a
+matching issue. Theoretical only — GitHub issue creation is inherently
+non-atomic. Worst case = duplicate (pre-fix behavior). No mitigation needed.
+
+### Timeout Handling
+
+Both guards use `timeout 60`. On timeout: exit code 124 → caught by
+`|| echo ''` → empty string → guard skips → falls through to creation. Safe.
+
+### Fix Applied
+
+Added explicit numeric validation for `REF_ISSUE_NUM` before `gh issue view`,
+consistent with step-16's `ISSUE_NUM` validation pattern. While the grep already
+constrains to digits, this provides defense-in-depth against edge cases.
+
 ## Risk Assessment
 
 - **False positive on Guard 2**: `gh issue list --search` with partial title
@@ -79,5 +113,6 @@ The implementation mirrors step-16's idempotency pattern:
 ## Conclusion
 
 Implementation is correct, follows established patterns, and is ready for
-review. No additional code changes needed. CI should be monitored for the
+review. Security review (Step 5d) identified one defense-in-depth improvement
+(numeric validation) which has been applied. CI should be monitored for the
 remaining "Validate Code" check.

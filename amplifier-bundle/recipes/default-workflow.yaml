@@ -310,6 +310,13 @@ steps:
       # Mirrors step-16-create-draft-pr idempotency pattern (added in #3324).
       # ======================================================================
       REF_ISSUE_NUM=$(printf '%s' "$TASK_DESC" | grep -oE '#[0-9]+' | head -1 | tr -d '#' || true)
+      # SECURITY: Validate REF_ISSUE_NUM is numeric before interpolating into gh command.
+      # The grep -oE '#[0-9]+' already constrains to digits, but explicit validation
+      # provides defense-in-depth, consistent with step-16-create-draft-pr (#3324).
+      if [ -n "$REF_ISSUE_NUM" ] && ! [[ "$REF_ISSUE_NUM" =~ ^[0-9]+$ ]]; then
+          echo "WARN: Extracted issue reference is not numeric: $REF_ISSUE_NUM — skipping guard 1" >&2
+          REF_ISSUE_NUM=""
+      fi
       if [ -n "$REF_ISSUE_NUM" ]; then
           echo "INFO: task_description references issue #$REF_ISSUE_NUM — verifying it exists" >&2
           # timeout 60: prevents hanging if GitHub API is unresponsive
