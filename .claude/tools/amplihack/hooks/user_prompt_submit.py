@@ -316,7 +316,14 @@ class UserPromptSubmitHook(HookProcessor):
         # Detect /dev invocation BEFORE strategy check — must run regardless
         # of which strategy handles the prompt, because Copilot strategies
         # short-circuit and return early, skipping downstream detection.
-        if self._is_dev_prompt(early_prompt):
+        # Skip when already inside a recipe session or active workflow to
+        # prevent false-positive detection on agent step prompts that
+        # mention "dev-orchestrator" in anti-recursion text (#3971).
+        if (
+            not self._is_nested_recipe_session()
+            and not self._is_workflow_active()
+            and self._is_dev_prompt(early_prompt)
+        ):
             try:
                 import time
 
@@ -420,8 +427,10 @@ class UserPromptSubmitHook(HookProcessor):
             self.log(f"Memory injection failed (non-fatal): {e}", "WARNING")
 
         # 3. Inject AMPLIHACK.md framework instructions (if CLAUDE.md differs)
-        if self._is_nested_recipe_session():
-            self.log("Nested recipe session detected - skipping AMPLIHACK.md injection")
+        # Also skip when a workflow is active — agent steps inside a recipe
+        # must not receive "use dev-orchestrator" instructions (#3971).
+        if self._is_nested_recipe_session() or self._is_workflow_active():
+            self.log("Nested/active recipe session — skipping AMPLIHACK.md injection")
         else:
             amplihack_context = self._inject_amplihack_if_different()
             if amplihack_context:
@@ -438,6 +447,16 @@ class UserPromptSubmitHook(HookProcessor):
         return {
             "additionalContext": full_context,
         }
+
+    @staticmethod
+    def _is_workflow_active() -> bool:
+        """Return True if a workflow is already in progress (semaphore check)."""
+        try:
+            from dev_intent_router import is_workflow_active
+
+            return is_workflow_active()
+        except ImportError:
+            return False
 
     @staticmethod
     def _is_dev_prompt(prompt: str) -> bool:
