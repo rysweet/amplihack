@@ -186,6 +186,18 @@ class WorkflowClassificationReminder(HookProcessor):
             self.log("Nested recipe session detected - skipping classification reminder")
             return {}
 
+        # Skip when a workflow is already in progress (semaphore set by
+        # smart-orchestrator preflight).  Prevents the classify-and-decompose
+        # agent from being told to re-invoke dev-orchestrator (#3971).
+        try:
+            from dev_intent_router import is_workflow_active
+
+            if is_workflow_active():
+                self.log("Workflow active - skipping classification reminder")
+                return {}
+        except ImportError:
+            pass  # dev_intent_router may not be available in all environments
+
         # Check if this is a new topic
         if not self.is_new_topic(user_prompt, input_data):
             self.log("Follow-up detected - skipping classification reminder")

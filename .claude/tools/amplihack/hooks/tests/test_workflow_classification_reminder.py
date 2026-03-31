@@ -237,6 +237,34 @@ class TestHookIntegration:
 
         assert result == {}
 
+    def test_workflow_active_skips_reminder(self):
+        """When workflow-active semaphore is set, skip classification reminder (#3971).
+
+        This prevents the classify-and-decompose agent from being told to
+        re-invoke dev-orchestrator, which causes infinite recursion.
+        """
+        from unittest.mock import patch
+
+        input_data = {"userMessage": "Update the design doc", "turnCount": 0}
+
+        # Patch the function at the source module (imported lazily inside process())
+        with patch("dev_intent_router.is_workflow_active", return_value=True):
+            result = self.hook.process(input_data)
+
+        assert result == {}
+
+    def test_workflow_not_active_injects_reminder(self):
+        """When workflow-active semaphore is NOT set, inject as normal."""
+        from unittest.mock import patch
+
+        input_data = {"userMessage": "Update the design doc", "turnCount": 0}
+
+        with patch("dev_intent_router.is_workflow_active", return_value=False):
+            result = self.hook.process(input_data)
+
+        assert "additionalContext" in result
+        assert "NEW TOPIC DETECTED" in result["additionalContext"]
+
 
 class TestEdgeCases:
     """Test edge cases and error handling."""
