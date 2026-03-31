@@ -137,6 +137,8 @@ def _secure_delete_spill_dir(tmp_dir: Path) -> None:
     if not tmp_dir.exists():
         return
 
+    cleanup_errors: list[str] = []
+
     for child in tmp_dir.iterdir():
         if child.is_file():
             try:
@@ -145,19 +147,25 @@ def _secure_delete_spill_dir(tmp_dir: Path) -> None:
                 size = child.stat().st_size
                 if size > 0:
                     child.write_bytes(b"\x00" * size)
-            except OSError:
-                pass
+            except OSError as exc:
+                cleanup_errors.append(f"{child}: overwrite failed ({exc})")
             try:
                 child.unlink()
-            except OSError:
-                pass
+            except OSError as exc:
+                cleanup_errors.append(f"{child}: unlink failed ({exc})")
 
     try:
         tmp_dir.chmod(0o700)
         tmp_dir.rmdir()
     except OSError:
         # Fall back to shutil for non-empty directories (e.g. sub-dirs).
-        shutil.rmtree(tmp_dir, ignore_errors=True)
+        try:
+            shutil.rmtree(tmp_dir)
+        except OSError as exc:
+            cleanup_errors.append(f"{tmp_dir}: recursive delete failed ({exc})")
+
+    if cleanup_errors:
+        logger.warning("Secure spill cleanup left artifacts: %s", "; ".join(cleanup_errors))
 
 
 @contextlib.contextmanager
