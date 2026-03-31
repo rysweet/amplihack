@@ -148,6 +148,74 @@ def run_recipe_by_name(name, user_context, progress=False):
         assert recorded_call["user_context"]["cycle_history"] == f"{cycle_history}\n"
         assert recorded_call["user_context"]["target_path"] == str(tmp_path / "target")
 
+    def test_recursive_step_synthesizes_final_report_when_nested_context_is_legacy(
+        self, recipe, tmp_path
+    ):
+        step = _step_by_id(recipe, "run-recursive-cycle")
+        fake_root = tmp_path / "fake_py"
+        pkg_dir = fake_root / "amplihack"
+        pkg_dir.mkdir(parents=True)
+        (pkg_dir / "__init__.py").write_text("", encoding="utf-8")
+
+        (pkg_dir / "recipes.py").write_text(
+            """
+class Result:
+    def __init__(self, context):
+        self.context = context
+
+
+def run_recipe_by_name(name, user_context, progress=False):
+    return Result(
+        {
+            "cycle_number": user_context["cycle_number"],
+            "recurse_decision": "STOP",
+            "summary": "legacy summary",
+            "self_improvement_results": "legacy clean",
+            "target_path": user_context["target_path"],
+        }
+    )
+""".strip()
+            + "\n",
+            encoding="utf-8",
+        )
+
+        command = _render_templates(
+            step["command"],
+            {
+                "task_description": "legacy fallback smoke",
+                "recurse_decision": "CONTINUE:3",
+                "cycle_history": '{"cycles":[]}',
+                "repo_path": ".",
+                "target_path": str(tmp_path / "legacy-target"),
+                "min_cycles": "2",
+                "max_cycles": "4",
+                "validation_threshold": "3",
+                "severity_threshold": "medium",
+                "module_loc_limit": "300",
+                "fix_all_per_cycle": "true",
+                "categories": "security,reliability",
+                "output_dir": str(tmp_path / "legacy-out"),
+            },
+        )
+
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(fake_root)
+
+        result = _run_bash(command, tmp_path, env=env)
+        assert result.returncode == 0, (
+            "run-recursive-cycle should synthesize final_report when the nested "
+            f"context uses legacy top-level fields.\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+
+        final_report = json.loads(result.stdout)
+        assert final_report == {
+            "cycle_number": "3",
+            "recurse_decision": "STOP",
+            "summary": "legacy summary",
+            "self_improvement_results": "legacy clean",
+            "target_path": str(tmp_path / "legacy-target"),
+        }
+
 
 class TestFinalReportRuntime:
     """Exercise the terminal report-normalization step directly."""
