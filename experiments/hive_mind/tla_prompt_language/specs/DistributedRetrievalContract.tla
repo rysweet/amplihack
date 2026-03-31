@@ -1,15 +1,13 @@
 ---- MODULE DistributedRetrievalContract ----
-EXTENDS FiniteSets, Sequences, TLC
+EXTENDS FiniteSets, Naturals, Sequences, TLC
 
 \* Scoped target for issue #3497.
 \* This spec models the distributed retrieval contract, not a full hive runtime.
 
-CONSTANTS Agents, Questions, Facts, NullQuestion, FactOrder
+CONSTANTS Agents, Questions, Facts, NullQuestion
 
 ASSUME Agents # {}
 ASSUME NullQuestion \notin Questions
-ASSUME SeqToSet(FactOrder) = Facts
-ASSUME Len(FactOrder) = Cardinality(Facts)
 
 VARIABLES
     activeAgents,
@@ -29,15 +27,14 @@ EmptyResults == [a \in Agents |-> {}]
 
 SeqToSet(seq) == {seq[i] : i \in 1..Len(seq)}
 
-RECURSIVE FilterBySet(_, _)
-FilterBySet(seq, keepSet) ==
-    IF seq = <<>> THEN <<>>
-    ELSE IF Head(seq) \in keepSet
-            THEN <<Head(seq)>> \o FilterBySet(Tail(seq), keepSet)
-            ELSE FilterBySet(Tail(seq), keepSet)
+RECURSIVE CanonicalizeSet(_)
+CanonicalizeSet(factSet) ==
+    IF factSet = {} THEN <<>>
+    ELSE LET chosen == CHOOSE f \in factSet : TRUE
+         IN <<chosen>> \o CanonicalizeSet(factSet \ {chosen})
 
 Init ==
-    /\ activeAgents \subseteq Agents
+    /\ activeAgents \in SUBSET Agents
     /\ activeAgents # {}
     /\ originalQuestion = NullQuestion
     /\ normalizedQuery = NullQuestion
@@ -81,7 +78,7 @@ MergedFactsSet ==
     UNION {shardResults[a] : a \in respondedAgents}
 
 CanonicalMerge ==
-    FilterBySet(FactOrder, MergedFactsSet)
+    CanonicalizeSet(MergedFactsSet)
 
 AllAgentsAccounted ==
     activeAgents \subseteq (respondedAgents \cup failedAgents)

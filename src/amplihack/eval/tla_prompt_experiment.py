@@ -18,6 +18,7 @@ import json
 import os
 import shutil
 import subprocess
+import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -738,21 +739,23 @@ def validate_spec_assets(
         java_bin=java_bin,
         tla2tools_jar=tla2tools_jar,
     )
-    completed = subprocess.run(
-        command,
-        cwd=spec_path.parent,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    result = SpecValidationResult(
-        runner_kind=runner_kind,
-        command=command,
-        cwd=str(spec_path.parent),
-        returncode=completed.returncode,
-        stdout=completed.stdout,
-        stderr=completed.stderr,
-    )
+    with tempfile.TemporaryDirectory(prefix="tla-tlc-") as metadir:
+        tlc_command = [*command[:-1], "-metadir", metadir, command[-1]]
+        completed = subprocess.run(
+            tlc_command,
+            cwd=spec_path.parent,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        result = SpecValidationResult(
+            runner_kind=runner_kind,
+            command=tlc_command,
+            cwd=str(spec_path.parent),
+            returncode=completed.returncode,
+            stdout=completed.stdout,
+            stderr=completed.stderr,
+        )
     if result.returncode != 0:
         raise RuntimeError(
             "TLC validation failed for "

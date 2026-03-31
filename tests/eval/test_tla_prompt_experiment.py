@@ -207,7 +207,14 @@ def test_build_tlc_command_prefers_native_tlc_binary():
     assert command == ["/tmp/tlc", "-config", "DistributedRetrievalContract.cfg", "DistributedRetrievalContract"]
 
 
-def test_build_tlc_command_falls_back_to_java_and_jar():
+def test_build_tlc_command_falls_back_to_java_and_jar(monkeypatch):
+    def fake_which(name: str) -> str | None:
+        if name == "tlc":
+            return None
+        return "/usr/bin/java" if name == "java" else None
+
+    monkeypatch.delenv("TLA_TLC_BIN", raising=False)
+    monkeypatch.setattr("amplihack.eval.tla_prompt_experiment.shutil.which", fake_which)
     command, runner_kind = build_tlc_command(
         "DistributedRetrievalContract.tla",
         "DistributedRetrievalContract.cfg",
