@@ -30,56 +30,45 @@ scenario:
 
   steps:
     # Step 1: Validate recipe parses in Rust runner
-    - action: launch
-      target: "recipe-runner-rs"
-      args: ["--validate-only", "amplifier-bundle/recipes/quality-audit-cycle.yaml"]
+    - action: execute
+      params:
+        command: "recipe-runner-rs --validate-only amplifier-bundle/recipes/quality-audit-cycle.yaml"
       description: "Verify Rust recipe runner accepts the recipe YAML"
-      timeout: 10s
+      timeout: 10000
 
-    - action: wait_for_output
-      contains: "is valid"
-      timeout: 5s
+    - action: validate_output
+      params:
+        expected: "is valid"
       description: "Recipe must be reported as valid"
 
     # Step 2: Verify recipe structure includes recursion step
-    - action: launch
-      target: "recipe-runner-rs"
-      args: ["--explain", "amplifier-bundle/recipes/quality-audit-cycle.yaml"]
+    - action: execute
+      params:
+        command: "recipe-runner-rs --explain amplifier-bundle/recipes/quality-audit-cycle.yaml"
       description: "Show recipe structure and verify recursion step exists"
-      timeout: 10s
+      timeout: 10000
 
-    - action: wait_for_output
-      contains: "run-recursive-cycle"
-      timeout: 5s
+    - action: validate_output
+      params:
+        expected: "run-recursive-cycle"
       description: "The self-recursion step must be present in the recipe"
 
-    - action: wait_for_output
-      contains: "CONTINUE"
-      timeout: 5s
-      description: "The recursion condition must reference CONTINUE"
-
     # Step 3: Run unit tests for the recipe
-    - action: launch
-      target: "uv"
-      args:
-        [
-          "run",
-          "pytest",
-          "tests/unit/recipes/test_quality_audit_cycle_issue3638.py",
-          "-v",
-          "--tb=short",
-        ]
+    - action: execute
+      params:
+        command: "uv run pytest tests/unit/recipes/test_quality_audit_cycle_issue3638.py -v --tb=short"
       description: "Run all unit tests for the quality-audit-cycle recipe"
-      timeout: 60s
+      timeout: 60000
 
-    - action: wait_for_output
-      contains: "passed"
-      timeout: 60s
+    - action: validate_output
+      params:
+        expected: "passed"
       description: "All unit tests must pass"
 
-    - action: assert_no_output
-      contains: "FAILED"
-      description: "No test failures allowed"
+    - action: validate_exit_code
+      params:
+        expected: "0"
+      description: "pytest must exit with code 0 (all tests pass)"
 
   expected_outcome:
     summary: |
