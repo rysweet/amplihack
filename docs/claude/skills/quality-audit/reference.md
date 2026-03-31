@@ -636,18 +636,19 @@ cd ./worktrees/fix-issue-{number}
 Each worktree runs the full workflow:
 
 ```
-Task(subagent_type="builder", prompt="""
+Task(subagent_type="fix-agent", prompt="""
 Working in worktree for issue #{number}:
 
 ISSUE CONTEXT:
 {issue body}
 
 EXECUTION:
-1. Follow DEFAULT_WORKFLOW.md steps 5-14
-2. Implement fix for this specific issue
-3. Ensure fix doesn't break other functionality
-4. Write/update tests as needed
-5. Create PR linked to issue #{number}
+Use the full DEFAULT_WORKFLOW via Skill(skill="default-workflow") to:
+1. Understand the issue context
+2. Design the minimal fix
+3. Implement the fix
+4. Write/update tests
+5. Verify the fix and create PR linked to issue #{number}
 
 CONSTRAINTS:
 - Focus ONLY on this issue
@@ -825,7 +826,7 @@ EOF
 | 2     | optimizer           | Performance bottleneck detection    |
 | 2     | patterns            | Pattern/anti-pattern identification |
 | 2     | philosophy-guardian | Ruthless simplicity validation      |
-| 4     | builder             | Fix implementation                  |
+| 4     | fix-agent           | Fix via full DEFAULT_WORKFLOW       |
 | 4     | tester              | Test generation                     |
 | 4     | cleanup             | Post-fix simplification             |
 | 5     | pm-architect        | PR prioritization                   |
