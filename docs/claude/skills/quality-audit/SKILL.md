@@ -21,7 +21,7 @@ flowchart TD
         V1 & V2 & V3 --> MERGE[Merge Validations<br/>require >=2/3 agreement]
         MERGE --> FIX_CHECK{Confirmed findings?}
         FIX_CHECK -->|no| DECISION
-        FIX_CHECK -->|yes| FIX[FIX ALL confirmed<br/>builder agent<br/>fix-all-per-cycle rule]
+        FIX_CHECK -->|yes| FIX[FIX ALL confirmed<br/>fix-agent → DEFAULT_WORKFLOW<br/>fix-all-per-cycle rule]
         FIX --> VERIFY[Verify all fixes applied]
         VERIFY --> ACCUM[Accumulate cycle history]
         ACCUM --> DECISION{Recurse decision}
@@ -179,7 +179,7 @@ Cycle 3: SEEK (deepest) → VALIDATE → FIX → decision
 - Continue past 3 if: any high/critical NEW findings emerged, or >3 medium NEW findings
 - Maximum **6 cycles** (safety valve)
 - Each cycle: fresh eyes, dig deeper, challenge prior findings
-- Fixes use the full **DEFAULT_WORKFLOW** approach (understand → test → implement → verify)
+- Fixes use the **fix-agent** which delegates to the full 22-step **DEFAULT_WORKFLOW** via Skill(skill="default-workflow")
 - **Fix-all-per-cycle rule (#2842):** Every confirmed finding in a cycle MUST be
   fixed before the cycle is complete. No partial cycles. No deferring findings to
   "follow-up issues" or "next cycle". If SEEK finds issues, FIX must address ALL

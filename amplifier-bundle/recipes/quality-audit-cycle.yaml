@@ -411,10 +411,11 @@ steps:
 
   # ========================================================================
   # STEP 4: FIX — Address confirmed findings using full DEFAULT_WORKFLOW
-  # Each validated finding is fixed via the complete development workflow.
+  # Each validated finding is fixed via the fix-agent, which delegates to
+  # the full 22-step DEFAULT_WORKFLOW (issue #3970).
   # ========================================================================
   - id: "fix"
-    agent: "amplihack:core:builder"
+    agent: "amplihack:specialized:fix-agent"
     working_dir: "{{repo_path}}"
     condition: "validated_findings and 'confirmed' in validated_findings"
     prompt: |
@@ -433,12 +434,10 @@ steps:
 
       Fix ALL confirmed findings (verdict: "confirmed"). Skip false positives.
 
-      **For each confirmed finding, follow the full DEFAULT_WORKFLOW approach:**
-      1. Understand the finding and its context
-      2. Write or update tests that verify the fix
-      3. Implement the minimal fix
-      4. Verify the fix doesn't break existing tests
-      5. Verify the fix addresses the finding
+      **Execution:** Use the full DEFAULT_WORKFLOW for each fix by invoking
+      Skill(skill="default-workflow"). The fix-agent orchestrates the complete
+      22-step development workflow (understand → design → implement → test →
+      verify) for each confirmed finding, ensuring proper quality gates.
 
       **Priority order (but ALL must be fixed):**
       1. Critical findings (security, silent security degradation)
