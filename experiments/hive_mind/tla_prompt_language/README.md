@@ -122,3 +122,66 @@ It still does **not** provide a formal refinement proof or a liveness proof.
 
 For stricter local validation, a real TLC-backed pytest smoke is available when
 `TLA_TLC_BIN` or `TLA2TOOLS_JAR` is configured in the environment.
+
+## Experiment Results (2026-03-31 smoke run)
+
+Live smoke run: 4 prompt variants × 2 models × 1 repeat = 8 conditions.
+6 completed, 2 GPT-5.4 conditions timed out (Copilot SDK timeout on heavier prompts).
+
+### Claude Opus 4.6 Results
+
+| Prompt Variant | Baseline | Invariant | Proof | Local Protocol | Progress | Coverage |
+|---------------|----------|-----------|-------|----------------|----------|----------|
+| english (baseline) | 0.43 | 0.50 | 0.0 | 0.0 | 0.0 | 0.29 |
+| tla_only | **0.86** | **0.75** | **1.0** | **1.0** | **1.0** | **0.86** |
+| tla_plus_english | 0.43 | 0.50 | 1.0 | 0.0 | 0.0 | 0.43 |
+| tla_plus_refinement | **0.86** | **0.75** | **1.0** | **1.0** | **1.0** | **0.86** |
+
+### GPT-5.4 Results (via Copilot SDK)
+
+| Prompt Variant | Baseline | Invariant | Proof | Local Protocol | Progress | Coverage |
+|---------------|----------|-----------|-------|----------------|----------|----------|
+| english (baseline) | 0.71 | 0.75 | 0.0 | 0.0 | 1.0 | 0.57 |
+| tla_only | *timeout* | — | — | — | — | — |
+| tla_plus_english | 0.57 | 0.50 | 1.0 | 0.0 | 1.0 | 0.57 |
+| tla_plus_refinement | *timeout* | — | — | — | — | — |
+
+### Key Findings
+
+1. **TLA+ formal spec doubles Claude's baseline score** (0.43 → 0.86). The
+   `tla_only` and `tla_plus_refinement` variants both achieve the highest scores
+   across all dimensions, including perfect local-protocol and progress-signal
+   alignment.
+
+2. **Hybrid prompt (tla_plus_english) does not help Claude**. Adding English
+   guidance alongside the formal spec performs no better than English alone
+   (0.43 baseline). The formal spec alone is more effective than the combination.
+   This suggests the English guidance may dilute the spec's signal or cause the
+   model to focus on prose instructions rather than the formal contract.
+
+3. **Refinement guidance adds no marginal value over spec-only for Claude**.
+   Both `tla_only` and `tla_plus_refinement` score identically. The formal spec
+   alone provides sufficient signal for Claude to generate request-local protocol
+   implementations with proper state tracking.
+
+4. **GPT-5.4 has higher English baseline than Claude** (0.71 vs 0.43) but the
+   spec-heavy variants timeout. This suggests GPT-5.4 may process formal specs
+   differently (spending more time reasoning about them) or that the Copilot SDK
+   has tighter timeout defaults.
+
+5. **Both models score 0.0 on proof alignment in English-only mode**. Neither
+   model spontaneously references TLA+, invariants, or formal specifications
+   without prompting. This is expected — proof alignment measures whether the
+   generated artifact connects back to the formal contract.
+
+### Caveats
+
+- Smoke matrix (1 repeat per condition) — variance not yet measured
+- 2 of 8 conditions timed out — GPT-5.4 + spec-heavy comparisons incomplete
+- Heuristic scoring is keyword-based, not semantic — possible false positives/negatives
+- Full matrix (3 repeats) needed before drawing firm statistical conclusions
+
+### Report artifacts
+
+- `results/smoke_live_20260331.md` — full experiment report
+- `results/smoke_live_20260331.json` — machine-readable report
