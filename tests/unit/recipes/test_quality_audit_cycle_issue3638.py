@@ -307,6 +307,38 @@ class TestBug2ScalarVarsSafe:
             )
 
 
+class TestRecursiveCycleStep:
+    """Recursive re-entry must use the same safe patterns as other JSON-heavy steps."""
+
+    def test_recursive_step_exists(self, steps_by_id):
+        assert "run-recursive-cycle" in steps_by_id
+
+    def test_recursive_step_uses_tmpfile_for_cycle_history(self, steps_by_id):
+        step = steps_by_id["run-recursive-cycle"]
+        command = step.get("command", "")
+        assert "mktemp" in command
+        assert "__AMPLIHACK_SAFE_HEREDOC_HISTORY_STEP5B__" in command
+
+    def test_recursive_step_uses_run_recipe_by_name(self, steps_by_id):
+        step = steps_by_id["run-recursive-cycle"]
+        command = step.get("command", "")
+        assert "run_recipe_by_name(" in command
+        assert '"quality-audit-cycle"' in command
+        assert '"repo_path": os.environ["REPO_PATH"]' in command
+
+    def test_final_report_context_declared(self, recipe):
+        final_report = recipe["context"].get("final_report")
+        assert isinstance(final_report, dict), "final_report context must be a dict."
+        for key in (
+            "cycle_number",
+            "recurse_decision",
+            "summary",
+            "self_improvement_results",
+            "target_path",
+        ):
+            assert key in final_report, f"final_report missing {key!r}."
+
+
 # ============================================================================
 # BUG 3: SKILL.md wrong invocation pattern (#3638 problem 3)
 # ============================================================================
