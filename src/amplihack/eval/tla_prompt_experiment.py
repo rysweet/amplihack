@@ -3,12 +3,13 @@
 This module implements the first concrete slice of the planned experiment:
 
 - a machine-readable manifest for the experiment matrix
-- prompt/spec asset loading
+- prompt/spec/refinement asset loading
 - smoke/full matrix expansion
 - deterministic JSON export for downstream runners
 
 The scoped generation target for this first slice is the distributed retrieval
-contract, not a full greenfield distributed hive implementation.
+contract, refined into a request-local protocol, not a full greenfield
+distributed hive implementation.
 """
 
 from __future__ import annotations
@@ -35,6 +36,7 @@ REPLAY_ARTIFACT_FILENAMES = (
     "output.md",
     "output.txt",
 )
+HEURISTIC_EVALUATION_KIND = "heuristic_signal_v2"
 LIVE_GENERATION_SYSTEM_PROMPT = (
     "You are participating in a controlled code-generation experiment. "
     "Follow the user prompt exactly, stay within scope, and return only the "
@@ -110,6 +112,7 @@ class PromptVariantAsset:
     label: str
     path: str
     append_spec: bool = False
+    append_refinement: bool = False
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
@@ -118,6 +121,7 @@ class PromptVariantAsset:
             label=_require_non_empty(data["label"], "prompt_variants.label"),
             path=_require_non_empty(data["path"], "prompt_variants.path"),
             append_spec=bool(data.get("append_spec", False)),
+            append_refinement=bool(data.get("append_refinement", False)),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -126,6 +130,7 @@ class PromptVariantAsset:
             "label": self.label,
             "path": self.path,
             "append_spec": self.append_spec,
+            "append_refinement": self.append_refinement,
         }
 
 
@@ -167,22 +172,33 @@ class PromptBundle:
     variant_id: str
     prompt_path: str
     spec_path: str
+    refinement_path: str | None
     prompt_text: str
     spec_text: str
+    refinement_text: str | None
     append_spec: bool
+    append_refinement: bool
 
     def combined_text(self) -> str:
-        prompt_text = self.prompt_text.rstrip()
-        if not self.append_spec:
-            return f"{prompt_text}\n"
-        spec_text = self.spec_text.rstrip()
-        return (
-            f"{prompt_text}\n\n"
-            "## Formal specification\n\n"
-            "```tla\n"
-            f"{spec_text}\n"
-            "```\n"
-        )
+        sections = [self.prompt_text.rstrip()]
+        if self.append_spec:
+            sections.append(
+                "## Formal specification\n\n"
+                "```tla\n"
+                f"{self.spec_text.rstrip()}\n"
+                "```"
+            )
+        if self.append_refinement:
+            if self.refinement_text is None:
+                raise ValueError(
+                    f"Prompt variant {self.variant_id!r} requested refinement guidance "
+                    "but no refinement asset was loaded."
+                )
+            sections.append(
+                "## Refinement guidance\n\n"
+                f"{self.refinement_text.rstrip()}"
+            )
+        return "\n\n".join(section for section in sections if section) + "\n"
 
 
 @dataclass
@@ -197,6 +213,7 @@ class ExperimentCondition:
     repeat_index: int
     prompt_path: str
     spec_path: str
+    refinement_path: str | None = None
     tlc_config_path: str | None = None
 
     @property
@@ -217,6 +234,8 @@ class ExperimentCondition:
             "prompt_path": self.prompt_path,
             "spec_path": self.spec_path,
         }
+        if self.refinement_path is not None:
+            data["refinement_path"] = self.refinement_path
         if self.tlc_config_path is not None:
             data["tlc_config_path"] = self.tlc_config_path
         return data
@@ -231,6 +250,7 @@ class MaterializedCondition:
     prompt_file: str
     spec_file: str
     metadata_file: str
+    refinement_file: str | None = None
     tlc_config_file: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -241,6 +261,8 @@ class MaterializedCondition:
             "spec_file": self.spec_file,
             "metadata_file": self.metadata_file,
         }
+        if self.refinement_file is not None:
+            data["refinement_file"] = self.refinement_file
         if self.tlc_config_file is not None:
             data["tlc_config_file"] = self.tlc_config_file
         return data
@@ -275,6 +297,8 @@ class ConditionMetrics:
     baseline_score: float | None = None
     invariant_compliance: float | None = None
     proof_alignment: float | None = None
+    local_protocol_alignment: float | None = None
+    progress_signal: float | None = None
     specification_coverage: float | None = None
 
     @classmethod
@@ -283,6 +307,8 @@ class ConditionMetrics:
             baseline_score=data.get("baseline_score"),
             invariant_compliance=data.get("invariant_compliance"),
             proof_alignment=data.get("proof_alignment"),
+            local_protocol_alignment=data.get("local_protocol_alignment"),
+            progress_signal=data.get("progress_signal"),
             specification_coverage=data.get("specification_coverage"),
         )
 
@@ -291,6 +317,8 @@ class ConditionMetrics:
             "baseline_score": self.baseline_score,
             "invariant_compliance": self.invariant_compliance,
             "proof_alignment": self.proof_alignment,
+            "local_protocol_alignment": self.local_protocol_alignment,
+            "progress_signal": self.progress_signal,
             "specification_coverage": self.specification_coverage,
         }
 
@@ -320,6 +348,7 @@ class ConditionRunResult:
                 repeat_index=int(data["condition"]["repeat_index"]),
                 prompt_path=data["condition"]["prompt_path"],
                 spec_path=data["condition"]["spec_path"],
+                refinement_path=data["condition"].get("refinement_path"),
                 tlc_config_path=data["condition"].get("tlc_config_path"),
             ),
             status=_require_non_empty(data["status"], "status"),
@@ -426,7 +455,7 @@ class HeuristicEvaluation:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "evaluation_kind": "heuristic_signal_v1",
+            "evaluation_kind": HEURISTIC_EVALUATION_KIND,
             "metrics": self.metrics.to_dict(),
             "checks": dict(self.checks),
             "notes": list(self.notes),
@@ -459,7 +488,7 @@ class ExperimentExecutionReport:
             "failed_conditions": self.failed_conditions,
             "summary": self.summary.to_dict(),
             "replay_mode": self.replay_mode,
-            "evaluation_kind": "heuristic_signal_v1",
+            "evaluation_kind": HEURISTIC_EVALUATION_KIND,
         }
         if self.tlc_validation is not None:
             payload["tlc_validation"] = self.tlc_validation
@@ -475,6 +504,7 @@ class ExperimentManifest:
     experiment_home: str
     generation_target: GenerationTarget
     spec_asset: str
+    refinement_asset: str | None
     prompt_variants: list[PromptVariantAsset]
     models: list[ModelVariant]
     result_schema_version: int = 1
@@ -493,6 +523,7 @@ class ExperimentManifest:
             experiment_home=_require_non_empty(data["experiment_home"], "experiment_home"),
             generation_target=GenerationTarget.from_dict(data["generation_target"]),
             spec_asset=_require_non_empty(data["spec_asset"], "spec_asset"),
+            refinement_asset=data.get("refinement_asset"),
             prompt_variants=_require_non_empty_list(
                 [PromptVariantAsset.from_dict(item) for item in data["prompt_variants"]],
                 "prompt_variants",
@@ -533,6 +564,8 @@ class ExperimentManifest:
             "fairness_rules": list(self.fairness_rules),
             "ownership_notes": list(self.ownership_notes),
         }
+        if self.refinement_asset is not None:
+            data["refinement_asset"] = self.refinement_asset
         if self.tlc_config_asset is not None:
             data["tlc_config_asset"] = self.tlc_config_asset
         return data
@@ -548,8 +581,16 @@ class ExperimentManifest:
         model_ids = [item.model_id for item in self.models]
         if len(model_ids) != len(set(model_ids)):
             raise ValueError("models.model_id values must be unique")
+        for item in self.prompt_variants:
+            if item.append_refinement and self.refinement_asset is None:
+                raise ValueError(
+                    f"prompt_variants[{item.variant_id}] requests append_refinement "
+                    "but refinement_asset is not set"
+                )
         if self._base_dir is not None:
             self._require_asset(self.spec_asset, "spec_asset")
+            if self.refinement_asset is not None:
+                self._require_asset(self.refinement_asset, "refinement_asset")
             if self.tlc_config_asset is not None:
                 self._require_asset(self.tlc_config_asset, "tlc_config_asset")
             for item in self.prompt_variants:
@@ -576,20 +617,33 @@ class ExperimentManifest:
         prompt_variant = self.get_prompt_variant(variant_id)
         prompt_path = self.resolve_asset_path(prompt_variant.path)
         spec_path = self.resolve_asset_path(self.spec_asset)
+        refinement_path = (
+            self.resolve_asset_path(self.refinement_asset)
+            if self.refinement_asset is not None
+            else None
+        )
         return PromptBundle(
             experiment_id=self.experiment_id,
             target_id=self.generation_target.target_id,
             variant_id=variant_id,
             prompt_path=str(prompt_path),
             spec_path=str(spec_path),
+            refinement_path=str(refinement_path) if refinement_path is not None else None,
             prompt_text=prompt_path.read_text(),
             spec_text=spec_path.read_text(),
+            refinement_text=refinement_path.read_text() if refinement_path is not None else None,
             append_spec=prompt_variant.append_spec,
+            append_refinement=prompt_variant.append_refinement,
         )
 
     def expand_matrix(self, *, smoke: bool = False) -> list[ExperimentCondition]:
         repeats = self.smoke_repeats if smoke else self.full_repeats
         spec_path = str(self.resolve_asset_path(self.spec_asset))
+        refinement_path = (
+            str(self.resolve_asset_path(self.refinement_asset))
+            if self.refinement_asset is not None
+            else None
+        )
         tlc_config_path = (
             str(self.resolve_asset_path(self.tlc_config_asset))
             if self.tlc_config_asset is not None
@@ -610,6 +664,9 @@ class ExperimentManifest:
                             repeat_index=repeat_index,
                             prompt_path=prompt_path,
                             spec_path=spec_path,
+                            refinement_path=(
+                                refinement_path if prompt_variant.append_refinement else None
+                            ),
                             tlc_config_path=tlc_config_path,
                         )
                     )
@@ -662,6 +719,7 @@ def materialize_condition_packets(
         prompt_file = condition_dir / "prompt.md"
         spec_file = condition_dir / Path(condition.spec_path).name
         metadata_file = condition_dir / "condition.json"
+        refinement_file: Path | None = None
 
         prompt_file.write_text(bundle.combined_text())
         spec_file.write_text(bundle.spec_text)
@@ -669,6 +727,15 @@ def materialize_condition_packets(
         packet_dict = condition.to_dict()
         packet_dict["materialized_prompt_file"] = str(prompt_file)
         packet_dict["materialized_spec_file"] = str(spec_file)
+        if condition.refinement_path is not None:
+            if bundle.refinement_text is None:
+                raise ValueError(
+                    f"Condition {condition.condition_id} declared refinement_path "
+                    "but the prompt bundle has no refinement_text."
+                )
+            refinement_file = condition_dir / Path(condition.refinement_path).name
+            refinement_file.write_text(bundle.refinement_text)
+            packet_dict["materialized_refinement_file"] = str(refinement_file)
 
         tlc_config_file: Path | None = None
         if condition.tlc_config_path is not None:
@@ -685,6 +752,7 @@ def materialize_condition_packets(
                 prompt_file=str(prompt_file),
                 spec_file=str(spec_file),
                 metadata_file=str(metadata_file),
+                refinement_file=str(refinement_file) if refinement_file is not None else None,
                 tlc_config_file=str(tlc_config_file) if tlc_config_file is not None else None,
             )
         )
@@ -814,6 +882,8 @@ def summarize_condition_results(results: list[ConditionRunResult]) -> Experiment
             "baseline_score": [],
             "invariant_compliance": [],
             "proof_alignment": [],
+            "local_protocol_alignment": [],
+            "progress_signal": [],
             "specification_coverage": [],
         }
         for item in items:
@@ -824,6 +894,10 @@ def summarize_condition_results(results: list[ConditionRunResult]) -> Experiment
                 metric_values["invariant_compliance"].append(metrics.invariant_compliance)
             if metrics.proof_alignment is not None:
                 metric_values["proof_alignment"].append(metrics.proof_alignment)
+            if metrics.local_protocol_alignment is not None:
+                metric_values["local_protocol_alignment"].append(metrics.local_protocol_alignment)
+            if metrics.progress_signal is not None:
+                metric_values["progress_signal"].append(metrics.progress_signal)
             if metrics.specification_coverage is not None:
                 metric_values["specification_coverage"].append(metrics.specification_coverage)
         summary: dict[str, MetricSummary] = {}
@@ -859,7 +933,7 @@ def _contains_all_groups(text: str, *groups: tuple[str, ...]) -> bool:
 
 
 def evaluate_generated_artifact(text: str) -> HeuristicEvaluation:
-    """Evaluate a generated artifact with explicit first-slice heuristics."""
+    """Evaluate a generated artifact with contract, refinement, and progress heuristics."""
 
     normalized = text.lower()
     checks = {
@@ -874,8 +948,23 @@ def evaluate_generated_artifact(text: str) -> HeuristicEvaluation:
         ),
         "fans_out_all_agents": _contains_all_groups(
             normalized,
-            ("fan out", "fan-out", "dispatch retrieval", "broadcast", "query all"),
-            ("active agents", "participating agents", "all active agents", "all agents"),
+            (
+                "fan out",
+                "fan-out",
+                "dispatch retrieval",
+                "broadcast",
+                "query all",
+                "dispatch_messages",
+                "retrievaldispatch",
+            ),
+            (
+                "active agents",
+                "participating agents",
+                "all active agents",
+                "all agents",
+                "target_agents",
+                "self.target_agents",
+            ),
         ),
         "deterministic_merge": _contains_all_groups(
             normalized,
@@ -920,6 +1009,73 @@ def evaluate_generated_artifact(text: str) -> HeuristicEvaluation:
                 "invariant",
                 "formal specification",
                 "distributedretrievalcontract",
+                "abstract contract",
+                "refinement guidance",
+            ),
+        ),
+        "local_protocol_alignment": _contains_all_groups(
+            normalized,
+            (
+                "request-local",
+                "per-request",
+                "request state",
+                "request tracker",
+                "pending_agents",
+                "pending agents",
+                "outstanding_agents",
+                "outstanding agents",
+                "remaining_agents",
+                "remaining agents",
+            ),
+            (
+                "responded_agents",
+                "responded agents",
+                "failed_agents",
+                "failed agents",
+                "pending_agents",
+                "pending agents",
+            ),
+            (
+                "pending reaches zero",
+                "pending is empty",
+                "pending empty",
+                "pending_agents empty",
+                "pending == 0",
+                "outstanding == 0",
+                "all responses or failures",
+                "once all responses or failures arrive",
+                "all agents accounted for",
+                "all_agents_accounted",
+                "if not self.pending_agents",
+                "not self.pending_agents",
+            ),
+        ),
+        "progress_signal": _contains_all_groups(
+            normalized,
+            (
+                "timeout",
+                "deadline",
+                "retry",
+                "stall",
+                "stalled",
+                "progress",
+                "eventually",
+                "terminal state",
+            ),
+            (
+                "complete request",
+                "mark complete",
+                "finalize",
+                "mark failed",
+                "transition to failed",
+                "terminal outcome",
+                "complete or failed",
+                "requeststatus.complete",
+                "requeststatus.failed",
+                "status = requeststatus.complete",
+                "status = requeststatus.failed",
+                "is_terminal",
+                "already terminal",
             ),
         ),
     }
@@ -931,6 +1087,8 @@ def evaluate_generated_artifact(text: str) -> HeuristicEvaluation:
             "deterministic_merge",
             "explicit_failure_surface",
             "focused_tests",
+            "local_protocol_alignment",
+            "progress_signal",
         )
     )
     invariant_numerator = sum(
@@ -950,16 +1108,22 @@ def evaluate_generated_artifact(text: str) -> HeuristicEvaluation:
             "deterministic_merge",
             "explicit_failure_surface",
             "spec_alignment",
+            "local_protocol_alignment",
+            "progress_signal",
         )
     )
     metrics = ConditionMetrics(
-        baseline_score=round(baseline_numerator / 5.0, 4),
+        baseline_score=round(baseline_numerator / 7.0, 4),
         invariant_compliance=round(invariant_numerator / 4.0, 4),
         proof_alignment=1.0 if checks["spec_alignment"] else 0.0,
-        specification_coverage=round(coverage_numerator / 5.0, 4),
+        local_protocol_alignment=1.0 if checks["local_protocol_alignment"] else 0.0,
+        progress_signal=1.0 if checks["progress_signal"] else 0.0,
+        specification_coverage=round(coverage_numerator / 7.0, 4),
     )
     notes = [
         "Heuristic signal only; this is not authoritative grading.",
+        "Proof alignment is a reference signal, not a proof.",
+        "Local protocol and progress signals are heuristic, not formal refinement or liveness proofs.",
         "Authoritative grading still belongs in amplihack-agent-eval.",
     ]
     for check_name, passed in checks.items():
@@ -1133,6 +1297,7 @@ def generate_experiment_markdown_report(
         f"**Generated at**: `{execution_report.generated_at}`",
         f"**Matrix mode**: `{execution_report.matrix_mode}`",
         f"**Replay mode**: `{execution_report.replay_mode}`",
+        f"**Evaluation kind**: `{HEURISTIC_EVALUATION_KIND}`",
         f"**Output dir**: `{execution_report.output_dir}`",
         "",
         "## Summary",
@@ -1143,8 +1308,8 @@ def generate_experiment_markdown_report(
         "",
         "## Condition Table",
         "",
-        "| Condition | Model | SDK | Prompt | Status | Heuristic Baseline | Heuristic Invariant | Heuristic Proof | Heuristic Coverage |",
-        "|-----------|-------|-----|--------|--------|--------------------|---------------------|-----------------|--------------------|",
+        "| Condition | Model | SDK | Prompt | Status | Heuristic Baseline | Heuristic Invariant | Heuristic Proof | Heuristic Local | Heuristic Progress | Heuristic Coverage |",
+        "|-----------|-------|-----|--------|--------|--------------------|---------------------|-----------------|-----------------|--------------------|--------------------|",
     ]
     for result in results:
         metrics = result.metrics
@@ -1158,6 +1323,8 @@ def generate_experiment_markdown_report(
             f"{metrics.baseline_score if metrics.baseline_score is not None else '--'} | "
             f"{metrics.invariant_compliance if metrics.invariant_compliance is not None else '--'} | "
             f"{metrics.proof_alignment if metrics.proof_alignment is not None else '--'} | "
+            f"{metrics.local_protocol_alignment if metrics.local_protocol_alignment is not None else '--'} | "
+            f"{metrics.progress_signal if metrics.progress_signal is not None else '--'} | "
             f"{metrics.specification_coverage if metrics.specification_coverage is not None else '--'} |"
         )
     lines.extend(

@@ -12,8 +12,10 @@ The chosen scope is intentionally narrow:
 
 - `manifest.json` — machine-readable experiment definition
 - `specs/DistributedRetrievalContract.tla` — first TLA+ spec asset for the scoped target
+- `specs/DistributedRetrievalRefinement.md` — companion refinement guidance that
+  turns the abstract contract into request-local protocol expectations
 - `specs/DistributedRetrievalContract.cfg` — TLC model config for the scoped spec
-- `prompts/` — English baseline, TLA-only, and hybrid prompt variants
+- `prompts/` — English baseline, TLA-only, hybrid, and refinement-aware prompt variants
 
 ## Why this scope
 
@@ -29,6 +31,15 @@ the highest-signal rules already called out in the design docs:
 - fan out distributed retrieval across all active agents
 - merge results deterministically
 - fail explicitly instead of silently falling back to local-only behavior
+
+That abstract contract is necessary but not sufficient. This slice now also
+makes the abstraction boundary explicit:
+
+- the TLA+ module is an abstract behavioral contract over global state
+- the refinement asset explains how to turn that contract into request-local
+  state and transitions a real runtime could maintain
+- the experiment can now distinguish abstract-contract prompting from
+  refinement-aware prompting
 
 ## Helper module
 
@@ -67,6 +78,8 @@ aggregator so downstream runs have a stable place to record:
 - baseline score
 - invariant compliance
 - proof alignment
+- local protocol alignment
+- progress signal
 - specification coverage
 
 The local first-slice runner can now execute a matrix in two modes:
@@ -98,6 +111,14 @@ Official harness grading and packaged reports still belong in `amplihack-agent-e
 A condition marked `completed` means the provider returned generation output that
 the runner accepted for heuristic scoring; it does **not** mean the artifact was
 high quality.
+
+The current heuristic evaluator now tries to separate:
+
+- abstract contract alignment
+- request-local protocol alignment
+- progress/terminal-outcome signals
+
+It still does **not** provide a formal refinement proof or a liveness proof.
 
 For stricter local validation, a real TLC-backed pytest smoke is available when
 `TLA_TLC_BIN` or `TLA2TOOLS_JAR` is configured in the environment.

@@ -4,41 +4,54 @@
   "experiment_home": "experiments/hive_mind/tla_prompt_language",
   "generation_target": {
     "target_id": "distributed_retrieval_contract",
-    "summary": "Generate the distributed retrieval contract slice that preserves the original question, fans out across all active agents, merges results deterministically, and surfaces shard failures explicitly.",
+    "summary": "Generate the distributed retrieval contract slice as a request-local protocol that preserves the original question, fans out across all active agents, merges results deterministically, surfaces shard failures explicitly, and reaches explicit terminal outcomes.",
     "deliverables": [
       "Preserve the original question end-to-end through distributed retrieval.",
       "Dispatch retrieval across all active agents participating in the request.",
       "Merge results deterministically instead of depending on arrival order.",
       "Surface shard failures explicitly with no silent local-only fallback.",
-      "Provide focused tests that enforce the retrieval contract."
+      "Represent completion/failure using request-local state rather than illegal global knowledge.",
+      "Provide focused tests that enforce the retrieval contract and request progress."
     ],
     "non_goals": [
       "Do not build a full greenfield distributed hive implementation.",
       "Do not widen scope into Azure deployment or transport-layer work.",
       "Do not depend on changes in amplihack-agent-eval for this first slice.",
-      "Do not add new grading dimensions to the authoritative eval harness in this repo."
+      "Do not add new grading dimensions to the authoritative eval harness in this repo.",
+      "Do not claim a formal refinement proof or a complete liveness proof."
     ]
   },
   "spec_asset": "specs/DistributedRetrievalContract.tla",
+  "refinement_asset": "specs/DistributedRetrievalRefinement.md",
   "tlc_config_asset": "specs/DistributedRetrievalContract.cfg",
   "prompt_variants": [
     {
       "variant_id": "english",
       "label": "English natural-language baseline",
       "path": "prompts/distributed_retrieval_contract_english.md",
-      "append_spec": false
+      "append_spec": false,
+      "append_refinement": false
     },
     {
       "variant_id": "tla_only",
       "label": "TLA+ formal-spec prompt",
       "path": "prompts/distributed_retrieval_contract_tla_only.md",
-      "append_spec": true
+      "append_spec": true,
+      "append_refinement": false
     },
     {
       "variant_id": "tla_plus_english",
       "label": "Hybrid TLA+ plus English guidance prompt",
       "path": "prompts/distributed_retrieval_contract_hybrid.md",
-      "append_spec": true
+      "append_spec": true,
+      "append_refinement": false
+    },
+    {
+      "variant_id": "tla_plus_refinement",
+      "label": "TLA+ plus explicit refinement guidance prompt",
+      "path": "prompts/distributed_retrieval_contract_refinement.md",
+      "append_spec": true,
+      "append_refinement": true
     }
   ],
   "models": [
@@ -53,12 +66,13 @@
       "sdk": "copilot"
     }
   ],
-  "result_schema_version": 1,
+  "result_schema_version": 2,
   "smoke_repeats": 1,
   "full_repeats": 3,
   "fairness_rules": [
     "All variants target the same distributed retrieval contract slice.",
     "The hybrid prompt may add implementation guidance but must not expand the required deliverables.",
+    "The refinement variant may add local-protocol and progress guidance but must not widen scope beyond the same contract slice.",
     "Prompt reviewers should compare deliverables and non-goals before any full-matrix run."
   ],
   "ownership_notes": [

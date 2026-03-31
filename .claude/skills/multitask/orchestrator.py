@@ -392,7 +392,9 @@ class ParallelOrchestrator:
             export AMPLIHACK_MAX_SESSIONS={safe_max_sessions}
             # Bake in the detected delegate so nested ClaudeProcess inherits it (S2)
             export AMPLIHACK_DELEGATE={safe_delegate}
-            exec python3 launcher.py
+            # Unbuffered stdout/stderr is required so the parent multitask
+            # orchestrator can stream nested recipe progress live.
+            exec python3 -u launcher.py
             """)
         )
         run_sh.chmod(0o755)
@@ -452,6 +454,7 @@ class ParallelOrchestrator:
                     encoded_len = len(line.encode("utf-8", errors="replace"))
                     if log_bytes_written + encoded_len <= self._max_log_bytes:
                         log_fh.write(line)
+                        log_fh.flush()
                         log_bytes_written += encoded_len
                 self._stdout_write(f"[ws:{issue_id}] {line}")
 

@@ -40,8 +40,10 @@ def test_default_manifest_loads_scoped_generation_target():
 def test_default_manifest_resolves_prompt_and_spec_assets():
     manifest = load_default_experiment_manifest()
     spec_path = manifest.resolve_asset_path(manifest.spec_asset)
+    refinement_path = manifest.resolve_asset_path(manifest.refinement_asset or "")
     tlc_path = manifest.resolve_asset_path(manifest.tlc_config_asset or "")
     assert spec_path.name == "DistributedRetrievalContract.tla"
+    assert refinement_path.name == "DistributedRetrievalRefinement.md"
     assert tlc_path.name == "DistributedRetrievalContract.cfg"
     for prompt_variant in manifest.prompt_variants:
         assert manifest.resolve_asset_path(prompt_variant.path).exists()
@@ -50,12 +52,13 @@ def test_default_manifest_resolves_prompt_and_spec_assets():
 def test_expand_smoke_matrix_returns_one_repeat_per_model_variant_pair():
     manifest = load_default_experiment_manifest()
     conditions = manifest.expand_matrix(smoke=True)
-    assert len(conditions) == 6
+    assert len(conditions) == 8
     assert {item.repeat_index for item in conditions} == {1}
     assert {item.prompt_variant_id for item in conditions} == {
         "english",
         "tla_only",
         "tla_plus_english",
+        "tla_plus_refinement",
     }
     assert {item.model_id for item in conditions} == {"claude-opus-4.6", "gpt-5.4"}
 
@@ -63,18 +66,21 @@ def test_expand_smoke_matrix_returns_one_repeat_per_model_variant_pair():
 def test_expand_full_matrix_uses_full_repeat_count():
     manifest = load_default_experiment_manifest()
     conditions = manifest.expand_matrix(smoke=False)
-    assert len(conditions) == 18
+    assert len(conditions) == 24
     assert {item.repeat_index for item in conditions} == {1, 2, 3}
 
 
-def test_prompt_bundle_only_appends_spec_when_variant_requires_it():
+def test_prompt_bundle_appends_spec_and_refinement_when_variant_requires_it():
     manifest = load_default_experiment_manifest()
     english_bundle = manifest.load_prompt_bundle("english")
     tla_bundle = manifest.load_prompt_bundle("tla_only")
+    refinement_bundle = manifest.load_prompt_bundle("tla_plus_refinement")
 
     assert "Formal specification" not in english_bundle.combined_text()
     assert "Formal specification" in tla_bundle.combined_text()
     assert "---- MODULE DistributedRetrievalContract ----" in tla_bundle.combined_text()
+    assert "## Refinement guidance" in refinement_bundle.combined_text()
+    assert "request-local" in refinement_bundle.combined_text()
 
 
 def test_write_condition_matrix_emits_json(tmp_path):
@@ -83,23 +89,26 @@ def test_write_condition_matrix_emits_json(tmp_path):
     payload = json.loads(output_file.read_text())
     assert payload["experiment_id"] == "tla-prompt-language-v1"
     assert payload["matrix_mode"] == "smoke"
-    assert len(payload["conditions"]) == 6
+    assert len(payload["conditions"]) == 8
 
 
 def test_materialize_condition_packets_writes_prompt_spec_and_metadata(tmp_path):
     manifest = load_default_experiment_manifest()
     packets = materialize_condition_packets(tmp_path, smoke=True, manifest=manifest)
-    assert len(packets) == 6
+    assert len(packets) == 8
 
-    first_packet = packets[0]
+    first_packet = next(packet for packet in packets if packet.condition.prompt_variant_id == "tla_plus_refinement")
     packet_dir = tmp_path / first_packet.condition.condition_id
     prompt_text = (packet_dir / "prompt.md").read_text()
     spec_text = (packet_dir / "DistributedRetrievalContract.tla").read_text()
+    refinement_text = (packet_dir / "DistributedRetrievalRefinement.md").read_text()
     metadata = json.loads((packet_dir / "condition.json").read_text())
 
     assert "Distributed Retrieval Contract" in prompt_text
     assert "---- MODULE DistributedRetrievalContract ----" in spec_text
+    assert "request-local" in refinement_text
     assert metadata["condition_id"] == first_packet.condition.condition_id
+    assert metadata["materialized_refinement_file"].endswith("DistributedRetrievalRefinement.md")
     assert (tmp_path / "matrix.json").exists()
 
 
@@ -140,6 +149,8 @@ def test_condition_run_result_round_trip(tmp_path):
             baseline_score=0.82,
             invariant_compliance=0.9,
             proof_alignment=0.75,
+            local_protocol_alignment=0.7,
+            progress_signal=0.65,
             specification_coverage=0.8,
         ),
         generated_artifact_path="/tmp/generated.py",
@@ -153,6 +164,8 @@ def test_condition_run_result_round_trip(tmp_path):
 
     assert loaded.status == "completed"
     assert loaded.metrics.invariant_compliance == 0.9
+    assert loaded.metrics.local_protocol_alignment == 0.7
+    assert loaded.metrics.progress_signal == 0.65
     assert loaded.generated_artifact_path == "/tmp/generated.py"
     assert loaded.condition.condition_id == condition.condition_id
 
@@ -168,6 +181,8 @@ def test_summarize_condition_results_groups_by_model_and_prompt_variant():
                 baseline_score=0.8,
                 invariant_compliance=0.9,
                 proof_alignment=0.7,
+                local_protocol_alignment=0.6,
+                progress_signal=0.5,
                 specification_coverage=0.75,
             ),
         ),
@@ -178,6 +193,8 @@ def test_summarize_condition_results_groups_by_model_and_prompt_variant():
                 baseline_score=0.85,
                 invariant_compliance=0.95,
                 proof_alignment=0.8,
+                local_protocol_alignment=0.75,
+                progress_signal=0.7,
                 specification_coverage=0.78,
             ),
         ),
@@ -274,14 +291,20 @@ def test_evaluate_generated_artifact_scores_contract_signals():
         """
         Preserve the original question by storing original_question.
         Fan out retrieval to all active agents and sort(results) for deterministic merge.
-        Raise an error for shard failure and add pytest test_retrieval_contract assertions.
-        The implementation follows the TLA invariant in DistributedRetrievalContract.
+        Keep per-request request-local state with pending_agents, responded_agents,
+        and failed_agents. Once all responses or failures arrive and pending is empty,
+        complete request or transition to failed. Add a timeout deadline so stalled
+        requests reach a terminal state. Raise an error for shard failure and add
+        pytest test_retrieval_contract assertions. The implementation follows the
+        TLA invariant in DistributedRetrievalContract.
         """
     )
 
     assert evaluation.metrics.baseline_score == 1.0
     assert evaluation.metrics.invariant_compliance == 1.0
     assert evaluation.metrics.proof_alignment == 1.0
+    assert evaluation.metrics.local_protocol_alignment == 1.0
+    assert evaluation.metrics.progress_signal == 1.0
     assert evaluation.checks["focused_tests"] is True
 
 
@@ -299,8 +322,69 @@ def test_evaluate_generated_artifact_penalizes_off_topic_output():
 
     assert evaluation.metrics.baseline_score == 0.0
     assert evaluation.metrics.invariant_compliance == 0.0
+    assert evaluation.metrics.local_protocol_alignment == 0.0
+    assert evaluation.metrics.progress_signal == 0.0
     assert evaluation.checks["focused_tests"] is False
     assert evaluation.checks["explicit_failure_surface"] is False
+
+
+def test_evaluate_generated_artifact_accepts_request_local_protocol_patterns():
+    evaluation = evaluate_generated_artifact(
+        """
+        Request-local protocol with pending_agents, responded_agents, and failed_agents.
+        All agents accounted for (request-local knowledge only).
+        If pending empty, complete request; otherwise mark failed after timeout.
+        """
+    )
+
+    assert evaluation.metrics.local_protocol_alignment == 1.0
+    assert evaluation.metrics.progress_signal == 1.0
+
+
+def test_evaluate_generated_artifact_accepts_request_local_python_protocol_code():
+    evaluation = evaluate_generated_artifact(
+        """
+        class RequestStatus:
+            COMPLETE = "complete"
+            FAILED = "failed"
+
+        class DistributedRetrievalRequest:
+            \"\"\"Request-local refinement of the abstract contract.\"\"\"
+
+            def __init__(self, target_agents, deadline):
+                self.target_agents = frozenset(target_agents)
+                self.pending_agents = set(target_agents)
+                self.responded_agents = set()
+                self.failed_agents = {}
+                self.deadline = deadline
+                self.status = None
+
+            def dispatch_messages(self):
+                return [
+                    RetrievalDispatch(agent_id=agent_id)
+                    for agent_id in sorted(self.target_agents)
+                ]
+
+            def record_shard_success(self, agent_id):
+                self.pending_agents.remove(agent_id)
+                self.responded_agents.add(agent_id)
+                if not self.pending_agents:
+                    self.status = RequestStatus.COMPLETE
+
+            def expire_if_due(self, now):
+                if now >= self.deadline:
+                    self.pending_agents.clear()
+                    self.status = RequestStatus.FAILED
+
+        def test_request_reaches_terminal_state():
+            request = DistributedRetrievalRequest({"alpha", "beta"}, deadline=10)
+            assert len(request.dispatch_messages()) == 2
+        """
+    )
+
+    assert evaluation.checks["fans_out_all_agents"] is True
+    assert evaluation.metrics.local_protocol_alignment == 1.0
+    assert evaluation.metrics.progress_signal == 1.0
 
 
 def test_generate_condition_artifact_requires_allow_live_without_replay(tmp_path):
@@ -511,7 +595,7 @@ def test_main_returns_nonzero_when_run_report_has_failed_conditions(tmp_path, ca
 
     captured = capsys.readouterr()
     assert exit_code == 1
-    assert '"failed_conditions": 6' in captured.out
+    assert '"failed_conditions": 8' in captured.out
     assert "failed condition(s)" in captured.err
 
 
@@ -527,6 +611,9 @@ def test_run_tla_prompt_experiment_replay_mode_writes_reports(tmp_path):
             Preserve the original question.
             Fan out across all active agents.
             Use sorted(results) for deterministic merge.
+            Track pending_agents, responded_agents, and failed_agents in request-local state.
+            Once all responses or failures arrive and pending is empty, complete request.
+            Use a timeout deadline so stalled requests reach a terminal state.
             Raise shard failure errors explicitly.
             Add pytest test_retrieval_contract coverage.
             Reference the TLA invariant from DistributedRetrievalContract.
@@ -542,9 +629,9 @@ def test_run_tla_prompt_experiment_replay_mode_writes_reports(tmp_path):
     )
 
     assert report.replay_mode is True
-    assert report.total_conditions == 6
-    assert report.completed_conditions == 6
-    assert report.to_dict()["evaluation_kind"] == "heuristic_signal_v1"
+    assert report.total_conditions == 8
+    assert report.completed_conditions == 8
+    assert report.to_dict()["evaluation_kind"] == "heuristic_signal_v2"
     assert (output_dir / "experiment_report.json").exists()
     assert (output_dir / "experiment_report.md").exists()
     for packet in packets:
