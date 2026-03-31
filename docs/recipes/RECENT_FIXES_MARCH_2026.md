@@ -136,6 +136,132 @@ Closes #3784.
 
 ---
 
+## March 31, 2026 — Reliability, Security & Observability
+
+### Bracket Subscript Replaced with Dot-Notation in Recipe Conditions (PR #3783)
+
+**Problem**: The `clarify-ambiguities` step in `investigation-workflow.yaml` used
+`scope and scope['has_ambiguities']` as its condition guard. The Python
+`simpleeval` evaluator accepted this syntax, but the Rust recipe runner
+tokenizer (`condition.rs`) does not support `[` or `]` characters, raising
+`Condition error: Parse error: unexpected character: '['` at runtime.
+
+**Fix**: Replaced bracket subscript with dot-notation: `scope and scope.has_ambiguities`.
+Both evaluators support dot-notation property access on dict/object values. The
+short-circuit `scope and ...` guard is preserved.
+
+**Rule**: Always write recipe conditions using dot-notation (`scope.key`) not
+bracket subscript (`scope['key']`). Bracket subscript only works in the Python
+evaluator; dot-notation works in both Python and Rust.
+
+---
+
+### Hollow-Success Failures Surfaced in Default-Workflow (PR #3484)
+
+**Problem**: Three default-workflow steps swallowed failures and appeared to
+succeed when they had not:
+- Step 03b silently returned an empty string instead of failing when no issue
+  number could be extracted.
+- Step 15 (commit-push) continued after a commit with nothing staged.
+- Step 16 (create-draft-pr) proceeded with zero commits ahead of base or a
+  non-numeric issue number.
+
+**Fix**:
+- Step 03b exits 1 with a diagnostic message when extraction produces an empty
+  result.
+- Step 15 exits 1 with `git status` output when nothing is staged; warns and
+  skips push when the upstream tracking branch is missing. `set -euo pipefail`
+  enforced; rebase and push are now separate statements for correct error
+  propagation.
+- Step 16 exits 1 with a root-cause list when zero commits are ahead, and exits
+  1 on a non-numeric issue number. `set -euo pipefail` enforced.
+
+**Impact**: Workflows that previously appeared to succeed but produced no real
+output now fail visibly with actionable diagnostics.
+
+---
+
+### Startup No Longer Emits Stderr Warnings (PR #3542)
+
+**Problem**: Three code paths printed `WARNING: agent_framework not available`
+to stderr on every `amplihack` startup, violating the no-silent-fallback
+philosophy. Additionally, `cli.py` and `session.py` swallowed `ensure_sdk_deps()`
+exceptions via `logger.debug`, hiding dependency problems.
+
+**Fix**:
+- `dep_check.py`: Removed the warning print from `check_sdk_dep()`.
+- `microsoft_sdk.py`: Replaced the warning print with `pass` (the
+  `ImportError` is already raised at usage time).
+- `re_enable_prompt.py`: Replaced a 3-level try/except chain with a direct
+  import from the new `src/amplihack/worktree/git_utils.py` module.
+- `cli.py` / `session.py`: Removed `try/except` blocks that caught
+  `ensure_sdk_deps()` exceptions and logged them only at `debug` level.
+
+**Impact**: `amplihack --help` and `amplihack version` produce zero WARNING
+lines in stderr. Import failures surface immediately instead of hiding silently.
+
+---
+
+### Progress File Trust and Fleet Auth Security Hardened (PR #3904)
+
+**Problem**: Recipe progress monitoring accepted progress records from any
+process that could write to the progress temp file path, enabling spoofed
+progress injection. Fleet auth bundle creation used predictable temp paths and
+fixed remote bundle names, creating TOCTOU race conditions. Fleet auth error
+details echoed tokens and absolute paths verbatim to users.
+
+**Fix**:
+- `get_recipe_progress()` now ignores progress records from files outside the
+  runner-controlled private temp directory.
+- Fleet auth bundle creation uses per-invocation secure temp archives and
+  unique remote bundle names.
+- User-facing fleet auth error output is sanitized to remove absolute paths and
+  credential fragments.
+
+---
+
+### Fleet User-Visible Error Surfaces Sanitized (PR #3907)
+
+**Problem**: `setup`, `admiral`, `watch`, `track-issue`, and `fleet setup` CLI
+error paths forwarded raw Python exception text to users, including absolute
+filesystem paths and auth token fragments from `subprocess.CalledProcessError`
+messages.
+
+**Fix**: Added a shared `_sanitize_error()` function in
+`src/amplihack/fleet/_error_sanitizer.py`. All user-facing fleet error surfaces
+now route through this sanitizer. Focused regression tests cover token and path
+redaction across setup, admiral, watch, track-issue, and fleet setup.
+
+**Rule**: Never forward raw Python exception text to users. Route all error
+strings through `_sanitize_error()` before display.
+
+---
+
+### Recipe Runner Quality & Robustness Audit — 31 Findings (PR #3681)
+
+Comprehensive audit covering 5 areas across 10 YAML recipe files and the Rust/Python runner infrastructure.
+
+**Critical findings (9)**:
+
+| ID | Finding | Impact |
+|---|---|---|
+| F-COND-1 | 11 conditions use `== True` boolean literal — silently evaluates wrong due to coercion | Steps run or skip incorrectly |
+| F-OBS-2 | Zero step-failure diagnostics — users see no detail on failure | Debugging requires log diving |
+| F-ERR-1 | No resume-from-step — late failures require full re-run | Hours of work lost |
+| F-YAML-2 | 13 agent steps in `code-atlas.yaml` missing `output` field | Downstream chains receive no data |
+| F-ROUTE-1 | `extract_json()` uses first JSON block — revised analysis from later blocks is ignored | Stale decomposition used |
+
+**Remediation plan** (condensed):
+
+- **P0 (immediate)**: Fix `== True` conditions → `== "true"` or truthy expression; add missing `output` fields; improve failure diagnostics
+- **P1 (1–2 weeks)**: Default progress reporting on; add step timeouts; add more checkpoints
+- **P2 (1 month)**: Heartbeat monitoring; JSON schema validation for recipe YAML; pre-commit linting
+- **P3 (next quarter)**: Full resume-from-step; safe navigation operators in conditions
+
+Closes #3676, #3677, #3678, #3679.
+
+---
+
 ## Rust Runner Env Propagation & Investigation Routing (PR #3512, Issue #3496)
 
 **Problem**: Nested workflow sessions started in temp cwds with wrong environment,
@@ -610,6 +736,15 @@ amplihack recipe run investigation --context task_description="How does auth wor
 ---
 
 ## Version History
+
+Fixes released in **amplihack v0.6.102+** (March 31, 2026):
+
+- **Bracket Subscript → Dot-Notation** (PR #3783) — `scope['key']` → `scope.key` in recipe conditions for Rust runner compatibility
+- **Hollow-Success Surfacing** (PR #3484) — Steps 03b, 15, 16 of default-workflow now fail visibly
+- **Startup Stderr Warnings Removed** (PR #3542) — Zero WARNING lines on startup; swallowed exceptions fixed
+- **Progress File Trust** (PR #3904) — Spoofed progress records rejected; fleet auth secured
+- **Fleet Error Sanitizer** (PR #3907) — Tokens and paths redacted from user-visible fleet errors
+- **Recipe Runner Audit** (PR #3681) — 31 findings documented; P0 remediation plan for 9 critical issues
 
 Fixes released in **amplihack v0.6.99+** (Late March 2026):
 

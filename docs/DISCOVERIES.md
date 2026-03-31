@@ -704,3 +704,76 @@ Checklist validation gates (STOP checkpoints, pre-flight validation) trigger Son
 - **Test interventions across ALL target models** - what helps one can break another
 - **Validation gates harmful for autonomous models** - Sonnet needs zero checkpoints
 - **No universal CLAUDE.md solution** - different models need different approaches
+
+---
+
+## Bracket Subscript Syntax Breaks Rust Condition Evaluator (2026-03-31)
+
+### Issue
+
+Recipe conditions using `scope['has_ambiguities']` bracket-subscript syntax worked correctly under the Python `simpleeval` evaluator but produced `Condition error: Parse error: unexpected character: '['` when executed by the Rust recipe runner. The condition step was silently skipped or the workflow aborted depending on the step's `fatal` setting.
+
+### Root Cause
+
+The Rust recipe runner tokenizer (`condition.rs`) recognises only identifiers, dots, parens, quotes, numbers, and comparison operators. The `[` character falls to the default match arm and raises `ConditionError::Parse`. By contrast, Python's `simpleeval` evaluator supports full bracket-subscript syntax.
+
+The divergence was introduced in PR #3570 which hardened an `investigation-workflow` condition by adding `scope and scope['has_ambiguities']` to guard against falsy scope values. The guard was correct in intent but used syntax unsupported by the Rust evaluator.
+
+### Solution
+
+**PR #3783**: Replaced `scope and scope['has_ambiguities']` with `scope and scope.has_ambiguities`. Both evaluators support dot-notation property access on dict/object values. The short-circuit `scope and ...` guard is preserved.
+
+Regression tests were added documenting the bracket subscript portability gap and confirming that dot-notation conditions work in both evaluators.
+
+### Key Learnings
+
+1. **Use dot-notation, not bracket subscript, in recipe conditions**: `scope.key` works in both Python and Rust evaluators; `scope['key']` only works in Python
+2. **Python-first development hides Rust evaluator incompatibilities**: Unit tests that run conditions under `simpleeval` pass; only end-to-end runs with the Rust binary catch the failure
+3. **The portability gap is silent in the wrong direction**: A malformed condition can silently allow a guarded step to run or can abort the workflow — neither is obvious from the YAML
+
+### Prevention
+
+- Write recipe conditions using dot-notation property access only (`scope.key`, `context.value`)
+- Add a pre-commit YAML lint rule that rejects `[` characters inside `condition:` fields
+- Test condition expressions against the Rust evaluator in CI, not just the Python evaluator
+
+---
+
+## Fleet and Progress Error Surfaces Expose Internal Paths and Tokens (2026-03-31)
+
+### Issue
+
+User-visible error messages from fleet auth, fleet setup, fleet watch, and recipe progress monitoring echoed raw Python exception text. This text included:
+
+- Absolute filesystem paths (e.g. `/home/azureuser/.ssh/id_rsa`)
+- Auth tokens and credential fragments
+- Internal `subprocess` call arguments that contained sensitive values
+
+Progress trust was also exploitable: any process that could write to the progress temp file could inject a spoofed progress record into the monitor.
+
+### Root Cause
+
+Three separate failure modes:
+
+1. **Fleet error propagation**: `setup`, `admiral`, `watch`, `track-issue`, and `fleet setup` CLI surfaces passed raw `subprocess.CalledProcessError` or `Exception` strings directly to user-facing output functions
+2. **Progress file trust**: `get_recipe_progress()` read progress records from a temp file path derived from a user-controlled argument without verifying that the file was created by the current run or that its contents were plausible
+3. **Fleet auth bundle**: Each invocation wrote the auth bundle to a predictable temp path and used a fixed remote bundle name, enabling TOCTOU races and collision
+
+### Solution
+
+**PR #3907**: Added a shared `_sanitize_error()` function in `src/amplihack/fleet/_error_sanitizer.py` that strips Unix and Windows absolute paths and common token patterns from error output. Applied to all user-facing fleet error surfaces. Focused regression tests added covering token and path redaction.
+
+**PR #3904**: Hardened `get_recipe_progress()` to ignore progress records from files outside the runner-controlled temp directory. Hardened fleet auth bundle creation to use secure per-invocation temp archives and unique remote bundle names. Sanitized user-facing fleet auth error details.
+
+### Key Learnings
+
+1. **Raw exception messages are a secret leak vector**: Python exception text routinely contains absolute paths, env var values, and subprocess arguments — never forward them to users verbatim
+2. **Temp file trust is not automatic**: Any world-writable or predictably named temp file can be spoofed; progress files must be rooted under a runner-controlled private directory
+3. **Shared sanitizer prevents regression**: Without a central `_sanitize_error()` utility, each new error surface must independently re-implement redaction — and most won't
+
+### Prevention
+
+- Route all user-facing error strings through `_sanitize_error()` (from `src/amplihack/fleet/_error_sanitizer.py`)
+- Create progress temp directories at `0700` mode; verify that progress file paths are rooted within the runner-controlled directory before reading
+- Use per-invocation random suffixes for temp file names in security-sensitive contexts to prevent TOCTOU races
+- Add a test for every new user-visible error surface that asserts no absolute paths or token-like strings appear in the output
