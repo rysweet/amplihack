@@ -164,6 +164,7 @@ def register_commands(
             agent_command=agent,
             agent_mode=mode,
             max_turns=max_turns,
+            protected=protected,
         )
         click.echo(f"Task {task.id} added: {prompt[:80]}")
         click.echo(f"Priority: {priority}, Agent: {agent}, Mode: {mode}")
@@ -319,12 +320,16 @@ def register_commands(
 
             try:
                 if proj.identity:
-                    subprocess.run(
+                    switch_result = subprocess.run(
                         ["gh", "auth", "switch", "--user", proj.identity],
                         capture_output=True,
                         text=True,
                         timeout=10,
                     )
+                    if switch_result.returncode != 0:
+                        detail = sanitize_external_error_detail(switch_result.stderr)
+                        click.echo(f"gh auth switch failed: {detail}")
+                        return
                 result = subprocess.run(
                     [
                         "gh",
@@ -342,13 +347,21 @@ def register_commands(
                     text=True,
                     timeout=15,
                 )
-                if result.returncode == 0 and result.stdout.strip():
-                    lines = result.stdout.strip().split("\n")
-                    title = lines[0]
-                    if not url and len(lines) > 1:
-                        url = lines[1]
+                if result.returncode != 0:
+                    detail = sanitize_external_error_detail(result.stderr)
+                    click.echo(f"gh issue view failed: {detail}")
+                    return
+                if not result.stdout.strip():
+                    click.echo("gh issue view returned no issue details")
+                    return
+                lines = result.stdout.strip().split("\n")
+                title = lines[0]
+                if not url and len(lines) > 1:
+                    url = lines[1]
             except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
-                click.echo(f"Warning: could not fetch issue from GitHub: {exc}")
+                detail = sanitize_external_error_detail(str(exc))
+                click.echo(f"Could not fetch issue from GitHub: {detail}")
+                return
 
         if not title:
             title = f"Issue #{issue_number}"
@@ -385,12 +398,16 @@ def register_commands(
 
         try:
             if proj.identity:
-                subprocess.run(
+                switch_result = subprocess.run(
                     ["gh", "auth", "switch", "--user", proj.identity],
                     capture_output=True,
                     text=True,
                     timeout=10,
                 )
+                if switch_result.returncode != 0:
+                    detail = sanitize_external_error_detail(switch_result.stderr)
+                    click.echo(f"gh auth switch failed: {detail}")
+                    return
             result = subprocess.run(
                 [
                     "gh",

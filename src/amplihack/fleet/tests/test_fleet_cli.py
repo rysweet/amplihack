@@ -160,6 +160,7 @@ class TestFleetAddTask:
         assert call_kwargs.kwargs["agent_command"] == "claude"
         assert call_kwargs.kwargs["agent_mode"] == "auto"
         assert call_kwargs.kwargs["max_turns"] == 20
+        assert call_kwargs.kwargs["protected"] is False
 
     @patch("amplihack.fleet._cli_commands.TaskQueue")
     def test_add_task_with_all_options(self, MockQueue, runner):
@@ -184,6 +185,7 @@ class TestFleetAddTask:
                 "ultrathink",
                 "--max-turns",
                 "50",
+                "--protected",
             ],
             catch_exceptions=False,
         )
@@ -195,6 +197,7 @@ class TestFleetAddTask:
         assert call_kwargs["agent_command"] == "amplifier"
         assert call_kwargs["agent_mode"] == "ultrathink"
         assert call_kwargs["max_turns"] == 50
+        assert call_kwargs["protected"] is True
 
     def test_add_task_missing_prompt_fails(self, runner):
         result = runner.invoke(fleet_cli, ["add-task"])
@@ -491,6 +494,79 @@ class TestFleetProjectTrackIssue:
         assert "<path>" in result.output
         assert fake_token not in result.output
         assert "Authorization: Bearer ***" in result.output
+
+
+class TestFleetProjectAddIssue:
+    @patch("amplihack.fleet._projects.save_projects")
+    @patch("amplihack.fleet._projects.validate_repo_url", return_value=True)
+    @patch("amplihack.fleet._projects.load_projects")
+    @patch("subprocess.run")
+    def test_add_issue_auth_switch_failure_surfaces_error(
+        self,
+        mock_run,
+        mock_load_projects,
+        _mock_validate_repo_url,
+        mock_save_projects,
+        runner,
+    ):
+        project = MagicMock(repo_url="owner/repo", identity="bot-user")
+        mock_load_projects.return_value = {"demo": project}
+        fake_token = "ghp_" + "abcdefghijklmnopqrstuvwxyz123456"  # pragma: allowlist secret
+        fake_path = "/home/tester/.config/gh/hosts.yml"
+        mock_run.return_value = MagicMock(
+            returncode=1,
+            stderr=f"switch failed for {fake_path} Authorization: Bearer {fake_token}",
+            stdout="",
+        )
+
+        result = runner.invoke(
+            fleet_cli,
+            ["project", "add-issue", "demo", "42"],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code == 0
+        assert "gh auth switch failed" in result.output
+        assert "<path>" in result.output
+        assert fake_token not in result.output
+        project.add_objective.assert_not_called()
+        mock_save_projects.assert_not_called()
+
+    @patch("amplihack.fleet._projects.save_projects")
+    @patch("amplihack.fleet._projects.validate_repo_url", return_value=True)
+    @patch("amplihack.fleet._projects.load_projects")
+    @patch("subprocess.run")
+    def test_add_issue_view_failure_does_not_fabricate_title(
+        self,
+        mock_run,
+        mock_load_projects,
+        _mock_validate_repo_url,
+        mock_save_projects,
+        runner,
+    ):
+        project = MagicMock(repo_url="owner/repo", identity="")
+        mock_load_projects.return_value = {"demo": project}
+        fake_token = "ghp_" + "abcdefghijklmnopqrstuvwxyz123456"  # pragma: allowlist secret
+        fake_path = "/home/tester/.config/gh/hosts.yml"
+        mock_run.return_value = MagicMock(
+            returncode=1,
+            stderr=f"gh failed reading {fake_path} Authorization: Bearer {fake_token}",
+            stdout="",
+        )
+
+        result = runner.invoke(
+            fleet_cli,
+            ["project", "add-issue", "demo", "42"],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code == 0
+        assert "gh issue view failed" in result.output
+        assert "<path>" in result.output
+        assert fake_token not in result.output
+        assert "Issue #42" not in result.output
+        project.add_objective.assert_not_called()
+        mock_save_projects.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

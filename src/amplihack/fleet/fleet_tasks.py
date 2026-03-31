@@ -168,8 +168,19 @@ class TaskQueue:
         if self.persist_path and self.persist_path.exists():
             self.load()
 
+    def _raise_load_failed(self) -> None:
+        if not getattr(self, "_load_failed", False):
+            return
+        assert self.persist_path is not None
+        backup = self.persist_path.with_suffix(".json.bak")
+        raise RuntimeError(
+            f"Cannot persist task queue because {self.persist_path} is corrupt. "
+            f"Restore or replace it first; backup saved at {backup}."
+        )
+
     def add(self, task: FleetTask) -> FleetTask:
         """Add a task to the queue."""
+        self._raise_load_failed()
         self.tasks.append(task)
         self.save()
         return task
@@ -182,6 +193,7 @@ class TaskQueue:
         agent_command: str = "claude",
         agent_mode: str = "auto",
         max_turns: int = DEFAULT_MAX_TURNS,
+        protected: bool = False,
     ) -> FleetTask:
         """Create and add a new task."""
         task = FleetTask(
@@ -191,6 +203,7 @@ class TaskQueue:
             agent_command=agent_command,
             agent_mode=agent_mode,
             max_turns=max_turns,
+            protected=protected,
         )
         return self.add(task)
 
@@ -241,10 +254,7 @@ class TaskQueue:
         """Persist queue to JSON file. Call after mutating task state."""
         if not self.persist_path:
             return
-        if getattr(self, '_load_failed', False):
-            import logging
-            logging.getLogger(__name__).error("Refusing to save — load failed for %s. Fix the .bak file manually.", self.persist_path)
-            return
+        self._raise_load_failed()
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
         # Atomic write: unique temp file then replace
         fd, tmp_path = tempfile.mkstemp(dir=str(self.persist_path.parent), suffix=".tmp")
@@ -271,7 +281,9 @@ class TaskQueue:
             import logging
             import shutil
 
-            logging.getLogger(__name__).warning(f"Corrupt queue file: {self.persist_path} — creating backup")
+            logging.getLogger(__name__).warning(
+                f"Corrupt queue file: {self.persist_path} — creating backup"
+            )
             backup = self.persist_path.with_suffix(".json.bak")
             shutil.copy2(self.persist_path, backup)
             self._load_failed = True

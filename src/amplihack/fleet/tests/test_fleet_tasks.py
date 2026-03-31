@@ -4,14 +4,10 @@ Tests the TaskQueue and FleetTask without any external dependencies.
 """
 
 import json
-import tempfile
-from datetime import datetime
-from pathlib import Path
 
 import pytest
 
 from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
-
 
 # ============ UNIT TESTS (60%) ============
 
@@ -138,6 +134,11 @@ class TestTaskQueue:
         queue = TaskQueue()
         assert queue.next_task() is None
 
+    def test_add_task_preserves_protected_flag(self):
+        queue = TaskQueue()
+        task = queue.add_task(prompt="Deep work", protected=True)
+        assert task.protected is True
+
     def test_active_tasks(self):
         queue = TaskQueue()
         t1 = queue.add_task(prompt="Running")
@@ -196,7 +197,7 @@ class TestTaskQueuePersistence:
     def test_persist_updates_on_mutation(self, tmp_path):
         path = tmp_path / "queue.json"
         queue = TaskQueue(persist_path=path)
-        task = queue.add_task(prompt="Test")
+        queue.add_task(prompt="Test")
 
         # File should exist after add
         assert path.exists()
@@ -210,6 +211,15 @@ class TestTaskQueuePersistence:
 
         queue = TaskQueue(persist_path=path)
         assert len(queue.tasks) == 0  # Graceful degradation
+
+    def test_add_task_raises_after_corrupt_file(self, tmp_path):
+        path = tmp_path / "queue.json"
+        path.write_text("not valid json{{{")
+
+        queue = TaskQueue(persist_path=path)
+
+        with pytest.raises(RuntimeError, match="corrupt"):
+            queue.add_task(prompt="Should not persist")
 
     def test_full_lifecycle_persisted(self, tmp_path):
         path = tmp_path / "queue.json"
