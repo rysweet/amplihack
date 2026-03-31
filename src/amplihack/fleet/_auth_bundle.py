@@ -120,11 +120,18 @@ def propagate_all_bundled(
         success = "AUTH_OK" in (result.stdout or "")
         files_copied = [Path(src).name for src, _, _ in files_to_bundle]
 
+        error = None
+        if not success:
+            detail_source = result.stderr or result.stdout
+            detail = _sanitize_external_error_detail(detail_source)
+            error = f"Failed to extract bundle: {detail}"
+
         return AuthResult(
             service="all",
             vm_name=vm_name,
             success=success,
             files_copied=files_copied,
+            error=error,
             duration_seconds=time.monotonic() - start,
         )
 

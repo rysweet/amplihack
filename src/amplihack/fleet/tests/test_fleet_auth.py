@@ -305,6 +305,41 @@ class TestPropagateAllBundled:
         result = auth.propagate_all_bundled("test-vm")
 
         assert result.success is False
+        assert result.error == "Failed to extract bundle: extract failed"
+
+    @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    def test_bundled_extract_failure_sanitizes_details(self, mock_run, tmp_path, monkeypatch):
+        """Bundle extract failures should redact tokens and local paths."""
+        fake_hosts = tmp_path / "hosts.yml"
+        fake_hosts.write_text("fake: content")
+        fake_token = "ghp_" + "abcdefghijklmnopqrstuvwxyz123456"  # pragma: allowlist secret
+
+        orig_expanduser = __import__("pathlib").Path.expanduser
+
+        def mock_expanduser(self):
+            s = str(self)
+            if "hosts.yml" in s:
+                return fake_hosts
+            return orig_expanduser(self)
+
+        monkeypatch.setattr("pathlib.Path.expanduser", mock_expanduser)
+
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="", stderr=""),  # cp
+            MagicMock(
+                returncode=1,
+                stdout="",
+                stderr=f"extract failed reading {fake_hosts} token={fake_token}",
+            ),
+        ]
+
+        auth = AuthPropagator()
+        result = auth.propagate_all_bundled("test-vm")
+
+        assert result.success is False
+        assert "<path>" in result.error
+        assert fake_token not in result.error
+        assert "ghp_***" in result.error
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
     def test_bundled_remote_extract_uses_unique_bundle_name(self, mock_run, tmp_path, monkeypatch):
