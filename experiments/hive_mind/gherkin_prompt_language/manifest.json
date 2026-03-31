@@ -1,0 +1,82 @@
+{
+  "experiment_id": "gherkin-prompt-language-v1",
+  "title": "Gherkin/BDD prompt language experiment for user authentication REST API",
+  "experiment_home": "experiments/hive_mind/gherkin_prompt_language",
+  "generation_target": {
+    "target_id": "user_authentication_api",
+    "summary": "Generate a user authentication REST API with registration, login, JWT token management, protected resource access, account lockout, and password hashing — all behaviors defined by Gherkin scenarios.",
+    "deliverables": [
+      "Registration endpoint with email/password validation and duplicate rejection.",
+      "Login endpoint with JWT access tokens, refresh tokens, and enumeration resistance.",
+      "Token refresh endpoint that rejects expired refresh tokens.",
+      "Protected resource endpoint requiring valid access token.",
+      "Account lockout after 5 consecutive failed login attempts.",
+      "Password hashing with bcrypt — never store or return plaintext.",
+      "Focused tests covering every scenario from the feature file."
+    ],
+    "non_goals": [
+      "Do not build OAuth2 or social login.",
+      "Do not implement email verification or password reset.",
+      "Do not add role-based access control or admin functionality.",
+      "Do not use a production database — in-memory storage only.",
+      "Do not add logging, monitoring, or deployment configuration."
+    ]
+  },
+  "spec_asset": "specs/user_authentication.feature",
+  "refinement_asset": null,
+  "prompt_variants": [
+    {
+      "variant_id": "english",
+      "label": "English natural-language baseline",
+      "path": "prompts/user_authentication_english.md",
+      "append_spec": false,
+      "append_refinement": false
+    },
+    {
+      "variant_id": "gherkin_only",
+      "label": "Gherkin behavioral spec prompt",
+      "path": "prompts/user_authentication_gherkin_only.md",
+      "append_spec": true,
+      "append_refinement": false
+    },
+    {
+      "variant_id": "gherkin_plus_english",
+      "label": "Hybrid Gherkin plus English guidance prompt",
+      "path": "prompts/user_authentication_gherkin_plus_english.md",
+      "append_spec": true,
+      "append_refinement": false
+    },
+    {
+      "variant_id": "gherkin_plus_acceptance",
+      "label": "Gherkin plus explicit acceptance criteria prompt",
+      "path": "prompts/user_authentication_gherkin_plus_acceptance.md",
+      "append_spec": true,
+      "append_refinement": false
+    }
+  ],
+  "models": [
+    {
+      "model_id": "claude-opus-4.6",
+      "label": "Claude Opus 4.6",
+      "sdk": "claude"
+    },
+    {
+      "model_id": "gpt-5.4",
+      "label": "GPT-5.4",
+      "sdk": "copilot"
+    }
+  ],
+  "result_schema_version": 2,
+  "smoke_repeats": 1,
+  "full_repeats": 3,
+  "fairness_rules": [
+    "All variants target the same user authentication API generation task.",
+    "The hybrid prompt may add implementation guidance but must not expand the required scenarios.",
+    "The acceptance criteria variant may add verification requirements but must not widen scope beyond the same scenarios.",
+    "Prompt reviewers should compare deliverables and non-goals before any full-matrix run."
+  ],
+  "ownership_notes": [
+    "This repo owns the experiment assets, manifest, and Gherkin evaluation utilities.",
+    "Authoritative harness and packaged report changes still belong in amplihack-agent-eval."
+  ]
+}
