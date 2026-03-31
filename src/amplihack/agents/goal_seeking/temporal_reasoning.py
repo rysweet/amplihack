@@ -70,13 +70,6 @@ class TemporalReasoningMixin:
         r"\s+\b(?:before|after|when|as of)\b.*$",
         re.IGNORECASE,
     )
-    _PERSON_NAME_PART_PATTERN = re.compile(r"^[A-Z][a-z]*(?:['\u2019\-][A-Z]?[a-z]+)?$")
-    _PERSON_NAME_FRAGMENT = (
-        r"[A-Z][a-z]*(?:['\u2019\-][A-Z]?[a-z]+)?"
-        r"\s+[A-Z][a-z]*(?:['\u2019\-][A-Z]?[a-z]+)?"
-    )
-    _PERSON_NAME_PATTERN = re.compile(rf"\b({_PERSON_NAME_FRAGMENT})\b")
-
     def _transition_chain_from_facts(
         self, entity: str, field: str, facts: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
