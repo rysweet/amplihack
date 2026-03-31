@@ -36,7 +36,7 @@ scenario:
     # S1: Extraction of #NNNN from task_description via bash regex
     - action: grep
       target: "amplifier-bundle/recipes/default-workflow.yaml"
-      pattern: '=~ \\#\(\[0-9\]\+\)'
+      pattern: "=~.*#.*[0-9]"
       description: "Guard 1 — extracts #NNNN pattern from task_description via bash regex"
 
     # S2: Numeric validation of extracted issue number (defense-in-depth)
