@@ -289,26 +289,69 @@ steps:
   - id: "step-03-create-issue"
     type: "bash"
     command: |
-      cd {{repo_path}} && \
-      echo "=== Step 3: Creating GitHub Issue ===" && \
+      set -euo pipefail
+      cd "{{repo_path}}"
+      echo "=== Step 3: Creating GitHub Issue ===" >&2
+
       # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
       TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
-      ) && \
-      ISSUE_TITLE=$(printf '%s' "$TASK_DESC" | tr '\n\r' '  ' | cut -c1-200) && \
-      ISSUE_TASK=$(printf '%s' "$TASK_DESC") && \
+      )
+      # Bash builtins replace tr|cut pipeline — avoids 2 subprocess spawns (matches step-16)
+      ISSUE_TITLE="${TASK_DESC//$'\n'/ }"
+      ISSUE_TITLE="${ISSUE_TITLE//$'\r'/ }"
+      ISSUE_TITLE="${ISSUE_TITLE:0:200}"
       ISSUE_REQS=$(cat <<EOFREQS
       {{final_requirements}}
       EOFREQS
-      ) && \
-      ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$ISSUE_TASK" "$ISSUE_REQS") && \
-      LABEL_NAME="workflow:default" && \
+      )
+
+      # Idempotency Guard 1: Reuse issue referenced in task_description (#NNNN)
+      # Mirrors step-16-create-draft-pr idempotency pattern (#3324).
+      # Bash regex replaces printf|grep|head|tr pipeline — avoids 4 subprocess spawns
+      if [[ "$TASK_DESC" =~ \#([0-9]+) ]]; then
+          REF_ISSUE_NUM="${BASH_REMATCH[1]}"
+      else
+          REF_ISSUE_NUM=""
+      fi
+      # Defense-in-depth: validate numeric before interpolating into gh command
+      if [ -n "$REF_ISSUE_NUM" ] && ! [[ "$REF_ISSUE_NUM" =~ ^[0-9]+$ ]]; then
+          echo "WARN: Extracted issue reference is not numeric: $REF_ISSUE_NUM — skipping guard 1" >&2
+          REF_ISSUE_NUM=""
+      fi
+      if [ -n "$REF_ISSUE_NUM" ]; then
+          echo "INFO: task_description references issue #$REF_ISSUE_NUM — verifying it exists" >&2
+          EXISTING_URL=$(timeout 60 gh issue view "$REF_ISSUE_NUM" --json url --jq '.url // ""' 2>/dev/null || echo '')
+          if [ -n "$EXISTING_URL" ]; then
+              echo "INFO: Reusing existing issue #$REF_ISSUE_NUM — skipping creation" >&2
+              printf '%s\n' "$EXISTING_URL"
+              exit 0
+          fi
+          echo "WARN: Referenced issue #$REF_ISSUE_NUM not found — will search or create" >&2
+      fi
+
+      # Idempotency Guard 2: Search open issues for similar title
+      SEARCH_QUERY="${ISSUE_TITLE:0:100}"
+      if [ -n "$SEARCH_QUERY" ]; then
+          echo "INFO: Searching open issues for similar title" >&2
+          FOUND_URL=$(timeout 60 gh issue list --state open --search "$SEARCH_QUERY" --json url --jq '.[0].url // ""' 2>/dev/null || echo '')
+          if [ -n "$FOUND_URL" ]; then
+              echo "INFO: Found existing open issue matching title — skipping creation" >&2
+              printf '%s\n' "$FOUND_URL"
+              exit 0
+          fi
+          echo "INFO: No matching open issue found — proceeding to create" >&2
+      fi
+
+      # Normal path: create a new issue
+      ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$TASK_DESC" "$ISSUE_REQS")
+      LABEL_NAME="workflow:default"
       if ! gh label list --limit 1000 2>/dev/null | grep -qw "$LABEL_NAME"; then
         gh label create "$LABEL_NAME" \
           --color "0366d6" \
           --description "Created by default-workflow recipe" 2>/dev/null || true
-      fi && \
+      fi
       gh issue create \
         --title "$ISSUE_TITLE" \
         --body "$ISSUE_BODY" \

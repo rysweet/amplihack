@@ -1,0 +1,434 @@
+# Outside-in test: step-03 issue creation idempotency
+# Verifies that step-03-create-issue handles all 3 code paths:
+#   Path 1 — existing issue detected via #NNNN reference in task_description
+#   Path 2 — existing issue detected via gh issue list --search by title
+#   Path 3 — new issue created via gh issue create (fallback, unchanged)
+# Also verifies injection prevention, timeout wrappers, stderr diagnostics,
+# and output compatibility with step-03b extraction.
+#
+# Pattern consistency: mirrors step-16-pr-creation-idempotency.yaml structure
+# Related: #3324 (step-16 pattern source), docs/recipes/step-03-idempotency.md
+
+scenario:
+  name: "Step 03 Issue Creation Idempotency"
+  description: |
+    When step-03-create-issue runs with a task_description that references an
+    existing issue (#NNNN) or when an open issue with a matching title already
+    exists, it must return the existing issue URL instead of creating a
+    duplicate. Only when neither guard matches should it create a new issue.
+    Issue number validation prevents shell injection via non-numeric values.
+    All diagnostic output routes to stderr. Both guards use timeout wrappers.
+  type: cli
+  level: 2
+
+  tags: [workflow, issue-creation, idempotency, regression, step-03, pr-3952]
+
+  prerequisites:
+    - "amplifier-bundle/recipes/default-workflow.yaml exists"
+    - "grep is available"
+    - "Bash 4+ is available"
+
+  steps:
+    # ======================================================================
+    # YAML Structure Verification — Guard 1: Reference guard (#NNNN)
+    # ======================================================================
+
+    # S1: Extraction of #NNNN from task_description via bash regex
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "=~.*#.*[0-9]"
+      description: "Guard 1 — extracts #NNNN pattern from task_description via bash regex"
+
+    # S2: Numeric validation of extracted issue number (defense-in-depth)
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "not numeric"
+      description: "Guard 1 — numeric validation rejects non-numeric issue numbers"
+
+    # S3: gh issue view to verify referenced issue exists
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "gh issue view.*REF_ISSUE_NUM"
+      description: "Guard 1 — gh issue view verifies referenced issue exists"
+
+    # ======================================================================
+    # YAML Structure Verification — Guard 2: Title search guard
+    # ======================================================================
+
+    # S4: gh issue list --search for matching open issues
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "gh issue list --state open --search"
+      description: "Guard 2 — gh issue list --search for matching open issues"
+
+    # S5: Search query truncated to 100 chars (GitHub search limit)
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "ISSUE_TITLE:0:100"
+      description: "Guard 2 — search query truncated to 100 chars via bash substring"
+
+    # ======================================================================
+    # YAML Structure Verification — Fallback: Original creation preserved
+    # ======================================================================
+
+    # S6: gh issue create still present as fallback
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "gh issue create"
+      description: "Fallback — gh issue create still present for new issues"
+
+    # ======================================================================
+    # YAML Structure Verification — Cross-cutting concerns
+    # ======================================================================
+
+    # S7: Timeout wrappers on gh API calls
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "timeout 60 gh issue"
+      description: "Timeout wrappers on gh issue API calls (60s)"
+
+    # S8: Diagnostic output routed to stderr
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: ">&2"
+      description: "Diagnostic messages routed to stderr (>&2)"
+
+    # S9: Output uses printf to stdout for step-03b compatibility
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "printf.*EXISTING_URL"
+      description: "Guard output uses printf to stdout for step-03b extraction"
+
+    # S10: exit 0 on successful reuse (both guards)
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          echo "=== S10: Both guards exit 0 on reuse ==="
+          FILE="amplifier-bundle/recipes/default-workflow.yaml"
+          [ -f "$FILE" ] || { echo "FAIL: $FILE not found"; exit 1; }
+
+          STEP_BLOCK=$(sed -n '/id: "step-03-create-issue"/,/^  - id:/p' "$FILE")
+
+          # Count exit 0 occurrences in the step (should be at least 2: guard 1 + guard 2)
+          EXIT_COUNT=$(echo "$STEP_BLOCK" | grep -c 'exit 0' || true)
+          echo "exit_0_count=$EXIT_COUNT"
+
+          if [ "$EXIT_COUNT" -ge 2 ]; then
+            echo "PASS: both guards have exit 0 on successful reuse"
+          else
+            echo "FAIL: expected at least 2 exit 0 (guard 1 + guard 2), found $EXIT_COUNT"
+            exit 1
+          fi
+      description: "Both guards exit 0 on successful reuse"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: both guards have exit 0 on successful reuse"
+      description: "Both guard paths must exit 0"
+
+    # ======================================================================
+    # Functional Tests — Guard 1: Reference extraction and validation
+    # ======================================================================
+
+    # S11: Extract #NNNN from task description containing a reference
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          echo "=== S11: Extract issue reference from task_description ==="
+          TASK_DESC="Fix the bug described in #1234 and also #5678"
+          if [[ "$TASK_DESC" =~ \#([0-9]+) ]]; then REF_ISSUE_NUM="${BASH_REMATCH[1]}"; else REF_ISSUE_NUM=""; fi
+          echo "extracted=$REF_ISSUE_NUM"
+          [ "$REF_ISSUE_NUM" = "1234" ] && echo "PASS: first #NNNN reference extracted correctly" || { echo "FAIL: expected 1234 got $REF_ISSUE_NUM"; exit 1; }
+      description: "Guard 1: Extract first #NNNN from task description"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: first #NNNN reference extracted correctly"
+      description: "Must extract first issue reference"
+
+    # S12: No #NNNN in task description — guard skipped
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          echo "=== S12: No issue reference in task_description ==="
+          TASK_DESC="Add a new feature for user profiles"
+          if [[ "$TASK_DESC" =~ \#([0-9]+) ]]; then REF_ISSUE_NUM="${BASH_REMATCH[1]}"; else REF_ISSUE_NUM=""; fi
+          echo "extracted=[$REF_ISSUE_NUM]"
+          [ -z "$REF_ISSUE_NUM" ] && echo "PASS: no reference yields empty — guard 1 skipped" || { echo "FAIL: expected empty got $REF_ISSUE_NUM"; exit 1; }
+      description: "Guard 1: No #NNNN in task description yields empty"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: no reference yields empty — guard 1 skipped"
+      description: "Missing reference must skip guard 1"
+
+    # S13: Numeric validation rejects non-numeric values (defense-in-depth)
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          echo "=== S13: Numeric validation of extracted issue number ==="
+          # Simulate the validation logic from step-03
+          for TEST_VAL in "1234" "" "abc" "12;rm -rf" "99999"; do
+            if [ -n "$TEST_VAL" ] && ! [[ "$TEST_VAL" =~ ^[0-9]+$ ]]; then
+              echo "REJECTED: '$TEST_VAL' — not numeric"
+            elif [ -n "$TEST_VAL" ]; then
+              echo "ACCEPTED: '$TEST_VAL' — numeric"
+            else
+              echo "SKIPPED: empty value"
+            fi
+          done
+
+          # The key security test: injection attempt must be rejected
+          INJECT="12;rm -rf"
+          if [ -n "$INJECT" ] && ! [[ "$INJECT" =~ ^[0-9]+$ ]]; then
+            echo "PASS: injection attempt rejected by numeric validation"
+          else
+            echo "FAIL: injection attempt was accepted"
+            exit 1
+          fi
+      description: "Guard 1: Numeric validation blocks injection attempts"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: injection attempt rejected by numeric validation"
+      description: "Non-numeric values must be rejected"
+
+    # ======================================================================
+    # Functional Tests — Guard 2: Title search logic
+    # ======================================================================
+
+    # S14: Search query truncation to 100 chars
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          echo "=== S14: Search query truncated to 100 chars ==="
+          # Create a title longer than 100 chars
+          LONG_TITLE=$(printf 'A%.0s' {1..200})
+          echo "original_length=${#LONG_TITLE}"
+
+          SEARCH_QUERY="${LONG_TITLE:0:100}"
+          echo "truncated_length=${#SEARCH_QUERY}"
+
+          [ "${#SEARCH_QUERY}" -eq 100 ] && echo "PASS: search query truncated to 100 chars" || { echo "FAIL: expected 100 got ${#SEARCH_QUERY}"; exit 1; }
+      description: "Guard 2: Long titles truncated to 100 chars for search"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: search query truncated to 100 chars"
+      description: "Search query must be truncated to 100 chars"
+
+    # S15: Short title used as-is (no truncation needed)
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          echo "=== S15: Short title not truncated ==="
+          SHORT_TITLE="Fix login bug"
+          SEARCH_QUERY="${SHORT_TITLE:0:100}"
+          [ "$SEARCH_QUERY" = "$SHORT_TITLE" ] && echo "PASS: short title preserved as-is" || { echo "FAIL: short title was modified"; exit 1; }
+      description: "Guard 2: Short titles preserved without truncation"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: short title preserved as-is"
+      description: "Short titles must not be modified"
+
+    # ======================================================================
+    # Functional Tests — Output format compatibility with step-03b
+    # ======================================================================
+
+    # S16: URL output in issues/NNNN format parseable by step-03b
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          echo "=== S16: Output URL compatible with step-03b extraction ==="
+          # Simulate guard output (same format as gh issue view --json url)
+          EXISTING_URL="https://github.com/org/repo/issues/4567"
+
+          # Run step-03b extraction logic on it
+          EXTRACTED=$(printf '%s' "$EXISTING_URL" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+          echo "extracted=$EXTRACTED"
+
+          [ "$EXTRACTED" = "4567" ] && echo "PASS: guard output compatible with step-03b extraction" || { echo "FAIL: expected 4567 got $EXTRACTED"; exit 1; }
+      description: "Guard output URL parseable by step-03b extraction"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: guard output compatible with step-03b extraction"
+      description: "Guard output must be parseable by step-03b"
+
+    # ======================================================================
+    # YAML Structure Verification — Step-03 complete guard structure
+    # ======================================================================
+
+    # S17: Verify step-03 has both idempotency guards in correct order
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          echo "=== S17: Step-03 idempotency guard structure ==="
+          FILE="amplifier-bundle/recipes/default-workflow.yaml"
+          [ -f "$FILE" ] || { echo "FAIL: $FILE not found"; exit 1; }
+
+          STEP_BLOCK=$(sed -n '/id: "step-03-create-issue"/,/^  - id:/p' "$FILE")
+
+          # Guard 1 markers
+          if echo "$STEP_BLOCK" | grep -q 'Idempotency Guard 1'; then
+            echo "PASS: Guard 1 section header present"
+          else
+            echo "FAIL: Guard 1 section header missing"
+            exit 1
+          fi
+
+          # Guard 2 markers
+          if echo "$STEP_BLOCK" | grep -q 'Idempotency Guard 2'; then
+            echo "PASS: Guard 2 section header present"
+          else
+            echo "FAIL: Guard 2 section header missing"
+            exit 1
+          fi
+
+          # Guard 1 must appear BEFORE Guard 2
+          GUARD1_LINE=$(echo "$STEP_BLOCK" | grep -n 'Idempotency Guard 1' | head -1 | cut -d: -f1)
+          GUARD2_LINE=$(echo "$STEP_BLOCK" | grep -n 'Idempotency Guard 2' | head -1 | cut -d: -f1)
+          echo "guard1_line=$GUARD1_LINE guard2_line=$GUARD2_LINE"
+
+          if [ "$GUARD1_LINE" -lt "$GUARD2_LINE" ]; then
+            echo "PASS: Guard 1 appears before Guard 2 (correct priority order)"
+          else
+            echo "FAIL: Guards in wrong order (Guard 1 must come first)"
+            exit 1
+          fi
+
+          # Normal creation path must appear AFTER both guards
+          CREATE_LINE=$(echo "$STEP_BLOCK" | grep -n 'gh issue create' | head -1 | cut -d: -f1)
+          echo "create_line=$CREATE_LINE"
+
+          if [ "$CREATE_LINE" -gt "$GUARD2_LINE" ]; then
+            echo "PASS: gh issue create appears after both guards (fallback position)"
+          else
+            echo "FAIL: gh issue create not in fallback position"
+            exit 1
+          fi
+      description: "Step-03 has Guard 1, Guard 2, then create (correct order)"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: Guard 1 section header present"
+      description: "Guard 1 section must exist"
+
+    - action: verify_output
+      contains: "PASS: Guard 2 section header present"
+      description: "Guard 2 section must exist"
+
+    - action: verify_output
+      contains: "PASS: Guard 1 appears before Guard 2 (correct priority order)"
+      description: "Guards must be in correct priority order"
+
+    - action: verify_output
+      contains: "PASS: gh issue create appears after both guards (fallback position)"
+      description: "Creation must be fallback after both guards"
+
+    # S18: Verify step-03 references step-16 pattern (#3324)
+    - action: grep
+      target: "amplifier-bundle/recipes/default-workflow.yaml"
+      pattern: "step-16.*idempotency.*3324"
+      description: "Step-03 references step-16 pattern origin (#3324)"
+
+    # S19: set -euo pipefail at start of step-03
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          echo "=== S19: set -euo pipefail in step-03 ==="
+          FILE="amplifier-bundle/recipes/default-workflow.yaml"
+          STEP_BLOCK=$(sed -n '/id: "step-03-create-issue"/,/^  - id:/p' "$FILE")
+
+          if echo "$STEP_BLOCK" | head -5 | grep -q 'set -euo pipefail'; then
+            echo "PASS: step-03 starts with set -euo pipefail"
+          else
+            echo "FAIL: step-03 missing set -euo pipefail"
+            exit 1
+          fi
+      description: "Step-03 uses set -euo pipefail"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: step-03 starts with set -euo pipefail"
+      description: "Must use set -euo pipefail"
+
+    # S20: API failure fallthrough — || echo '' pattern
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - |
+          echo "=== S20: API failure fallthrough pattern ==="
+          FILE="amplifier-bundle/recipes/default-workflow.yaml"
+          STEP_BLOCK=$(sed -n '/id: "step-03-create-issue"/,/^  - id:/p' "$FILE")
+
+          # Both gh issue view and gh issue list should have || echo '' fallback
+          FALLBACK_COUNT=$(echo "$STEP_BLOCK" | grep -c "|| echo ''" || true)
+          echo "fallback_count=$FALLBACK_COUNT"
+
+          if [ "$FALLBACK_COUNT" -ge 2 ]; then
+            echo "PASS: both guards have || echo '' API failure fallback"
+          else
+            echo "FAIL: expected at least 2 fallback patterns, found $FALLBACK_COUNT"
+            exit 1
+          fi
+      description: "Both guards fall through on API failure via || echo ''"
+      timeout: 10s
+
+    - action: verify_output
+      contains: "PASS: both guards have || echo '' API failure fallback"
+      description: "API failures must fall through gracefully"
+
+  cleanup:
+    - action: capture_output
+      save_as: "step-03-issue-creation-idempotency-output.txt"
+      description: "Save full test output for debugging"
+
+# Expected Behavior Summary:
+#
+# Guard 1 (Reference guard):
+# - Extracts first #NNNN from task_description via bash regex [[ =~ \#([0-9]+) ]]
+# - Validates extracted number is purely numeric (defense-in-depth)
+# - Verifies issue exists via gh issue view with timeout 60
+# - On match: outputs issue URL, exit 0
+# - On miss: falls through to Guard 2
+#
+# Guard 2 (Title search guard):
+# - Truncates title to first 100 chars for search query
+# - Searches open issues via gh issue list --state open --search
+# - On match: outputs issue URL, exit 0
+# - On miss: falls through to creation
+#
+# Fallback (original creation):
+# - gh issue create with title, body, and label (unchanged)
+#
+# Cross-cutting:
+# - timeout 60 on all gh API calls
+# - Diagnostics routed to stderr (>&2)
+# - Output URL in issues/NNNN format (step-03b compatible)
+# - || echo '' fallback for API failures
+# - set -euo pipefail at script start
+# - Numeric validation prevents injection via REF_ISSUE_NUM
+#
+# Run Command:
+# gadugi-test run tests/gadugi/step-03-issue-creation-idempotency.yaml --verbose

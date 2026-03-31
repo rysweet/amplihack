@@ -61,8 +61,8 @@ AFFECTED_STEP_IDS = [
 
 # Steps that produce a title-bound variable (must normalise newlines + truncate).
 TITLE_NORMALISING_STEPS = [
-    "step-03-create-issue",   # ISSUE_TITLE — cut -c1-200
-    "step-15-commit-push",    # COMMIT_TITLE — %.72s / head -1
+    "step-03-create-issue",  # ISSUE_TITLE — cut -c1-200
+    "step-15-commit-push",  # COMMIT_TITLE — %.72s / head -1
     "step-16-create-draft-pr",  # PR_TITLE — cut -c1-200
 ]
 
@@ -256,12 +256,8 @@ class TestAllAffectedStepsUseHeredoc:
         step = _get_step(step_map, step_id)
         cmd = step.get("command", "")
         # Find heredoc block — accept both quoted and unquoted delimiters
-        match = re.search(
-            r"<<'?EOFTASKDESC'?\n(.*?)EOFTASKDESC", cmd, re.DOTALL
-        )
-        assert match is not None, (
-            f"Step '{step_id}' has no complete heredoc block."
-        )
+        match = re.search(r"<<'?EOFTASKDESC'?\n(.*?)EOFTASKDESC", cmd, re.DOTALL)
+        assert match is not None, f"Step '{step_id}' has no complete heredoc block."
         heredoc_body = match.group(1)
         assert "{{task_description}}" in heredoc_body, (
             f"Step '{step_id}' heredoc body does not contain {{{{task_description}}}}. "
@@ -331,8 +327,7 @@ class TestDownstreamReferencesDoubleQuoted:
                         filtered.append(f"  [{step_id}]: {stripped!r}")
                 violations.extend(filtered)
         assert violations == [], (
-            "Unquoted $TASK_DESC references found (word-split risk):\n"
-            + "\n".join(violations)
+            "Unquoted $TASK_DESC references found (word-split risk):\n" + "\n".join(violations)
         )
 
     def test_no_unquoted_task_val_reference(self, default_workflow):
@@ -346,9 +341,7 @@ class TestDownstreamReferencesDoubleQuoted:
                         continue
                     if re.search(r'(?<!")\$TASK_VAL(?!")', line):
                         violations.append(f"  [{step_id}]: {stripped!r}")
-        assert violations == [], (
-            "Unquoted $TASK_VAL references found:\n" + "\n".join(violations)
-        )
+        assert violations == [], "Unquoted $TASK_VAL references found:\n" + "\n".join(violations)
 
 
 # ---------------------------------------------------------------------------
@@ -373,17 +366,14 @@ class TestNoEvalOrSubshellInjection:
                 if re.search(rf"eval.*\${var}", cmd):
                     violations.append(f"{step_id}: eval ${var}")
         assert violations == [], (
-            "eval with derived task-description variables found:\n"
-            + "\n".join(violations)
+            "eval with derived task-description variables found:\n" + "\n".join(violations)
         )
 
     def test_no_bash_c_with_derived_vars(self, default_workflow):
         violations = []
         for step_id, cmd in _bash_steps(default_workflow):
             for var in self._DERIVED_VARS:
-                if re.search(rf"bash\s+-c.*\${var}", cmd) or re.search(
-                    rf"sh\s+-c.*\${var}", cmd
-                ):
+                if re.search(rf"bash\s+-c.*\${var}", cmd) or re.search(rf"sh\s+-c.*\${var}", cmd):
                     violations.append(f"{step_id}: bash/sh -c ${var}")
         assert violations == [], (
             "bash -c / sh -c with derived task-description variables found:\n"
@@ -428,9 +418,7 @@ class TestExportAntiPatternFixed:
         step = _get_step(step_map, "workflow-complete")
         cmd = step.get("command", "")
         # A standalone export line: export VARNAME  (not export VARNAME=...)
-        standalone_export = re.compile(
-            rf"^\s*export\s+{var_name}\s*$", re.MULTILINE
-        )
+        standalone_export = re.compile(rf"^\s*export\s+{var_name}\s*$", re.MULTILINE)
         assert standalone_export.search(cmd), (
             f"workflow-complete must have a standalone ``export {var_name}`` "
             "line (separate from the assignment) to avoid exit-code masking."
@@ -451,14 +439,21 @@ class TestTitleNormalisationPresent:
     """
 
     def test_step_03_issue_title_normalised(self, step_map):
-        """step-03 ISSUE_TITLE must apply ``tr '\\n\\r'`` and ``cut -c1-200``."""
+        """step-03 ISSUE_TITLE must normalise newlines and truncate to 200 chars.
+
+        Accepts either:
+        - tr '\\n\\r' pipeline (original)
+        - bash parameter expansion ${VAR//$'\\n'/ } (optimised, fewer subprocesses)
+        """
         step = _get_step(step_map, "step-03-create-issue")
         cmd = step.get("command", "")
-        assert "tr '\\n\\r'" in cmd or "tr '\\n'" in cmd, (
-            "step-03-create-issue ISSUE_TITLE must normalise newlines with tr"
+        assert "tr '\\n\\r'" in cmd or "tr '\\n'" in cmd or "$'\\n'" in cmd, (
+            "step-03-create-issue ISSUE_TITLE must normalise newlines "
+            "(via tr or bash parameter expansion)"
         )
-        assert "cut -c1-200" in cmd, (
-            "step-03-create-issue ISSUE_TITLE must truncate to 200 chars with cut"
+        assert "cut -c1-200" in cmd or ":0:200}" in cmd, (
+            "step-03-create-issue ISSUE_TITLE must truncate to 200 chars "
+            "(via cut or bash substring)"
         )
 
     def test_step_15_commit_title_normalised(self, step_map):
@@ -474,14 +469,21 @@ class TestTitleNormalisationPresent:
         )
 
     def test_step_16_pr_title_normalised(self, step_map):
-        """step-16 PR_TITLE must apply ``tr '\\n\\r'`` and ``cut -c1-200``."""
+        """step-16 PR_TITLE must normalise newlines and truncate to 200 chars.
+
+        Accepts either:
+        - tr '\\n\\r' pipeline (original)
+        - bash parameter expansion ${VAR//$'\\n'/ } (optimised, fewer subprocesses)
+        """
         step = _get_step(step_map, "step-16-create-draft-pr")
         cmd = step.get("command", "")
-        assert "tr '\\n\\r'" in cmd or "tr '\\n'" in cmd, (
-            "step-16-create-draft-pr PR_TITLE must normalise newlines with tr"
+        assert "tr '\\n\\r'" in cmd or "tr '\\n'" in cmd or "$'\\n'" in cmd, (
+            "step-16-create-draft-pr PR_TITLE must normalise newlines "
+            "(via tr or bash parameter expansion)"
         )
-        assert "cut -c1-200" in cmd, (
-            "step-16-create-draft-pr PR_TITLE must truncate to 200 chars with cut"
+        assert "cut -c1-200" in cmd or ":0:200}" in cmd, (
+            "step-16-create-draft-pr PR_TITLE must truncate to 200 chars "
+            "(via cut or bash substring)"
         )
 
 
@@ -501,11 +503,7 @@ class TestHeredocBashSyntax:
     def test_basic_heredoc_syntax_valid(self, name, task_desc):
         """Single-quoted heredoc must pass ``bash -n`` for all adversarial inputs."""
         script = (
-            f"TASK_DESC=$(cat <<'EOFTASKDESC'\n"
-            f"{task_desc}\n"
-            f"EOFTASKDESC\n"
-            f")\n"
-            f'echo "$TASK_DESC"'
+            f"TASK_DESC=$(cat <<'EOFTASKDESC'\n{task_desc}\nEOFTASKDESC\n)\necho \"$TASK_DESC\""
         )
         result = subprocess.run(
             ["/bin/bash", "-n", "-c", script],
@@ -533,14 +531,11 @@ class TestHeredocBashSyntax:
             text=True,
             timeout=5,
         )
-        assert result.returncode == 0, (
-            f"Heredoc script failed for {name!r}: {result.stderr!r}"
-        )
+        assert result.returncode == 0, f"Heredoc script failed for {name!r}: {result.stderr!r}"
         # The captured value should equal the input (heredoc strips trailing newline)
         expected = task_desc.rstrip("\n")
         assert result.stdout == expected, (
-            f"Heredoc capture mismatch for {name!r}: "
-            f"got {result.stdout!r}, expected {expected!r}"
+            f"Heredoc capture mismatch for {name!r}: got {result.stdout!r}, expected {expected!r}"
         )
 
     @pytest.mark.parametrize("name,task_desc", ADVERSARIAL_TASK_DESCRIPTIONS)
@@ -550,8 +545,8 @@ class TestHeredocBashSyntax:
         A canary file is used: if any injection causes execution, the canary
         would be created and the test fails.
         """
-        import tempfile
         import os
+        import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
             canary = os.path.join(tmpdir, "canary_injected")
@@ -575,8 +570,7 @@ class TestHeredocBashSyntax:
                 f"Script failed unexpectedly for {name!r}: {result.stderr!r}"
             )
             assert not os.path.exists(canary), (
-                f"Canary file was created for {name!r} — "
-                "shell injection may have occurred!"
+                f"Canary file was created for {name!r} — shell injection may have occurred!"
             )
 
     def test_old_single_quote_pattern_fails_for_quote_in_value(self):
@@ -603,8 +597,8 @@ class TestHeredocBashSyntax:
 
         This test verifies the threat model is real, not theoretical.
         """
-        import tempfile
         import os
+        import tempfile
 
         with tempfile.TemporaryDirectory() as tmpdir:
             canary = os.path.join(tmpdir, "canary_backtick")
@@ -832,7 +826,7 @@ class TestStepSpecificHeredocIntegration:
             f"EOFTASKDESC\n"
             f")\n"
             # Split pattern (the fix):
-            'TASK_VAL=$(printf \'%s\' "$TASK_DESC")\n'
+            "TASK_VAL=$(printf '%s' \"$TASK_DESC\")\n"
             "export TASK_VAL\n"
             'printf "%s" "$TASK_VAL"'
         )
@@ -842,8 +836,7 @@ class TestStepSpecificHeredocIntegration:
         )
         expected = task_desc.rstrip("\n")
         assert result.stdout == expected, (
-            f"TASK_VAL mismatch for {name!r}: "
-            f"got {result.stdout!r}, expected {expected!r}"
+            f"TASK_VAL mismatch for {name!r}: got {result.stdout!r}, expected {expected!r}"
         )
 
 
@@ -870,8 +863,7 @@ class TestCIRegressionGuards:
             text=True,
         )
         assert result.returncode == 1, (  # grep returns 1 when no matches
-            "Vulnerable printf pattern found in default-workflow.yaml:\n"
-            + result.stdout
+            "Vulnerable printf pattern found in default-workflow.yaml:\n" + result.stdout
         )
 
     def test_grep_finds_zero_single_quote_wrapped_task_desc(self):
