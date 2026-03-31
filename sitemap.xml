@@ -2545,6 +2545,14 @@
          <lastmod>2026-03-31</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/investigations/step-03-idempotency-guards-analysis/</loc>
+         <lastmod>2026-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/investigations/step03-external-service-integration-assessment/</loc>
+         <lastmod>2026-03-31</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/mcp_evaluation/</loc>
          <lastmod>2026-03-31</lastmod>
     </url>
@@ -2714,6 +2722,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/recipes/recipe-discovery-troubleshooting/</loc>
+         <lastmod>2026-03-31</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/recipes/step-03-idempotency/</loc>
          <lastmod>2026-03-31</lastmod>
     </url>
     <url>
