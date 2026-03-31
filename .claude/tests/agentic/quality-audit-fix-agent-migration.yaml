@@ -1,0 +1,97 @@
+# Quality Audit Fix-Agent Migration - Agentic Test Scenario
+# Issue #3970: Verify quality-audit step 4 uses fix-agent instead of builder
+
+scenario:
+  name: "Quality Audit - Fix-Agent Migration"
+  description: |
+    Verifies that quality-audit-cycle.yaml step 4 (FIX) uses
+    amplihack:specialized:fix-agent instead of amplihack:core:builder,
+    ensuring fixes go through the full DEFAULT_WORKFLOW. Regression test
+    for Issue #3970.
+  type: cli
+  level: 1
+
+  tags: [recipe, quality-audit, regression, workflow-compliance]
+
+  prerequisites:
+    - "amplifier-bundle/recipes/quality-audit-cycle.yaml exists"
+
+  agents:
+    - name: "cli-agent"
+      type: "system"
+      config:
+        shell: "bash"
+        timeout: 60000
+
+  steps:
+    # Step 1: Validate recipe YAML
+    - action: execute
+      params:
+        command: 'python3 -c ''import yaml; yaml.safe_load(open("amplifier-bundle/recipes/quality-audit-cycle.yaml")); print("YAML valid")'''
+      description: "Verify recipe YAML is valid after agent migration"
+      timeout: 10000
+
+    - action: validate_output
+      params:
+        expected: "YAML valid"
+      description: "Recipe must be valid YAML"
+
+    # Step 2: Verify fix step uses fix-agent (not builder)
+    - action: execute
+      params:
+        command: "grep 'agent:' amplifier-bundle/recipes/quality-audit-cycle.yaml | grep fix | head -1"
+      description: "Check which agent the fix step uses"
+      timeout: 10000
+
+    - action: validate_output
+      params:
+        expected: "amplihack:specialized:fix-agent"
+      description: "The FIX step must use amplihack:specialized:fix-agent"
+
+    # Step 3: Verify builder is NOT referenced as an agent
+    - action: execute
+      params:
+        command: "grep -c 'agent:.*amplihack:core:builder' amplifier-bundle/recipes/quality-audit-cycle.yaml || echo 'PASS: no builder agent references'"
+      description: "Verify builder agent is not used anywhere in recipe"
+      timeout: 10000
+
+    - action: validate_output
+      params:
+        expected: "PASS: no builder agent references"
+      description: "No step should reference amplihack:core:builder"
+
+    # Step 4: Verify prompt references DEFAULT_WORKFLOW
+    - action: execute
+      params:
+        command: "grep -c 'default-workflow' amplifier-bundle/recipes/quality-audit-cycle.yaml && echo 'PASS: DEFAULT_WORKFLOW referenced' || echo 'FAIL: no DEFAULT_WORKFLOW reference'"
+      description: "Verify fix step prompt delegates to DEFAULT_WORKFLOW"
+      timeout: 10000
+
+    - action: validate_output
+      params:
+        expected: "PASS: DEFAULT_WORKFLOW referenced"
+      description: "The fix step must reference default-workflow"
+
+    # Step 5: Verify JSON output contract preserved (fixes_applied field)
+    - action: execute
+      params:
+        command: "grep -c 'fixes_applied' amplifier-bundle/recipes/quality-audit-cycle.yaml && echo 'PASS: output contract preserved' || echo 'FAIL: missing output contract'"
+      description: "Verify step 4b JSON contract fields are present"
+      timeout: 10000
+
+    - action: validate_output
+      params:
+        expected: "PASS: output contract preserved"
+      description: "The fix step must preserve the JSON output contract for step 4b"
+
+  expected_outcome:
+    summary: |
+      The quality-audit-cycle recipe step 4 (FIX) uses fix-agent which
+      delegates to the full DEFAULT_WORKFLOW, builder is not referenced,
+      and the JSON output contract for step 4b verification is preserved.
+    success_criteria:
+      - "Recipe YAML is valid"
+      - "FIX step agent is amplihack:specialized:fix-agent"
+      - "No amplihack:core:builder references remain"
+      - "Prompt references default-workflow"
+      - "JSON output contract fields are preserved"
