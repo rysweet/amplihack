@@ -273,6 +273,16 @@ class AuthPropagator:
                 vm_name,
                 f"gh auth status --hostname {shlex.quote(identity.hostname)} 2>&1 | grep -i 'active account'",
             )
+            if verify.returncode != 0:
+                detail = (verify.stderr or verify.stdout or "").strip()
+                detail_suffix = f": {detail[:200]}" if detail else ""
+                return AuthResult(
+                    service="github-identity",
+                    vm_name=vm_name,
+                    success=False,
+                    error=f"gh auth verify failed{detail_suffix}",
+                    duration_seconds=time.monotonic() - start,
+                )
 
             return AuthResult(
                 service="github-identity",
