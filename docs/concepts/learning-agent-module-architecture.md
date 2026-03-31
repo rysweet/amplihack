@@ -62,9 +62,29 @@ The refactor centers on eight named modules. These are the contributor-facing ow
 
 Private helper files may exist when needed to keep the main ownership modules reviewable. Those helpers support the eight modules above; they do not replace them as contributor entry points.
 
+## Implementation: mixin inheritance
+
+The modules are implemented as **mixin classes** that `LearningAgent` inherits from:
+
+```python
+class LearningAgent(
+    IntentDetectorMixin,
+    TemporalReasoningMixin,
+    CodeSynthesisMixin,
+    KnowledgeUtilsMixin,
+    RetrievalStrategiesMixin,
+    LearningIngestionMixin,
+    AnswerSynthesizerMixin,
+):
+```
+
+This preserves all `self.*` references without changing method signatures.  Every method still accesses `self.memory`, `self.model`, and other instance attributes directly through inheritance — no adapters, no parameter threading, no new state objects.
+
+A shared `prompt_utils.py` helper provides `_get_llm_completion()` which resolves `_llm_completion` from the `learning_agent` module namespace at runtime. This ensures that test monkeypatching of `learning_agent._llm_completion` propagates to all mixin modules correctly.
+
 ## Shared state stays in the facade
 
-The refactor deliberately avoids a new runtime-state object. `learning_agent.py` remains the one place that owns process-wide state and construction-time wiring.
+`learning_agent.py` remains the one place that owns process-wide state and construction-time wiring.
 
 The shared state that stays on `LearningAgent` includes:
 
@@ -83,20 +103,9 @@ This keeps the internal modules focused on behavior, not lifecycle.
 
 ## Dependency direction
 
-Imports move in one direction only:
+With mixin inheritance, `learning_agent.py` imports all seven mixin modules.  The mixin modules themselves import only from shared utilities (`prompt_utils`, `retrieval_constants`, `similarity`, `prompts`, `action_executor`) — never from each other or from `learning_agent.py`.
 
-1. **Leaf behavior**
-   - `intent_detector.py`
-   - `temporal_reasoning.py`
-   - `code_synthesis.py`
-   - `knowledge_utils.py`
-2. **Stateful pipelines**
-   - `learning_ingestion.py`
-   - `retrieval_strategies.py`
-3. **Orchestration**
-   - `answer_synthesizer.py`
-4. **Public facade**
-   - `learning_agent.py`
+At runtime, all methods resolve `self.*` through the MRO, so behavior flows naturally without cross-module imports.
 
 Lower layers do not import higher layers. The facade assembles everything.
 

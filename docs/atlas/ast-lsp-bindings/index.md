@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-31T06:30:00.000000+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-31T07:15:00.000000+00:00
 </div>
 
 ## Map
@@ -51,6 +51,34 @@ Category: <strong>Structural</strong> | Generated: 2026-03-31T06:30:00.000000+00
         F22 --> F6
         F23 --> F7
         F24 --> F8
+
+        %% goal_seeking mixin refactor (PR #3894)
+        subgraph goal_seeking["agents/goal_seeking"]
+            LA["learning_agent<br/>thin facade"]
+            IDM["intent_detector<br/>IntentDetectorMixin"]
+            TRM["temporal_reasoning<br/>TemporalReasoningMixin"]
+            CSM["code_synthesis<br/>CodeSynthesisMixin"]
+            KUM["knowledge_utils<br/>KnowledgeUtilsMixin"]
+            RSM["retrieval_strategies<br/>RetrievalStrategiesMixin"]
+            LIM["learning_ingestion<br/>LearningIngestionMixin"]
+            ASM["answer_synthesizer<br/>AnswerSynthesizerMixin"]
+            PU["prompt_utils<br/>_get_llm_completion"]
+        end
+        LA --> IDM
+        LA --> TRM
+        LA --> CSM
+        LA --> KUM
+        LA --> RSM
+        LA --> LIM
+        LA --> ASM
+        IDM --> PU
+        TRM --> PU
+        CSM --> PU
+        KUM --> PU
+        RSM --> PU
+        LIM --> PU
+        ASM --> PU
+        PU -.->|"sys.modules resolve"| LA
 
         click F0 "../ast-lsp-bindings/" "View AST bindings"
     ```
