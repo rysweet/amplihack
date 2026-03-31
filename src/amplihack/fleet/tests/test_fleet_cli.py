@@ -460,6 +460,39 @@ class TestFleetProjectRemove:
         assert result.exit_code != 0
 
 
+class TestFleetProjectTrackIssue:
+    @patch("amplihack.fleet._projects.validate_repo_url", return_value=True)
+    @patch("amplihack.fleet._projects.load_projects")
+    @patch("subprocess.run")
+    def test_track_issue_failure_sanitizes_error_detail(
+        self,
+        mock_run,
+        mock_load_projects,
+        _mock_validate_repo_url,
+        runner,
+    ):
+        project = MagicMock(repo_url="owner/repo", identity="")
+        mock_load_projects.return_value = {"demo": project}
+        fake_token = "ghp_" + "abcdefghijklmnopqrstuvwxyz123456"  # pragma: allowlist secret
+        fake_path = "/home/tester/.config/gh/hosts.yml"
+        mock_run.return_value = MagicMock(
+            returncode=1,
+            stderr=f"gh failed reading {fake_path} Authorization: Bearer {fake_token}",
+            stdout="",
+        )
+
+        result = runner.invoke(
+            fleet_cli,
+            ["project", "track-issue", "demo"],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        assert "gh issue list failed" in result.output
+        assert "<path>" in result.output
+        assert fake_token not in result.output
+        assert "Authorization: Bearer ***" in result.output
+
+
 # ---------------------------------------------------------------------------
 # fleet run-once
 # ---------------------------------------------------------------------------
@@ -572,6 +605,26 @@ class TestFleetWatch:
         )
         assert result.exit_code == 0
         assert "Failed to capture" in result.output
+
+    @patch("subprocess.run")
+    def test_watch_failure_sanitizes_error_detail(self, mock_run, runner):
+        fake_token = "ghp_" + "abcdefghijklmnopqrstuvwxyz123456"  # pragma: allowlist secret
+        fake_path = "/home/tester/.claude.json"
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_result.stderr = f"capture failed for {fake_path} Authorization: Bearer {fake_token}"
+        mock_run.return_value = mock_result
+
+        result = runner.invoke(
+            fleet_cli,
+            ["watch", "test-vm", "session-1"],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        assert "Failed to capture" in result.output
+        assert "<path>" in result.output
+        assert fake_token not in result.output
+        assert "Authorization: Bearer ***" in result.output
 
     @patch(
         "subprocess.run",
@@ -831,6 +884,27 @@ class TestFleetDefaultCommand:
             mock_module.run_dashboard.assert_called_once_with(
                 interval=DEFAULT_DASHBOARD_REFRESH_SECONDS
             )
+
+
+class TestFleetSetupCommand:
+    @patch("subprocess.run")
+    @patch("amplihack.fleet.fleet_cli.get_azlin_path")
+    def test_setup_sanitizes_azlin_version_failure(self, mock_get_azlin_path, mock_run, runner):
+        mock_get_azlin_path.return_value = "/usr/bin/azlin"
+        fake_token = "ghp_" + "abcdefghijklmnopqrstuvwxyz123456"  # pragma: allowlist secret
+        fake_path = "/home/tester/.config/gh/hosts.yml"
+        mock_run.return_value = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr=f"read failed for {fake_path} Authorization: Bearer {fake_token}",
+        )
+
+        result = runner.invoke(fleet_cli, ["setup"], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert "azlin: found but --version failed" in result.output
+        assert "<path>" in result.output
+        assert fake_token not in result.output
+        assert "Authorization: Bearer ***" in result.output
 
 
 class TestValidateVmNameCli:

@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -40,7 +39,7 @@ try:
 
     _HAS_AGENT_FRAMEWORK = True
 except ImportError:
-    pass
+    pass  # ImportError is raised at usage time via _HAS_AGENT_FRAMEWORK check in __init__
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +197,12 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
 
     async def _run_sdk_agent(self, task: str, max_turns: int = 10) -> AgentResult:
         """Execute task through Microsoft Agent Framework Agent.run()."""
+        if self._sdk_agent is None:
+            raise RuntimeError(
+                f"Agent '{self.name}' is not initialized — "
+                "OPENAI_API_KEY was not set when the agent was created. "
+                "Set OPENAI_API_KEY and recreate the agent."
+            )
         try:
             response = await self._sdk_agent.run(
                 messages=task,
@@ -231,12 +236,9 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
                 metadata={"sdk": "microsoft", "model": self.model},
             )
         except Exception as e:
-            logger.error("Microsoft Agent Framework run failed: %s", e)
-            return AgentResult(
-                response="Agent execution failed due to an internal error.",
-                goal_achieved=False,
-                metadata={"sdk": "microsoft", "error_type": type(e).__name__},
-            )
+            raise RuntimeError(
+                f"Microsoft Agent Framework run failed for agent '{self.name}': {e}"
+            ) from e
 
     def _get_native_tools(self) -> list[str]:
         """Return registered tool names."""

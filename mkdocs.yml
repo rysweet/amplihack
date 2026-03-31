@@ -90,6 +90,11 @@ nav:
       - Multi-Agent Debate: claude/workflow/DEBATE_WORKFLOW.md
       - Fallback Cascade: claude/workflow/CASCADE_WORKFLOW.md
       - Investigation Workflow: claude/workflow/INVESTIGATION_WORKFLOW.md
+      - Workflow Guardrails:
+          - Overview: features/workflow-execution-guardrails.md
+          - Configuration: howto/configure-workflow-execution-guardrails.md
+          - Tutorial: tutorials/workflow-execution-guardrails.md
+          - Reference: reference/workflow-execution-guardrails.md
       - Pre-Commit Diagnostic: claude/agents/amplihack/specialized/pre-commit-diagnostic.md
       - CI Diagnostic: claude/agents/amplihack/specialized/ci-diagnostic-workflow.md
       - Fix Workflow: claude/agents/amplihack/specialized/fix-agent.md

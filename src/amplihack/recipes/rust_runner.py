@@ -8,7 +8,6 @@ execution fails immediately with a clear error.
 from __future__ import annotations
 
 import contextlib
-import functools
 import json
 import logging
 import os
@@ -138,6 +137,8 @@ def _secure_delete_spill_dir(tmp_dir: Path) -> None:
     if not tmp_dir.exists():
         return
 
+    cleanup_errors: list[str] = []
+
     for child in tmp_dir.iterdir():
         if child.is_file():
             try:
@@ -146,19 +147,25 @@ def _secure_delete_spill_dir(tmp_dir: Path) -> None:
                 size = child.stat().st_size
                 if size > 0:
                     child.write_bytes(b"\x00" * size)
-            except OSError:
-                pass
+            except OSError as exc:
+                cleanup_errors.append(f"{child}: overwrite failed ({exc})")
             try:
                 child.unlink()
-            except OSError:
-                pass
+            except OSError as exc:
+                cleanup_errors.append(f"{child}: unlink failed ({exc})")
 
     try:
         tmp_dir.chmod(0o700)
         tmp_dir.rmdir()
     except OSError:
         # Fall back to shutil for non-empty directories (e.g. sub-dirs).
-        shutil.rmtree(tmp_dir, ignore_errors=True)
+        try:
+            shutil.rmtree(tmp_dir)
+        except OSError as exc:
+            cleanup_errors.append(f"{tmp_dir}: recursive delete failed ({exc})")
+
+    if cleanup_errors:
+        logger.warning("Secure spill cleanup left artifacts: %s", "; ".join(cleanup_errors))
 
 
 @contextlib.contextmanager
@@ -232,11 +239,11 @@ def _resolve_context_value(value: str) -> str:
     return value
 
 
-@functools.lru_cache(maxsize=1)
 def _binary_search_paths() -> list[str]:
     """Return known locations to search for the Rust binary.
 
-    Evaluated lazily on first call so Path.home() is only resolved when needed.
+    Computed fresh each call so concurrent runs with different HOME or
+    tree-id values never see stale cached paths.
     """
     return [
         "recipe-runner-rs",  # PATH
@@ -812,25 +819,7 @@ def _execute_rust_command(
                 )
             # For non-signal failures, show only the last few lines of stderr
             # (not the full progress log which can be thousands of lines).
-            stderr_tail = ""
-            if stderr:
-                lines = stderr.strip().splitlines()
-                # Skip progress/heartbeat/JSONL lines, show last 5 meaningful lines
-                meaningful = [
-                    ln
-                    for ln in lines
-                    if not ln.strip().startswith(
-                        (
-                            "▶",
-                            "✓",
-                            "⊘",
-                            "✗",
-                            "[agent]",
-                            rust_runner_execution._STEP_TRANSITION_PREFIX,
-                        )
-                    )
-                ]
-                stderr_tail = "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
+            stderr_tail = rust_runner_execution._meaningful_stderr_tail(stderr) if stderr else ""
             raise RuntimeError(
                 f"Rust recipe runner failed (exit {returncode}): {stderr_tail or 'no stderr'}"
                 + (f"\n\n  Log file: {log_path}" if log_path else "")
@@ -871,14 +860,15 @@ def _default_package_recipe_dirs() -> list[str]:
     """
     try:
         from amplihack.recipes.discovery import (
-            _AMPLIHACK_HOME_BUNDLE_DIR,
             _PACKAGE_BUNDLE_DIR,
             _REPO_ROOT_BUNDLE_DIR,
+            _get_amplihack_home_bundle_dir,
         )
 
+        amplihack_home_bundle = _get_amplihack_home_bundle_dir()
         candidates = [_PACKAGE_BUNDLE_DIR, _REPO_ROOT_BUNDLE_DIR]
-        if _AMPLIHACK_HOME_BUNDLE_DIR is not None:
-            candidates.append(_AMPLIHACK_HOME_BUNDLE_DIR)
+        if amplihack_home_bundle is not None:
+            candidates.append(amplihack_home_bundle)
 
         dirs: list[str] = []
         for candidate in candidates:
@@ -937,6 +927,16 @@ def _resolve_recipe_target(
     return name
 
 
+def _emit_recipe_source_diagnostic(requested_name: str, resolved_target: str) -> None:
+    """Emit the recipe source selected for this run."""
+    candidate = Path(resolved_target)
+    if candidate.is_absolute() or candidate.suffix in {".yaml", ".yml"}:
+        selected = str(candidate.resolve())
+    else:
+        selected = f"unresolved name '{requested_name}' (Rust discovery path selection)"
+    print(f"Selected recipe source: {selected}", file=sys.stderr, flush=True)
+
+
 def run_recipe_via_rust(
     name: str,
     user_context: dict[str, Any] | None = None,
@@ -981,6 +981,8 @@ def run_recipe_via_rust(
         recipe_dirs=effective_recipe_dirs,
         working_dir=working_dir,
     )
+    if progress or emit_startup_banner:
+        _emit_recipe_source_diagnostic(name, resolved_name)
 
     # Create a process-scoped temp directory for context value spill files.
     # tempfile.mkdtemp() creates it atomically (O_CREAT|O_EXCL) with 0o700

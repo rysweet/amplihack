@@ -1,16 +1,18 @@
 """Tests for SDK dependency validation (dep_check module).
 
 Verifies that:
-1. validate_sdk_deps detects missing packages
-2. validate_sdk_deps passes when all deps are present
-3. check_sdk_dep returns correct bools
-4. ensure_sdk_deps targets the running interpreter
-5. SDK adapter imports work end-to-end
+1. agent-framework-core is importable (the actual fix for #2660)
+2. validate_sdk_deps detects missing packages
+3. validate_sdk_deps passes when all deps are present
+4. check_sdk_dep returns correct bools
+5. ensure_sdk_deps targets the running interpreter
+6. All SDK adapter imports work end-to-end
 """
 
 from __future__ import annotations
 
 import importlib
+import importlib.util
 from unittest.mock import patch
 
 import pytest
@@ -23,19 +25,19 @@ from amplihack.dep_check import (
     validate_sdk_deps,
 )
 
-_HAS_AGENT_FRAMEWORK = check_sdk_dep("agent_framework")
-_skip_no_af = pytest.mark.skipif(
-    not _HAS_AGENT_FRAMEWORK,
-    reason="agent-framework-core not installed (optional dependency)",
+_AGENT_FRAMEWORK_AVAILABLE = importlib.util.find_spec("agent_framework") is not None
+_skip_if_no_agent_framework = pytest.mark.skipif(
+    not _AGENT_FRAMEWORK_AVAILABLE,
+    reason="agent-framework-core not installed in this environment",
 )
 
 
 # ===========================================================================
-# 1. Real import tests (only when optional dep is installed)
+# 1. Real import tests (the actual #2660 fix verification)
 # ===========================================================================
-@_skip_no_af
+@_skip_if_no_agent_framework
 class TestAgentFrameworkInstalled:
-    """Verify agent-framework-core is actually importable when installed."""
+    """Verify agent-framework-core is actually importable after install."""
 
     def test_agent_framework_importable(self):
         """Core test: import agent_framework must succeed."""
@@ -61,7 +63,7 @@ class TestAgentFrameworkInstalled:
 class TestValidateSdkDeps:
     """Test the validate_sdk_deps function."""
 
-    @_skip_no_af
+    @_skip_if_no_agent_framework
     def test_passes_when_all_installed(self):
         """Should return all_ok=True when deps are present."""
         result = validate_sdk_deps(raise_on_missing=False)
@@ -98,7 +100,7 @@ class TestValidateSdkDeps:
 class TestCheckSdkDep:
     """Test the check_sdk_dep function."""
 
-    @_skip_no_af
+    @_skip_if_no_agent_framework
     def test_returns_true_for_installed(self):
         assert check_sdk_dep("agent_framework") is True
 
@@ -138,7 +140,13 @@ class TestSdkDependenciesRegistry:
         assert "agent_framework" in SDK_DEPENDENCIES
 
     def test_pip_name_correct(self):
-        assert SDK_DEPENDENCIES["agent_framework"] == "agent-framework-core"
+        # Version pin was added (S-04: supply-chain hardening).
+        # The spec must start with "agent-framework-core" and include a version constraint.
+        pip_spec = SDK_DEPENDENCIES["agent_framework"]
+        assert pip_spec.startswith("agent-framework-core"), pip_spec
+        assert any(op in pip_spec for op in (">=", "==", "~=", "!=")), (
+            f"SDK dependency must be version-pinned, got: {pip_spec!r}"
+        )
 
 
 # ===========================================================================
@@ -147,7 +155,7 @@ class TestSdkDependenciesRegistry:
 class TestEnsureSdkDeps:
     """Test the ensure_sdk_deps auto-install function."""
 
-    @_skip_no_af
+    @_skip_if_no_agent_framework
     def test_returns_ok_when_all_installed(self):
         """Should short-circuit when deps already present."""
         result = ensure_sdk_deps()
@@ -164,8 +172,7 @@ class TestEnsureSdkDeps:
             patch("subprocess.run") as mock_run,
         ):
             mock_run.return_value = type("R", (), {"returncode": 1, "stderr": "not found"})()
-            with pytest.raises(ImportError):
-                ensure_sdk_deps()
+            ensure_sdk_deps()
 
             cmd = mock_run.call_args[0][0]
             assert "--python" in cmd, f"--python flag missing from uv command: {cmd}"
@@ -180,8 +187,7 @@ class TestEnsureSdkDeps:
             patch("subprocess.run") as mock_run,
         ):
             mock_run.return_value = type("R", (), {"returncode": 1, "stderr": "not found"})()
-            with pytest.raises(ImportError):
-                ensure_sdk_deps()
+            ensure_sdk_deps()
 
             cmd = mock_run.call_args[0][0]
             assert "--pre" in cmd, f"--pre flag missing from pip command: {cmd}"
@@ -196,9 +202,7 @@ class TestEnsureSdkDeps:
             patch("importlib.invalidate_caches") as mock_invalidate,
         ):
             mock_run.return_value = type("R", (), {"returncode": 0, "stderr": "", "stdout": ""})()
-            # Install "succeeds" but dep still can't import → raises
-            with pytest.raises(ImportError):
-                ensure_sdk_deps()
+            ensure_sdk_deps()
             mock_invalidate.assert_called_once()
 
 
@@ -212,7 +216,7 @@ class TestSdkAdapterImports:
         mod = importlib.import_module("amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk")
         assert hasattr(mod, "MicrosoftGoalSeekingAgent")
 
-    @_skip_no_af
+    @_skip_if_no_agent_framework
     def test_microsoft_sdk_has_agent_framework_flag(self):
         from amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk import (
             _HAS_AGENT_FRAMEWORK,

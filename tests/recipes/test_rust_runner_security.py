@@ -11,8 +11,6 @@ R2: _check_binary_permissions rejects world-writable binaries.
 
 from __future__ import annotations
 
-import os
-import stat
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -26,7 +24,6 @@ from amplihack.recipes.rust_runner import (
     _secure_delete_spill_dir,
     _validate_recipe_name,
 )
-
 
 # ---------------------------------------------------------------------------
 # R8: Output cap constant
@@ -146,13 +143,10 @@ class TestSecureDeleteSpillDir:
 
             _secure_delete_spill_dir(spill_dir)
 
-            assert not spill_dir.exists(), (
-                "R6: spill directory must be removed after secure delete"
-            )
+            assert not spill_dir.exists(), "R6: spill directory must be removed after secure delete"
 
     def test_file_content_overwritten_before_delete(self):
         """Verify that file content is zeroed before removal (forensic erasure)."""
-        import io
         overwrite_log: list[bytes] = []
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -195,6 +189,31 @@ class TestSecureDeleteSpillDir:
 
             # File must no longer exist.
             assert not secret_file.exists()
+
+    def test_logs_warning_when_cleanup_steps_fail(self, caplog):
+        """Cleanup failures must be surfaced via warning logs."""
+        with tempfile.TemporaryDirectory() as tmp:
+            spill_dir = Path(tmp) / "spill"
+            spill_dir.mkdir(mode=0o700)
+            secret_file = spill_dir / "key"
+            secret_file.write_bytes(b"data")
+
+            original_unlink = Path.unlink
+
+            def failing_unlink(self, *args, **kwargs):
+                if self == secret_file:
+                    raise OSError("simulated unlink failure")
+                return original_unlink(self, *args, **kwargs)
+
+            with (
+                caplog.at_level("WARNING", logger="amplihack.recipes.rust_runner"),
+                patch.object(Path, "unlink", failing_unlink),
+            ):
+                _secure_delete_spill_dir(spill_dir)
+
+            assert not spill_dir.exists()
+            assert "Secure spill cleanup left artifacts" in caplog.text
+            assert "simulated unlink failure" in caplog.text
 
 
 # ---------------------------------------------------------------------------
@@ -292,7 +311,7 @@ class TestValidateRecipeName:
             "",
             "a" * 129,
             "recipe name with spaces",
-            "recipe.yaml",   # dots not allowed in plain recipe names
+            "recipe.yaml",  # dots not allowed in plain recipe names
         ],
     )
     def test_invalid_names_rejected(self, bad_name):
@@ -323,7 +342,7 @@ class TestModelWireFormat:
     """RecipeResult wire format fields must be present and typed correctly."""
 
     def test_recipe_result_has_required_fields(self):
-        from amplihack.recipes.models import RecipeResult, StepResult, StepStatus
+        from amplihack.recipes.models import RecipeResult
 
         result = RecipeResult(
             recipe_name="test",

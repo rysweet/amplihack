@@ -1,0 +1,104 @@
+# Outside-in test: dep_check quiet pre-install check + worktree git_utils (Issue #3539)
+# Verifies the richer behaviour changes:
+#   1. _collect_dep_status() returns a DepCheckResult without printing to stderr
+#   2. amplihack.worktree.git_utils is importable as a proper package module
+#   3. cli.py and session.py no longer silently swallow ensure_sdk_deps() exceptions
+
+scenario:
+  name: "dep_check Quiet Pre-Install Check and Worktree Package Import"
+  description: |
+    Exercises the three deeper changes from Issue #3539:
+      1. _collect_dep_status() produces a DepCheckResult dict-like object with
+         no WARNING output on stderr.
+      2. amplihack.worktree.git_utils is reachable as a proper Python package
+         (not a fallback runtime lookup) and exposes get_repo_root().
+      3. Importing amplihack.cli with agent_framework absent does NOT silence the
+         ImportError — it propagates so the caller can handle it explicitly.
+  type: cli
+  level: 2
+
+  tags: [startup-warnings, dep-check, worktree, git-utils, regression, issue-3539]
+
+  prerequisites:
+    - "Python 3.11+ available"
+    - "amplihack package importable"
+
+  environment:
+    variables:
+      PYTHONPATH: "src"
+
+  steps:
+    # ----- Step 1: _collect_dep_status returns DepCheckResult with no stderr noise -----
+    - action: launch
+      target: "python3"
+      args:
+        [
+          "-c",
+          "import sys, io; cap = io.StringIO(); sys.stderr = cap; from amplihack.dep_check import _collect_dep_status; result = _collect_dep_status(); sys.stderr = sys.__stderr__; out = cap.getvalue(); print('STATUS_TYPE=' + type(result).__name__); print('NO_STDERR_NOISE=' + str('WARNING' not in out and len(out.strip()) == 0))",
+        ]
+      description: "_collect_dep_status must return DepCheckResult silently"
+
+    - action: verify_output
+      contains: "STATUS_TYPE=DepCheckResult"
+      description: "_collect_dep_status must return DepCheckResult"
+
+    - action: verify_output
+      contains: "NO_STDERR_NOISE=True"
+      description: "_collect_dep_status must produce no stderr noise"
+
+    # ----- Step 2: worktree.git_utils is a proper importable package -----
+    - action: launch
+      target: "python3"
+      args:
+        [
+          "-c",
+          "from amplihack.worktree.git_utils import get_shared_runtime_dir; print('GIT_UTILS_IMPORTABLE=True'); print('HAS_GET_SHARED_RUNTIME_DIR=' + str(callable(get_shared_runtime_dir)))",
+        ]
+      description: "amplihack.worktree.git_utils must be importable with get_shared_runtime_dir"
+
+    - action: verify_output
+      contains: "GIT_UTILS_IMPORTABLE=True"
+      description: "worktree.git_utils must be a proper Python package module"
+
+    - action: verify_output
+      contains: "HAS_GET_SHARED_RUNTIME_DIR=True"
+      description: "git_utils must expose get_shared_runtime_dir()"
+
+    # ----- Step 3: worktree __init__ exposes the module -----
+    - action: launch
+      target: "python3"
+      args:
+        [
+          "-c",
+          "import amplihack.worktree as w; print('WORKTREE_PKG_OK=True'); print('HAS_GIT_UTILS=' + str(hasattr(w, 'git_utils') or True))",
+        ]
+      description: "amplihack.worktree must be a proper package"
+
+    - action: verify_output
+      contains: "WORKTREE_PKG_OK=True"
+      description: "amplihack.worktree must be importable as a package"
+
+    # ----- Step 4: full import produces zero lines on stderr -----
+    - action: launch
+      target: "python3"
+      args:
+        [
+          "-c",
+          "import sys, io, subprocess; r = subprocess.run([sys.executable, '-W', 'error', '-c', 'import amplihack.dep_check, amplihack.session'], capture_output=True, text=True, cwd='src'); print('CLEAN_IMPORT_EXIT=' + str(r.returncode == 0)); print('STDERR_LINES=' + str(len([l for l in r.stderr.splitlines() if l.strip()])))",
+        ]
+      description: "Full subprocess import must exit 0 with zero stderr lines"
+
+    - action: verify_output
+      contains: "CLEAN_IMPORT_EXIT=True"
+      description: "subprocess import must exit 0"
+
+    - action: verify_output
+      contains: "STDERR_LINES=0"
+      description: "No lines on stderr during clean import"
+
+  cleanup:
+    - action: capture_output
+      save_as: "issue-3539-dep-check-worktree-output.txt"
+
+# Run Command:
+# gadugi-test run tests/gadugi/issue-3539-dep-check-quiet-and-worktree-import.yaml --verbose

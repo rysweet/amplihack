@@ -64,7 +64,7 @@ class _Result:
     step_results = [_StepResult()]
 
 
-def run_recipe_by_name(name, user_context=None, dry_run=False):
+def run_recipe_by_name(name, user_context=None, dry_run=False, progress=False, **_kwargs):
     return _Result()
 """,
     )

@@ -238,6 +238,10 @@ Code-enforced workflow execution engine with declarative YAML recipes.
 - [Recipe Runner Overview](recipes/README.md) - Architecture, YAML format, and creating custom recipes
 - [UltraThink Recipe Runner Integration](recipes/RECIPE_RUNNER_ULTRATHINK_INTEGRATION.md) - How ultrathink uses Recipe Runner for code-enforced workflow execution
 - [Recipe CLI Commands How-To](howto/recipe-cli-commands.md) - Task-oriented guide for using recipe commands
+- [Workflow Execution Guardrails](features/workflow-execution-guardrails.md) - Canonical execution roots, exact GitHub identity checks, and observer-only stall detection
+- [How to Configure Workflow Execution Guardrails](howto/configure-workflow-execution-guardrails.md) - Supply `expected_gh_account`, inspect `execution_root`, and troubleshoot failures
+- [Tutorial: Workflow Execution Guardrails](tutorials/workflow-execution-guardrails.md) - End-to-end walkthrough of the guarded workflow contract
+- [Workflow Execution Guardrails Reference](reference/workflow-execution-guardrails.md) - Input fields, output schema, signals, and failure semantics
 - [Run a Quality Audit](howto/run-quality-audit.md) - Invoke quality-audit-cycle recipe, target subdirectories, filter categories
 - [CLI Reference](reference/cli.md) - Top-level `amplihack` command, `--version` flag, global environment variables
 - [Recipe CLI Reference](reference/recipe-cli-reference.md) - Complete command-line documentation
@@ -686,6 +690,7 @@ Fix common issues and learn from past solutions.
 - [Configure Power-Steering Merge Preferences](howto/power-steering-merge-preferences.md) - Set up merge approval workflow
 - [Platform Bridge Quick Start](tutorials/platform-bridge-quickstart.md) - Learn the basics in 10 minutes
 - [Platform Bridge Workflows](howto/platform-bridge-workflows.md) - Common workflows for GitHub and Azure DevOps
+- [Crusty Old Engineer](howto/use-crusty-old-engineer.md) - Skeptical engineering advisor for architecture and tooling decisions
 
 ---
 

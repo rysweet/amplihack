@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import functools
 import logging
 import os
 import re
@@ -24,9 +23,12 @@ class RustRunnerVersionError(RuntimeError):
     """Raised when the installed Rust recipe runner is too old to execute safely."""
 
 
-@functools.lru_cache(maxsize=1)
 def _binary_search_paths() -> list[str]:
-    """Return known locations to search for the Rust binary."""
+    """Return known locations to search for the Rust binary.
+
+    Computed fresh each call so concurrent runs with different HOME or
+    tree-id values never see stale cached paths.
+    """
     return [
         "recipe-runner-rs",
         str(Path.home() / ".cargo" / "bin" / "recipe-runner-rs"),
@@ -213,8 +215,6 @@ def ensure_rust_recipe_runner(*, quiet: bool = False) -> bool:
         return False
 
     if result.returncode == 0:
-        # Clear cached binary path so the new binary is discovered
-        _binary_search_paths.cache_clear()
         if not quiet:
             new_version = get_runner_version()
             logger.info(

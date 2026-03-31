@@ -100,6 +100,8 @@ Comprehensive security analysis:
 Guidelines for secure autonomous operations:
 
 - [Auto Mode Safety](../AUTOMODE_SAFETY.md) - Autonomous operation guardrails
+- [Workflow Execution Guardrails](../features/workflow-execution-guardrails.md) - Enforces canonical execution roots and exact GitHub identity before workflow mutations
+- [Workflow Execution Guardrails Reference](../reference/workflow-execution-guardrails.md) - Output schema, signal contract, and fail-closed rules
 
 ---
 

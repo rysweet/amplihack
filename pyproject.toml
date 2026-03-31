@@ -23,7 +23,7 @@ dependencies = [
     # NOTE: Use agent-framework-core (not the meta-package agent-framework) to
     # avoid pulling 20+ optional sub-packages with heavy transitive deps.
     "claude-agent-sdk>=0.1.0", # Claude Python Agent SDK for auto mode streaming
-    "github-copilot-sdk>=0.1.0", # GitHub Copilot SDK for embedding Copilot in applications
+    "github-copilot-sdk>=0.2.0", # GitHub Copilot SDK for embedding Copilot in applications
     "rich>=13.0.0", # Required for --ui interactive TUI mode
     "azure-identity>=1.12.0", # Azure Service Principal authentication for remote execution
     "kuzu>=0.11.0", # Embedded graph database for memory system

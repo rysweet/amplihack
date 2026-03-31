@@ -451,6 +451,7 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and workstream_count != 1 and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
+      set -o pipefail
       # Emit step-transition marker for progress tracking (#3625)
       echo '{"transition":"step_started","step":"launch-parallel-round-1","timestamp":'$(date +%s)'}' >&2
       REPO_PATH={{repo_path}}
@@ -487,16 +488,20 @@ steps:
 
       if [ -z "$WS_FILE" ] || [ ! -f "$WS_FILE" ]; then
         echo "ERROR: workstreams_file is missing or empty. create-workstreams-config may have failed." >&2
+        emit_step_transition fail
         exit 1
       fi
 
       if [ "$WS_COUNT_CHECK" = "0" ]; then
         echo "ERROR: workstreams config has 0 entries — decomposition may have failed." >&2
+        emit_step_transition fail
         exit 1
       fi
 
       if [ ! -d "$REPO_PATH" ]; then
-        echo "ERROR: repo_path does not exist: $REPO_PATH" >&2; exit 1
+        echo "ERROR: repo_path does not exist: $REPO_PATH" >&2
+        emit_step_transition fail
+        exit 1
       fi
       cd "$REPO_PATH"
 
@@ -517,19 +522,25 @@ steps:
         echo "ERROR: multitask orchestrator.py not found." >&2
         echo "  Searched: AMPLIHACK_HOME/.claude/skills/multitask/orchestrator.py" >&2
         echo "  Set AMPLIHACK_HOME or ensure amplihack is installed." >&2
+        emit_step_transition fail
         exit 1
       fi
+      echo "Selected orchestrator source: $ORCH_SCRIPT" >&2
 
       echo "Launching parallel workstreams (tree: $TREE_ID, depth: $SESSION_DEPTH):"
       cat "$WS_FILE"
       echo "---"
+      status=0
       AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$SESSION_DEPTH" \
-        python3 "$ORCH_SCRIPT" "$WS_FILE"
+        AMPLIHACK_PARENT_STEP="launch-parallel-round-1" \
+        AMPLIHACK_REPO_PATH="$REPO_PATH" \
+        python3 -u "$ORCH_SCRIPT" "$WS_FILE" | tee /dev/stderr || status=$?
       # Clean up workstreams file now, before this step's output inflates
       # the recipe context. Doing it here avoids the E2BIG error that
       # occurs when a later bash step inherits megabytes of env vars
       # from accumulated round_1_result (fix: cleanup-helper-arg-overflow).
       rm -f "$WS_FILE" 2>/dev/null || true
+      exit $status
     output: "round_1_result"
 
   # ─────────────────────────────────────────────────────────────────────────

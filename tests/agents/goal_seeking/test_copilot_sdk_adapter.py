@@ -53,6 +53,18 @@ def _make_event(content="Hello"):
     )
 
 
+def _tool_result_attr(result, old_name: str, new_name: str):
+    if hasattr(result, new_name):
+        return getattr(result, new_name)
+    return result[old_name]
+
+
+def _client_option_env(options):
+    if hasattr(options, "env"):
+        return options.env
+    return options["env"]
+
+
 # ===========================================================================
 # Test Classes
 # ===========================================================================
@@ -77,6 +89,15 @@ class TestCopilotGoalSeekingAgent:
         with patch.dict("os.environ", {"COPILOT_MODEL": "gpt-5"}):
             agent = _make_agent(model=None)
             assert agent._model == "gpt-5"
+
+    @patch(f"{_P}.HAS_COPILOT_SDK", True)
+    def test_init_can_disable_learning_tools(self):
+        agent = _make_agent(enable_learning_tools=False)
+        assert agent._tools == []
+        assert agent._copilot_tools == []
+        prompt = agent._build_system_prompt()
+        assert "AVAILABLE LEARNING TOOLS" not in prompt
+        assert "goal-seeking code-generation agent" in prompt
 
     @patch(f"{_P}.HAS_COPILOT_SDK", True)
     def test_init_timeout_default(self):
@@ -159,7 +180,7 @@ class TestToolConversion:
             function=lambda x="": f"got:{x}",
         )
         handler = _make_tool_handler(tool)
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             handler(
                 {
                     "session_id": "s",
@@ -169,8 +190,45 @@ class TestToolConversion:
                 }
             )
         )
-        assert result["resultType"] == "success"
-        assert "got:hello" in result["textResultForLlm"]
+        assert _tool_result_attr(result, "resultType", "result_type") == "success"
+        assert "got:hello" in _tool_result_attr(
+            result,
+            "textResultForLlm",
+            "text_result_for_llm",
+        )
+
+    @patch(f"{_P}.HAS_COPILOT_SDK", True)
+    def test_tool_handler_success_with_toolinvocation_object(self):
+        from copilot.types import ToolInvocation
+
+        from amplihack.agents.goal_seeking.sdk_adapters.base import AgentTool
+        from amplihack.agents.goal_seeking.sdk_adapters.copilot_sdk import (
+            _make_tool_handler,
+        )
+
+        tool = AgentTool(
+            name="test_tool",
+            description="A test tool",
+            parameters={"type": "object", "properties": {"x": {"type": "string"}}},
+            function=lambda x="": f"got:{x}",
+        )
+        handler = _make_tool_handler(tool)
+        result = asyncio.run(
+            handler(
+                ToolInvocation(
+                    session_id="s",
+                    tool_call_id="t",
+                    tool_name="test_tool",
+                    arguments={"x": "hello"},
+                )
+            )
+        )
+        assert _tool_result_attr(result, "resultType", "result_type") == "success"
+        assert "got:hello" in _tool_result_attr(
+            result,
+            "textResultForLlm",
+            "text_result_for_llm",
+        )
 
     @patch(f"{_P}.HAS_COPILOT_SDK", True)
     def test_tool_handler_error(self):
@@ -189,7 +247,7 @@ class TestToolConversion:
             function=failing_fn,
         )
         handler = _make_tool_handler(tool)
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             handler(
                 {
                     "session_id": "s",
@@ -199,7 +257,7 @@ class TestToolConversion:
                 }
             )
         )
-        assert result["resultType"] == "failure"
+        assert _tool_result_attr(result, "resultType", "result_type") == "failure"
 
 
 class TestResponseExtraction:
@@ -393,12 +451,13 @@ class TestSessionLifecycle:
 
         mock_ctor.assert_called_once()
         options = mock_ctor.call_args.args[0]
-        assert options["env"]["AMPLIHACK_OTEL_ENABLED"] == "true"
+        env = _client_option_env(options)
+        assert env["AMPLIHACK_OTEL_ENABLED"] == "true"
         assert (
-            options["env"]["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"]
+            env["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"]
             == "http://collector:4318/v1/traces"
         )
-        assert options["env"]["OTEL_SERVICE_NAME"] == "amplihack.copilot-sdk-agent"
+        assert env["OTEL_SERVICE_NAME"] == "amplihack.copilot-sdk-agent"
 
     @patch(f"{_P}.HAS_COPILOT_SDK", True)
     @pytest.mark.asyncio

@@ -57,57 +57,60 @@ _REPO_ROOT_BUNDLE_DIR = _PACKAGE_DIR.parent.parent / "amplifier-bundle" / "recip
 # - Path is canonicalized via Path(raw).resolve() before use (follows symlinks)
 # - .is_dir() check is required — invalid values emit a WARNING log, not an
 #   exception and not silent ignore (#3237)
-# - _AMPLIHACK_HOME_BUNDLE_DIR is kept for backwards compat with rust_runner.py
-_AMPLIHACK_HOME_DIR: Path | None = None
-_AMPLIHACK_HOME_BUNDLE_DIR: Path | None = None
-_amplihack_home_raw = os.environ.get("AMPLIHACK_HOME")
-if _amplihack_home_raw:
-    _amplihack_home_resolved = Path(_amplihack_home_raw).resolve()
-    if _amplihack_home_resolved.is_dir():
-        _AMPLIHACK_HOME_DIR = _amplihack_home_resolved
-        _bundle_candidate = _amplihack_home_resolved / "amplifier-bundle" / "recipes"
-        if _bundle_candidate.is_dir():
-            _AMPLIHACK_HOME_BUNDLE_DIR = _bundle_candidate
-        else:
-            logger.warning(
-                "AMPLIHACK_HOME=%r is set but amplifier-bundle/recipes/ subdir not found "
-                "(resolved: %s) — recipes from AMPLIHACK_HOME will not be discovered. "
-                "Ensure amplifier-bundle/recipes/ exists inside AMPLIHACK_HOME.",
-                _amplihack_home_raw,
-                _bundle_candidate,
-            )
-    else:
+# - _get_amplihack_home_bundle_dir() is called per-use to avoid stale data
+#   when AMPLIHACK_HOME changes between calls in the same process (#3811)
+
+
+def _get_amplihack_home_bundle_dir() -> Path | None:
+    """Resolve ``$AMPLIHACK_HOME/amplifier-bundle/recipes/`` dynamically.
+
+    Re-reads the environment on each call so concurrent runs with different
+    AMPLIHACK_HOME values get correct results (fixes #3811).
+    """
+    raw = os.environ.get("AMPLIHACK_HOME")
+    if not raw:
+        return None
+
+    resolved = Path(raw).resolve()
+    if not resolved.is_dir():
         logger.warning(
             "AMPLIHACK_HOME=%r is not a valid directory (resolved: %s) — ignoring. "
             "Set AMPLIHACK_HOME to an existing directory containing your amplihack installation.",
-            _amplihack_home_raw,
-            _amplihack_home_resolved,
+            raw,
+            resolved,
         )
+        return None
 
-# Directories searched for recipe files, in priority order.
-# Later entries override earlier ones when recipes share the same name.
-#
-# The installed-package path comes first so that core recipes are always
-# discoverable even when CWD is an unrelated project.  This fixes #2812
-# where recipe discovery failed outside the amplihack source tree.
-#
-# Priority (package → repo-root → AMPLIHACK_HOME → global → local):
-# 1. <site-packages>/amplihack/amplifier-bundle/recipes/ - Installed package
-# 2. <repo-root>/amplifier-bundle/recipes/               - Editable install
-# 3. $AMPLIHACK_HOME/amplifier-bundle/recipes/ - Explicit env var (resolved, bundle subdir checked)
-# 4. ~/.amplihack/.claude/recipes/       - User home (global installation)
-# 5. amplifier-bundle/recipes/           - Global bundled (CWD-relative)
-# 6. src/amplihack/amplifier-bundle/     - Global source (CWD-relative)
-# 7. .claude/recipes/                    - Project local recipes
-_DEFAULT_SEARCH_DIRS: list[Path] = [
-    _PACKAGE_BUNDLE_DIR,  # Installed package — ALWAYS available
-    _REPO_ROOT_BUNDLE_DIR,  # Editable install — repo root fallback
-    *([_AMPLIHACK_HOME_BUNDLE_DIR] if _AMPLIHACK_HOME_BUNDLE_DIR else []),
-    Path.home() / ".amplihack" / ".claude" / "recipes",  # Global user home
-    Path("amplifier-bundle") / "recipes",  # Global bundled
-    Path("src") / "amplihack" / "amplifier-bundle" / "recipes",  # Global source
-    Path(".claude") / "recipes",  # Local - LAST
-]
+    bundle_candidate = resolved / "amplifier-bundle" / "recipes"
+    if bundle_candidate.is_dir():
+        return bundle_candidate
+
+    logger.warning(
+        "AMPLIHACK_HOME=%r is set but amplifier-bundle/recipes/ subdir not found "
+        "(resolved: %s) — recipes from AMPLIHACK_HOME will not be discovered. "
+        "Ensure amplifier-bundle/recipes/ exists inside AMPLIHACK_HOME.",
+        raw,
+        bundle_candidate,
+    )
+    return None
+
+
+def _get_default_search_dirs() -> list[Path]:
+    """Build the recipe search directory list, reading env vars fresh.
+
+    Called on every discovery/find call so concurrent runs with different
+    AMPLIHACK_HOME or AMPLIHACK_TREE_ID values never see stale paths (#3811).
+    """
+    amplihack_home_bundle = _get_amplihack_home_bundle_dir()
+    return [
+        _PACKAGE_BUNDLE_DIR,  # Installed package — ALWAYS available
+        _REPO_ROOT_BUNDLE_DIR,  # Editable install — repo root fallback
+        *([] if amplihack_home_bundle is None else [amplihack_home_bundle]),
+        Path.home() / ".amplihack" / ".claude" / "recipes",  # Global user home
+        Path("amplifier-bundle") / "recipes",  # Global bundled
+        Path("src") / "amplihack" / "amplifier-bundle" / "recipes",  # Global source
+        Path(".claude") / "recipes",  # Local - LAST
+    ]
 
 
 @dataclass
@@ -123,14 +126,84 @@ class RecipeInfo:
     sha256: str = ""
 
 
+def _qualified_key(search_dir: Path, name: str) -> str:
+    """Build a qualified cache key from a resolved directory and recipe name.
+
+    Format: ``<resolved_dir>:<name>``
+    """
+    return f"{search_dir}:{name}"
+
+
+class RecipeCache(dict):
+    """Dict of qualified-key → RecipeInfo with transparent bare-name fallback.
+
+    Recipes are stored under qualified keys (``<resolved_dir>:<recipe_name>``)
+    so that two recipes with the same ``name`` field in different directories
+    coexist without aliasing (fix #3808).
+
+    Bare recipe names (e.g. ``"default-workflow"``) resolve transparently via
+    ``__contains__`` and ``__getitem__`` to the **last-wins** (highest
+    precedence) match — preserving backward compatibility.
+
+    ``values()`` returns only one entry per recipe (no duplicates from the
+    bare-name layer).
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        # bare_name → qualified_key of the last-registered (highest-precedence) recipe
+        self._bare: dict[str, str] = {}
+
+    def _register(self, qualified_key: str, bare_name: str, info: RecipeInfo) -> None:
+        """Add a recipe with its qualified key and update the bare-name alias."""
+        self[qualified_key] = info
+        self._bare[bare_name] = qualified_key
+
+    # -- dict protocol overrides for bare-name fallback --
+
+    def __contains__(self, key: object) -> bool:
+        if super().__contains__(key):
+            return True
+        if isinstance(key, str) and key in self._bare:
+            return super().__contains__(self._bare[key])
+        return False
+
+    def __getitem__(self, key: str) -> RecipeInfo:
+        try:
+            return super().__getitem__(key)
+        except KeyError:
+            if key in self._bare:
+                return super().__getitem__(self._bare[key])
+            raise
+
+    def get(self, key: str, default: RecipeInfo | None = None) -> RecipeInfo | None:  # type: ignore[override]
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def qualified_keys(self) -> list[str]:
+        """Return only the qualified keys (not bare-name aliases)."""
+        return list(super().keys())
+
+    def bare_name_map(self) -> dict[str, str]:
+        """Return a copy of the bare-name → qualified-key mapping."""
+        return dict(self._bare)
+
+
 def discover_recipes(
     search_dirs: list[Path] | None = None,
-) -> dict[str, RecipeInfo]:
+) -> RecipeCache:
     """Find all recipe YAML files in the search directories.
 
-    Returns a dict mapping recipe name to RecipeInfo. When the same recipe
-    name appears in multiple directories, the last one wins (user recipes
-    override bundled ones).
+    Returns a :class:`RecipeCache` mapping qualified keys
+    (``<resolved_dir>:<name>``) to :class:`RecipeInfo`.  Bare recipe names
+    also work as lookup keys and resolve to the highest-precedence match
+    (last directory wins), preserving backward compatibility.
+
+    When the same recipe name appears in multiple directories, **both**
+    recipes are stored under distinct qualified keys.  The bare-name alias
+    always points to the last-wins version.
 
     Debug Logging
     -------------
@@ -146,23 +219,27 @@ def discover_recipes(
         search_dirs: Override the default search directories.
 
     Returns:
-        Dict of recipe name -> RecipeInfo.
+        RecipeCache of qualified key -> RecipeInfo (bare-name lookup supported).
     """
-    dirs = search_dirs or _DEFAULT_SEARCH_DIRS
+    dirs = search_dirs or _get_default_search_dirs()
     recipes: dict[str, RecipeInfo] = {}
+    dirs = search_dirs or _DEFAULT_SEARCH_DIRS
+    recipes = RecipeCache()
 
     logger.debug("Searching for recipes in %d directories", len(dirs))
     for search_dir in dirs:
         if not search_dir.is_dir():
             logger.debug("  Skipping non-existent: %s", search_dir)
             continue
-        logger.debug("  Scanning: %s", search_dir)
+        resolved_dir = search_dir.resolve()
+        logger.debug("  Scanning: %s (resolved: %s)", search_dir, resolved_dir)
         dir_recipe_count = 0
         for yaml_path in sorted(search_dir.glob("*.yaml")):
             info = _load_recipe_info(yaml_path)
             if info is not None:
-                logger.debug("    Found: %s", info.name)
-                recipes[info.name] = info
+                qkey = _qualified_key(resolved_dir, info.name)
+                logger.debug("    Found: %s (key: %s)", info.name, qkey)
+                recipes._register(qkey, info.name, info)
                 dir_recipe_count += 1
         logger.debug("  Discovered %d recipes in %s", dir_recipe_count, search_dir)
 
@@ -175,7 +252,12 @@ def discover_recipes(
 
 
 def list_recipes(search_dirs: list[Path] | None = None) -> list[RecipeInfo]:
-    """Return a sorted list of all discovered recipes.
+    """Return a sorted, deduplicated list of all discovered recipes.
+
+    When a recipe name appears in multiple directories, each distinct
+    recipe (by path) is included.  Deduplication is by resolved path
+    so that the same file discovered via multiple search dirs is not
+    listed twice.
 
     Args:
         search_dirs: Override the default search directories.
@@ -183,7 +265,13 @@ def list_recipes(search_dirs: list[Path] | None = None) -> list[RecipeInfo]:
     Returns:
         List of RecipeInfo sorted by name.
     """
-    return sorted(discover_recipes(search_dirs).values(), key=lambda r: r.name)
+    seen_paths: set[Path] = set()
+    unique: list[RecipeInfo] = []
+    for info in discover_recipes(search_dirs).values():
+        if info.path not in seen_paths:
+            seen_paths.add(info.path)
+            unique.append(info)
+    return sorted(unique, key=lambda r: r.name)
 
 
 def verify_global_installation() -> dict[str, Any]:
@@ -237,17 +325,30 @@ def verify_global_installation() -> dict[str, Any]:
 def find_recipe(name: str, search_dirs: list[Path] | None = None) -> Path | None:
     """Find a recipe by name and return its file path.
 
-    Searches for ``{name}.yaml`` in each search directory. When multiple
-    directories contain the same recipe name, the last matching path wins
-    so resolution stays consistent with ``discover_recipes()``.
+    Supports two lookup modes:
+
+    * **Qualified name** (contains ``:``) — ``<dir_path>:<recipe_name>``.
+      Looks for ``<dir_path>/<recipe_name>.yaml`` directly.
+    * **Bare name** — searches each directory for ``{name}.yaml``.
+      When multiple directories contain the same recipe name, the last
+      matching path wins so resolution stays consistent with
+      ``discover_recipes()``.
 
     Args:
-        name: Recipe name (without .yaml extension).
+        name: Recipe name (bare) or qualified key (``dir:name``).
         search_dirs: Override the default search directories.
 
     Returns:
         Path to the recipe file, or None.
     """
+    dirs = search_dirs or _get_default_search_dirs()
+    # Qualified lookup: "dir_path:recipe_name"
+    if ":" in name:
+        dir_part, _, bare_name = name.rpartition(":")
+        candidate = Path(dir_part) / f"{bare_name}.yaml"
+        return candidate if candidate.is_file() else None
+
+    # Bare-name lookup: last-wins
     dirs = search_dirs or _DEFAULT_SEARCH_DIRS
     found: Path | None = None
     for search_dir in dirs:
@@ -469,7 +570,7 @@ def _load_manifest(recipe_dir: Path) -> dict[str, str]:
 
 def _find_first_recipe_dir() -> Path | None:
     """Return the first existing recipe directory from the search list."""
-    for d in _DEFAULT_SEARCH_DIRS:
+    for d in _get_default_search_dirs():
         if d.is_dir():
             return d
     return None

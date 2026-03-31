@@ -24,6 +24,9 @@ import json as _json
 import os
 import re as _re
 import tempfile as _tempfile
+import time as _time
+from datetime import UTC as _UTC
+from datetime import datetime as _datetime
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -49,6 +52,77 @@ _WELCOME_BANNER = ""  # Deprecated: visible notice now shown by session_start ho
 
 # Minimum prompt length to inject routing (saves ~400 tokens on trivial turns)
 _MIN_PROMPT_LENGTH = 10
+
+# Maximum prompt chars stored in log entries (privacy)
+_LOG_PROMPT_MAX_CHARS = 200
+
+# Performance threshold for logging overhead
+_LOG_PERF_THRESHOLD_MS = 5
+
+_PROGRESS_FILE_RE = _re.compile(
+    r"^amplihack-progress-(?P<safe_name>[A-Za-z0-9_]{1,64})-(?P<pid>\d+)\.json$"
+)
+_ALLOWED_PROGRESS_STATUSES = {"running", "completed", "failed", "skipped", "unknown"}
+_ALLOWED_PROGRESS_TRANSITIONS = {
+    "",
+    "step_started",
+    "step_completed",
+    "step_failed",
+    "step_skipped",
+}
+_MAX_PROGRESS_AGE_SECONDS = 7200
+_MAX_PROGRESS_FUTURE_SKEW_SECONDS = 30
+_MAX_PROGRESS_STEP_NAME_LENGTH = 256
+
+
+# ---------------------------------------------------------------------------
+# Provenance logging — append-only JSONL, fail-open, no locks
+# ---------------------------------------------------------------------------
+
+
+def _get_routing_log_dir() -> Path:
+    """Return the log directory for routing decisions."""
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+    base = Path(project_dir) if project_dir else Path.cwd()
+    return base / ".claude" / "runtime" / "logs" / "dev_intent_router"
+
+
+def _get_routing_log_path() -> Path:
+    """Return the log file path for routing decisions."""
+    return _get_routing_log_dir() / "routing_decisions.jsonl"
+
+
+def _log_routing_decision(entry: dict) -> None:
+    """Write a routing decision log entry (JSONL, append-only, fail-open).
+
+    Follows the same pattern as workflow_tracker._write_log_entry().
+    Never raises — logging must not affect routing behavior.
+    """
+    try:
+        start = _time.perf_counter()
+
+        log_dir = _get_routing_log_dir()
+        if not log_dir.exists():
+            log_dir.mkdir(parents=True, exist_ok=True)
+
+        if "timestamp" not in entry:
+            entry["timestamp"] = _datetime.now(_UTC).isoformat()
+
+        log_path = _get_routing_log_path()
+        with open(log_path, "a") as f:
+            f.write(_json.dumps(entry) + "\n")
+
+        duration_ms = (_time.perf_counter() - start) * 1000
+        if duration_ms > _LOG_PERF_THRESHOLD_MS:
+            import sys
+
+            print(
+                f"Warning: routing log overhead {duration_ms:.2f}ms exceeds "
+                f"{_LOG_PERF_THRESHOLD_MS}ms threshold",
+                file=sys.stderr,
+            )
+    except OSError:
+        pass  # fail-open: never break routing due to logging
 
 
 # ---------------------------------------------------------------------------
@@ -208,30 +282,48 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
     4. Prompt starts with / (existing slash command)
     5. Prompt is very short (< 10 chars) — likely conversational, not a task
     """
+    prompt_preview = ""
+    prompt_length = 0
+    if isinstance(prompt, str):
+        prompt_preview = prompt[:_LOG_PROMPT_MAX_CHARS]
+        prompt_length = len(prompt)
+
+    def _log_skip(reason: str) -> tuple[bool, str]:
+        _log_routing_decision(
+            {
+                "event": "routing_decision",
+                "should_inject": False,
+                "reason": reason,
+                "prompt_preview": prompt_preview,
+                "prompt_length": prompt_length,
+            }
+        )
+        return False, ""
+
     # 1. Check disable flag (semaphore file or env var)
     if not is_auto_dev_enabled():
-        return False, ""
+        return _log_skip("skip:disabled")
 
     # 1b. Skip if a workflow is already running (avoid re-classification mid-task)
     if is_workflow_active():
-        return False, ""
+        return _log_skip("skip:workflow_active")
 
     # 2. Type guard
     if not isinstance(prompt, str):
-        return False, ""
+        return _log_skip("skip:not_string")
 
     # 3. Empty / whitespace
     stripped = prompt.strip()
     if not stripped:
-        return False, ""
+        return _log_skip("skip:empty")
 
     # 4. Slash commands
     if stripped.startswith("/"):
-        return False, ""
+        return _log_skip("skip:slash_command")
 
     # 5. Short conversational messages (saves ~400 tokens per turn)
     if len(stripped) < _MIN_PROMPT_LENGTH:
-        return False, ""
+        return _log_skip("skip:too_short")
 
     # 6. Ensure semaphore file exists on first injection (prevents the locks
     #    dir being created by other code from accidentally disabling routing).
@@ -242,18 +334,110 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
     except OSError:
         pass  # fail-open
 
+    _log_routing_decision(
+        {
+            "event": "routing_decision",
+            "should_inject": True,
+            "reason": "inject",
+            "prompt_preview": prompt_preview,
+            "prompt_length": prompt_length,
+        }
+    )
     return True, _ROUTING_PROMPT
 
 
+def _safe_progress_recipe_name(recipe_name: str) -> str:
+    """Normalize recipe names to the progress-file stem format."""
+    stem = Path(recipe_name).stem if ("/" in recipe_name or os.sep in recipe_name) else recipe_name
+    return _re.sub(r"[^a-zA-Z0-9_]", "_", stem)[:64]
+
+
+def _validate_progress_payload(
+    candidate: Path, payload: object, recipe_name: str | None
+) -> dict[str, int | float | str] | None:
+    """Return normalized progress data for trusted progress files only."""
+    if not isinstance(payload, dict):
+        return None
+
+    match = _PROGRESS_FILE_RE.fullmatch(candidate.name)
+    if match is None:
+        return None
+
+    payload_recipe_name = payload.get("recipe_name")
+    if not isinstance(payload_recipe_name, str) or not payload_recipe_name.strip():
+        return None
+
+    file_safe_name = match.group("safe_name")
+    if _safe_progress_recipe_name(payload_recipe_name) != file_safe_name:
+        return None
+
+    if recipe_name is not None and _safe_progress_recipe_name(recipe_name) != file_safe_name:
+        return None
+
+    try:
+        file_pid = int(match.group("pid"))
+    except ValueError:
+        return None
+
+    payload_pid = payload.get("pid")
+    if not isinstance(payload_pid, int) or payload_pid <= 0 or payload_pid != file_pid:
+        return None
+
+    try:
+        os.kill(payload_pid, 0)
+    except (OSError, ValueError):
+        return None
+
+    updated_at = payload.get("updated_at")
+    if not isinstance(updated_at, (int, float)) or updated_at <= 0:
+        return None
+
+    import time
+
+    now = time.time()
+    if updated_at > now + _MAX_PROGRESS_FUTURE_SKEW_SECONDS:
+        return None
+    if now - updated_at > _MAX_PROGRESS_AGE_SECONDS:
+        return None
+
+    current_step = payload.get("current_step")
+    total_steps = payload.get("total_steps")
+    if not isinstance(current_step, int) or current_step < 0:
+        return None
+    if not isinstance(total_steps, int) or total_steps < 0:
+        return None
+
+    step_name = payload.get("step_name")
+    if not isinstance(step_name, str) or len(step_name) > _MAX_PROGRESS_STEP_NAME_LENGTH:
+        return None
+
+    elapsed_seconds = payload.get("elapsed_seconds")
+    if not isinstance(elapsed_seconds, (int, float)) or elapsed_seconds < 0:
+        return None
+
+    status = payload.get("status")
+    if not isinstance(status, str) or status not in _ALLOWED_PROGRESS_STATUSES:
+        return None
+
+    transition = payload.get("transition", "")
+    if not isinstance(transition, str) or transition not in _ALLOWED_PROGRESS_TRANSITIONS:
+        return None
+
+    return {
+        "current_step": current_step,
+        "total_steps": total_steps,
+        "step_name": step_name,
+        "elapsed_seconds": float(elapsed_seconds),
+        "status": status,
+    }
+
+
 def get_recipe_progress(recipe_name: str | None = None) -> dict | None:
-    """Return the most recent machine-readable progress record for a recipe run."""
+    """Return the most recent validated progress record for a recipe run."""
     tmp_dir = _tempfile.gettempdir()
 
     if recipe_name is not None:
-        stem = (
-            Path(recipe_name).stem if ("/" in recipe_name or os.sep in recipe_name) else recipe_name
-        )
-        safe_name = _re.sub(r"[^a-zA-Z0-9_]", "_", stem)[:64]
+        safe_name = _safe_progress_recipe_name(recipe_name)
         pattern = str(Path(tmp_dir) / f"amplihack-progress-{safe_name}-*.json")
     else:
         pattern = str(Path(tmp_dir) / "amplihack-progress-*.json")
@@ -264,15 +448,15 @@ def get_recipe_progress(recipe_name: str | None = None) -> dict | None:
 
     files.sort(key=lambda candidate: Path(candidate).stat().st_mtime, reverse=True)
 
-    try:
-        data = _json.loads(Path(files[0]).read_text(encoding="utf-8"))
-    except (OSError, _json.JSONDecodeError, ValueError):
-        return None
+    for candidate in files:
+        candidate_path = Path(candidate)
+        try:
+            data = _json.loads(candidate_path.read_text(encoding="utf-8"))
+        except (OSError, _json.JSONDecodeError, ValueError):
+            continue
 
-    return {
-        "current_step": data.get("current_step", 0),
-        "total_steps": data.get("total_steps", 0),
-        "step_name": data.get("step_name", ""),
-        "elapsed_seconds": data.get("elapsed_seconds", 0.0),
-        "status": data.get("status", "unknown"),
-    }
+        validated = _validate_progress_payload(candidate_path, data, recipe_name)
+        if validated is not None:
+            return validated
+
+    return None

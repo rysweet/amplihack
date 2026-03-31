@@ -567,6 +567,108 @@ This file should be referenced by:
 - **AGENTS.md**: "Review @docs/DISCOVERIES.md to avoid known pitfalls"
 - **New developers**: "Read DISCOVERIES.md to understand institutional knowledge"
 
+## Agent Steps Must Run from Dedicated Worktree (2026-03-30)
+
+### Issue
+
+Agent steps in `default-workflow` and `consensus-workflow` ran from the repo root instead of the dedicated worktree created for the task. This caused **hollow-context execution** — nested agent sessions read stale repo state rather than the task's working directory — and parallel workflow conflicts when two workflows ran simultaneously against the same CWD.
+
+### Root Cause
+
+Recipe YAML step definitions with `type: agent` did not include `working_dir`. The recipe runner defaulted to the process CWD (repo root). Nested agent sessions therefore had no knowledge of the worktree created for their task.
+
+Additionally, the recipe-runner-rs binary had a bug where relative worktree paths passed through `working_dir` were not resolved correctly, and the `working_dir` template field itself was not rendered until runner 0.3.3.
+
+### Solution
+
+**PR #3778**: Added `working_dir: {{worktree_path}}` to all 75 agent steps across `default-workflow.yaml` and `consensus-workflow.yaml`.
+
+**PRs #3771, #3779, #3781**: Bumped `MIN_RUNNER_VERSION` to 0.3.1 → 0.3.2 → 0.3.3 to pick up:
+- 0.3.1: Orchestrator resolved from `AMPLIHACK_HOME` (not CWD)
+- 0.3.2: Relative worktree path resolution fix
+- 0.3.3: Template rendering for the `working_dir` field
+
+### Key Learnings
+
+1. **`working_dir` is not inherited**: Every `type: agent` step in a worktree-based workflow must set `working_dir` explicitly — the runner does not propagate it automatically
+2. **Hollow-context execution is silent**: Agents appear to succeed but read the wrong repo state. No error is raised; results are just wrong
+3. **CWD-based workflows conflict in parallel**: Two workflows using the same CWD simultaneously overwrite each other's context and lock files
+
+### Prevention
+
+- Always set `working_dir: {{worktree_path}}` on every `type: agent` step in workflows that use a worktree
+- Verify after adding new steps that `working_dir` is included
+- Keep `MIN_RUNNER_VERSION` current when new runner features are required
+
+---
+
+## Nested Recipe Hook Reinjection Causes Recursive dev-orchestrator (2026-03-30)
+
+### Issue
+
+Nested recipe-managed child sessions received the same workflow-classification reminder and `AMPLIHACK.md` framework injections as top-level sessions. The child agent classified its subtask, re-invoked `dev-orchestrator`, and the recipe hijacked its own nested workflow — producing recursive orchestration instead of executing the assigned step.
+
+### Root Cause
+
+The `user_prompt_submit.py` hook and `workflow_classification_reminder.py` ran unconditionally for every agent session. Neither hook distinguished between a top-level interactive session (where routing injection is correct) and a nested child session started by the recipe runner (where the step context should be untouched).
+
+A secondary issue: the `USER_PREFERENCES` parser used an older key-value format, silently dropping all preferences when the stored format had evolved to a markdown table.
+
+### Solution
+
+**PR #3792**:
+- Added nested-session detection to `workflow_classification_reminder.py` — skips injection when inside a recipe-managed child session
+- Added nested-session detection to `user_prompt_submit.py` — skips `AMPLIHACK.md` framework reinjection while preserving normal preference injection
+- Updated the `USER_PREFERENCES` parser to read the current markdown-table format; added regression tests
+
+### Key Learnings
+
+1. **Hooks that inject routing behavior must be session-depth-aware**: A child session already has a task — re-routing it destroys the workflow
+2. **Preference parsers must match the current serialization format**: Format drift silently drops all preferences without any error
+3. **Test hook behavior at every session depth**: Top-level and nested sessions have fundamentally different needs
+
+### Prevention
+
+- Detect nested sessions (e.g., via `AMPLIHACK_SESSION_DEPTH` env var or recipe runner marker) before injecting orchestration logic
+- Keep preference parser tests in sync with the stored format — any format change must include a parser update and regression test
+- Validate hook output in an end-to-end nested recipe run, not just unit tests
+
+---
+
+## Pre-commit Hooks in Workflow Commits (2026-03-30)
+
+### Issue
+
+Two distinct failures around pre-commit hooks in workflow-generated commits:
+
+1. **Step-15 (final commit) failed permanently**: Pre-commit hooks reformatted files and exited 1. The workflow treated this as a fatal commit failure, losing the work
+2. **Checkpoint commits aborted long workflows**: Checkpoint steps (internal workflow bookmarks) triggered pre-commit hooks. Hook failure killed the step, aborting workflows that had been running for two hours
+
+### Root Cause
+
+1. Pre-commit hooks are designed to modify files and exit 1, signaling that the developer must re-stage. Step-15 in the recipe did not account for this modify-then-exit-1 pattern — it treated any non-zero exit as permanent failure
+2. Checkpoint commits are workflow bookkeeping, not user-facing commits. They do not carry user code; running pre-commit hooks on them is both unnecessary and destructive when hooks fail
+
+### Solution
+
+**PR #3791**: Step-15 now detects the pre-commit modify-then-exit-1 pattern (exit code 1 + newly modified files present), re-stages the modified files, and retries the commit.
+
+**PR #3786**: Checkpoint steps now use `--no-verify` (skip pre-commit hooks entirely) and `fatal: false` (hook or commit failure is non-fatal and does not abort the workflow).
+
+### Key Learnings
+
+1. **Pre-commit exit codes are not commit exit codes**: Exit 1 from a pre-commit hook means "re-stage and retry", not "commit failed permanently"
+2. **Distinguish user commits from workflow bookkeeping commits**: User commits should run hooks; checkpoint/internal commits should not
+3. **Non-critical workflow steps must be `fatal: false`**: Any step that is a checkpoint, status check, or cleanup must never abort the workflow on failure
+
+### Prevention
+
+- In commit-retry logic, check for modified files after hook exit 1 before classifying as permanent failure
+- Mark all checkpoint, cleanup, and status-check recipe steps as `fatal: false`
+- Use `--no-verify` for workflow-internal commits that do not contain user code
+
+---
+
 ## Checklist CLAUDE.md Breaks Sonnet 4.5 Autonomy (2025-11-30)
 
 ### Issue

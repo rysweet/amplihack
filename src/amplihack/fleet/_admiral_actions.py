@@ -24,6 +24,7 @@ from amplihack.fleet._constants import (
     SUBPROCESS_TIMEOUT_KILL_SECONDS,
     SUBPROCESS_TIMEOUT_SECONDS,
 )
+from amplihack.fleet._error_sanitizer import sanitize_external_error_detail
 from amplihack.fleet._validation import validate_session_name, validate_vm_name
 from amplihack.fleet.fleet_auth import AuthPropagator
 from amplihack.fleet.fleet_tasks import TaskQueue, TaskStatus
@@ -116,12 +117,14 @@ def start_agent(
             task.start()
             task_queue.save()
             return f"Agent started: {session_name} on {vm_name}"
-        return f"ERROR: Failed to start agent: {result.stderr[:200]}"
+        detail = sanitize_external_error_detail(result.stderr)
+        return f"ERROR: Failed to start agent: {detail}"
 
     except subprocess.TimeoutExpired:
         return "ERROR: Timeout starting agent"
     except (subprocess.SubprocessError, FileNotFoundError) as e:
-        return f"ERROR: {e}"
+        detail = sanitize_external_error_detail(str(e))
+        return f"ERROR: {detail}"
 
 
 def mark_complete(action: DirectorAction, task_queue: TaskQueue) -> str:
@@ -149,9 +152,7 @@ def reassign_task(
     if action.task and action.vm_name and action.session_name:
         validate_vm_name(action.vm_name)
         # Kill the stuck session
-        kill_cmd = (
-            f"tmux kill-session -t {shlex.quote(action.session_name)} 2>/dev/null || true"
-        )
+        kill_cmd = f"tmux kill-session -t {shlex.quote(action.session_name)} 2>/dev/null || true"
         try:
             subprocess.run(
                 [azlin_path, "connect", action.vm_name, "--no-tmux", "--", kill_cmd],

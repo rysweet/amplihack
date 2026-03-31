@@ -36,6 +36,7 @@ context:
   output_dir: "./eval_results/quality_audit"
 
   # Internal state
+  task_description: ""
   audit_findings: ""
   validated_findings: ""
   validation_agent_1: ""
@@ -48,6 +49,12 @@ context:
   recurse_decision: ""
   summary: ""
   self_improvement_results: ""
+  final_report:
+    cycle_number: ""
+    recurse_decision: ""
+    summary: ""
+    self_improvement_results: ""
+    target_path: ""
 
 steps:
   # ========================================================================
@@ -671,10 +678,92 @@ steps:
     output: "recurse_decision"
 
   # ========================================================================
+  # STEP 5b: RECURSE — Re-enter the recipe for the next cycle
+  # The recipe runner does not implicitly loop on CONTINUE, so we must
+  # re-invoke quality-audit-cycle explicitly with carried-forward state.
+  # ========================================================================
+  - id: "run-recursive-cycle"
+    type: "bash"
+    condition: "'CONTINUE:' in recurse_decision"
+    command: |
+      NEXT_CYCLE=$(printf '%s\n' "{{recurse_decision}}" | sed -n 's/.*CONTINUE:\([0-9][0-9]*\).*/\1/p' | head -n 1)
+      if [ -z "$NEXT_CYCLE" ]; then
+        echo "run-recursive-cycle: could not parse CONTINUE target from recurse_decision" >&2
+        exit 1
+      fi
+
+      _HISTORY_TMPFILE=$(mktemp)
+      chmod 600 "$_HISTORY_TMPFILE"
+      trap 'rm -f "$_HISTORY_TMPFILE"' EXIT
+      cat > "$_HISTORY_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_HISTORY_STEP5B__'
+      {{cycle_history}}
+      __AMPLIHACK_SAFE_HEREDOC_HISTORY_STEP5B__
+
+      export NEXT_CYCLE
+      export HISTORY_FILE="$_HISTORY_TMPFILE"
+      export REPO_PATH="{{repo_path}}"
+      export TARGET_PATH="{{target_path}}"
+      export MIN_CYCLES="{{min_cycles}}"
+      export MAX_CYCLES="{{max_cycles}}"
+      export VALIDATION_THRESHOLD="{{validation_threshold}}"
+      export SEVERITY_THRESHOLD="{{severity_threshold}}"
+      export MODULE_LOC_LIMIT="{{module_loc_limit}}"
+      export FIX_ALL_PER_CYCLE="{{fix_all_per_cycle}}"
+      export CATEGORIES="{{categories}}"
+      export OUTPUT_DIR="{{output_dir}}"
+
+      python3 - <<'PY'
+      import json
+      import os
+      from pathlib import Path
+
+      from amplihack.recipes import run_recipe_by_name
+
+      history = Path(os.environ["HISTORY_FILE"]).read_text()
+      next_cycle = os.environ["NEXT_CYCLE"]
+
+      result = run_recipe_by_name(
+          "quality-audit-cycle",
+          user_context={
+              "task_description": """{{task_description}}""",
+              "repo_path": os.environ["REPO_PATH"],
+              "target_path": os.environ["TARGET_PATH"],
+              "min_cycles": os.environ["MIN_CYCLES"],
+              "max_cycles": os.environ["MAX_CYCLES"],
+              "validation_threshold": os.environ["VALIDATION_THRESHOLD"],
+              "severity_threshold": os.environ["SEVERITY_THRESHOLD"],
+              "module_loc_limit": os.environ["MODULE_LOC_LIMIT"],
+              "fix_all_per_cycle": os.environ["FIX_ALL_PER_CYCLE"],
+              "categories": os.environ["CATEGORIES"],
+              "output_dir": os.environ["OUTPUT_DIR"],
+              "cycle_number": next_cycle,
+              "cycle_history": history,
+          },
+          progress=True,
+      )
+
+      ctx = result.context if isinstance(result.context, dict) else {}
+      final_report = ctx.get("final_report")
+      if not isinstance(final_report, dict) or not final_report:
+          final_report = {
+              "cycle_number": str(ctx.get("cycle_number", next_cycle)),
+              "recurse_decision": str(ctx.get("recurse_decision", "")),
+              "summary": str(ctx.get("summary", "")),
+              "self_improvement_results": str(ctx.get("self_improvement_results", "")),
+              "target_path": str(ctx.get("target_path", os.environ["TARGET_PATH"])),
+          }
+
+      print(json.dumps(final_report))
+      PY
+    output: "final_report"
+    parse_json: true
+
+  # ========================================================================
   # STEP 6: SUMMARY — Final report across all cycles
   # ========================================================================
   - id: "summary"
     agent: "amplihack:core:architect"
+    condition: "'CONTINUE:' not in recurse_decision"
     working_dir: "{{repo_path}}"
     prompt: |
       # Quality Audit — Final Summary
@@ -710,6 +799,7 @@ steps:
   # ========================================================================
   - id: "self-improvement"
     agent: "amplihack:core:architect"
+    condition: "'CONTINUE:' not in recurse_decision"
     working_dir: "{{repo_path}}"
     prompt: |
       # Quality Audit — Self-Improvement Review
@@ -750,22 +840,66 @@ steps:
       - "SELF-IMPROVEMENT: CLEAN" if no critical issues found
     output: "self_improvement_results"
 
+  # ========================================================================
+  # STEP 7b: FINAL REPORT — Normalize recursive and terminal results
+  # ========================================================================
+  - id: "final-report"
+    type: "bash"
+    condition: "'CONTINUE:' not in recurse_decision"
+    command: |
+      _SUMMARY_TMPFILE=$(mktemp)
+      _SELF_IMPROVE_TMPFILE=$(mktemp)
+      chmod 600 "$_SUMMARY_TMPFILE" "$_SELF_IMPROVE_TMPFILE"
+      trap 'rm -f "$_SUMMARY_TMPFILE" "$_SELF_IMPROVE_TMPFILE"' EXIT
+      cat > "$_SUMMARY_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_SUMMARY_STEP7B__'
+      {{summary}}
+      __AMPLIHACK_SAFE_HEREDOC_SUMMARY_STEP7B__
+      cat > "$_SELF_IMPROVE_TMPFILE" <<'__AMPLIHACK_SAFE_HEREDOC_SELF_IMPROVE_STEP7B__'
+      {{self_improvement_results}}
+      __AMPLIHACK_SAFE_HEREDOC_SELF_IMPROVE_STEP7B__
+
+      export SUMMARY_FILE="$_SUMMARY_TMPFILE"
+      export SELF_IMPROVE_FILE="$_SELF_IMPROVE_TMPFILE"
+      export FINAL_CYCLE="{{cycle_number}}"
+      export FINAL_DECISION="{{recurse_decision}}"
+      export FINAL_TARGET="{{target_path}}"
+
+      python3 - <<'PY'
+      import json
+      import os
+      from pathlib import Path
+
+      print(
+          json.dumps(
+              {
+                  "cycle_number": os.environ["FINAL_CYCLE"],
+                  "recurse_decision": os.environ["FINAL_DECISION"],
+                  "summary": Path(os.environ["SUMMARY_FILE"]).read_text(),
+                  "self_improvement_results": Path(os.environ["SELF_IMPROVE_FILE"]).read_text(),
+                  "target_path": os.environ["FINAL_TARGET"],
+              }
+          )
+      )
+      PY
+    output: "final_report"
+    parse_json: true
+
 output:
   format: "markdown"
   template: |
     # Quality Audit Report
 
-    **Target**: {{target_path}}
-    **Cycles**: {{cycle_number}} of {{max_cycles}} (minimum: {{min_cycles}})
-    **Decision**: {{recurse_decision}}
+    **Target**: {{final_report.target_path}}
+    **Cycles**: {{final_report.cycle_number}} of {{max_cycles}} (minimum: {{min_cycles}})
+    **Decision**: {{final_report.recurse_decision}}
 
     ## Summary
 
-    {{summary}}
+    {{final_report.summary}}
 
     ## Self-Improvement Review
 
-    {{self_improvement_results}}
+    {{final_report.self_improvement_results}}
 
     ---
     *quality-audit-cycle v4.0.0*

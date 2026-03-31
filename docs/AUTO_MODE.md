@@ -26,10 +26,10 @@ amplihack claude --auto --max-turns 20 -- -p "refactor the API module"
 
 # With interactive UI (requires Rich library)
 amplihack claude --auto --ui -- -p "implement user authentication"
-
-# Alias: launch command also supports auto mode
-amplihack launch --auto -- -p "fix all failing tests"
 ```
+
+The legacy `amplihack launch` alias also supports `--auto`, but user-facing
+examples should prefer `amplihack claude`.
 
 ### Interactive UI Mode (`--ui`)
 

@@ -17,6 +17,13 @@ scenario:
     - "ANTHROPIC_API_KEY set"
     - "User has terminal access but minimal coding experience"
 
+  agents:
+    - name: "cli-agent"
+      type: "system"
+      config:
+        shell: "bash"
+        timeout: 60000
+
   context:
     student_state:
       - "Project manager role (can read code, can't write code)"
