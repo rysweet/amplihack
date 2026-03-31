@@ -20,12 +20,14 @@ from pathlib import Path
 
 from amplihack.fleet._defaults import get_azlin_path
 from amplihack.fleet._validation import validate_vm_name
+from amplihack.utils.token_sanitizer import sanitize
 
 __all__ = ["AuthPropagator", "AuthResult", "GitHubIdentity"]
 
 logger = logging.getLogger(__name__)
 
 _CHMOD_MODE_RE = re.compile(r"^[0-7]{3,4}$")
+_PATH_RE = re.compile(r"(?P<path>(?:~|/)[^\s'\":;,]+)")
 
 
 def _validate_chmod_mode(mode: str) -> str:
@@ -33,6 +35,16 @@ def _validate_chmod_mode(mode: str) -> str:
     if not _CHMOD_MODE_RE.match(mode):
         raise ValueError(f"Invalid chmod mode: {mode!r}")
     return mode
+
+
+def _sanitize_external_error_detail(detail: str | None, *, max_len: int = 200) -> str:
+    """Sanitize user-facing subprocess/exception details."""
+    sanitized = sanitize(detail or "")
+    sanitized = _PATH_RE.sub("<path>", sanitized)
+    sanitized = " ".join(sanitized.split())
+    if not sanitized:
+        return "details unavailable"
+    return sanitized[:max_len]
 
 
 # Auth files to propagate, organized by service
@@ -144,7 +156,11 @@ class AuthPropagator:
                     timeout=30,
                 )
                 results[service] = result.returncode == 0
-            except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
+            except (
+                subprocess.TimeoutExpired,
+                subprocess.SubprocessError,
+                FileNotFoundError,
+            ) as exc:
                 logger.warning("verify_auth %s failed for %s: %s", service, vm_name, exc)
                 results[service] = False
 
@@ -197,11 +213,13 @@ class AuthPropagator:
                     self._remote_exec(vm_name, f"chmod {mode} {shlex.quote(dest)}")
                     files_copied.append(str(src_path.name))
                 else:
-                    errors.append(f"Failed to copy {src_path.name}: {result.stderr.strip()}")
+                    detail = _sanitize_external_error_detail(result.stderr)
+                    errors.append(f"Failed to copy {src_path.name}: {detail}")
             except subprocess.TimeoutExpired:
                 errors.append(f"Timeout copying {src_path.name}")
             except (subprocess.SubprocessError, FileNotFoundError) as e:
-                errors.append(f"Error copying {src_path.name}: {e}")
+                detail = _sanitize_external_error_detail(str(e))
+                errors.append(f"Error copying {src_path.name}: {detail}")
 
         duration = time.monotonic() - start
 
@@ -241,16 +259,17 @@ class AuthPropagator:
             success = result.returncode == 0
 
             if not success:
+                detail = _sanitize_external_error_detail(result.stderr)
                 return AuthResult(
                     service="github-identity",
                     vm_name=vm_name,
                     success=False,
-                    error=f"gh auth switch failed: {(result.stderr or '').strip()[:200]}",
+                    error=f"gh auth switch failed: {detail}",
                     duration_seconds=time.monotonic() - start,
                 )
 
             # Verify the switch worked
-            verify = self._remote_exec(
+            self._remote_exec(
                 vm_name,
                 f"gh auth status --hostname {shlex.quote(identity.hostname)} 2>&1 | grep -i 'active account'",
             )
@@ -265,11 +284,12 @@ class AuthPropagator:
 
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as e:
             logger.warning("switch_github_identity failed for %s: %s", vm_name, e)
+            detail = _sanitize_external_error_detail(str(e))
             return AuthResult(
                 service="github-identity",
                 vm_name=vm_name,
                 success=False,
-                error=str(e),
+                error=detail,
                 duration_seconds=time.monotonic() - start,
             )
 

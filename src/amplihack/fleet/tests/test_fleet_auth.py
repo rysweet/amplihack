@@ -4,6 +4,9 @@ Tests the GitHubIdentity, AuthPropagator data flow, and identity switching.
 All external calls (subprocess) are mocked.
 """
 
+import os
+import re
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -209,6 +212,36 @@ class TestPropagateAllBundled:
         assert "Failed to copy bundle" in result.error
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    def test_bundled_copy_failure_sanitizes_details(self, mock_run, tmp_path, monkeypatch):
+        """Bundle copy errors should redact tokens and local paths."""
+        fake_hosts = tmp_path / "hosts.yml"
+        fake_hosts.write_text("fake: content")
+        fake_token = "sk-" + "abcdef1234567890"  # pragma: allowlist secret
+
+        orig_expanduser = __import__("pathlib").Path.expanduser
+
+        def mock_expanduser(self):
+            s = str(self)
+            if "hosts.yml" in s:
+                return fake_hosts
+            return orig_expanduser(self)
+
+        monkeypatch.setattr("pathlib.Path.expanduser", mock_expanduser)
+        mock_run.return_value = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr=f"copy failed for {fake_hosts} Authorization: Bearer {fake_token}",
+        )
+
+        auth = AuthPropagator()
+        result = auth.propagate_all_bundled("test-vm")
+
+        assert result.success is False
+        assert "<path>" in result.error
+        assert fake_token not in result.error
+        assert "Authorization: Bearer ***" in result.error
+
+    @patch("amplihack.fleet.fleet_auth.subprocess.run")
     def test_bundled_success(self, mock_run, tmp_path, monkeypatch):
         """Happy path: bundle, copy, extract all succeed."""
         fake_hosts = tmp_path / "hosts.yml"
@@ -224,13 +257,23 @@ class TestPropagateAllBundled:
 
         monkeypatch.setattr("pathlib.Path.expanduser", mock_expanduser)
 
-        # First call: azlin cp succeeds, second call: extract succeeds
-        mock_run.side_effect = [
-            MagicMock(returncode=0, stdout="", stderr=""),  # cp
-            MagicMock(returncode=0, stdout="AUTH_OK", stderr=""),  # extract
-        ]
-
         auth = AuthPropagator()
+        call_count = {"value": 0}
+
+        def side_effect(*args, **kwargs):
+            call_count["value"] += 1
+            if call_count["value"] == 1:
+                cp_cmd = args[0]
+                assert cp_cmd[0:2] == [auth.azlin_path, "cp"]
+                local_bundle_path = cp_cmd[2]
+                remote_bundle_target = cp_cmd[3]
+                assert re.search(r"fleet-auth-bundle-[^/]+\.tar\.gz$", local_bundle_path)
+                assert remote_bundle_target.endswith(Path(local_bundle_path).name)
+                assert os.stat(local_bundle_path).st_mode & 0o777 == 0o600
+                return MagicMock(returncode=0, stdout="", stderr="")
+            return MagicMock(returncode=0, stdout="AUTH_OK", stderr="")
+
+        mock_run.side_effect = side_effect
         result = auth.propagate_all_bundled("test-vm")
 
         assert result.success is True
@@ -262,6 +305,71 @@ class TestPropagateAllBundled:
         result = auth.propagate_all_bundled("test-vm")
 
         assert result.success is False
+        assert result.error == "Failed to extract bundle: extract failed"
+
+    @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    def test_bundled_extract_failure_sanitizes_details(self, mock_run, tmp_path, monkeypatch):
+        """Bundle extract failures should redact tokens and local paths."""
+        fake_hosts = tmp_path / "hosts.yml"
+        fake_hosts.write_text("fake: content")
+        fake_token = "ghp_" + "abcdefghijklmnopqrstuvwxyz123456"  # pragma: allowlist secret
+
+        orig_expanduser = __import__("pathlib").Path.expanduser
+
+        def mock_expanduser(self):
+            s = str(self)
+            if "hosts.yml" in s:
+                return fake_hosts
+            return orig_expanduser(self)
+
+        monkeypatch.setattr("pathlib.Path.expanduser", mock_expanduser)
+
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="", stderr=""),  # cp
+            MagicMock(
+                returncode=1,
+                stdout="",
+                stderr=f"extract failed reading {fake_hosts} token={fake_token}",
+            ),
+        ]
+
+        auth = AuthPropagator()
+        result = auth.propagate_all_bundled("test-vm")
+
+        assert result.success is False
+        assert "<path>" in result.error
+        assert fake_token not in result.error
+        assert "ghp_***" in result.error
+
+    @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    def test_bundled_remote_extract_uses_unique_bundle_name(self, mock_run, tmp_path, monkeypatch):
+        """Remote extract/cleanup should reference the per-invocation bundle name."""
+        fake_hosts = tmp_path / "hosts.yml"
+        fake_hosts.write_text("fake: content")
+
+        orig_expanduser = __import__("pathlib").Path.expanduser
+
+        def mock_expanduser(self):
+            s = str(self)
+            if "hosts.yml" in s:
+                return fake_hosts
+            return orig_expanduser(self)
+
+        monkeypatch.setattr("pathlib.Path.expanduser", mock_expanduser)
+
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="", stderr=""),  # cp
+            MagicMock(returncode=0, stdout="AUTH_OK", stderr=""),  # extract
+        ]
+
+        auth = AuthPropagator()
+        auth.propagate_all_bundled("test-vm")
+
+        cp_cmd = mock_run.call_args_list[0].args[0]
+        remote_bundle_name = Path(cp_cmd[2]).name
+        remote_exec_cmd = mock_run.call_args_list[1].args[0][-1]
+        assert remote_bundle_name in remote_exec_cmd
+        assert "fleet-auth-bundle.tar.gz" not in remote_exec_cmd
 
 
 class TestPropagateServiceErrors:
@@ -294,6 +402,42 @@ class TestPropagateServiceErrors:
 
         assert result.success is False
         assert "permission denied" in result.error.lower() or "Failed" in result.error
+
+    @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    def test_propagate_service_copy_failure_sanitizes_details(
+        self, mock_run, tmp_path, monkeypatch
+    ):
+        """User-facing copy failures should redact tokens and absolute paths."""
+        fake_claude = tmp_path / ".claude.json"
+        fake_claude.write_text('{"key": "value"}')
+        fake_token = "ghp_" + "abcdefghijklmnopqrstuvwxyz123456"  # pragma: allowlist secret
+
+        orig_expanduser = __import__("pathlib").Path.expanduser
+
+        def mock_expanduser(self):
+            s = str(self)
+            if ".claude.json" in s:
+                return fake_claude
+            return orig_expanduser(self)
+
+        monkeypatch.setattr("pathlib.Path.expanduser", mock_expanduser)
+
+        mock_run.side_effect = [
+            MagicMock(returncode=0),  # mkdir
+            MagicMock(
+                returncode=1,
+                stdout="",
+                stderr=f"permission denied reading {fake_claude} token={fake_token}",
+            ),
+        ]
+
+        auth = AuthPropagator()
+        result = auth._propagate_service("test-vm", "claude")
+
+        assert result.success is False
+        assert "<path>" in result.error
+        assert fake_token not in result.error
+        assert "ghp_***" in result.error
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
     def test_propagate_service_timeout(self, mock_run, tmp_path, monkeypatch):
@@ -410,6 +554,7 @@ class TestVerifyAuthEdgeCases:
     def test_verify_auth_subprocess_error(self, mock_run):
         """SubprocessError during verify should return False."""
         import subprocess
+
         mock_run.side_effect = subprocess.SubprocessError("error")
 
         auth = AuthPropagator()
@@ -426,6 +571,7 @@ class TestSwitchGitHubIdentityEdgeCases:
     def test_switch_identity_timeout(self, mock_run):
         """Timeout during switch should return failure."""
         import subprocess
+
         mock_run.side_effect = subprocess.TimeoutExpired(cmd=["test"], timeout=30)
 
         auth = AuthPropagator()
@@ -439,6 +585,7 @@ class TestSwitchGitHubIdentityEdgeCases:
     def test_list_identities_timeout(self, mock_run):
         """Timeout during list should return empty list."""
         import subprocess
+
         mock_run.side_effect = subprocess.TimeoutExpired(cmd=["test"], timeout=30)
 
         auth = AuthPropagator()

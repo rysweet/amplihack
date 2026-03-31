@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-03-31T03:25:00.000000+00:00
+Category: <strong>Structural</strong> | Generated: 2026-03-31T04:37:16.553364+00:00
 </div>
 
 ## Map
@@ -65,11 +65,11 @@ Category: <strong>Structural</strong> | Generated: 2026-03-31T03:25:00.000000+00
 
     | Metric | Value |
     |--------|-------|
-    | Total definitions | 14706 |
+    | Total definitions | 14806 |
     | Total exports | 2264 |
-    | Total imports | 16420 |
+    | Total imports | 16551 |
     | Potentially dead | 426 |
-    | Files with `__all__` | 427 |
+    | Files with `__all__` | 426 |
 
 ## Legend
 
@@ -85,11 +85,9 @@ Category: <strong>Structural</strong> | Generated: 2026-03-31T03:25:00.000000+00
 
 ## Key Findings
 
-- 14706 total definitions across all files
+- 14806 total definitions across all files
 - 426 potentially dead definitions (2.9% of total)
-- 1928 files without `__all__` exports
-- `src/amplihack/rust_trial.py` is now an active install/bootstrap seam, not dead experimental code
-- `rust_trial.py` integrates with `launcher.copilot` to provision isolated-home Copilot dependencies before delegating to the Rust binary
+- 1936 files without `__all__` exports
 
 ## Detail
 
@@ -97,15 +95,15 @@ Category: <strong>Structural</strong> | Generated: 2026-03-31T03:25:00.000000+00
 
     **Summary metrics:**
 
-    - **Total Definitions**: 14706
+    - **Total Definitions**: 14806
     - **Total Exports**: 2264
-    - **Total Imports**: 16420
+    - **Total Imports**: 16551
     - **Potentially Dead Count**: 426
-    - **Files With All**: 427
-    - **Files Without All**: 1928
+    - **Files With All**: 426
+    - **Files Without All**: 1936
     - **Importlib Dynamic Imports**: 43
     - **Language Counts**:
-        - `python`: 14706
+        - `python`: 14806
 
 ## Cross-References
 
