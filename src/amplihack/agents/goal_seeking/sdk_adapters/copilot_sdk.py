@@ -31,16 +31,24 @@ _DEFAULT_TIMEOUT = float(os.environ.get("COPILOT_AGENT_TIMEOUT", "300"))
 _MAX_TIMEOUT = 600.0
 
 HAS_COPILOT_SDK = False
+_HAS_SESSION_CONFIG = False
 
 try:
-    from copilot import CopilotClient
+    from copilot import CopilotClient, PermissionHandler
     from copilot.types import (
-        SessionConfig,
+        SubprocessConfig,
         SystemMessageAppendConfig,
         ToolInvocation,
         ToolResult,
     )
     from copilot.types import Tool as CopilotTool
+
+    try:
+        from copilot.types import SessionConfig
+
+        _HAS_SESSION_CONFIG = True
+    except ImportError:
+        SessionConfig = None  # type: ignore[assignment]
 
     HAS_COPILOT_SDK = True
 except ImportError:
@@ -57,7 +65,10 @@ def _make_tool_handler(agent_tool: AgentTool):
 
     async def handler(invocation: ToolInvocation) -> ToolResult:
         try:
-            args = invocation.get("arguments", {})
+            if isinstance(invocation, dict):
+                args = invocation.get("arguments", {})
+            else:
+                args = getattr(invocation, "arguments", {}) or {}
             if isinstance(args, str):
                 try:
                     args = json.loads(args)
@@ -73,15 +84,26 @@ def _make_tool_handler(agent_tool: AgentTool):
                 result = await result
 
             text = json.dumps(result) if not isinstance(result, str) else result
+            if _HAS_SESSION_CONFIG:
+                return ToolResult(
+                    textResultForLlm=text,
+                    resultType="success",
+                )
             return ToolResult(
-                textResultForLlm=text,
-                resultType="success",
+                text_result_for_llm=text,
+                result_type="success",
             )
         except Exception as exc:
             logger.warning("Tool '%s' failed: %s", agent_tool.name, exc)
+            if _HAS_SESSION_CONFIG:
+                return ToolResult(
+                    textResultForLlm="Tool invocation failed.",
+                    resultType="failure",
+                    error=str(exc),
+                )
             return ToolResult(
-                textResultForLlm="Tool invocation failed.",
-                resultType="failure",
+                text_result_for_llm="Tool invocation failed.",
+                result_type="failure",
                 error=str(exc),
             )
 
@@ -126,6 +148,7 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
         storage_path: Path | None = None,
         enable_memory: bool = True,
         enable_eval: bool = False,
+        enable_learning_tools: bool = True,
         streaming: bool = False,
         timeout: float | None = None,
         cli_path: str | None = None,
@@ -151,7 +174,8 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
         self._client: CopilotClient | None = None
         self._session: Any = None  # CopilotSession
         self._copilot_tools: list[CopilotTool] = []
-        self._session_config: SessionConfig | None = None
+        self._session_config: Any | None = None
+        self._session_kwargs: dict[str, Any] | None = None
 
         # For RUF006 compliance: track background cleanup tasks
         self._cleanup_task: asyncio.Task[Any] | None = None
@@ -165,9 +189,12 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
             enable_memory=enable_memory,
             enable_eval=enable_eval,
         )
+        if not enable_learning_tools:
+            self._tools = []
+            self._create_sdk_agent()
 
     def _create_sdk_agent(self) -> None:
-        """Build SessionConfig and convert tools to Copilot format.
+        """Build session configuration and convert tools to Copilot format.
 
         Does NOT start the client - that happens lazily in _ensure_client().
         """
@@ -177,43 +204,65 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
         # Build system prompt
         system_prompt = self._build_system_prompt()
 
-        # Build session config
-        self._session_config = SessionConfig(
-            model=self._model,
-            tools=self._copilot_tools,
-            system_message=SystemMessageAppendConfig(
+        if _HAS_SESSION_CONFIG:
+            self._session_config = SessionConfig(
+                model=self._model,
+                tools=self._copilot_tools,
+                system_message=SystemMessageAppendConfig(
+                    mode="append",
+                    content=system_prompt,
+                ),
+                streaming=self._streaming,
+            )
+            self._session_kwargs = None
+            return
+
+        self._session_config = None
+        self._session_kwargs = {
+            "on_permission_request": PermissionHandler.approve_all,
+            "model": self._model,
+            "tools": self._copilot_tools,
+            "system_message": SystemMessageAppendConfig(
                 mode="append",
                 content=system_prompt,
             ),
-            streaming=self._streaming,
-        )
+            "streaming": self._streaming,
+        }
 
     def _build_system_prompt(self) -> str:
         """Build goal-seeking system prompt with tool descriptions."""
-        tool_list = "\n".join(f"- {t.name}: {t.description}" for t in self._tools)
-
-        base = (
-            "You are a goal-seeking learning agent. Your capabilities:\n\n"
-            "GOAL SEEKING:\n"
-            "1. Determine the user's intent from their message\n"
-            "2. Form a specific, evaluable goal\n"
-            "3. Make a plan to achieve the goal\n"
-            "4. Execute the plan iteratively, adjusting based on results\n"
-            "5. Evaluate whether the goal was achieved\n\n"
-            "AVAILABLE LEARNING TOOLS:\n"
-            f"{tool_list}\n\n"
-            "LEARNING:\n"
-            "- Use learn_from_content to extract and store facts from text\n"
-            "- Use search_memory to retrieve relevant stored knowledge\n"
-            "- Use verify_fact to check claims against your knowledge\n"
-            "- Use find_knowledge_gaps to identify what you don't know\n\n"
-            "TEACHING:\n"
-            "- Use explain_knowledge to generate explanations at varying depth\n"
-            "- Adapt your explanations to the learner's level\n\n"
-            "APPLYING:\n"
-            "- Use stored knowledge to solve new problems\n"
-            "- Verify your work using verify_fact and search_memory\n"
-        )
+        if self._tools:
+            tool_list = "\n".join(f"- {t.name}: {t.description}" for t in self._tools)
+            base = (
+                "You are a goal-seeking learning agent. Your capabilities:\n\n"
+                "GOAL SEEKING:\n"
+                "1. Determine the user's intent from their message\n"
+                "2. Form a specific, evaluable goal\n"
+                "3. Make a plan to achieve the goal\n"
+                "4. Execute the plan iteratively, adjusting based on results\n"
+                "5. Evaluate whether the goal was achieved\n\n"
+                "AVAILABLE LEARNING TOOLS:\n"
+                f"{tool_list}\n\n"
+                "LEARNING:\n"
+                "- Use learn_from_content to extract and store facts from text\n"
+                "- Use search_memory to retrieve relevant stored knowledge\n"
+                "- Use verify_fact to check claims against your knowledge\n"
+                "- Use find_knowledge_gaps to identify what you don't know\n\n"
+                "TEACHING:\n"
+                "- Use explain_knowledge to generate explanations at varying depth\n"
+                "- Adapt your explanations to the learner's level\n\n"
+                "APPLYING:\n"
+                "- Use stored knowledge to solve new problems\n"
+                "- Verify your work using verify_fact and search_memory\n"
+            )
+        else:
+            base = (
+                "You are a goal-seeking code-generation agent.\n\n"
+                "1. Determine the user's intent from their message.\n"
+                "2. Produce the requested artifact directly.\n"
+                "3. Do not rely on external tools or memory lookups.\n"
+                "4. Keep the response tightly scoped to the requested output.\n"
+            )
 
         if self.instructions:
             base += f"\nADDITIONAL INSTRUCTIONS:\n{self.instructions}\n"
@@ -245,13 +294,21 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
             merged_env.update(child_env)
             client_opts["env"] = merged_env
 
-        self._client = CopilotClient(client_opts or None)
+        if _HAS_SESSION_CONFIG or not client_opts:
+            self._client = CopilotClient(client_opts or None)
+        else:
+            assert SubprocessConfig is not None
+            self._client = CopilotClient(SubprocessConfig(**client_opts))
         await self._client.start()
 
-        if self._session_config is None:
+        if self._session_config is None and self._session_kwargs is None:
             self._create_sdk_agent()
 
-        self._session = await self._client.create_session(self._session_config)
+        if self._session_config is not None:
+            self._session = await self._client.create_session(self._session_config)
+        else:
+            assert self._session_kwargs is not None
+            self._session = await self._client.create_session(**self._session_kwargs)
 
         # Track tool usage via events
         self._tools_used: list[str] = []
@@ -294,10 +351,8 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
             await self._ensure_client()
             self._tools_used = []
 
-            response = await self._session.send_and_wait(
-                {"prompt": task},
-                timeout=self._timeout,
-            )
+            send_payload: Any = {"prompt": task} if _HAS_SESSION_CONFIG else task
+            response = await self._session.send_and_wait(send_payload, timeout=self._timeout)
 
             content = self._extract_response_content(response)
 

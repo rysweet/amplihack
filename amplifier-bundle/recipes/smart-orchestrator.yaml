@@ -451,10 +451,9 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and workstream_count != 1 and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      emit_step_transition() {
-        printf '{"type":"step_transition","step":"launch-parallel-round-1","status":"%s","ts":%s}\n' "$1" "$(date +%s)" >&2
-      }
-      emit_step_transition start
+      set -o pipefail
+      # Emit step-transition marker for progress tracking (#3625)
+      echo '{"transition":"step_started","step":"launch-parallel-round-1","timestamp":'$(date +%s)'}' >&2
       REPO_PATH={{repo_path}}
       WS_FILE={{workstreams_file}}
       SESSION_JSON=$(cat <<EOFSESSIONJSON
@@ -531,22 +530,17 @@ steps:
       echo "Launching parallel workstreams (tree: $TREE_ID, depth: $SESSION_DEPTH):"
       cat "$WS_FILE"
       echo "---"
+      status=0
       AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$SESSION_DEPTH" \
         AMPLIHACK_PARENT_STEP="launch-parallel-round-1" \
         AMPLIHACK_REPO_PATH="$REPO_PATH" \
-        python3 "$ORCH_SCRIPT" "$WS_FILE"
-      ORCH_EXIT=$?
-      if [ "$ORCH_EXIT" -eq 0 ]; then
-        emit_step_transition done
-      else
-        emit_step_transition fail
-      fi
+        python3 -u "$ORCH_SCRIPT" "$WS_FILE" | tee /dev/stderr || status=$?
       # Clean up workstreams file now, before this step's output inflates
       # the recipe context. Doing it here avoids the E2BIG error that
       # occurs when a later bash step inherits megabytes of env vars
       # from accumulated round_1_result (fix: cleanup-helper-arg-overflow).
       rm -f "$WS_FILE" 2>/dev/null || true
-      exit "$ORCH_EXIT"
+      exit $status
     output: "round_1_result"
 
   # ─────────────────────────────────────────────────────────────────────────
