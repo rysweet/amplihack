@@ -110,9 +110,50 @@ constrains to digits, this provides defense-in-depth against edge cases.
 - **`set -euo pipefail` interaction**: The `|| true` and `|| echo ''` patterns
   are intentional to prevent `set -e` from aborting on expected-failure paths.
 
+## Design Consolidation (Step 5e)
+
+### Architecture Flow
+
+```
+step-03-create-issue:
+  Parse task_description, ISSUE_TITLE
+           │
+  Guard 1: Extract #NNNN from task_desc
+  - grep -oE '#[0-9]+' | head -1
+  - Validate numeric (defense-in-depth)
+  - gh issue view with 60s timeout
+  - If found → output URL, exit 0
+           │ (not found / no reference)
+  Guard 2: Search open issues by title
+  - First 100 chars of title
+  - gh issue list --search with 60s timeout
+  - If match → output URL, exit 0
+           │ (no match)
+  Original path: gh issue create
+  (preserved unchanged as final fallback)
+```
+
+### Key Design Decisions
+
+| Decision           | Choice                   | Rationale                                        |
+| ------------------ | ------------------------ | ------------------------------------------------ |
+| Pattern source     | Mirror step-16           | Consistency; proven pattern from #3324           |
+| Timeout            | 60s per gh call          | Prevents hang if GitHub API unresponsive         |
+| Stderr routing     | All diagnostics to `>&2` | Keeps stdout clean for step-03b extraction       |
+| Output format      | Full GitHub URL          | step-03b extracts `issues/NNNN` via grep         |
+| Failure mode       | `\|\| echo ''`           | Prevents `set -e` abort; falls through to create |
+| Search scope       | First 100 chars of title | GitHub search length limits                      |
+| Numeric validation | Regex `^[0-9]+$`         | Defense-in-depth beyond grep constraint          |
+
+### Verification
+
+- step-03b extraction (`grep -oE 'issues/[0-9]+'`) compatible with all output paths
+- No other files affected; smart-orchestrator issue creation already conditional
+- Security review complete (commit e5a9381eb)
+
 ## Conclusion
 
 Implementation is correct, follows established patterns, and is ready for
 review. Security review (Step 5d) identified one defense-in-depth improvement
-(numeric validation) which has been applied. CI should be monitored for the
-remaining "Validate Code" check.
+(numeric validation) which has been applied. Design consolidation (Step 5e)
+confirms architecture is sound with no remaining concerns.
