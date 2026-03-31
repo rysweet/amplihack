@@ -3,6 +3,8 @@ from __future__ import annotations
 """Shared prompt-loading utility for LearningAgent mixins."""
 
 import sys
+from collections.abc import Coroutine
+from typing import Any, Callable
 
 from .prompts import render_prompt
 
@@ -15,7 +17,7 @@ from .prompts import render_prompt
 _MODULE_NAME = "amplihack.agents.goal_seeking.learning_agent"
 
 
-def _get_llm_completion():
+def _get_llm_completion() -> "Callable[..., Coroutine[Any, Any, str]]":
     """Return the current ``_llm_completion`` from the learning_agent module.
 
     Using a function rather than a direct import ensures that test-time

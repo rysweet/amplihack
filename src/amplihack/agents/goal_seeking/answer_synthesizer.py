@@ -647,7 +647,7 @@ class AnswerSynthesizerMixin:
             return {"is_complete": True, "gaps": []}
         except Exception as exc:
             logger.warning("Answer evaluation failed: %s", exc)
-            return {"is_complete": True, "gaps": []}
+            return {"is_complete": False, "gaps": ["evaluation_failed"]}
 
     async def _synthesize_with_llm(
         self,

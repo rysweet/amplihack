@@ -217,7 +217,7 @@ class LearningAgent(
         self._pre_snapshot_facts: list[dict[str, Any]] | None = None
 
     async def _llm_completion_with_retry(
-        self, messages: list, temperature: float = 0.0, max_retries: int = 5
+        self, messages: list[dict[str, Any]], temperature: float = 0.0, max_retries: int = 5
     ) -> str:
         """Call amplihack.llm.completion with exponential backoff on transient failures.
 
@@ -294,12 +294,12 @@ class LearningAgent(
             content_lines.append(line)
         return "\n".join(content_lines).strip()
 
-    def flush_memory(self):
+    def flush_memory(self) -> None:
         """Flush memory cache without losing data or agent state."""
         if hasattr(self.memory, "flush_memory"):
             self.memory.flush_memory()
 
-    def close(self):
+    def close(self) -> None:
         """Close agent and release resources."""
         self.memory.close()
 
