@@ -210,9 +210,11 @@ def setup():
             else:
                 detail = sanitize_external_error_detail(result.stderr)
                 click.echo(f"  azlin: found but --version failed ({detail})", err=True)
+                all_ok = False
         except Exception as exc:
             detail = sanitize_external_error_detail(str(exc))
             click.echo(f"  azlin: found but verification failed — {detail}", err=True)
+            all_ok = False
 
     # Check Azure CLI (optional but helpful)
     az_path = shutil.which("az")

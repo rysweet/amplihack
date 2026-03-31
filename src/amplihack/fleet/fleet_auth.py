@@ -269,13 +269,13 @@ class AuthPropagator:
                 )
 
             # Verify the switch worked
-            self._remote_exec(
+            verify = self._remote_exec(
                 vm_name,
                 f"gh auth status --hostname {shlex.quote(identity.hostname)} 2>&1 | grep -i 'active account'",
             )
             if verify.returncode != 0:
-                detail = (verify.stderr or verify.stdout or "").strip()
-                detail_suffix = f": {detail[:200]}" if detail else ""
+                detail = _sanitize_external_error_detail(verify.stderr or verify.stdout)
+                detail_suffix = f": {detail}" if detail else ""
                 return AuthResult(
                     service="github-identity",
                     vm_name=vm_name,

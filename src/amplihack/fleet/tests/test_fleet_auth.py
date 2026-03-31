@@ -132,6 +132,31 @@ class TestAuthPropagatorIdentitySwitch:
         assert result.error == "gh auth verify failed: wrong account active"
 
     @patch("amplihack.fleet.fleet_auth.subprocess.run")
+    def test_switch_identity_verify_failure_sanitizes_details(self, mock_run):
+        fake_token = "ghp_" + "abcdefghijklmnopqrstuvwxyz123456"  # pragma: allowlist secret
+        fake_path = "/home/tester/.config/gh/hosts.yml"
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout="Switched", stderr=""),
+            MagicMock(
+                returncode=1,
+                stdout="",
+                stderr=f"read failed for {fake_path} Authorization: Bearer {fake_token}",
+            ),
+        ]
+
+        auth = AuthPropagator()
+        identity = GitHubIdentity(username="octocat")
+
+        result = auth.switch_github_identity("test-vm", identity)
+
+        assert result.success is False
+        assert result.error.startswith("gh auth verify failed: ")
+        assert "<path>" in result.error
+        assert "Authorization: Bearer ***" in result.error
+        assert fake_token not in result.error
+        assert fake_path not in result.error
+
+    @patch("amplihack.fleet.fleet_auth.subprocess.run")
     def test_list_identities(self, mock_run):
         mock_run.return_value = MagicMock(
             returncode=0,

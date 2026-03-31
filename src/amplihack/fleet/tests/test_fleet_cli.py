@@ -976,8 +976,9 @@ class TestFleetSetupCommand:
         )
 
         result = runner.invoke(fleet_cli, ["setup"], catch_exceptions=False)
-        assert result.exit_code == 0
+        assert result.exit_code == 1
         assert "azlin: found but --version failed" in result.output
+        assert "Missing prerequisites — see errors above." in result.output
         assert "<path>" in result.output
         assert fake_token not in result.output
         assert "Authorization: Bearer ***" in result.output

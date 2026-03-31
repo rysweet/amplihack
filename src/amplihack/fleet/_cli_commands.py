@@ -43,6 +43,9 @@ _existing_vms: tuple[str, ...] = ()
 _default_queue_path: Path = Path()
 _default_dashboard_path: Path = Path()
 _default_graph_path: Path = Path()
+FleetState: Any = None
+FleetObserver: Any = None
+AuthPropagator: Any = None
 
 
 def _adopt_all_sessions(_director: Any) -> None:
@@ -86,9 +89,14 @@ def register_commands(
     Stores references as module-level variables so tests can patch them
     at ``amplihack.fleet._cli_commands.<name>``.
     """
+    from amplihack.fleet.fleet_auth import AuthPropagator as _AuthPropagator
+    from amplihack.fleet.fleet_observer import FleetObserver as _FleetObserver
+    from amplihack.fleet.fleet_state import FleetState as _FleetState
+
     global _get_director, _get_azlin, _validate_vm_name_cli
     global _existing_vms, _default_queue_path, _default_dashboard_path
     global _default_graph_path, _adopt_all_sessions
+    global FleetState, FleetObserver, AuthPropagator
 
     _get_director = get_director
     _get_azlin = get_azlin
@@ -98,6 +106,9 @@ def register_commands(
     _default_dashboard_path = default_dashboard_path
     _default_graph_path = default_graph_path
     _adopt_all_sessions = adopt_all_sessions
+    FleetState = _FleetState
+    FleetObserver = _FleetObserver
+    AuthPropagator = _AuthPropagator
 
     # Register commands from sub-modules.
     # Sub-modules read module-level vars from _cli_commands at call time,
