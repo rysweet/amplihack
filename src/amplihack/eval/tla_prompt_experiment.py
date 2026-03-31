@@ -406,6 +406,7 @@ class HeuristicEvaluation:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "evaluation_kind": "heuristic_signal_v1",
             "metrics": self.metrics.to_dict(),
             "checks": dict(self.checks),
             "notes": list(self.notes),
@@ -438,6 +439,7 @@ class ExperimentExecutionReport:
             "failed_conditions": self.failed_conditions,
             "summary": self.summary.to_dict(),
             "replay_mode": self.replay_mode,
+            "evaluation_kind": "heuristic_signal_v1",
         }
         if self.tlc_validation is not None:
             payload["tlc_validation"] = self.tlc_validation
@@ -830,6 +832,10 @@ def _contains_any(text: str, phrases: tuple[str, ...]) -> bool:
     return any(phrase in text for phrase in phrases)
 
 
+def _contains_all_groups(text: str, *groups: tuple[str, ...]) -> bool:
+    return all(_contains_any(text, group) for group in groups)
+
+
 def evaluate_generated_artifact(text: str) -> HeuristicEvaluation:
     """Evaluate a generated artifact with explicit first-slice heuristics."""
 
@@ -841,59 +847,56 @@ def evaluate_generated_artifact(text: str) -> HeuristicEvaluation:
                 "original question",
                 "original_question",
                 "preserve the question",
-                "question preservation",
+                "preserve_original_question",
             ),
         ),
-        "fans_out_all_agents": _contains_any(
+        "fans_out_all_agents": _contains_all_groups(
             normalized,
-            (
-                "all active agents",
-                "all agents",
-                "fan out",
-                "fan-out",
-                "broadcast",
-                "participating agents",
-                "for agent in",
-            ),
+            ("fan out", "fan-out", "dispatch retrieval", "broadcast", "query all"),
+            ("active agents", "participating agents", "all active agents", "all agents"),
         ),
-        "deterministic_merge": _contains_any(
+        "deterministic_merge": _contains_all_groups(
             normalized,
             (
-                "deterministic",
-                "stable order",
-                "arrival order",
-                "sorted(",
-                "sort(",
+                "deterministic merge",
+                "merge results",
+                "merged_result",
+                "merge shard",
+                "merge outputs",
             ),
+            ("deterministic", "stable order", "canonical order", "sorted("),
         ),
         "explicit_failure_surface": _contains_any(
             normalized,
             (
-                "explicit failure",
                 "shard failure",
+                "shard_failure",
                 "failed_agents",
                 "failedagents",
-                "raise ",
-                "error",
-                "exception",
+                "no silent fallback",
+                "no local-only fallback",
+                "surface shard failures",
+                "explicit failure surface",
             ),
         ),
-        "focused_tests": _contains_any(
+        "focused_tests": _contains_all_groups(
             normalized,
+            ("test_", "pytest", "assert ", "unittest"),
             (
-                "test_",
-                "pytest",
-                "assert ",
-                "unittest",
-                "focused tests",
+                "retrieval",
+                "original question",
+                "failed_agents",
+                "deterministic merge",
+                "distributedretrievalcontract",
+                "shard",
             ),
         ),
         "spec_alignment": _contains_any(
             normalized,
             (
-                "tla",
+                "tla+",
                 "invariant",
-                "specification",
+                "formal specification",
                 "distributedretrievalcontract",
             ),
         ),
@@ -934,7 +937,8 @@ def evaluate_generated_artifact(text: str) -> HeuristicEvaluation:
         specification_coverage=round(coverage_numerator / 5.0, 4),
     )
     notes = [
-        "Heuristic first-slice analysis only; authoritative grading still belongs in amplihack-agent-eval."
+        "Heuristic signal only; this is not authoritative grading.",
+        "Authoritative grading still belongs in amplihack-agent-eval.",
     ]
     for check_name, passed in checks.items():
         if not passed:
@@ -994,11 +998,16 @@ def generate_condition_artifact(
     *,
     work_dir: Path,
     replay_dir: Path | None = None,
+    allow_live: bool = False,
 ) -> PromptGenerationResult:
     """Generate an artifact either from replay files or a live SDK-backed runtime."""
 
     if replay_dir is not None:
         return _load_replay_generation(replay_dir, condition)
+    if not allow_live:
+        raise ValueError(
+            "Live generation is disabled by default. Pass allow_live=True or CLI --allow-live."
+        )
     return _generate_live_artifact(
         condition,
         prompt_text,
@@ -1031,8 +1040,8 @@ def generate_experiment_markdown_report(
         "",
         "## Condition Table",
         "",
-        "| Condition | Model | SDK | Prompt | Status | Baseline | Invariant | Proof | Coverage |",
-        "|-----------|-------|-----|--------|--------|----------|-----------|-------|----------|",
+        "| Condition | Model | SDK | Prompt | Status | Heuristic Baseline | Heuristic Invariant | Heuristic Proof | Heuristic Coverage |",
+        "|-----------|-------|-----|--------|--------|--------------------|---------------------|-----------------|--------------------|",
     ]
     for result in results:
         metrics = result.metrics
@@ -1090,7 +1099,7 @@ def generate_experiment_markdown_report(
             "",
             "## Notes",
             "",
-            "- Heuristic metrics in this report are first-slice local analysis only.",
+            "- Scores in this report are heuristic local signals, not authoritative eval scores.",
             "- Authoritative grading and packaged reports still belong in `amplihack-agent-eval`.",
             "",
         ]
@@ -1105,6 +1114,7 @@ def run_tla_prompt_experiment(
     smoke: bool = False,
     manifest: ExperimentManifest | None = None,
     replay_dir: str | Path | None = None,
+    allow_live: bool = False,
     validate_spec: bool = False,
     tlc_bin: str | None = None,
     tla2tools_jar: str | None = None,
@@ -1112,8 +1122,12 @@ def run_tla_prompt_experiment(
     """Run the local first-slice experiment and emit per-condition artifacts."""
 
     resolved_manifest = manifest or load_default_experiment_manifest()
-    packets = materialize_condition_packets(output_dir, smoke=smoke, manifest=resolved_manifest)
     replay_root = Path(replay_dir) if replay_dir is not None else None
+    if replay_root is None and not allow_live:
+        raise ValueError(
+            "Live generation is disabled by default. Supply replay_dir or pass allow_live=True / --allow-live."
+        )
+    packets = materialize_condition_packets(output_dir, smoke=smoke, manifest=resolved_manifest)
     shared_tlc_result: SpecValidationResult | None = None
     if validate_spec:
         shared_tlc_result = validate_spec_assets(
@@ -1138,6 +1152,7 @@ def run_tla_prompt_experiment(
                 bundle.combined_text(),
                 work_dir=condition_dir,
                 replay_dir=replay_root,
+                allow_live=allow_live,
             )
             generated_file.write_text(generated.response_text)
             raw_response_file.write_text(generated.response_text)
@@ -1222,6 +1237,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Read pre-generated condition artifacts from this directory instead of invoking live model generation.",
     )
     parser.add_argument(
+        "--allow-live",
+        action="store_true",
+        help="Allow real SDK-backed model execution when --replay-dir is not supplied.",
+    )
+    parser.add_argument(
         "--validate-spec",
         action="store_true",
         help="Run TLC against the bundled scoped TLA+ spec.",
@@ -1249,6 +1269,7 @@ def main(argv: list[str] | None = None) -> int:
             smoke=args.smoke,
             manifest=manifest,
             replay_dir=args.replay_dir,
+            allow_live=args.allow_live,
             validate_spec=args.validate_spec,
             tlc_bin=args.tlc_bin,
             tla2tools_jar=str(args.tla2tools_jar) if args.tla2tools_jar else None,

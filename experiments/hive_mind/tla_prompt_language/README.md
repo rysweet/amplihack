@@ -43,7 +43,7 @@ PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --smoke --output /
 PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --smoke --materialize-dir /tmp/tla-packets
 PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --summarize-results /tmp/tla-packets
 PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --smoke --run-dir /tmp/tla-run --replay-dir /tmp/tla-packets
-PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --smoke --run-dir /tmp/tla-live-run
+PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --smoke --run-dir /tmp/tla-live-run --allow-live
 PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --validate-spec --tlc-bin /path/to/tlc
 PYTHONPATH=src python -m amplihack.eval.tla_prompt_experiment --validate-spec --tla2tools-jar /path/to/tla2tools.jar
 ```
@@ -65,7 +65,7 @@ aggregator so downstream runs have a stable place to record:
 The local first-slice runner can now execute a matrix in two modes:
 
 - **replay mode** via `--replay-dir`, which reads pre-generated artifacts per condition
-- **live mode** via `--run-dir` only, which invokes the configured SDK-backed runtime
+- **live mode** via `--run-dir --allow-live`, which invokes the configured SDK-backed runtime
 
 Each run writes:
 
@@ -82,5 +82,8 @@ It also supports explicit TLC validation for the scoped spec:
 
 The validation command fails explicitly if no TLC runner is configured.
 
-The current scores are heuristic first-slice checks for local experimentation only.
+The current scores are **heuristic signals**, not authoritative benchmark scores.
 Official harness grading and packaged reports still belong in `amplihack-agent-eval`.
+
+For stricter local validation, a real TLC-backed pytest smoke is available when
+`TLA_TLC_BIN` or `TLA2TOOLS_JAR` is configured in the environment.

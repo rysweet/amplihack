@@ -1,4 +1,5 @@
 import json
+import os
 
 import pytest
 
@@ -9,6 +10,7 @@ from amplihack.eval.tla_prompt_experiment import (
     build_tlc_command,
     default_manifest_path,
     evaluate_generated_artifact,
+    generate_condition_artifact,
     load_condition_result,
     load_default_experiment_manifest,
     materialize_condition_packets,
@@ -246,6 +248,18 @@ def test_validate_spec_assets_runs_configured_tlc_binary(tmp_path):
     assert "TLC OK" in result.stdout
 
 
+def test_validate_spec_assets_runs_real_tlc_when_available():
+    tlc_bin = os.environ.get("TLA_TLC_BIN")
+    tla2tools_jar = os.environ.get("TLA2TOOLS_JAR")
+    if not tlc_bin and not tla2tools_jar:
+        pytest.skip("requires a real TLC runtime")
+
+    manifest = load_default_experiment_manifest()
+    result = validate_spec_assets(manifest, tlc_bin=tlc_bin, tla2tools_jar=tla2tools_jar)
+
+    assert result.returncode == 0
+
+
 def test_evaluate_generated_artifact_scores_contract_signals():
     evaluation = evaluate_generated_artifact(
         """
@@ -260,6 +274,80 @@ def test_evaluate_generated_artifact_scores_contract_signals():
     assert evaluation.metrics.invariant_compliance == 1.0
     assert evaluation.metrics.proof_alignment == 1.0
     assert evaluation.checks["focused_tests"] is True
+
+
+def test_evaluate_generated_artifact_penalizes_off_topic_output():
+    evaluation = evaluate_generated_artifact(
+        """
+        class AuthService:
+            def login(self, username, password):
+                raise ValueError("invalid credentials")
+
+        def test_login_rejects_invalid_password():
+            assert True
+        """
+    )
+
+    assert evaluation.metrics.baseline_score == 0.0
+    assert evaluation.metrics.invariant_compliance == 0.0
+    assert evaluation.checks["focused_tests"] is False
+    assert evaluation.checks["explicit_failure_surface"] is False
+
+
+def test_generate_condition_artifact_requires_allow_live_without_replay(tmp_path):
+    manifest = load_default_experiment_manifest()
+    condition = manifest.expand_matrix(smoke=True)[0]
+    bundle = manifest.load_prompt_bundle(condition.prompt_variant_id)
+
+    with pytest.raises(ValueError, match="allow_live=True"):
+        generate_condition_artifact(condition, bundle.combined_text(), work_dir=tmp_path)
+
+
+def test_run_tla_prompt_experiment_requires_live_opt_in(tmp_path):
+    manifest = load_default_experiment_manifest()
+
+    with pytest.raises(ValueError, match="allow_live=True / --allow-live"):
+        run_tla_prompt_experiment(tmp_path / "run", smoke=True, manifest=manifest)
+
+
+def test_generate_condition_artifact_live_mode_uses_runtime_factory(tmp_path, monkeypatch):
+    manifest = load_default_experiment_manifest()
+    condition = manifest.expand_matrix(smoke=True)[0]
+    bundle = manifest.load_prompt_bundle(condition.prompt_variant_id)
+    captured: dict[str, object] = {}
+
+    class DummyRuntime:
+        def answer_question(self, prompt: str) -> str:
+            captured["prompt"] = prompt
+            return "generated retrieval contract artifact"
+
+        def close(self) -> None:
+            captured["closed"] = True
+
+    def fake_create_goal_agent_runtime(**kwargs: object) -> DummyRuntime:
+        captured["kwargs"] = kwargs
+        return DummyRuntime()
+
+    monkeypatch.setattr(
+        "amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime",
+        fake_create_goal_agent_runtime,
+    )
+
+    result = generate_condition_artifact(
+        condition,
+        bundle.combined_text(),
+        work_dir=tmp_path,
+        allow_live=True,
+    )
+
+    assert result.provider == "live"
+    assert result.response_text == "generated retrieval contract artifact"
+    assert captured["closed"] is True
+    kwargs = captured["kwargs"]
+    assert isinstance(kwargs, dict)
+    assert kwargs["sdk"] == condition.model_sdk
+    assert kwargs["model"] == condition.model_id
+    assert kwargs["enable_memory"] is False
 
 
 def test_run_tla_prompt_experiment_replay_mode_writes_reports(tmp_path):
@@ -291,6 +379,7 @@ def test_run_tla_prompt_experiment_replay_mode_writes_reports(tmp_path):
     assert report.replay_mode is True
     assert report.total_conditions == 6
     assert report.completed_conditions == 6
+    assert report.to_dict()["evaluation_kind"] == "heuristic_signal_v1"
     assert (output_dir / "experiment_report.json").exists()
     assert (output_dir / "experiment_report.md").exists()
     for packet in packets:
