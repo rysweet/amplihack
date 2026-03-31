@@ -117,7 +117,16 @@ it downloads the latest compatible published `amplihack-rs` release binary
 automatically.
 
 ```bash
-# Single-command fresh-machine flow
+# Single-command GitHub install for daily use
+uvx --from git+https://github.com/rysweet/amplihack \
+  amplihack-rust-trial \
+  install
+
+# The installer downloads the latest published Rust release, places it in
+# ~/.local/bin, updates your shell profile PATH, and runs `amplihack install`
+# automatically so the framework assets are ready immediately.
+
+# Fully isolated fresh-machine flow
 uvx --from git+https://github.com/rysweet/amplihack \
   amplihack-rust-trial \
   --trial-home ~/.amplihack-rust-e2e \
@@ -135,8 +144,8 @@ entrypoint and install/bootstrap flow are still not fully Rust-native.
 **Option 2: Global Install** (for daily use)
 
 ```bash
-# Install once
-uv tool install git+https://github.com/rysweet/amplihack
+# Install once directly from GitHub
+uvx --from git+https://github.com/rysweet/amplihack amplihack-rust-trial install
 
 # Use directly
 amplihack claude
@@ -144,17 +153,7 @@ amplihack amplifier
 amplihack copilot
 
 # Update later
-uv tool upgrade amplihack
-```
-
-**Alias for convenience**:
-
-```bash
-# Add to ~/.bashrc or ~/.zshrc
-alias amplihack='uvx --from git+https://github.com/rysweet/amplihack amplihack'
-
-# Reload shell
-source ~/.bashrc  # or source ~/.zshrc
+amplihack update
 ```
 
 ### First Session
