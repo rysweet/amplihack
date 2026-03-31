@@ -20,6 +20,13 @@ scenario:
     - "Python 3.10+ is available"
     - "AMPLIHACK_SHUTDOWN_IN_PROGRESS environment variable can be set"
 
+  agents:
+    - name: "cli-agent"
+      type: "system"
+      config:
+        shell: "bash"
+        timeout: 60000
+
   steps:
     # Step 1: Run the E2E test script
     - action: launch
