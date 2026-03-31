@@ -1,0 +1,94 @@
+# Smart Orchestrator Non-Repo-Root Resilience - Agentic Test Scenario
+# Issue #3915: Verify smart-orchestrator handles non-repo-root directories
+#
+# This outside-in test verifies that the orchestrator and copilot launcher
+# don't crash when the working directory is not a git repository root.
+
+scenario:
+  name: "Smart Orchestrator - Non-Repo-Root Resilience"
+  description: |
+    Verifies that orchestrator.py falls back gracefully when git remote
+    detection fails (non-repo directory), and that copilot.py hook wrappers
+    construct valid paths even when git rev-parse returns empty.
+    Regression test for Issue #3915.
+  type: cli
+  level: 1
+
+  tags: [orchestrator, resilience, regression, copilot]
+
+  prerequisites:
+    - "Python 3.10+ available"
+    - "uv available"
+
+  agents:
+    - name: "cli-agent"
+      type: "system"
+      config:
+        shell: "bash"
+        timeout: 60000
+
+  steps:
+    # Step 1: Verify orchestrator.py has fallback for git remote failure
+    - action: execute
+      params:
+        command: "grep -n 'AMPLIHACK_REPO_PATH\\|os.getcwd' .claude/skills/multitask/orchestrator.py"
+      description: "Verify orchestrator has repo path fallback"
+      timeout: 5000
+
+    - action: validate_output
+      params:
+        expected: "AMPLIHACK_REPO_PATH"
+      description: "Orchestrator must reference AMPLIHACK_REPO_PATH env var fallback"
+
+    # Step 2: Verify copilot.py uses pwd fallback for REPO_ROOT
+    - action: execute
+      params:
+        command: "grep -c 'REPO_ROOT=.*(pwd)' src/amplihack/launcher/copilot.py || true"
+      description: "Count REPO_ROOT pwd fallbacks in copilot.py"
+      timeout: 5000
+
+    - action: validate_output
+      params:
+        expected: "3"
+      description: "copilot.py must have 3 REPO_ROOT pwd fallback locations"
+
+    # Step 3: Verify smart-orchestrator passes repo path to orchestrator
+    - action: execute
+      params:
+        command: "grep 'AMPLIHACK_REPO_PATH' amplifier-bundle/recipes/smart-orchestrator.yaml"
+      description: "Verify recipe passes repo path env var"
+      timeout: 5000
+
+    - action: validate_output
+      params:
+        expected: "AMPLIHACK_REPO_PATH"
+      description: "Recipe must pass AMPLIHACK_REPO_PATH to orchestrator subprocess"
+
+    # Step 4: Run copilot workflow context tests
+    - action: execute
+      params:
+        command: "uv run pytest tests/test_copilot_workflow_context.py -v --tb=short -q"
+      description: "Run copilot workflow context tests"
+      timeout: 60000
+
+    - action: validate_output
+      params:
+        expected: "passed"
+      description: "All copilot tests must pass"
+
+    - action: validate_exit_code
+      params:
+        expected: "0"
+      description: "pytest must exit 0"
+
+  expected_outcome:
+    summary: |
+      The smart-orchestrator resilience fix ensures git operations fail
+      gracefully. orchestrator.py falls back to AMPLIHACK_REPO_PATH or cwd,
+      copilot.py hook wrappers fall back to pwd, and the recipe passes
+      repo path to subprocesses.
+    success_criteria:
+      - "orchestrator.py has AMPLIHACK_REPO_PATH fallback"
+      - "copilot.py has no empty REPO_ROOT fallbacks"
+      - "smart-orchestrator.yaml passes AMPLIHACK_REPO_PATH"
+      - "All copilot tests pass"
