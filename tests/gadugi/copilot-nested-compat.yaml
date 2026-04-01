@@ -31,7 +31,7 @@ steps:
     agent: "cli-agent"
     action: "execute_command"
     params:
-      command: "python3 tests/gadugi/copilot_nested_compat_smoke.py"
+      command: "bash -lc 'PYTHONPATH=src /home/azureuser/src/amplihack-pm/.venv/bin/python tests/gadugi/copilot_nested_compat_smoke.py'"
     timeout: 10000
 
   - name: "Verify prompt compatibility marker"
@@ -46,6 +46,13 @@ steps:
     action: "wait_for_output"
     params:
       target: "PERMISSION_COMPAT_OK"
+    timeout: 5000
+
+  - name: "Verify Claude flag compatibility marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "CLAUDE_FLAG_COMPAT_OK"
     timeout: 5000
 
   - name: "Verify overall smoke marker"
