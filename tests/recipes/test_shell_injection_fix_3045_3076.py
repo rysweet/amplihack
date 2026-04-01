@@ -53,6 +53,7 @@ AFFECTED_STEP_IDS = [
     "step-00-workflow-preparation",
     "step-03-create-issue",
     "step-04-setup-worktree",
+    "step-08c-hollow-success-guard",
     "step-15-commit-push",
     "step-16-create-draft-pr",
     "step-22b-final-status",

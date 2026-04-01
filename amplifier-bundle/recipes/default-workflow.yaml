@@ -763,11 +763,21 @@ steps:
       6. Clear error messages
       7. Appropriate logging
 
+      **Stub/Placeholder Replacement Rule (CRITICAL):**
+      When the task description contains words like "replace", "rewrite",
+      "implement", "real implementation", "remove stub", or "remove placeholder",
+      existing stubs, placeholders, TODO-marked code, NotImplementedError raises,
+      pass-only functions, and type-alias-only modules are **targets for
+      replacement, NOT patterns to preserve**. You MUST modify these files.
+      Treating existing stub code as correct architecture and producing zero
+      changes is a **hollow success** — the worst possible outcome.
+
       **Output:**
-      - Complete implementation code (all files)
+      - Complete implementation code (all files modified or created)
       - File headers: `# File: path/to/file.py`
       - Brief explanation of key decisions
       - Any deviations from design (with justification)
+      - List of files changed (MUST be non-empty when task requests changes)
     output: "implementation"
 
   - id: "step-08b-integration"
@@ -787,6 +797,50 @@ steps:
 
       Skip if no external integrations are required.
     output: "integration_code"
+
+  # --------------------------------------------------------------------------
+  # HOLLOW SUCCESS DETECTION: Catch 0-change implementations early
+  # --------------------------------------------------------------------------
+  - id: "step-08c-hollow-success-guard"
+    type: "bash"
+    command: |
+      set -euo pipefail
+      cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}"
+      echo "=== Step 8c: Hollow Success Guard ==="
+
+      # Count files changed (staged + unstaged + untracked)
+      CHANGED=$(git diff --name-only 2>/dev/null | wc -l)
+      STAGED=$(git diff --cached --name-only 2>/dev/null | wc -l)
+      UNTRACKED=$(git ls-files --others --exclude-standard 2>/dev/null | wc -l)
+      TOTAL=$((CHANGED + STAGED + UNTRACKED))
+
+      echo "Files changed: $CHANGED staged: $STAGED untracked: $UNTRACKED total: $TOTAL"
+
+      if [ "$TOTAL" -eq 0 ]; then
+        # Check if the task description contains action verbs that imply changes
+        TASK_DESC=$(cat <<EOFTASKDESC
+      {{task_description}}
+      EOFTASKDESC
+        )
+        # Detect replace/rewrite/implement/fix/add/create/remove keywords
+        if echo "$TASK_DESC" | grep -qiE '(replace|rewrite|implement|fix|add|create|remove|update|refactor|stub|placeholder|real implementation)'; then
+          echo "ERROR: Hollow success detected." >&2
+          echo "Task description contains action keywords but step-08 produced 0 file changes." >&2
+          echo "Task: $(echo "$TASK_DESC" | head -3)" >&2
+          echo "" >&2
+          echo "This means the implementation agent treated existing code as correct" >&2
+          echo "when it should have been replaced. Failing the step so the workflow" >&2
+          echo "does not silently succeed with no work done." >&2
+          exit 1
+        else
+          echo "INFO: No file changes, but task does not appear to require code modifications."
+        fi
+      else
+        echo "OK: $TOTAL file(s) affected — implementation produced changes."
+      fi
+
+      echo "=== Hollow Success Guard Complete ==="
+    output: "hollow_success_check"
 
   # --------------------------------------------------------------------------
   # CHECKPOINT: Stage implementation work to prevent loss if later steps fail
