@@ -32,7 +32,7 @@ steps:
     action: "execute_command"
     params:
       command: >-
-        PYTHONPATH=src uv run pytest tests/test_daily_code_metrics_workflow.py -q && gh aw compile daily-code-metrics --no-emit 2>&1 && echo DAILY_METRICS_COMPILE_OK && echo DAILY_METRICS_QA_OK
+        command -v uv >/dev/null && command -v gh >/dev/null && PYTHONPATH=src uv run pytest tests/test_daily_code_metrics_workflow.py -q && gh aw compile daily-code-metrics --no-emit 2>&1 && echo DAILY_METRICS_COMPILE_OK && echo DAILY_METRICS_QA_OK
     timeout: 90000
 
   - name: "Verify daily metrics QA marker"

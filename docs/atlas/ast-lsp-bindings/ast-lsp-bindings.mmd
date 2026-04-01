@@ -1,7 +1,7 @@
 graph LR
     F0["models<br/>refs: 59"]
     F1["constants<br/>refs: 55"]
-    F2["retrieval_constants<br/>refs: 38"]
+    F2["retrieval_constants<br/>refs: 39"]
     F3["models<br/>refs: 38"]
     F4["types<br/>refs: 36"]
     F5["models<br/>refs: 30"]
@@ -32,45 +32,5 @@ graph LR
     F22 --> F6
     F23 --> F7
     F24 --> F8
-
-    %% goal_seeking mixin refactor (PR #3894)
-    subgraph goal_seeking["agents/goal_seeking"]
-        LA["learning_agent<br/>thin facade"]
-        IDM["intent_detector<br/>IntentDetectorMixin"]
-        TRM["temporal_reasoning<br/>TemporalReasoningMixin"]
-        CSM["code_synthesis<br/>CodeSynthesisMixin"]
-        KUM["knowledge_utils<br/>KnowledgeUtilsMixin"]
-        RSM["retrieval_strategies<br/>RetrievalStrategiesMixin"]
-        LIM["learning_ingestion<br/>LearningIngestionMixin"]
-        ASM["answer_synthesizer<br/>AnswerSynthesizerMixin"]
-        PU["prompt_utils<br/>_get_llm_completion"]
-    end
-    LA --> IDM
-    LA --> TRM
-    LA --> CSM
-    LA --> KUM
-    LA --> RSM
-    LA --> LIM
-    LA --> ASM
-    IDM --> PU
-    TRM --> PU
-    CSM --> PU
-    KUM --> PU
-    RSM --> PU
-    LIM --> PU
-    ASM --> PU
-    PU -.->|"sys.modules resolve"| LA
-
-    %% TLA+ trace-to-test pipeline (PR #3959)
-    subgraph eval_tla["eval/tla"]
-        TTT["trace_to_test<br/>TLC DOT → pytest"]
-    end
-
-    %% recipe runner execution tests (PR #4141, fixes #3963/#3978)
-    subgraph recipe_runner_tests["tests/recipes"]
-        TRE["test_rust_runner_execution<br/>_atomic_write_json, _progress_file_path,<br/>_recipe_log_path, read_progress_file"]
-    end
-    TRE --> F22
-    TRE -.->|"imports"| F0
 
     click F0 "../ast-lsp-bindings/" "View AST bindings"

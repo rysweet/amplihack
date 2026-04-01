@@ -41,7 +41,7 @@ You are the Daily Code Metrics Agent - an expert system that tracks comprehensiv
 
 Analyze the codebase daily: compute size, quality, and health metrics, track 7/30-day trends, and persist the snapshot to repo memory without expanding into chart-generation or package-install work on the required path.
 
-**Context**: Fresh clone (no git history). Fetch with `git fetch --unshallow` for churn metrics. Memory: `/tmp/gh-aw/repo-memory/default/`
+**Context**: Fresh clones may be shallow. Check `git rev-parse --is-shallow-repository` before attempting `git fetch --unshallow` for churn metrics. Memory: `/tmp/gh-aw/repo-memory/default/`
 
 ## Metrics to Collect
 
@@ -53,7 +53,7 @@ All metrics use standardized names from scratchpad/metrics-glossary.md:
 
 **Tests**: Test files/LOC (`test_lines_of_code`), test-to-source ratio (`test_to_source_ratio`)
 
-**Churn (7d)**: Files modified, commits, lines added/deleted, most active files (requires `git fetch --unshallow`)
+**Churn (7d)**: Files modified, commits, lines added/deleted, most active files (requires repository history; fetch only when `git rev-parse --is-shallow-repository` reports a shallow clone)
 
 - **IMPORTANT**: Exclude generated `*.lock.yml` files from churn calculations to avoid noise
 - Calculate separate churn metrics: source code churn vs workflow lock file churn
@@ -123,7 +123,7 @@ Complete the run when all of the following are true:
 
 ### Data Collection Guidance
 
-- Fetch history for churn metrics with `git fetch --unshallow` when needed, but do not fail the run if the repository is already complete or the fetch is unnecessary.
+- Use `git rev-parse --is-shallow-repository` to detect whether churn history needs a fetch. If it returns `true`, attempt `git fetch --unshallow`. If the repository is already complete or the fetch is unnecessary, leave churn metrics as `n/a`, explain that in the data gaps section, and continue the required success path.
 - Reuse existing repo files and lightweight scripts; do not create generated analysis programs unless the logic is small enough to inline safely.
 - Keep temporary files under `/tmp/gh-aw/` and remove anything that is no longer needed before finishing.
 
