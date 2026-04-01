@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-04-01T21:00:00Z
+Category: <strong>Structural</strong> | Generated: 2026-04-01T23:20:00Z
 </div>
 
 ## Map
@@ -85,6 +85,13 @@ Category: <strong>Structural</strong> | Generated: 2026-04-01T21:00:00Z
             TTT["trace_to_test<br/>TLC DOT → pytest"]
         end
 
+        %% recipe runner execution tests (PR #4141, fixes #3963/#3978)
+        subgraph recipe_runner_tests["tests/recipes"]
+            TRE["test_rust_runner_execution<br/>_atomic_write_json, _progress_file_path,<br/>_recipe_log_path, read_progress_file"]
+        end
+        TRE --> F22
+        TRE -.->|"imports"| F0
+
         click F0 "../ast-lsp-bindings/" "View AST bindings"
     ```
 
@@ -155,5 +162,6 @@ Source: `layer2_ast_bindings.json` | [Mermaid source](ast-lsp-bindings.mmd)
 
 </div>
 
-<!-- Atlas staleness reviewed: PR #3974 changed .claude/tools/amplihack/hooks/*.py
-     (hook scripts, not application source). No symbol binding changes. -->
+<!-- Atlas staleness reviewed: PR #4141 adds tests/recipes/test_rust_runner_execution.py
+     and tests/unit/workflows/test_issue_classifier_workflow.py. Symbol bindings updated
+     to include recipe_runner_tests subgraph with imports from rust_runner_execution. -->
