@@ -95,11 +95,11 @@ nav:
           - Configuration: howto/configure-workflow-execution-guardrails.md
           - Tutorial: tutorials/workflow-execution-guardrails.md
           - Reference: reference/workflow-execution-guardrails.md
-      - Resumable Workstream Timeouts:
-          - Overview: features/resumable-workstream-timeouts.md
-          - Configuration: howto/configure-resumable-workstream-timeouts.md
-          - Tutorial: tutorials/resumable-workstream-timeouts.md
-          - Reference: reference/resumable-workstream-timeouts.md
+      - Workflow Publish Import Validation (planned):
+          - Overview (spec): features/workflow-publish-import-validation.md
+          - Configuration (spec): howto/configure-workflow-publish-import-validation.md
+          - Tutorial (design walkthrough): tutorials/workflow-publish-import-validation.md
+          - Reference (contract): reference/workflow-publish-import-validation.md
       - Pre-Commit Diagnostic: claude/agents/amplihack/specialized/pre-commit-diagnostic.md
       - CI Diagnostic: claude/agents/amplihack/specialized/ci-diagnostic-workflow.md
       - Fix Workflow: claude/agents/amplihack/specialized/fix-agent.md
