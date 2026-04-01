@@ -31,6 +31,7 @@ _STEP_TRANSITION_PREFIX = '{"type":"step_transition"'
 _LEGACY_STEP_TRANSITION_PREFIX = '{"transition":"step_'
 _HEARTBEAT_PREFIX = '{"type":"heartbeat"'
 _LEGACY_HEARTBEAT_PREFIX = "::heartbeat::"
+_WORKSTREAM_STATE_CACHE: dict[Path, tuple[int, int, dict[str, Any]]] = {}
 
 
 def emit_step_transition(step_name: str, status: str) -> None:
@@ -158,6 +159,115 @@ def _progress_file_path(recipe_name: str, pid: int | None = None) -> Path:
     return Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{pid}.json"
 
 
+def _workstream_progress_sidecar_path() -> Path | None:
+    raw = os.environ.get("AMPLIHACK_WORKSTREAM_PROGRESS_FILE")
+    if not raw:
+        return None
+    try:
+        path = Path(raw).resolve()
+    except OSError:
+        return None
+    return path
+
+
+def _workstream_state_file_path() -> Path | None:
+    raw = os.environ.get("AMPLIHACK_WORKSTREAM_STATE_FILE")
+    if not raw:
+        return None
+    try:
+        path = Path(raw).resolve()
+    except OSError:
+        return None
+    return path
+
+
+def _workstream_state_payload() -> dict[str, Any]:
+    path = _workstream_state_file_path()
+    if path is None:
+        return {}
+    try:
+        stat_result = path.stat()
+    except OSError:
+        _WORKSTREAM_STATE_CACHE.pop(path, None)
+        return {}
+    cached = _WORKSTREAM_STATE_CACHE.get(path)
+    signature = (stat_result.st_mtime_ns, stat_result.st_size)
+    if cached is not None and cached[:2] == signature:
+        return cached[2]
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        payload: dict[str, Any] = {}
+    else:
+        payload = data if isinstance(data, dict) else {}
+    _WORKSTREAM_STATE_CACHE[path] = (signature[0], signature[1], payload)
+    return payload
+
+
+def _write_json_atomic(path: Path, payload: dict[str, Any], *, log_label: str) -> None:
+    """Persist JSON via write-then-replace to avoid readers seeing partial data."""
+    tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(str(tmp_path), _OPEN_CREATE_FLAGS, _LOG_FILE_MODE)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(json.dumps(payload))
+            os.replace(tmp_path, path)
+        except Exception:
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
+            raise
+    except OSError as error:
+        logger.debug("Could not write %s %s: %s", log_label, path, error)
+
+
+def _write_workstream_progress_sidecar(
+    *,
+    recipe_name: str,
+    current_step: int,
+    step_name: str,
+    status: str,
+    pid: int,
+    updated_at: float,
+    _cached_sidecar_path: Path | None = None,
+) -> None:
+    sidecar_path = (
+        _cached_sidecar_path
+        if _cached_sidecar_path is not None
+        else _workstream_progress_sidecar_path()
+    )
+    if sidecar_path is None:
+        return
+
+    state_payload = _workstream_state_payload()
+    issue_raw = os.environ.get("AMPLIHACK_WORKSTREAM_ISSUE") or state_payload.get("issue")
+    try:
+        issue = int(issue_raw) if issue_raw is not None else None
+    except (TypeError, ValueError):
+        issue = None
+    payload: dict[str, Any] = {
+        "recipe_name": recipe_name,
+        "current_step": current_step,
+        "step_name": step_name,
+        "status": status,
+        "pid": pid,
+        "updated_at": updated_at,
+    }
+    if issue is not None:
+        payload["issue"] = issue
+    checkpoint_id = state_payload.get("checkpoint_id")
+    if checkpoint_id:
+        payload["checkpoint_id"] = checkpoint_id
+    worktree_path = os.environ.get("AMPLIHACK_WORKTREE_PATH") or state_payload.get("worktree_path")
+    if worktree_path:
+        payload["worktree_path"] = worktree_path
+
+    _write_json_atomic(sidecar_path, payload, log_label="workstream progress file")
+
+
 def _write_progress_file(
     recipe_name: str,
     *,
@@ -168,6 +278,7 @@ def _write_progress_file(
     status: str,
     pid: int | None = None,
     _cached_path: Path | None = None,
+    _cached_sidecar_path: Path | None = None,
 ) -> Path:
     """Write the current recipe progress to a deterministic JSON file.
 
@@ -187,12 +298,16 @@ def _write_progress_file(
         "pid": pid,
         "updated_at": time.time(),
     }
-    try:
-        fd = os.open(str(path), _OPEN_CREATE_FLAGS, _LOG_FILE_MODE)
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            fh.write(json.dumps(payload))
-    except OSError as error:
-        logger.debug("Could not write progress file %s: %s", path, error)
+    _write_json_atomic(path, payload, log_label="progress file")
+    _write_workstream_progress_sidecar(
+        recipe_name=recipe_name,
+        current_step=current_step,
+        step_name=step_name,
+        status=status,
+        pid=pid,
+        updated_at=payload["updated_at"],
+        _cached_sidecar_path=_cached_sidecar_path,
+    )
     return path
 
 
@@ -224,6 +339,9 @@ def _stream_process_output_with_progress(
     stderr_chunks: list[str] = []
     started_at = time.time()
     state: dict[str, Any] = {"current_step": 0, "step_name": ""}
+    writer_pid = os.getpid()
+    progress_path = _progress_file_path(recipe_name, writer_pid)
+    workstream_sidecar_path = _workstream_progress_sidecar_path()
 
     # Open the log file once; both drain threads share it under a lock.
     log_fh = None
@@ -273,6 +391,9 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="running",
+                    pid=writer_pid,
+                    _cached_path=progress_path,
+                    _cached_sidecar_path=workstream_sidecar_path,
                 )
                 emit_step_transition(state["step_name"], "start")
             elif stripped.startswith("✓"):
@@ -283,6 +404,9 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="completed",
+                    pid=writer_pid,
+                    _cached_path=progress_path,
+                    _cached_sidecar_path=workstream_sidecar_path,
                 )
                 emit_step_transition(state["step_name"], "done")
             elif stripped.startswith("✗"):
@@ -293,6 +417,9 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="failed",
+                    pid=writer_pid,
+                    _cached_path=progress_path,
+                    _cached_sidecar_path=workstream_sidecar_path,
                 )
                 emit_step_transition(state["step_name"], "fail")
             elif stripped.startswith("⊘"):
@@ -303,6 +430,9 @@ def _stream_process_output_with_progress(
                     step_name=state["step_name"],
                     elapsed_seconds=time.time() - started_at,
                     status="skipped",
+                    pid=writer_pid,
+                    _cached_path=progress_path,
+                    _cached_sidecar_path=workstream_sidecar_path,
                 )
                 emit_step_transition(state["step_name"], "skip")
 

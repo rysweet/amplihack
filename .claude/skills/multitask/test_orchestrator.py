@@ -58,13 +58,13 @@ class TestParallelOrchestrator:
         orch.setup()
         assert base.exists()
 
-    def test_setup_cleans_existing(self, tmp_path):
+    def test_setup_preserves_existing_files(self, tmp_path):
         base = tmp_path / "workstreams"
         base.mkdir()
         (base / "old_file.txt").write_text("old")
         orch = ParallelOrchestrator(repo_url="https://example.com/repo.git", tmp_base=str(base))
         orch.setup()
-        assert not (base / "old_file.txt").exists()
+        assert (base / "old_file.txt").exists()
 
     @patch("orchestrator.subprocess.run")
     def test_add_recipe_mode(self, mock_run, tmp_path):
@@ -98,7 +98,7 @@ class TestParallelOrchestrator:
         # Verify launcher.py contains recipe runner import
         launcher_content = (ws_dir / "launcher.py").read_text()
         assert "run_recipe_by_name" in launcher_content
-        assert "CLISubprocessAdapter" in launcher_content
+        assert "progress=True" in launcher_content
         assert "default-workflow" in launcher_content
 
         # Verify run.sh sets session tree vars
@@ -165,10 +165,68 @@ class TestParallelOrchestrator:
         launcher_content = (ws.work_dir / "launcher.py").read_text()
         assert "investigation-workflow" in launcher_content
 
+    @patch("orchestrator.subprocess.run")
+    def test_add_caches_default_branch_lookup(self, mock_run, tmp_path):
+        """Repeated workstreams against one repo should resolve the remote HEAD once."""
+        base = tmp_path / "workstreams"
+        base.mkdir()
+
+        def _fake_run(cmd, *args, **kwargs):
+            if cmd[:3] == ["git", "ls-remote", "--symref"]:
+                return MagicMock(returncode=0, stdout="ref: refs/heads/trunk\tHEAD\n")
+            if cmd[:2] == ["git", "clone"]:
+                Path(cmd[-1]).mkdir(parents=True, exist_ok=True)
+                return MagicMock(returncode=0, stdout="")
+            return MagicMock(returncode=0, stdout="")
+
+        mock_run.side_effect = _fake_run
+        orch = ParallelOrchestrator(
+            repo_url="https://example.com/repo.git",
+            tmp_base=str(base),
+            mode="recipe",
+        )
+
+        orch.add(issue=41, branch="feat/one", description="One", task="Task one")
+        orch.add(issue=42, branch="feat/two", description="Two", task="Task two")
+
+        ls_remote_calls = [
+            call.args[0]
+            for call in mock_run.call_args_list
+            if call.args and call.args[0][:3] == ["git", "ls-remote", "--symref"]
+        ]
+        clone_calls = [
+            call.args[0]
+            for call in mock_run.call_args_list
+            if call.args and call.args[0][:2] == ["git", "clone"]
+        ]
+        assert len(ls_remote_calls) == 1
+        assert len(clone_calls) == 2
+        assert all("--branch=trunk" in clone for clone in clone_calls)
+
     def test_get_status_empty(self):
         orch = ParallelOrchestrator(repo_url="https://example.com/repo.git")
         status = orch.get_status()
-        assert status == {"running": [], "completed": [], "failed": []}
+        assert status == {"running": set(), "completed": set(), "failed": set()}
+
+    def test_get_status_removes_completed_process_after_finalize(self):
+        orch = ParallelOrchestrator(repo_url="https://example.com/repo.git")
+        ws = Workstream(issue=7, branch="feat/test", description="test", task="task")
+        proc = MagicMock()
+        proc.poll.return_value = 0
+        proc.returncode = 0
+        orch.workstreams.append(ws)
+        orch._processes[ws.issue] = proc
+
+        with patch.object(
+            orch, "_finalize_workstream", wraps=orch._finalize_workstream
+        ) as finalize:
+            first = orch.get_status()
+            second = orch.get_status()
+
+        assert first == {"running": set(), "completed": {7}, "failed": set()}
+        assert second == {"running": set(), "completed": {7}, "failed": set()}
+        assert finalize.call_count == 1
+        assert ws.issue not in orch._processes
 
     def test_report_empty(self):
         orch = ParallelOrchestrator(
@@ -194,14 +252,35 @@ class TestRunFunction:
 
     @patch("orchestrator.subprocess.run")
     def test_run_no_repo_url(self, mock_run, tmp_path):
-        """Test that run() fails when no repo URL is available."""
+        """run() should fall back to cwd when no git remote is available."""
         mock_run.return_value = MagicMock(returncode=1, stdout="")
 
         config_file = tmp_path / "config.json"
         config_file.write_text(json.dumps([{"issue": 1, "branch": "feat/test", "task": "test"}]))
 
-        with pytest.raises(SystemExit):
-            run(str(config_file))
+        with (
+            patch("orchestrator.os.getcwd", return_value="/tmp/local-repo"),
+            patch("orchestrator.ParallelOrchestrator") as mock_orchestrator_cls,
+        ):
+            mock_orchestrator = mock_orchestrator_cls.return_value
+            mock_orchestrator.default_max_runtime = 7200
+            mock_orchestrator.default_timeout_policy = "interrupt-preserve"
+            mock_orchestrator._resolve_max_runtime.side_effect = (
+                lambda value: 7200 if value is None else int(value)
+            )
+            mock_orchestrator._resolve_timeout_policy.side_effect = (
+                lambda value: "interrupt-preserve" if value in (None, "") else value
+            )
+            mock_orchestrator.report.return_value = "report"
+
+            result = run(str(config_file))
+
+        assert result == "report"
+        mock_orchestrator_cls.assert_called_once_with(repo_url="/tmp/local-repo", mode="recipe")
+        mock_orchestrator.setup.assert_called_once()
+        mock_orchestrator.add.assert_called_once()
+        mock_orchestrator.launch_all.assert_called_once()
+        mock_orchestrator.monitor.assert_called_once()
 
 
 class TestLauncherGeneration:
@@ -317,7 +396,7 @@ class TestClassicLauncherNoMultilineArg:
         """The amplihack claude command must have all parts on one line."""
         content = self._create_classic_launcher(tmp_path)
         # Find the line with the amplihack claude command
-        cmd_lines = [l.strip() for l in content.splitlines() if "amplihack claude" in l]
+        cmd_lines = [line.strip() for line in content.splitlines() if "amplihack claude" in line]
         assert len(cmd_lines) == 1, f"Expected 1 amplihack claude line, got {len(cmd_lines)}"
         cmd = cmd_lines[0]
         assert "@TASK.md" in cmd, "Command must reference @TASK.md"

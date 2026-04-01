@@ -5,6 +5,7 @@ import json
 import sys
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -71,6 +72,50 @@ def test_cleanup_dry_run():
         assert test_file.exists(), "Dry run should not delete files"
 
         print("✓ Dry run doesn't delete files")
+
+
+def test_cleanup_preserves_resumable_workstream_even_when_pr_is_merged():
+    """Merged PR cleanup must skip preserved resumable workstreams."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+
+        ws_dir = tmp_path / "ws-999"
+        ws_dir.mkdir()
+        test_file = ws_dir / "test.txt"
+        test_file.write_text("preserve me")
+
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        (state_dir / "ws-999.json").write_text(
+            json.dumps(
+                {
+                    "issue": 999,
+                    "lifecycle_state": "timed_out_resumable",
+                    "cleanup_eligible": False,
+                }
+            )
+        )
+
+        config_file = tmp_path / "config.json"
+        config_file.write_text(
+            json.dumps(
+                [{"issue": 999, "branch": "test", "description": "Test", "task": "Test task"}]
+            )
+        )
+
+        orchestrator = ParallelOrchestrator(
+            repo_url="https://github.com/test/repo", tmp_base=str(tmp_path)
+        )
+
+        with patch("orchestrator.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=0,
+                stdout='[{"number": 1, "state": "MERGED", "merged": true}]',
+            )
+            orchestrator.cleanup_merged(str(config_file), dry_run=False)
+
+        assert ws_dir.exists(), "Resumable workstream directory must be preserved"
+        assert test_file.exists(), "Cleanup must not delete resumable workstream files"
 
 
 if __name__ == "__main__":

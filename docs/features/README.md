@@ -38,6 +38,14 @@ Intelligent guidance system that prevents common mistakes and ensures work compl
 
 Additional amplihack capabilities:
 
+- [Resumable Workstream Timeouts](resumable-workstream-timeouts.md) - Configurable timeout handling, durable workstream state, and checkpoint-boundary resume in multitask orchestrator runs
+  - [Configuration Guide](../howto/configure-resumable-workstream-timeouts.md) - Runtime budgets, preservation policy, and saved state inspection
+  - [Tutorial](../tutorials/resumable-workstream-timeouts.md) - Timeout, preservation, and resume behavior end to end
+  - [Reference](../reference/resumable-workstream-timeouts.md) - Lifecycle, state-file, heartbeat, and compatibility contract
+- [Workflow Publish Import Validation](workflow-publish-import-validation.md) - Scoped publish import validation before commit/push
+  - [Configuration Guide](../howto/configure-workflow-publish-import-validation.md) - Review the manifest, root-boundary, and `--files-from` contract
+  - [Tutorial](../tutorials/workflow-publish-import-validation.md) - Walk through the scope, optional dependencies, and scenario exclusions
+  - [Reference](../reference/workflow-publish-import-validation.md) - Manifest format, root-resolution rules, and `--files-from` semantics
 - [Workflow Execution Guardrails](workflow-execution-guardrails.md) - Canonical `execution_root`, exact `gh` login enforcement, and observer-only stall detection for recipe-driven workflows
   - [Configuration Guide](../howto/configure-workflow-execution-guardrails.md) - Supply `expected_gh_account`, inspect `execution_root`, and understand fail-closed behavior
   - [Tutorial](../tutorials/workflow-execution-guardrails.md) - Run a guarded workflow end to end
