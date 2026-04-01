@@ -513,6 +513,10 @@ steps:
       3. Plan implementation approach
       4. Document module specifications
       5. Identify risks and dependencies
+      6. For components with concurrent state or multiple actors modifying shared
+         state, express key safety invariants as formal predicates (e.g.,
+         "failedAgents ≠ {} ⟹ phase ≠ complete"). Formal constraints in the
+         design output produce better code generation than English descriptions.
 
       Consider the INVESTIGATION-FIRST PATTERN if the codebase is unfamiliar.
 
