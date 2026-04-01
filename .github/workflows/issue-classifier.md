@@ -6,6 +6,8 @@ on:
     types: [opened]
 permissions:
   contents: read
+  issues: read
+  pull-requests: read
 engine: claude
 safe-outputs:
   add-labels:
@@ -14,7 +16,7 @@ safe-outputs:
 tools:
   github:
     toolsets: [default]
-timeout-minutes: 5
+timeout-minutes: 10
 strict: true
 ---
 

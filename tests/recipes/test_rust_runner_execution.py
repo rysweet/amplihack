@@ -571,6 +571,90 @@ class TestProgressStreaming:
         assert last["step_name"] == "classify-and-decompose"
         assert last["status"] == "completed"
 
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.Popen")
+    def test_progress_mode_announces_and_writes_recipe_log(self, mock_popen, mock_find, tmp_path):
+        class FakePopen:
+            def __init__(self, stdout: str, stderr: str, returncode: int = 0):
+                self.stdout = io.StringIO(stdout)
+                self.stderr = io.StringIO(stderr)
+                self._returncode = returncode
+
+            def wait(self, timeout=None):
+                return self._returncode
+
+        mock_popen.return_value = FakePopen(
+            stdout=self._make_rust_output(),
+            stderr="▶ classify-and-decompose (agent)\n  [agent] still running\n",
+        )
+
+        streamed_stderr = io.StringIO()
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(tmp_path),
+            ),
+            patch.object(sys, "stderr", streamed_stderr),
+        ):
+            run_recipe_via_rust("smart-orchestrator", progress=True)
+
+        stderr_text = streamed_stderr.getvalue()
+        prefix = "[amplihack] recipe log: "
+        log_line = next(line for line in stderr_text.splitlines() if line.startswith(prefix))
+        log_path = Path(log_line[len(prefix) :])
+
+        assert log_path.exists(), "progress=True should create a persistent recipe log"
+        assert mock_popen.call_args.kwargs["env"]["AMPLIHACK_RECIPE_LOG"] == str(log_path)
+
+        log_text = log_path.read_text(encoding="utf-8")
+        assert "--- amplihack recipe log: smart-orchestrator" in log_text
+        assert "[stderr] ▶ classify-and-decompose (agent)" in log_text
+        assert "[stderr]   [agent] still running" in log_text
+        assert "[stdout]" in log_text
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("subprocess.Popen")
+    def test_progress_mode_reuses_cached_progress_path(self, mock_popen, mock_find, tmp_path):
+        class FakePopen:
+            def __init__(self, stdout: str, stderr: str, returncode: int = 0):
+                self.stdout = io.StringIO(stdout)
+                self.stderr = io.StringIO(stderr)
+                self._returncode = returncode
+
+            def wait(self, timeout=None):
+                return self._returncode
+
+        mock_popen.return_value = FakePopen(
+            stdout=self._make_rust_output(),
+            stderr="▶ classify-and-decompose (agent)\n✓ classify-and-decompose\n",
+        )
+
+        cached_paths: list[Path | None] = []
+        progress_path = tmp_path / "amplihack-progress-smart_orchestrator-123.json"
+
+        def capture_write(*args, **kwargs):
+            cached_paths.append(kwargs.get("_cached_path"))
+            return progress_path
+
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution._progress_file_path",
+                return_value=progress_path,
+            ) as mock_progress_path,
+            patch(
+                "amplihack.recipes.rust_runner_execution._write_progress_file",
+                side_effect=capture_write,
+            ),
+        ):
+            run_recipe_via_rust("smart-orchestrator", progress=True)
+
+        assert mock_progress_path.call_count == 1
+        assert cached_paths == [progress_path, progress_path]
+
 
 class TestProgressFiles:
     def test_write_progress_file_writes_expected_schema(self, tmp_path):
