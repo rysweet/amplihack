@@ -6,6 +6,7 @@ Catches missing type hint imports (Any, Optional, etc.).
 
 Usage:
     python scripts/pre-commit/check_imports.py file1.py file2.py
+    python scripts/pre-commit/check_imports.py --files-from scope.txt
 
 Exit Codes:
     0: All imports successful
@@ -175,13 +176,43 @@ except Exception as e:
         return file_path, False, f"Test error: {e!s}"
 
 
+def _parse_files_from(path: str) -> list[Path]:
+    """Read file paths from a newline-delimited scope file.
+
+    Blank lines and lines starting with '#' are ignored.
+    Only .py files are returned.
+    """
+    scope_path = Path(path)
+    if not scope_path.exists():
+        print(f"ERROR: --files-from path does not exist: {path}", file=sys.stderr)
+        sys.exit(1)
+
+    text = scope_path.read_text()
+    return [
+        Path(line)
+        for line in text.splitlines()
+        if line.strip() and not line.strip().startswith("#") and line.strip().endswith(".py")
+    ]
+
+
 def main():
     """Main entry point."""
-    if len(sys.argv) < 2:
+    # Support --files-from <scope-file> to read paths from a scope file
+    # produced by build_publish_validation_scope.py.
+    if "--files-from" in sys.argv:
+        idx = sys.argv.index("--files-from")
+        if idx + 1 >= len(sys.argv):
+            print("ERROR: --files-from requires a file argument", file=sys.stderr)
+            sys.exit(1)
+        scope_file = sys.argv[idx + 1]
+        # Remaining positional args (if any) are merged with scope file contents
+        remaining = [a for i, a in enumerate(sys.argv[1:], 1) if i != idx and i != idx + 1]
+        files = _parse_files_from(scope_file) + [Path(f) for f in remaining if f.endswith(".py")]
+    elif len(sys.argv) < 2:
         print("No files to check")
         sys.exit(0)
-
-    files = [Path(f) for f in sys.argv[1:] if f.endswith(".py")]
+    else:
+        files = [Path(f) for f in sys.argv[1:] if f.endswith(".py")]
 
     if not files:
         print("No Python files to check")
