@@ -40,7 +40,7 @@ def test_launcher_writes_context_before_launch(mock_project_root):
 
         # Verify context contents
         context = json.loads(context_file.read_text())
-        assert context["launcher_type"] == "copilot"
+        assert context["launcher"] == "copilot"
         assert "amplihack copilot test" in context["command"]
         assert context["environment"]["AMPLIHACK_LAUNCHER"] == "copilot"
 
@@ -81,7 +81,7 @@ def test_launcher_handles_no_args(mock_project_root):
         assert context_file.exists()
 
         context = json.loads(context_file.read_text())
-        assert context["launcher_type"] == "copilot"
+        assert context["launcher"] == "copilot"
         assert result == 0
 
 
