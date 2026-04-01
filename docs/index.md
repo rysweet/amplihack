@@ -246,6 +246,7 @@ Code-enforced workflow execution engine with declarative YAML recipes.
 - [How to Configure Workflow Execution Guardrails](howto/configure-workflow-execution-guardrails.md) - Supply `expected_gh_account`, inspect `execution_root`, and troubleshoot failures
 - [Tutorial: Workflow Execution Guardrails](tutorials/workflow-execution-guardrails.md) - End-to-end walkthrough of the guarded workflow contract
 - [Workflow Execution Guardrails Reference](reference/workflow-execution-guardrails.md) - Input fields, output schema, signals, and failure semantics
+- [Workflow Issue Extraction Reference](reference/workflow-issue-extraction.md) - Three-tier issue-number resolution (direct URL → PR closing-refs → `#N` verify) in step 03b
 - [Run a Quality Audit](howto/run-quality-audit.md) - Invoke quality-audit-cycle recipe, target subdirectories, filter categories
 - [CLI Reference](reference/cli.md) - Top-level `amplihack` command, `--version` flag, global environment variables
 - [Recipe CLI Reference](reference/recipe-cli-reference.md) - Complete command-line documentation

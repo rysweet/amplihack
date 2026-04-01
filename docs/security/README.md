@@ -61,6 +61,17 @@ Unified model validation preventing routing conflicts and injection attacks.
 - Length limits (200 chars max)
 - ASCII-only enforcement
 
+### Lock Session ID Sanitization (NEW in PR #4143)
+
+Prevent path-traversal and metadata-injection attacks via unsanitized
+`AMPLIHACK_SESSION_ID` values used in lock-file paths and metadata.
+
+**Documentation**:
+
+- [Lock Session ID Sanitization](./lock-session-id-sanitization.md) — sanitization rules, API reference, security invariants, and test coverage
+
+---
+
 ### Input Validation (NEW)
 
 Security-focused input validation for all external data.
