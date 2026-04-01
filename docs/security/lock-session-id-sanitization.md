@@ -41,7 +41,7 @@ every write path and validated on every read path.
 ```
 allowed characters: A–Z  a–z  0–9  _  -
 replacement:        any other byte → _
-post-processing:    strip leading/trailing _  (if empty after strip → "unknown")
+empty guard:        if session_id is falsy → "unknown"
 hard rejects (read path only):  values containing / or ..
 ```
 
@@ -51,13 +51,11 @@ unchanged.
 ```python
 import re
 
-def _sanitize_session_id(session_id: str) -> str:
+def _sanitize_session_id(session_id: str | None) -> str:
     """Return a filesystem-safe, injection-free version of session_id."""
     if not session_id:
         return "unknown"
-    sanitized = re.sub(r"[^A-Za-z0-9_\-]", "_", session_id)
-    sanitized = sanitized.strip("_") or "unknown"
-    return sanitized
+    return re.sub(r"[^A-Za-z0-9_\-]", "_", session_id)
 ```
 
 ---
@@ -74,7 +72,7 @@ safe_id = _sanitize_session_id(raw_session_id)
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `session_id` | `str` | Raw value from `AMPLIHACK_SESSION_ID` or lock-file metadata |
+| `session_id` | `str \| None` | Raw value from `AMPLIHACK_SESSION_ID` or lock-file metadata |
 
 **Returns**: `str` — sanitized identifier, guaranteed to contain only
 `[A-Za-z0-9_-]` and never be empty.
@@ -87,8 +85,8 @@ safe_id = _sanitize_session_id(raw_session_id)
 _sanitize_session_id("my-session_01")      # → "my-session_01"  (unchanged)
 _sanitize_session_id("../../etc/passwd")   # → "______etc_passwd"
 _sanitize_session_id("abc\nid=evil")       # → "abc_id_evil"
+_sanitize_session_id("   ")               # → "___"
 _sanitize_session_id("")                   # → "unknown"
-_sanitize_session_id("   ")               # → "unknown"
 _sanitize_session_id(None)                 # → "unknown"
 ```
 
@@ -210,7 +208,7 @@ pytest tests/test_lock_unlock.py \
 
 | Field | Value |
 |-------|-------|
-| Status | Implemented |
+| Status | Planned / PR #4143 |
 | Issues | #3960, #3983 |
 | PR | #4143 |
 | Files changed | `lock_tool.py` (×2), `stop.py`, `_copilot_stop_handler_impl.py` |

@@ -98,16 +98,17 @@ When neither a direct issue URL nor a PR URL is found, step `03b` scans
 `task_description` for bare `#N` patterns.  Each candidate is verified with:
 
 ```bash
-gh issue view <N> --repo <owner>/<repo> --json number,title --jq '.number'
+gh issue view <N> --json url --jq '.url // ""'
 ```
 
-The first candidate that `gh issue view` confirms as an open issue is used.
-Candidates that return a non-zero exit code (e.g. closed, non-existent, or
+The command returns the issue URL.  If the URL path contains `/issues/`, the
+candidate is accepted.  Candidates that return an empty URL (non-existent or
 wrong repo) are skipped.
 
 ```
 Input:  "Resume work on #3983 and #3960"
-gh verify 3983 → 200 OK  →  issue_number=3983
+gh verify 3983 → url: "https://github.com/rysweet/amplihack/issues/3983"
+  → contains /issues/ → issue_number=3983
 ```
 
 **Timeout**: 60 seconds per candidate.
@@ -123,18 +124,16 @@ After step `03b` completes, the workflow context contains:
 | Field | Type | Description |
 |-------|------|-------------|
 | `issue_number` | `int \| null` | Resolved GitHub issue number, or `null` if unresolvable |
-| `issue_title` | `str \| null` | Issue title fetched from GitHub, or `null` |
-| `branch_prefix` | `str` | Branch prefix inferred from context (`fix`, `feat`, `docs`, …) |
-| `extraction_tier` | `1 \| 2 \| 3 \| null` | Which tier produced the result (useful for debugging) |
+
+> **Planned enhancements**: `issue_title` (fetched from GitHub), `branch_prefix`
+> (inferred from context), and `extraction_tier` (which tier produced the result)
+> are targeted for a follow-up to improve debuggability.
 
 ### Example output (Tier 1)
 
 ```json
 {
-  "issue_number": 3960,
-  "issue_title": "lock_tool: path-traversal via unsanitized session_id",
-  "branch_prefix": "fix",
-  "extraction_tier": 1
+  "issue_number": 3960
 }
 ```
 
@@ -142,10 +141,7 @@ After step `03b` completes, the workflow context contains:
 
 ```json
 {
-  "issue_number": null,
-  "issue_title": null,
-  "branch_prefix": "feat",
-  "extraction_tier": null
+  "issue_number": null
 }
 ```
 
@@ -194,8 +190,6 @@ task_description: |
 ```
 Tier 1 match: 3960
 issue_number: 3960
-issue_title:  "lock_tool: path-traversal via unsanitized session_id"
-extraction_tier: 1
 ```
 
 ---
@@ -211,7 +205,6 @@ No issues/ URL found → Tier 2
 gh pr view 4143 --json closingIssuesReferences
 → [3960, 3983]
 issue_number: 3960
-extraction_tier: 2
 ```
 
 ---
@@ -224,9 +217,8 @@ task_description: "Continue work on #3983"
 
 ```
 No issues/ URL, no pull/ URL → Tier 3
-gh issue view 3983 → open
+gh issue view 3983 → url contains /issues/ → accepted
 issue_number: 3983
-extraction_tier: 3
 ```
 
 ---
@@ -238,8 +230,7 @@ task_description: "Refactor the config module for clarity"
 ```
 
 ```
-No URL, no #N → extraction_tier: null
-issue_number: null
+No URL, no #N → issue_number: null
 branch name falls back to slugified task_description
 ```
 
@@ -260,14 +251,17 @@ keyword to the PR description, or supply the issue URL directly in
 
 **Tier 3 skips a valid issue number**
 
-The issue may be closed.  Step `03b` only accepts issues that `gh issue view`
-returns successfully; closed issues return exit code 0 but the workflow checks
-the `state` field and skips `CLOSED` issues.
+The issue may not exist in the repository that `gh` is authenticated against,
+or the `gh issue view` call returned an empty URL.  Check that the issue exists
+and that `gh auth status` shows the correct account.  Closed issues that are
+still in the repository will also resolve successfully — verification is
+URL-based (`*/issues/*`), not state-based.
 
-**`extraction_tier` is `null` but a `#N` is present**
+**Tier 3 does not resolve a `#N` that is present**
 
 The `#N` pattern requires at least one digit.  Values like `#` alone or
-`#abc` are not matched.  Check that the issue exists in the resolved repository.
+`#abc` are not matched.  Check that the issue exists in the resolved repository
+and that `gh issue view <N>` returns a URL containing `/issues/`.
 
 ---
 
@@ -290,7 +284,7 @@ The `#N` pattern requires at least one digit.  Values like `#` alone or
 
 | Field | Value |
 |-------|-------|
-| Status | Implemented |
+| Status | Planned / PR #4143 |
 | Issues | #3960, #3983 |
 | PR | #4143 |
 | Recipe file | `amplifier-bundle/recipes/default-workflow.yaml` (step `03b`) |
