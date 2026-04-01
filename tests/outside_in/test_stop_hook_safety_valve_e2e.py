@@ -215,6 +215,38 @@ class TestSafetyValveE2EClaude:
             assert result["decision"] == "approve"
             assert not lock_file.exists(), "Corrupt counter should disable lock mode"
 
+    def test_session_mismatch_clears_owner_counter(self):
+        """Recovering another session's lock should remove that session's counter file."""
+        from stop import StopHook
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            lock_file = _create_lock_environment(tmp_path)
+            lock_file.write_text(
+                "locked_at: 2024-01-01T00:00:00\nsession_id: owner-session\n",
+                encoding="utf-8",
+            )
+            owner_counter = _create_counter_file(tmp_path, "owner-session", 7)
+
+            hook = StopHook()
+            hook.project_root = tmp_path
+            hook.lock_flag = lock_file
+            hook.lock_goal_file = tmp_path / ".claude" / "runtime" / "locks" / ".lock_goal"
+            hook.lock_message_file = tmp_path / ".claude" / "runtime" / "locks" / ".lock_message"
+            hook.continuation_prompt_file = (
+                tmp_path / ".claude" / "runtime" / "locks" / ".continuation_prompt"
+            )
+
+            with (
+                patch.object(hook, "_select_strategy", return_value=None),
+                patch.object(hook, "_get_current_session_id", return_value="new-session"),
+            ):
+                result = hook.process({})
+
+            assert result["decision"] == "approve"
+            assert not lock_file.exists(), "Recovered lock should be removed"
+            assert not owner_counter.exists(), "Owner counter should be removed during recovery"
+
 
 class TestSafetyValveE2ECopilot:
     """End-to-end tests simulating Copilot sessions with lock mode."""

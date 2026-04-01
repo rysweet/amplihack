@@ -56,7 +56,7 @@ def create_lock(message: str = None) -> int:
             return 0
 
         # Create lock file atomically
-        fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         try:
             metadata = [f"locked_at: {datetime.now().isoformat()}"]
             session_id = _get_session_id()

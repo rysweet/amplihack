@@ -52,11 +52,59 @@ _BL001_FIXED_CMD = textwrap.dedent("""\
     {task_description}
     EOFTASKDESC
     )
+    GH_TIMEOUT_SECONDS="${{AMPLIHACK_WORKFLOW_GH_TIMEOUT_SECONDS:-60}}"
+    gh_with_timeout() {{
+      GH_TIMEOUT_SECONDS="$GH_TIMEOUT_SECONDS" python3 - "$@" <<'PY'
+    import os
+    import subprocess
+    import sys
+
+    raw_timeout = os.environ.get("GH_TIMEOUT_SECONDS", "60")
+    try:
+        timeout = int(raw_timeout)
+    except ValueError:
+        print(
+            f"WARNING: invalid AMPLIHACK_WORKFLOW_GH_TIMEOUT_SECONDS={{raw_timeout!r}}; using 60",
+            file=sys.stderr,
+        )
+        timeout = 60
+
+    cmd = sys.argv[1:]
+    if not cmd:
+        raise SystemExit(0)
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"INFO: {{' '.join(cmd[:3])}} timed out after {{timeout}}s", file=sys.stderr)
+        raise SystemExit(0)
+    except OSError as exc:
+        print(f"INFO: could not run {{cmd[0]}}: {{exc}}", file=sys.stderr)
+        raise SystemExit(0)
+
+    if result.returncode != 0:
+        stderr = (result.stderr or "").strip()
+        if stderr:
+            print(
+                f"INFO: {{' '.join(cmd[:3])}} returned {{result.returncode}}: {{stderr}}",
+                file=sys.stderr,
+            )
+        raise SystemExit(0)
+
+    sys.stdout.write(result.stdout)
+    PY
+    }}
     EXTRACTED=$(printf '%s\\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
     if [ -z "$EXTRACTED" ]; then
       PR_NUMBER=$(printf '%s\\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'pull/[0-9]+' | grep -oE '[0-9]+' | head -1)
       if [ -n "$PR_NUMBER" ]; then
-        EXTRACTED=$(gh pr view "$PR_NUMBER" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // ""' 2>/dev/null || echo '')
+        EXTRACTED=$(gh_with_timeout gh pr view "$PR_NUMBER" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // ""')
       fi
     fi
     if [ -z "$EXTRACTED" ]; then
@@ -76,7 +124,7 @@ _BL001_FIXED_CMD = textwrap.dedent("""\
       if [ -n "$REF_CANDIDATES" ]; then
         while IFS= read -r candidate; do
           [ -n "$candidate" ] || continue
-          CANDIDATE_URL=$(gh issue view "$candidate" --json url --jq '.url // ""' 2>/dev/null || echo '')
+          CANDIDATE_URL=$(gh_with_timeout gh issue view "$candidate" --json url --jq '.url // ""')
           case "$CANDIDATE_URL" in
             */issues/*)
               EXTRACTED="$candidate"
