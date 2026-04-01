@@ -40,7 +40,7 @@ def test_launcher_writes_context_before_launch(mock_project_root):
 
         # Verify context contents
         context = json.loads(context_file.read_text())
-        assert context["launcher_type"] == "copilot"
+        assert context["launcher"] == "copilot"
         assert "amplihack copilot test" in context["command"]
         assert context["environment"]["AMPLIHACK_LAUNCHER"] == "copilot"
 
@@ -81,8 +81,37 @@ def test_launcher_handles_no_args(mock_project_root):
         assert context_file.exists()
 
         context = json.loads(context_file.read_text())
-        assert context["launcher_type"] == "copilot"
+        assert context["launcher"] == "copilot"
         assert result == 0
+
+
+def test_nested_recipe_prompt_uses_minimal_raw_copilot_path(mock_project_root, monkeypatch):
+    """Nested recipe prompts must bypass the full launcher bootstrap."""
+    monkeypatch.setenv("AMPLIHACK_SESSION_DEPTH", "1")
+    monkeypatch.setenv("AMPLIHACK_RECIPE_LOG", "/tmp/amplihack-recipe.log")
+
+    with (
+        patch("amplihack.launcher.copilot.ensure_latest_copilot") as mock_update,
+        patch("amplihack.launcher.copilot.check_copilot") as mock_check,
+        patch("amplihack.launcher.copilot.disable_github_mcp_server") as mock_disable_mcp,
+        patch("amplihack.launcher.copilot.subprocess.run") as mock_run,
+        patch("os.getcwd", return_value=str(mock_project_root)),
+    ):
+        mock_run.return_value.returncode = 0
+
+        result = launch_copilot(args=["-p", "hello", "--add-dir", "/repo"])
+
+        assert result == 0
+        cmd = mock_run.call_args[0][0]
+        assert cmd[0] == "copilot"
+        assert "--add-dir" not in cmd
+        assert "--no-custom-instructions" in cmd
+        assert "--allow-all-paths" in cmd
+        assert cmd[-2:] == ["-p", "hello"]
+        assert not (mock_project_root / ".claude" / "runtime" / "launcher_context.json").exists()
+        mock_update.assert_not_called()
+        mock_check.assert_not_called()
+        mock_disable_mcp.assert_not_called()
 
 
 def test_launcher_uses_autopilot_defaults(mock_project_root):

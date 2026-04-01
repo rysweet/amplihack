@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shlex
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -12,7 +13,7 @@ from pathlib import Path
 def _has_explicit_copilot_permission(token: str, *, category: str) -> bool:
     """Return True when a Copilot arg already sets explicit permissions."""
     if category == "tool":
-        prefixes = ("--allow-all-tools", "--allow-tool", "--deny-tool")
+        prefixes = ("--allow-all-tools", "--allow-tool", "--deny-tool", "--available-tools")
     elif category == "path":
         prefixes = ("--allow-all-paths", "--allow-path", "--deny-path")
     else:
@@ -90,6 +91,38 @@ def _normalize_copilot_cli_args(args: list[str]) -> list[str]:
     return prefix + normalized
 
 
+def _normalize_nested_recipe_copilot_cli_args(args: list[str]) -> list[str]:
+    """Normalize nested recipe Copilot args without loading repo-level context.
+
+    Recipe-managed prompt sessions only need filesystem permissions, not
+    ``--add-dir`` context loading. Stripping ``--add-dir`` prevents Copilot
+    from auto-discovering AGENTS/skills in the repository and re-invoking
+    workflow orchestration inside an already-running recipe. Nested recipe
+    prompts also disable custom instructions entirely so Copilot does not
+    re-load repo-local AGENTS/skills from the current working directory. The
+    base normalizer then injects the supported ``--allow-all-paths`` flag.
+    """
+
+    rewritten: list[str] = []
+    i = 0
+
+    while i < len(args):
+        token = args[i]
+        if token == "--add-dir":
+            i += 2
+            continue
+        if token.startswith("--add-dir="):
+            i += 1
+            continue
+        rewritten.append(token)
+        i += 1
+
+    normalized = _normalize_copilot_cli_args(rewritten)
+    if "--no-custom-instructions" in normalized:
+        return normalized
+    return ["--no-custom-instructions", *normalized]
+
+
 def _build_copilot_wrapper_source(real_binary: str) -> str:
     module_path = Path(__file__).resolve()
     return f"""#!/usr/bin/env python3
@@ -106,11 +139,46 @@ def normalize(args):
         raise RuntimeError(f"Could not load compatibility module from {{MODULE_PATH}}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module._normalize_copilot_cli_args(args)
+    return module._normalize_nested_recipe_copilot_cli_args(args)
 
 
 def main():
     cmd = [REAL_BINARY] + normalize(sys.argv[1:])
+    completed = subprocess.run(cmd, check=False)
+    raise SystemExit(completed.returncode)
+
+
+if __name__ == "__main__":
+    main()
+"""
+
+
+def _build_amplihack_copilot_wrapper_source(real_amplihack: str, real_copilot: str) -> str:
+    module_path = Path(__file__).resolve()
+    return f"""#!/usr/bin/env python3
+import importlib.util
+import subprocess
+import sys
+
+REAL_AMPLIHACK = {real_amplihack!r}
+REAL_COPILOT = {real_copilot!r}
+MODULE_PATH = {str(module_path)!r}
+
+def normalize(args):
+    spec = importlib.util.spec_from_file_location("amplihack_rust_runner_copilot", MODULE_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load compatibility module from {{MODULE_PATH}}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module._normalize_nested_recipe_copilot_cli_args(args)
+
+
+def main():
+    args = sys.argv[1:]
+    if args[:1] == ["copilot"]:
+        cmd = [REAL_COPILOT] + normalize(args[1:])
+    else:
+        cmd = [REAL_AMPLIHACK] + args
     completed = subprocess.run(cmd, check=False)
     raise SystemExit(completed.returncode)
 
@@ -130,9 +198,16 @@ def _create_copilot_compat_wrapper_dir(real_binary: str) -> str:
     """Create a Copilot wrapper for nested recipe-runner agent launches."""
     wrapper_dir = Path(tempfile.mkdtemp(prefix="amplihack-copilot-compat-"))
     wrapper_py_path = wrapper_dir / "copilot.py"
+    amplihack_wrapper_py_path = wrapper_dir / "amplihack.py"
+    real_amplihack = shutil.which("amplihack") or "amplihack"
 
     _write_wrapper_file(
         wrapper_py_path, _build_copilot_wrapper_source(real_binary), executable=True
+    )
+    _write_wrapper_file(
+        amplihack_wrapper_py_path,
+        _build_amplihack_copilot_wrapper_source(real_amplihack, real_binary),
+        executable=True,
     )
     _write_wrapper_file(
         wrapper_dir / "copilot.cmd",
@@ -141,6 +216,15 @@ def _create_copilot_compat_wrapper_dir(real_binary: str) -> str:
     _write_wrapper_file(
         wrapper_dir / "copilot",
         f'#!/usr/bin/env bash\nexec {shlex.quote(sys.executable)} {shlex.quote(str(wrapper_py_path))} "$@"\n',
+        executable=True,
+    )
+    _write_wrapper_file(
+        wrapper_dir / "amplihack.cmd",
+        f'@echo off\r\n"{sys.executable}" "%~dp0amplihack.py" %*\r\n',
+    )
+    _write_wrapper_file(
+        wrapper_dir / "amplihack",
+        f'#!/usr/bin/env bash\nexec {shlex.quote(sys.executable)} {shlex.quote(str(amplihack_wrapper_py_path))} "$@"\n',
         executable=True,
     )
     return str(wrapper_dir)

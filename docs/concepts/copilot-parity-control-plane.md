@@ -66,7 +66,7 @@ If `recipe-runner-rs` is missing or too old, the bridge raises an explicit error
 
 The compatibility layer merges prompt fragments because Copilot does not accept the same prompt flag mix that Claude-oriented call sites can emit.
 
-It injects `--allow-all-tools` and `--allow-all-paths` only when the caller did not already provide an explicit permission decision. This is the smallest safe normalization surface.
+It injects `--allow-all-tools` and `--allow-all-paths` only when the caller did not already provide an explicit tool or path policy, including restrictive `--available-tools` filters. This is the smallest safe normalization surface.
 
 ## Security Model
 

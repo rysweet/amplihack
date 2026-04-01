@@ -103,7 +103,7 @@ Use explicit flags when you need a narrower nested launch contract:
 copilot --allow-tool=Bash --deny-path=.git -p "Summarize the repository layout"
 ```
 
-The nested compatibility layer preserves these explicit flags. It does not replace them with `--allow-all-tools` or `--allow-all-paths`.
+The nested compatibility layer preserves these explicit flags, including restrictive `--available-tools` filters. It does not replace them with `--allow-all-tools` or `--allow-all-paths`.
 
 ## Variations
 

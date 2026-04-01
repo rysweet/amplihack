@@ -151,6 +151,7 @@ The normalizer treats these as explicit tool-permission flags:
 
 - `--allow-all-tools`
 - `--allow-tool`
+- `--available-tools`
 - `--deny-tool`
 
 It treats these as explicit path-permission flags:

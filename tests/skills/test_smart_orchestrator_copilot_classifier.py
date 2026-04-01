@@ -10,6 +10,8 @@ from pathlib import Path
 
 import yaml
 
+from amplihack.recipes.rust_runner_copilot import _normalize_copilot_cli_args
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RECIPE_PATH = REPO_ROOT / "amplifier-bundle" / "recipes" / "smart-orchestrator.yaml"
 
@@ -82,9 +84,15 @@ def test_classify_and_decompose_uses_copilot_safe_prompt_mode(tmp_path: Path) ->
     assert "--disallowed-tools" not in args
     assert "--append-system-prompt" not in args
 
+    assert "--no-custom-instructions" in args
     assert "--allow-all-paths" in args
     available_tools_index = args.index("--available-tools")
     assert args[available_tools_index + 1] == ""
+
+    normalized_args = _normalize_copilot_cli_args(args)
+    assert "--allow-all-tools" not in normalized_args
+    normalized_available_tools_index = normalized_args.index("--available-tools")
+    assert normalized_args[normalized_available_tools_index + 1] == ""
 
     prompt_index = args.index("-p")
     merged_prompt = args[prompt_index + 1]

@@ -15,6 +15,75 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ..context.adaptive.detector import LauncherDetector
+from ..recipes.rust_runner_copilot import _normalize_nested_recipe_copilot_cli_args
+
+
+def _has_prompt_arg(args: list[str] | None) -> bool:
+    """Return True when Copilot args contain a non-interactive prompt."""
+    if not args:
+        return False
+
+    i = 0
+    while i < len(args):
+        token = args[i]
+        if token in {"-p", "--prompt"}:
+            return i + 1 < len(args)
+        if token.startswith("--prompt="):
+            return True
+        i += 1
+    return False
+
+
+def _has_add_dir_arg(args: list[str] | None) -> bool:
+    """Return True when Copilot args explicitly carry repo access via --add-dir."""
+    if not args:
+        return False
+
+    i = 0
+    while i < len(args):
+        token = args[i]
+        if token == "--add-dir":
+            return i + 1 < len(args)
+        if token.startswith("--add-dir="):
+            return True
+        i += 1
+    return False
+
+
+def _is_nested_recipe_prompt_invocation(args: list[str] | None) -> bool:
+    """Return True for recipe-managed nested Copilot prompt launches.
+
+    These sessions already run inside an orchestrated recipe. They must not
+    re-load repo-level workflow context via ``--add-dir`` or the full
+    ``amplihack copilot`` bootstrap path, which can trigger recursive /dev
+    orchestration.
+    """
+
+    if not _has_prompt_arg(args) or not _has_add_dir_arg(args):
+        return False
+
+    return bool(os.environ.get("AMPLIHACK_RECIPE_LOG"))
+
+
+def _launch_nested_recipe_copilot_prompt(args: list[str] | None = None) -> int:
+    """Launch a minimal raw Copilot prompt session for nested recipe agents."""
+    normalized_args = _normalize_nested_recipe_copilot_cli_args(args or [])
+    cmd = ["copilot"]
+
+    copilot_model = os.getenv("COPILOT_MODEL", "")
+    if copilot_model and not any(
+        token == "--model" or token.startswith("--model=") for token in normalized_args
+    ):
+        cmd.extend(["--model", copilot_model])
+
+    cmd.extend(normalized_args)
+
+    env = os.environ.copy()
+    env["AMPLIHACK_AGENT_BINARY"] = "copilot"
+    env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
+
+    result = subprocess.run(cmd, check=False, env=env)
+    return result.returncode
 
 
 def get_gh_auth_account() -> str | None:
@@ -1261,6 +1330,13 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     Returns:
         Exit code
     """
+    # Recipe-managed child prompts already have the exact task prompt and only
+    # need raw Copilot CLI execution with filesystem permissions. Re-entering
+    # the full amplihack Copilot bootstrap path here can leak repo-level
+    # workflow context and recursively re-invoke /dev (issue #4077).
+    if _is_nested_recipe_prompt_invocation(args):
+        return _launch_nested_recipe_copilot_prompt(args)
+
     # Auto-update to latest version before launching (fixes #3097).
     # This ensures new flags like --autopilot are always supported.
     try:

@@ -10,7 +10,11 @@ from amplihack.recipes.rust_runner import (
     _normalize_copilot_cli_args,
     _redact_command_for_log,
 )
-from amplihack.recipes.rust_runner_copilot import _build_copilot_wrapper_source
+from amplihack.recipes.rust_runner_copilot import (
+    _build_amplihack_copilot_wrapper_source,
+    _build_copilot_wrapper_source,
+    _normalize_nested_recipe_copilot_cli_args,
+)
 
 
 class TestRedactCommandForLog:
@@ -154,12 +158,66 @@ class TestNormalizeCopilotCliArgs:
         assert "--deny-path=/secret" in normalized
         assert normalized[-2:] == ["-p", "check repo"]
 
+    def test_treats_available_tools_as_explicit_tool_policy(self):
+        args = [
+            "--available-tools",
+            "",
+            "--allow-all-paths",
+            "--prompt=check repo",
+        ]
+
+        normalized = _normalize_copilot_cli_args(args)
+
+        assert "--allow-all-tools" not in normalized
+        assert normalized[:3] == ["--available-tools", "", "--allow-all-paths"]
+        assert normalized[-2:] == ["-p", "check repo"]
+
+    def test_nested_recipe_mode_drops_add_dir_and_uses_allow_all_paths(self):
+        args = [
+            "--add-dir",
+            "/repo",
+            "-p",
+            "check repo",
+        ]
+
+        normalized = _normalize_nested_recipe_copilot_cli_args(args)
+
+        assert "--add-dir" not in normalized
+        assert "--no-custom-instructions" in normalized
+        assert "--allow-all-tools" in normalized
+        assert "--allow-all-paths" in normalized
+        assert normalized[-2:] == ["-p", "check repo"]
+
+    def test_nested_recipe_mode_drops_equals_style_add_dir(self):
+        args = [
+            "--add-dir=/repo",
+            "--prompt=check repo",
+        ]
+
+        normalized = _normalize_nested_recipe_copilot_cli_args(args)
+
+        assert "--add-dir=/repo" not in normalized
+        assert "--no-custom-instructions" in normalized
+        assert "--allow-all-paths" in normalized
+        assert normalized[-2:] == ["-p", "check repo"]
+
 
 class TestCopilotCompatWrapperSource:
     """Tests for generated nested Copilot wrapper source."""
 
-    def test_wrapper_source_reuses_module_normalizer(self):
+    def test_wrapper_source_uses_nested_recipe_normalizer(self):
         source = _build_copilot_wrapper_source("/usr/bin/copilot")
 
-        assert "module._normalize_copilot_cli_args(args)" in source
+        assert "module._normalize_nested_recipe_copilot_cli_args(args)" in source
+        assert "/usr/bin/copilot" in source
+
+    def test_amplihack_wrapper_source_intercepts_copilot_subcommand(self):
+        source = _build_amplihack_copilot_wrapper_source(
+            "/usr/bin/amplihack",
+            "/usr/bin/copilot",
+        )
+
+        assert 'if args[:1] == ["copilot"]' in source
+        assert "module._normalize_nested_recipe_copilot_cli_args(args)" in source
+        assert "/usr/bin/amplihack" in source
         assert "/usr/bin/copilot" in source

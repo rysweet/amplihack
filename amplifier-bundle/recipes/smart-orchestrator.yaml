@@ -131,6 +131,7 @@ steps:
       if [ "$AGENT_BIN" = "copilot" ]; then
         COPILOT_PROMPT=$(printf '%s\n\n%s' "$CLASSIFIER_SYSTEM_PROMPT" "$PROMPT")
         env -u CLAUDECODE "$AGENT_BIN" \
+          --no-custom-instructions \
           --allow-all-paths \
           --available-tools '' \
           -p "$COPILOT_PROMPT" 2>/dev/null
