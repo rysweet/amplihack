@@ -114,7 +114,7 @@ def get_copilot_continuation(
 def disable_lock_files(project_root: Path, log_fn: Callable[..., object] = logger.info) -> None:
     """Remove lock and goal files to auto-disable lock mode."""
     lock_dir = project_root / ".claude" / "runtime" / "locks"
-    for name in (".lock_active", ".lock_goal"):
+    for name in (".lock_active", ".lock_goal", ".lock_message", ".continuation_prompt"):
         file_path = lock_dir / name
         try:
             file_path.unlink(missing_ok=True)

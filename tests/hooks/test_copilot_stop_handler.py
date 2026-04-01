@@ -48,3 +48,16 @@ def test_log_decision_sanitizes_fields_and_secures_permissions(tmp_path):
     log_file_mode = stat.S_IMODE(os.stat(log_file).st_mode)
     assert log_dir_mode == 0o700, f"Expected 0700, got {oct(log_dir_mode)}"
     assert log_file_mode == 0o600, f"Expected 0600, got {oct(log_file_mode)}"
+
+
+def test_disable_lock_files_removes_related_lock_state(tmp_path):
+    """Auto-disable should clear prompt/message companions, not just the lock bit."""
+    lock_dir = tmp_path / ".claude" / "runtime" / "locks"
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    for name in (".lock_active", ".lock_goal", ".lock_message", ".continuation_prompt"):
+        (lock_dir / name).write_text("x", encoding="utf-8")
+
+    top_level.disable_lock_files(tmp_path)
+
+    for name in (".lock_active", ".lock_goal", ".lock_message", ".continuation_prompt"):
+        assert not (lock_dir / name).exists()

@@ -31,7 +31,14 @@ def _get_project_root() -> Path:
 _PROJECT_ROOT = _get_project_root()
 LOCK_DIR = _PROJECT_ROOT / ".claude" / "runtime" / "locks"
 LOCK_FILE = LOCK_DIR / ".lock_active"
+GOAL_FILE = LOCK_DIR / ".lock_goal"
+CONTINUATION_PROMPT_FILE = LOCK_DIR / ".continuation_prompt"
 MESSAGE_FILE = LOCK_DIR / ".lock_message"
+
+
+def _get_session_id() -> str | None:
+    """Return the active session ID when the launcher exposes one."""
+    return os.environ.get("AMPLIHACK_SESSION_ID") or os.environ.get("CLAUDE_SESSION_ID")
 
 
 def create_lock(message: str = None) -> int:
@@ -50,8 +57,14 @@ def create_lock(message: str = None) -> int:
 
         # Create lock file atomically
         fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        os.write(fd, f"locked_at: {datetime.now().isoformat()}\n".encode())
-        os.close(fd)
+        try:
+            metadata = [f"locked_at: {datetime.now().isoformat()}"]
+            session_id = _get_session_id()
+            if session_id:
+                metadata.append(f"session_id: {session_id}")
+            os.write(fd, ("\n".join(metadata) + "\n").encode())
+        finally:
+            os.close(fd)
 
         print("✓ Lock enabled - Claude will continue working until unlocked")
         print("  Use /amplihack:unlock to disable continuous work mode")
@@ -80,9 +93,8 @@ def remove_lock() -> int:
         else:
             print("ℹ Lock was not enabled")
 
-        # Clean up message file if exists
-        if MESSAGE_FILE.exists():
-            MESSAGE_FILE.unlink()
+        for path in (GOAL_FILE, CONTINUATION_PROMPT_FILE, MESSAGE_FILE):
+            path.unlink(missing_ok=True)
 
         return 0
 

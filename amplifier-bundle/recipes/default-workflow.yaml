@@ -380,22 +380,68 @@ steps:
       # FIX (issue #3022): Use safe heredoc capture instead of echo {{variable}} to
       # prevent shell metacharacter injection from issue body content.  Use head -1
       # instead of tail -1 so the canonical URL (first match) wins — not a trailing
-      # noise number captured via 2>&1 in step-03a.
+      # noise number captured via 2>&1 in step-03a.  Also scan task_description
+      # and PR metadata so mixed PR URLs, issue URLs, and #NNNN references resolve
+      # to the actual issue number instead of a related PR number.
       # EOFISSUECREATION delimiter is intentionally long/specific to prevent accidental
       # collision with issue body text that might contain common delimiters like "EOF".
       ISSUE_CREATION=$(cat <<'EOFISSUECREATION'
       {{issue_creation}}
       EOFISSUECREATION
       )
-      EXTRACTED=$(printf '%s' "$ISSUE_CREATION" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+      TASK_DESC=$(cat <<'EOFTASKDESC'
+      {{task_description}}
+      EOFTASKDESC
+      )
+      EXTRACTED=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+
       if [ -z "$EXTRACTED" ]; then
+        PR_NUMBER=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'pull/[0-9]+' | grep -oE '[0-9]+' | head -1)
+        if [ -n "$PR_NUMBER" ]; then
+          echo "INFO: step-03b resolving linked issue from PR #$PR_NUMBER" >&2
+          EXTRACTED=$(timeout 60 gh pr view "$PR_NUMBER" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // ""' 2>/dev/null || echo '')
+        fi
+      fi
+
+      if [ -z "$EXTRACTED" ]; then
+        REF_CANDIDATES=$(TASK_DESC="$TASK_DESC" python3 - <<'PY'
+      import os
+      import re
+
+      task = os.environ.get("TASK_DESC", "")
+      seen = set()
+      for match in re.finditer(r'(?<![A-Za-z0-9_/-])#([0-9]+)\b', task):
+          candidate = match.group(1)
+          if candidate not in seen:
+              print(candidate)
+              seen.add(candidate)
+      PY
+        )
+        if [ -n "$REF_CANDIDATES" ]; then
+          echo "INFO: step-03b resolving issue number from task_description references" >&2
+          while IFS= read -r candidate; do
+            [ -n "$candidate" ] || continue
+            CANDIDATE_URL=$(timeout 60 gh issue view "$candidate" --json url --jq '.url // ""' 2>/dev/null || echo '')
+            case "$CANDIDATE_URL" in
+              */issues/*)
+                EXTRACTED="$candidate"
+                break
+                ;;
+            esac
+          done < <(printf '%s\n' "$REF_CANDIDATES")
+        fi
+      fi
+
+      case "$EXTRACTED" in
+        ''|*[!0-9]*)
         echo "ERROR: step-03b failed to extract issue number from issue_creation output." >&2
         echo "Raw issue_creation output was:" >&2
         printf '%s\n' "$ISSUE_CREATION" >&2
         echo "This means step-03a (create-issue) likely failed or returned unexpected output." >&2
         echo "Downstream steps (commit, PR) will fail without a valid issue number." >&2
         exit 1
-      fi
+        ;;
+      esac
       printf '%s' "$EXTRACTED"
     output: "issue_number"
 

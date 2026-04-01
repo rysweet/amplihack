@@ -48,29 +48,84 @@ _BL001_FIXED_CMD = textwrap.dedent("""\
     {issue_creation}
     EOFISSUECREATION
     )
-    EXTRACTED=$(printf '%s' "$ISSUE_CREATION" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+    TASK_DESC=$(cat <<'EOFTASKDESC'
+    {task_description}
+    EOFTASKDESC
+    )
+    EXTRACTED=$(printf '%s\\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
     if [ -z "$EXTRACTED" ]; then
-      echo "ERROR: step-03b failed to extract issue number from issue_creation output." >&2
-      exit 1
+      PR_NUMBER=$(printf '%s\\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'pull/[0-9]+' | grep -oE '[0-9]+' | head -1)
+      if [ -n "$PR_NUMBER" ]; then
+        EXTRACTED=$(gh pr view "$PR_NUMBER" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // ""' 2>/dev/null || echo '')
+      fi
     fi
+    if [ -z "$EXTRACTED" ]; then
+      REF_CANDIDATES=$(TASK_DESC="$TASK_DESC" python3 - <<'PY'
+    import os
+    import re
+
+    task = os.environ.get("TASK_DESC", "")
+    seen = set()
+    for match in re.finditer(r'(?<![A-Za-z0-9_/-])#([0-9]+)\\b', task):
+        candidate = match.group(1)
+        if candidate not in seen:
+            print(candidate)
+            seen.add(candidate)
+    PY
+    )
+      if [ -n "$REF_CANDIDATES" ]; then
+        while IFS= read -r candidate; do
+          [ -n "$candidate" ] || continue
+          CANDIDATE_URL=$(gh issue view "$candidate" --json url --jq '.url // ""' 2>/dev/null || echo '')
+          case "$CANDIDATE_URL" in
+            */issues/*)
+              EXTRACTED="$candidate"
+              break
+              ;;
+          esac
+        done < <(printf '%s\\n' "$REF_CANDIDATES")
+      fi
+    fi
+    case "$EXTRACTED" in
+      ''|*[!0-9]*)
+        echo "ERROR: step-03b failed to extract issue number from issue_creation output." >&2
+        exit 1
+        ;;
+    esac
     printf '%s' "$EXTRACTED"
 """)
 
 
-def _run_extraction_fixed(issue_creation: str) -> str:
+def _run_extraction_fixed(
+    issue_creation: str, task_description: str = "", gh_mock: str | None = None
+) -> str:
     """Run the FIXED BL-001 extraction bash snippet and return trimmed stdout.
 
     Raises RuntimeError if the script exits non-zero (e.g. empty extraction).
     """
-    script = _BL001_FIXED_CMD.format(issue_creation=issue_creation)
-    result = subprocess.run(
-        ["bash", "-c", script],
-        capture_output=True,
-        text=True,
+    script = _BL001_FIXED_CMD.format(
+        issue_creation=issue_creation,
+        task_description=task_description,
     )
-    if result.returncode != 0:
-        raise RuntimeError(f"Extraction failed (rc={result.returncode}): {result.stderr.strip()}")
-    return result.stdout.strip()
+    with tempfile.TemporaryDirectory(prefix="wf_step03b_") as tmpdir:
+        env = os.environ.copy()
+        if gh_mock is not None:
+            gh_path = Path(tmpdir) / "gh"
+            gh_path.write_text(gh_mock)
+            gh_path.chmod(0o755)
+            env["PATH"] = f"{tmpdir}:{env['PATH']}"
+
+        result = subprocess.run(
+            ["bash", "-c", script],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Extraction failed (rc={result.returncode}): {result.stderr.strip()}"
+            )
+        return result.stdout.strip()
 
 
 def _run_extraction_buggy(issue_creation: str) -> str:
@@ -318,6 +373,61 @@ class TestExtractIssueNumber(unittest.TestCase):
         issue_creation = "https://github.com/org/repo/issues/999999\n"
         result = _run_extraction_fixed(issue_creation)
         self.assertEqual(result, "999999")
+
+    def test_extract_issue_number_uses_issue_url_from_task_description(self):
+        """A task_description issue URL must beat a PR URL in issue_creation output."""
+        issue_creation = "https://github.com/org/repo/pull/3975\n"
+        task_description = (
+            "Continue https://github.com/org/repo/issues/3969 after "
+            "https://github.com/org/repo/pull/3975 landed"
+        )
+        result = _run_extraction_fixed(issue_creation, task_description=task_description)
+        self.assertEqual(result, "3969")
+
+    def test_extract_issue_number_resolves_closing_issue_from_pr_url(self):
+        """When step-03 returns a PR URL, step-03b should resolve its linked issue."""
+        issue_creation = "https://github.com/org/repo/pull/3975\n"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "pr" && "$2" == "view" && "$3" == "3975" ]]; then
+              echo "3969"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(
+            issue_creation,
+            task_description="Resume PR #3975 follow-up work",
+            gh_mock=gh_mock,
+        )
+        self.assertEqual(result, "3969")
+
+    def test_extract_issue_number_skips_pr_reference_and_selects_issue_reference(self):
+        """Mixed #NNNN references should choose the real issue, not the related PR."""
+        issue_creation = "https://github.com/org/repo/pull/3975\n"
+        task_description = "Resume #3975 recovery follow-up for issue #3969"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "pr" && "$2" == "view" ]]; then
+              echo ""
+              exit 0
+            fi
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3975" ]]; then
+              echo "https://github.com/org/repo/pull/3975"
+              exit 0
+            fi
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3969" ]]; then
+              echo "https://github.com/org/repo/issues/3969"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(
+            issue_creation,
+            task_description=task_description,
+            gh_mock=gh_mock,
+        )
+        self.assertEqual(result, "3969")
 
 
 # ===========================================================================

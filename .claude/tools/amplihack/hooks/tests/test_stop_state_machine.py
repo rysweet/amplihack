@@ -11,9 +11,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -211,7 +209,7 @@ class TestContinuationPrompt:
         assert result == prompt
         # Should have logged a warning about length
         hook.log.assert_any_call(
-            f"Custom prompt is long (700 chars) - consider shortening for clarity",
+            "Custom prompt is long (700 chars) - consider shortening for clarity",
             "WARNING",
         )
 
@@ -337,6 +335,14 @@ class TestGetCurrentSessionId:
         with patch.dict(os.environ, {"CLAUDE_SESSION_ID": "env-session-123"}):
             assert hook._get_current_session_id() == "env-session-123"
 
+    def test_amplihack_env_var_precedes_claude_env_var(self, tmp_path):
+        hook = _make_stop_hook(tmp_path)
+        with patch.dict(
+            os.environ,
+            {"AMPLIHACK_SESSION_ID": "amplihack-session", "CLAUDE_SESSION_ID": "claude-session"},
+        ):
+            assert hook._get_current_session_id() == "amplihack-session"
+
     def test_falls_back_to_logs_dir(self, tmp_path):
         hook = _make_stop_hook(tmp_path)
         # Create session directories
@@ -356,7 +362,6 @@ class TestGetCurrentSessionId:
         hook = _make_stop_hook(tmp_path)
         with patch.dict(os.environ, {}, clear=True):
             # Remove the env var but make logs dir listing fail
-            original_iterdir = hook.log_dir.iterdir
             with patch("pathlib.Path.iterdir", side_effect=OSError("denied")):
                 result = hook._get_current_session_id()
                 # Should fall through to timestamp generation
@@ -382,7 +387,7 @@ class TestIncrementLockCounter:
         result = hook._increment_lock_counter("test-session")
         assert result == 2
 
-    def test_malformed_counter_resets(self, tmp_path):
+    def test_malformed_counter_forces_safety_valve_recovery(self, tmp_path):
         hook = _make_stop_hook(tmp_path)
         counter_file = (
             tmp_path / ".claude" / "runtime" / "locks" / "test-session" / "lock_invocations.txt"
@@ -390,13 +395,43 @@ class TestIncrementLockCounter:
         counter_file.parent.mkdir(parents=True, exist_ok=True)
         counter_file.write_text("not_a_number")
         result = hook._increment_lock_counter("test-session")
-        assert result == 1  # Should reset to 0 then increment
+        assert result == 50
+        assert counter_file.read_text() == "50"
 
-    def test_counter_write_failure_returns_zero(self, tmp_path):
+    def test_counter_write_failure_forces_safety_valve_recovery(self, tmp_path):
         hook = _make_stop_hook(tmp_path)
         with patch("builtins.open", side_effect=OSError("disk full")):
             result = hook._increment_lock_counter("test-session")
-            assert result == 0
+            assert result == 50
+
+    def test_stale_lock_auto_unlocks(self, tmp_path):
+        hook = _make_stop_hook(tmp_path)
+        hook.lock_flag.parent.mkdir(parents=True, exist_ok=True)
+        hook.lock_flag.write_text("locked_at: 2000-01-01T00:00:00\n", encoding="utf-8")
+        hook._select_strategy = MagicMock(return_value=None)
+        hook._get_current_session_id = MagicMock(return_value="current-session")
+
+        with patch("shutdown_context.is_shutdown_in_progress", return_value=False):
+            result = hook.process({})
+
+        assert result["decision"] == "approve"
+        assert not hook.lock_flag.exists()
+
+    def test_foreign_session_lock_auto_unlocks(self, tmp_path):
+        hook = _make_stop_hook(tmp_path)
+        hook.lock_flag.parent.mkdir(parents=True, exist_ok=True)
+        hook.lock_flag.write_text(
+            "locked_at: 2099-01-01T00:00:00\nsession_id: previous-session\n",
+            encoding="utf-8",
+        )
+        hook._select_strategy = MagicMock(return_value=None)
+        hook._get_current_session_id = MagicMock(return_value="current-session")
+
+        with patch("shutdown_context.is_shutdown_in_progress", return_value=False):
+            result = hook.process({})
+
+        assert result["decision"] == "approve"
+        assert not hook.lock_flag.exists()
 
 
 # ============================================================================

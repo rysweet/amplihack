@@ -1,5 +1,6 @@
 """Tests for lock/unlock commands and stop hook."""
 
+import importlib.util
 import os
 import tempfile
 from pathlib import Path
@@ -66,6 +67,46 @@ class TestLockUnlockCommands:
         # Should not raise
         lock_flag.unlink(missing_ok=True)
         assert not lock_flag.exists()
+
+    def test_lock_tool_writes_session_metadata(self, tmp_path, monkeypatch):
+        """Actual lock tool should stamp session ownership into the lock metadata."""
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+        monkeypatch.setenv("AMPLIHACK_SESSION_ID", "session-123")
+
+        spec = importlib.util.spec_from_file_location(
+            "lock_tool_under_test",
+            Path(__file__).parent.parent / ".claude" / "tools" / "amplihack" / "lock_tool.py",
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+
+        assert module.create_lock() == 0
+        lock_file = tmp_path / ".claude" / "runtime" / "locks" / ".lock_active"
+        content = lock_file.read_text(encoding="utf-8")
+        assert "locked_at:" in content
+        assert "session_id: session-123" in content
+
+    def test_lock_tool_unlock_cleans_related_lock_state(self, tmp_path, monkeypatch):
+        """Unlock should clear prompt/message/goal files along with the lock flag."""
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+
+        spec = importlib.util.spec_from_file_location(
+            "lock_tool_under_test_cleanup",
+            Path(__file__).parent.parent / ".claude" / "tools" / "amplihack" / "lock_tool.py",
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+
+        lock_dir = tmp_path / ".claude" / "runtime" / "locks"
+        lock_dir.mkdir(parents=True, exist_ok=True)
+        for name in (".lock_active", ".lock_goal", ".lock_message", ".continuation_prompt"):
+            (lock_dir / name).write_text("x", encoding="utf-8")
+
+        assert module.remove_lock() == 0
+        for name in (".lock_active", ".lock_goal", ".lock_message", ".continuation_prompt"):
+            assert not (lock_dir / name).exists()
 
 
 class TestStopHook:
