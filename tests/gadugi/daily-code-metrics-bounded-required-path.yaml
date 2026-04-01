@@ -32,7 +32,7 @@ steps:
     action: "execute_command"
     params:
       command: >-
-        bash -lc '/home/azureuser/src/amplihack-pm/.venv/bin/python -m pytest tests/test_daily_code_metrics_workflow.py -q && gh aw compile daily-code-metrics --no-emit 2>&1 && echo DAILY_METRICS_COMPILE_OK && echo DAILY_METRICS_QA_OK'
+        PYTHONPATH=src uv run pytest tests/test_daily_code_metrics_workflow.py -q && gh aw compile daily-code-metrics --no-emit 2>&1 && echo DAILY_METRICS_COMPILE_OK && echo DAILY_METRICS_QA_OK
     timeout: 90000
 
   - name: "Verify daily metrics QA marker"
