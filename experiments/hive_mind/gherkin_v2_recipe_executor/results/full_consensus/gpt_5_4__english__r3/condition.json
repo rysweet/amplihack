@@ -1,0 +1,13 @@
+{
+  "condition_id": "gpt_5_4__english__r3",
+  "experiment_id": "gherkin-v2-recipe-executor",
+  "target_id": "recipe_step_executor",
+  "model_id": "gpt-5.4",
+  "model_sdk": "copilot",
+  "prompt_variant_id": "english",
+  "repeat_index": 3,
+  "prompt_path": "/home/azureuser/src/tla/experiments/hive_mind/gherkin_v2_recipe_executor/prompts/recipe_step_executor_english.md",
+  "spec_path": "/home/azureuser/src/tla/experiments/hive_mind/gherkin_v2_recipe_executor/specs/recipe_step_executor.feature",
+  "materialized_prompt_file": "experiments/hive_mind/gherkin_v2_recipe_executor/results/full_consensus/gpt_5_4__english__r3/prompt.md",
+  "materialized_spec_file": "experiments/hive_mind/gherkin_v2_recipe_executor/results/full_consensus/gpt_5_4__english__r3/recipe_step_executor.feature"
+}

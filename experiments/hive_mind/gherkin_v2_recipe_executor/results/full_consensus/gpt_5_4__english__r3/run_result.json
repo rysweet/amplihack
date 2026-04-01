@@ -1,0 +1,32 @@
+{
+  "condition": {
+    "condition_id": "gpt_5_4__english__r3",
+    "experiment_id": "gherkin-v2-recipe-executor",
+    "target_id": "recipe_step_executor",
+    "model_id": "gpt-5.4",
+    "model_sdk": "copilot",
+    "prompt_variant_id": "english",
+    "repeat_index": 3,
+    "prompt_path": "/home/azureuser/src/tla/experiments/hive_mind/gherkin_v2_recipe_executor/prompts/recipe_step_executor_english.md",
+    "spec_path": "/home/azureuser/src/tla/experiments/hive_mind/gherkin_v2_recipe_executor/specs/recipe_step_executor.feature"
+  },
+  "status": "failed",
+  "metrics": {
+    "baseline_score": null,
+    "invariant_compliance": null,
+    "proof_alignment": null,
+    "local_protocol_alignment": null,
+    "progress_signal": null,
+    "specification_coverage": null
+  },
+  "notes": [
+    "Live generation failed for gpt_5_4__english__r3: Agent execution timed out.",
+    "runtime_error=timeout"
+  ],
+  "raw_response_path": "experiments/hive_mind/gherkin_v2_recipe_executor/results/full_consensus/gpt_5_4__english__r3/raw_response.txt",
+  "generation_metrics": {
+    "generation_wall_clock_seconds": 306.2,
+    "generation_input_tokens": 0,
+    "generation_output_tokens": 0
+  }
+}

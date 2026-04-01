@@ -1,0 +1,104 @@
+{
+  "evaluation_kind": "agent_consensus_v1",
+  "metrics": {
+    "baseline_score": 0.5,
+    "invariant_compliance": 0.5,
+    "proof_alignment": 0.5,
+    "local_protocol_alignment": 0.0,
+    "progress_signal": 0.5,
+    "specification_coverage": 0.5
+  },
+  "consensus_scores": {
+    "conditional_execution": 0.5,
+    "dependency_handling": 0.5,
+    "retry_logic": 0.5,
+    "timeout_semantics": 0.0,
+    "output_capture": 0.5,
+    "sub_recipe_delegation": 0.5
+  },
+  "agent_votes": [
+    {
+      "agent_id": "evaluator_0",
+      "persona": "You are a senior software engineer reviewing code for correctness.",
+      "features": {
+        "conditional_execution": false,
+        "dependency_handling": false,
+        "retry_logic": false,
+        "timeout_semantics": false,
+        "output_capture": false,
+        "sub_recipe_delegation": false
+      },
+      "reasoning": {
+        "conditional_execution": "The Generated Code section contains no actual Python implementation \u2014 only agent meta-commentary describing files that supposedly exist and claiming 50 tests pass. Without the actual source code present, it is impossible to verify that condition evaluation happens after dependency checks, that missing context keys evaluate to false rather than raising an exception, that skipped steps produce no context entry, or any other sub-requirement. Absence of code = unverifiable = fail.",
+        "dependency_handling": "No actual code was produced in the Generated Code section. The text claims topological execution and dependency propagation are implemented, but none of the behavioral rules (failed/timed_out blocks downstream, skipped does NOT propagate, diamond graphs work) can be verified without inspectable source code.",
+        "retry_logic": "The Generated Code section contains only a prose summary. The claim that exponential backoff (1s, 2s, 4s) and max_retries default of 0 are implemented cannot be confirmed. Critical edge cases \u2014 timed-out steps not being retried, only final output persisting in context \u2014 are unverifiable without code.",
+        "timeout_semantics": "No implementation code is present. The summary mentions 'thread-based timeout' and a '_TIMED_OUT sentinel', but whether timeout takes precedence over retry, whether timed_out correctly propagates as failure to dependents, and whether execution time is actually bounded cannot be evaluated from a description alone.",
+        "output_capture": "The Generated Code section does not include code. Template resolution behavior ({{key}} replaced from context, missing keys stay literal), and storage of stdout in context[step_id] after the final retry attempt, cannot be confirmed without inspectable source.",
+        "sub_recipe_delegation": "No code is present to review. The description mentions child context inheritance and optional propagation, but the critical rules \u2014 propagate_outputs: false means child outputs are invisible to siblings, a failed child marks the parent failed without retrying, sub-recipe failures are non-transient \u2014 cannot be verified against any actual implementation."
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 60.98
+    },
+    {
+      "agent_id": "evaluator_1",
+      "persona": "You are a QA engineer testing whether an implementation meets its specification.",
+      "features": {
+        "conditional_execution": false,
+        "dependency_handling": false,
+        "retry_logic": false,
+        "timeout_semantics": false,
+        "output_capture": false,
+        "sub_recipe_delegation": false
+      },
+      "reasoning": {
+        "conditional_execution": "",
+        "dependency_handling": "",
+        "retry_logic": "",
+        "timeout_semantics": "",
+        "output_capture": "",
+        "sub_recipe_delegation": ""
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 17.93,
+      "parse_failed": true,
+      "error": "CLI response JSON parse failed: Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "agent_id": "evaluator_2",
+      "persona": "You are a systems architect evaluating whether behavioral contracts are satisfied.",
+      "features": {
+        "conditional_execution": true,
+        "dependency_handling": true,
+        "retry_logic": true,
+        "timeout_semantics": false,
+        "output_capture": true,
+        "sub_recipe_delegation": true
+      },
+      "reasoning": {
+        "conditional_execution": "All four sub-requirements are satisfied. Steps with no condition field always execute (condition check is gated on non-empty string). False conditions produce status 'skipped'. Missing context keys cause _eval_condition to catch the NameError/Exception and return False, so the step is skipped rather than raising. Skipped steps return early before any context[step_id] assignment, so they produce no output in the context.",
+        "dependency_handling": "All four sub-requirements are satisfied. blockedBy is parsed as comma-separated IDs via _parse_deps. Dependency gate checks for 'failed' or 'timed_out' status and sets failure_reason='dependency_failed'. Only 'failed' and 'timed_out' statuses block \u2014 'skipped' is not in that set, so a step blocked by a skipped dep proceeds normally. The topological sort (Kahn's algorithm) correctly handles diamond graphs (A\u2192B, A\u2192C, B+C\u2192D) by tracking in-degrees and processing nodes only when all predecessors are done.",
+        "retry_logic": "All four sub-requirements are satisfied. Default max_retries resolves to 0 via _int_or. Delays are computed as 2**(attempt-1) for attempts 1,2,3 yielding 1s, 2s, 4s. Exhausting all retries sets status='failed'. A successful attempt sets status='completed' and returns immediately. Context is updated with context[step_id]=output only on success, so only the final successful output persists; intermediate failure attempts write nothing to the context.",
+        "timeout_semantics": "Three of four sub-requirements pass: the thread-based timeout wrapper correctly terminates via thread.join(timeout) and raises TimeoutError; timed_out status is checked alongside 'failed' in the dependency gate; the TimeoutError branch returns immediately without retrying. However, the fourth sub-requirement \u2014 'Default timeout_seconds is 60' \u2014 is not satisfied. The implementation uses _float_or(step_def.get('timeout_seconds'), None), defaulting to None, which bypasses the timeout path entirely for steps that omit timeout_seconds. Steps without an explicit timeout run without any time bound rather than being bounded to 60 seconds.",
+        "output_capture": "All three sub-requirements are satisfied. On successful completion, context[step_id]=output stores the captured output. _resolve_templates applies re.sub with {{key}} pattern and substitutes context[key] when present. The _replacer function returns match.group(0) (the literal {{key}} string) when the key is absent from the context, satisfying the requirement that references to missing keys remain as literal strings.",
+        "sub_recipe_delegation": "All five sub-requirements are satisfied. Child context is initialised as dict(parent_context), inheriting all parent entries. Without propagate_outputs, child_context modifications are not reflected back to parent_context. With propagate_outputs=True, keys present in child_context but absent from the original parent_context are merged up. Any failed or timed_out child step sets result.status='failed' for the parent step. Sub-recipe execution is handled in a dedicated _run_sub_recipe branch that sets result.attempt_count=1 and returns immediately \u2014 it is not routed through _run_with_retries \u2014 so sub-recipe failures are never retried regardless of the parent's max_retries value."
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 84.83
+    }
+  ],
+  "total_input_tokens": 0,
+  "total_output_tokens": 0,
+  "total_wall_clock_seconds": 84.83,
+  "notes": [
+    "EXCLUDED evaluator_1: CLI response JSON parse failed: Expecting value: line 1 column 1 (char 0)",
+    "Split vote on conditional_execution: 1/2 PASS",
+    "Split vote on dependency_handling: 1/2 PASS",
+    "Split vote on retry_logic: 1/2 PASS",
+    "Split vote on output_capture: 1/2 PASS",
+    "Split vote on sub_recipe_delegation: 1/2 PASS",
+    "Consensus based on 2/3 valid votes"
+  ]
+}

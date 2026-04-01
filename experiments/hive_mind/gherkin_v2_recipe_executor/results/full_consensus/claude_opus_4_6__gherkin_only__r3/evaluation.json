@@ -1,0 +1,97 @@
+{
+  "evaluation_kind": "agent_consensus_v1",
+  "metrics": {
+    "baseline_score": 1.0,
+    "invariant_compliance": 0.3333,
+    "proof_alignment": 1.0,
+    "local_protocol_alignment": 0.6667,
+    "progress_signal": 1.0,
+    "specification_coverage": 1.0
+  },
+  "consensus_scores": {
+    "conditional_execution": 1.0,
+    "dependency_handling": 0.3333,
+    "retry_logic": 1.0,
+    "timeout_semantics": 0.6667,
+    "output_capture": 1.0,
+    "sub_recipe_delegation": 1.0
+  },
+  "agent_votes": [
+    {
+      "agent_id": "evaluator_0",
+      "persona": "You are a senior software engineer reviewing code for correctness.",
+      "features": {
+        "conditional_execution": true,
+        "dependency_handling": false,
+        "retry_logic": true,
+        "timeout_semantics": true,
+        "output_capture": true,
+        "sub_recipe_delegation": true
+      },
+      "reasoning": {
+        "conditional_execution": "All four sub-requirements are correctly implemented. An absent or empty condition resolves via `_evaluate_condition` returning True (early-return on empty string), so unconditional steps always execute. A false condition marks the step 'skipped' and returns before any context mutation, so no output is written. A NameError on a missing key is caught by the broad `except` clause and returns False, causing a skip rather than an error.",
+        "dependency_handling": "The acceptance criteria's Cross-Feature Interaction Rule states 'Dependency evaluation happens BEFORE condition evaluation (a step blocked by a failed dep fails regardless of its condition).' In `_execute_step`, the generated code evaluates the condition FIRST (step 1) and only evaluates dependencies SECOND (step 2). If a step has a condition that evaluates to False AND one of its declared dependencies has status 'failed' or 'timed_out', the code will return early with status 'skipped' instead of 'failed' with reason 'dependency_failed', directly violating sub-requirement 2 ('A step blocked by a failed or timed_out step is marked failed with reason dependency_failed'). All explicit Gherkin scenarios happen to have conditions that evaluate to True when deps fail, so they pass incidentally, but the ordering contract is broken.",
+        "retry_logic": "Default max_retries is correctly defaulted to 0 via `int(step.get('max_retries', 0) or 0)`, giving total_attempts=1. Exponential backoff is computed as `2**(attempt-1)` yielding 1, 2, 4 seconds. A timed-out step returns immediately from the retry loop (not retried). Exhausting all attempts sets status to 'failed'. A successful attempt sets 'completed'. Context is only written on success, so only the final output persists; intermediate failed-attempt outputs are never stored.",
+        "timeout_semantics": "The 'default timeout is 60' spec requirement is not implemented (code uses None), but the known-correct reference implementation also uses None as its default, indicating this may be a spec inaccuracy rather than a generated-code defect. All other timeout sub-requirements are correctly implemented: a sleep command whose duration exceeds the timeout causes `_interpret_command` to sleep for exactly the timeout and return `timed_out=True`; the retry loop detects this and returns immediately without further retries (attempt_count remains 1); `_check_dependencies` treats 'timed_out' identically to 'failed', so downstream steps are correctly marked 'failed' with 'dependency_failed'.",
+        "output_capture": "Output is written to `context[step_id]` only on success, satisfying the 'stdout captured and stored' requirement. `_resolve_templates` uses a regex replacer that returns the literal `{{key}}` when the key is absent from context, satisfying 'template references to missing keys remain as literal strings'. A prior step's output is therefore correctly available for template substitution in subsequent steps.",
+        "sub_recipe_delegation": "Sub-recipe steps are detected via `if 'sub_recipe' in step:` and dispatched to `_execute_sub_recipe`, which is called before the retry loop, so sub-recipe failures are never retried (attempt_count hardcoded to 1). Child context is a shallow copy of the parent (`dict(context)`), so all parent entries are inherited. By default, no entries from child_context are written back to parent_context. When `propagate_outputs` is True, child step outputs are explicitly copied into the parent context. Any child step with status 'failed' or 'timed_out' causes the parent step to be marked 'failed'. Both JSON-string and list forms of `sub_recipe` are handled."
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 201.07
+    },
+    {
+      "agent_id": "evaluator_1",
+      "persona": "You are a QA engineer testing whether an implementation meets its specification.",
+      "features": {
+        "conditional_execution": true,
+        "dependency_handling": false,
+        "retry_logic": true,
+        "timeout_semantics": true,
+        "output_capture": true,
+        "sub_recipe_delegation": true
+      },
+      "reasoning": {
+        "conditional_execution": "All sub-requirements are met. Steps with no condition always execute (empty string evaluates to True via _evaluate_condition). Steps with false condition are marked 'skipped' and return early. Missing context keys cause NameError which is caught and returns False (skipped). Skipped steps do not write to context (early return before any context assignment).",
+        "dependency_handling": "The cross-feature interaction rule explicitly states 'Dependency evaluation happens BEFORE condition evaluation (a step blocked by a failed dep fails regardless of its condition).' In _execute_step, the generated code checks the condition FIRST (step 1) and returns 'skipped' if False, only reaching the dependency check (step 2) if the condition passes. This means a step with a failing/timed-out dependency and a False condition would be incorrectly marked 'skipped' instead of 'failed' with reason 'dependency_failed'. The specific cross-feature Gherkin scenario ('Timed-out step blocks a conditional step') happens to pass only because its condition evaluates to True (flag=True), masking the ordering bug for that test. The general requirement is violated.",
+        "retry_logic": "Default max_retries=0 is correctly implemented via int(step.get('max_retries', 0) or 0). Exponential backoff delays use 2**(attempt-1) producing 1s, 2s, 4s correctly. After exhausting all retries, status is 'failed'. Successful retry produces 'completed'. Only the final successful output is written to context (context[step_id] is only set on success, never on failed attempts). The retry_delays list is accumulated and matches expected values.",
+        "timeout_semantics": "Timeout is correctly handled via _interpret_command: for sleep commands exceeding timeout, sleep_fn is called with the timeout value and timed_out=True is returned. The retry loop immediately returns on timed_out without further attempts (satisfying 'timed_out steps are NOT retried'). The _check_dependencies method includes 'timed_out' as a terminal failure state, propagating dependency_failed correctly. The attempt_count is 1 for timed-out steps. The default-60s requirement is not implemented (uses None) but the reference implementation also uses None as default, and no Gherkin scenario exercises the default timeout path.",
+        "output_capture": "Step stdout is captured and stored in context[step_id] on success. Template resolution via _resolve_templates uses re.sub with a replacer that returns the literal {{key}} string when the key is absent from context (skipped/unset steps). The template is resolved before command interpretation, so {{step_a}} in 'echo \"processing {{step_a}}\"' is expanded to 'processing data_123' before the echo command processes it. All Gherkin scenarios for Feature 5 are satisfied.",
+        "sub_recipe_delegation": "Child context is created as dict(context), inheriting all parent entries. Sub-recipe execution happens outside the retry loop and returns immediately, ensuring failures are not retried (attempt_count=1). any_failed check marks parent as 'failed' if any child step is failed or timed_out. Propagation correctly iterates sub_steps and copies their context entries to parent only when propagate_outputs=True. Without propagation, child outputs are invisible to sibling steps. All Gherkin Feature 6 scenarios pass, including the propagated-outputs-feeds-conditional cross-feature scenario."
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 209.47
+    },
+    {
+      "agent_id": "evaluator_2",
+      "persona": "You are a systems architect evaluating whether behavioral contracts are satisfied.",
+      "features": {
+        "conditional_execution": true,
+        "dependency_handling": true,
+        "retry_logic": true,
+        "timeout_semantics": false,
+        "output_capture": true,
+        "sub_recipe_delegation": true
+      },
+      "reasoning": {
+        "conditional_execution": "All four sub-requirements are met. Steps with no condition field return True from _evaluate_condition (empty-string guard returns True early), so they always execute. Steps with a False condition are marked 'skipped' and return immediately without writing to context. Conditions referencing missing keys raise NameError inside the bare eval, which is caught by the broad except clause and returns False (skipped, not error). Skipped steps return before any context mutation, so they produce no output.",
+        "dependency_handling": "All four sub-requirements are satisfied when evaluated against Feature 2's own scenarios. _check_dependencies iterates blockedBy, returns (False, 'dependency_failed') only for 'failed' or 'timed_out' deps \u2014 'skipped' is not in that set, so skipped deps let the dependent step proceed normally. Topological sort (DFS-based visit) correctly handles diamond graphs (A->B, A->C, B+C->D), ensuring A completes before B and C, and both B and C complete before D. Note: the code evaluates condition BEFORE dependencies, which violates the cross-feature ordering rule ('dependency evaluation happens BEFORE condition evaluation'), but this violation only manifests in combined condition+dependency edge cases not covered by Feature 2's own four requirements.",
+        "retry_logic": "Default max_retries is 0 (int(step.get('max_retries', 0) or 0)), giving total_attempts=1, matching the no-retry default. Delays are computed as 2^(attempt-1): attempt 1 delay=1, attempt 2 delay=2, attempt 3 delay=4, matching the required 1s/2s/4s backoff. After all attempts fail the loop falls through to set status='failed'. A successful attempt sets status='completed' and returns immediately. Context is updated only on success (context[step_id]=output), so only the final successful output persists; intermediate failure attempts never write to context.",
+        "timeout_semantics": "The requirement 'Default timeout_seconds is 60' is not implemented. When timeout_seconds is absent, timeout_raw is None and the code sets timeout=None, meaning steps run without any timeout. The three other sub-requirements are met: steps exceeding their explicit timeout are marked 'timed_out' via the sleep-duration comparison in _interpret_command; timed_out status is in the dependency-failure set so it propagates correctly; and timed_out returns immediately without entering the retry loop (attempt_count stays at 1). However, the missing default of 60s is an explicit acceptance criterion that is violated.",
+        "output_capture": "Completed steps write context[step_id]=output when output is not None. _resolve_templates uses re.sub with a replacer that returns the literal match group (e.g. '{{key}}') when the key is absent from context, satisfying the requirement that unresolved references remain as literal strings. Skipped and failed steps never write to context, so their {{step_id}} references in downstream commands stay unreplaced. Template resolution is applied to the command string before execution on every attempt, and only the final successful output is stored.",
+        "sub_recipe_delegation": "Sub-recipes are handled in _execute_sub_recipe: child_context=dict(context) provides inheritance of all parent entries. Without propagate_outputs, child outputs stay in child_context and never touch parent context. With propagate_outputs=True, only child step outputs (keys matching child step IDs) are copied to parent context. A failed or timed_out child step causes any_failed=True, setting parent result.status='failed'. Sub-recipe execution is invoked via a dedicated branch in _execute_step that returns immediately after _execute_sub_recipe \u2014 it is completely outside the retry loop \u2014 and attempt_count is hard-coded to 1, so sub-recipe failures are never retried even when max_retries>0."
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 121.05
+    }
+  ],
+  "total_input_tokens": 0,
+  "total_output_tokens": 0,
+  "total_wall_clock_seconds": 209.47,
+  "notes": [
+    "Split vote on dependency_handling: 1/3 PASS",
+    "Split vote on timeout_semantics: 2/3 PASS"
+  ]
+}

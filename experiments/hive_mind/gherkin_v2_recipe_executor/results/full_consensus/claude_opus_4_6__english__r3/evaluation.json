@@ -1,0 +1,94 @@
+{
+  "evaluation_kind": "agent_consensus_v1",
+  "metrics": {
+    "baseline_score": 1.0,
+    "invariant_compliance": 0.0,
+    "proof_alignment": 1.0,
+    "local_protocol_alignment": 1.0,
+    "progress_signal": 0.0,
+    "specification_coverage": 0.6667
+  },
+  "consensus_scores": {
+    "conditional_execution": 1.0,
+    "dependency_handling": 0.0,
+    "retry_logic": 1.0,
+    "timeout_semantics": 1.0,
+    "output_capture": 0.0,
+    "sub_recipe_delegation": 0.6667
+  },
+  "agent_votes": [
+    {
+      "agent_id": "evaluator_0",
+      "persona": "You are a senior software engineer reviewing code for correctness.",
+      "features": {
+        "conditional_execution": true,
+        "dependency_handling": false,
+        "retry_logic": true,
+        "timeout_semantics": true,
+        "output_capture": false,
+        "sub_recipe_delegation": false
+      },
+      "reasoning": {
+        "conditional_execution": "All four sub-requirements are met. Steps with no `condition` field always execute (_evaluate_condition returns True when condition is None). Steps whose condition evaluates false are marked SKIPPED. The try/except in _evaluate_condition returns False when a missing key causes a NameError or similar, so missing-key conditions correctly skip. Skipped steps return before the output-capture block (`context[step_id] = result.output`), so no output is stored.",
+        "dependency_handling": "The cross-feature rule explicitly states 'Dependency evaluation happens BEFORE condition evaluation (a step blocked by a failed dep fails regardless of its condition).' In _run_step, condition is evaluated first (step 1) and returns SKIPPED immediately if false, before the dependency check (step 2) is ever reached. A step that has both a false condition AND a failed/timed-out dependency will be incorrectly marked SKIPPED instead of FAILED with reason dependency_failed. None of the generated tests cover this intersection, so the bug goes undetected, but it is a clear spec violation.",
+        "retry_logic": "Default max_retries=0 is correct. The delay formula `2 ** attempt` with attempt starting at 0 yields 1s, 2s, 4s as required. Exhausting all retries returns FAILED; a successful retry returns COMPLETED. Output is only written to context after _execute_with_retries returns (in _run_step), so only the final successful output is captured \u2014 intermediate attempt outputs never persist. Timed-out steps bypass the retry loop via early return, satisfying the timeout-takes-precedence rule.",
+        "timeout_semantics": "Default timeout_seconds=60 is set via `step.get('timeout_seconds', 60)`. Thread-based execution with join(timeout) correctly terminates and marks the step TIMED_OUT when the thread is still alive. The timed_out early-return in _execute_with_retries ensures timed-out steps are never retried even when max_retries > 0. _check_dependencies treats TIMED_OUT the same as FAILED, so timed-out steps correctly propagate as dependency_failed to downstream steps.",
+        "output_capture": "The acceptance criteria explicitly requires that subsequent steps reference prior outputs via `{{step_id}}` template syntax in commands, and that references to missing keys remain as literal `{{step_id}}` strings. The generated code uses callable commands (`command(context)`) with no template resolution applied to the command string \u2014 `resolved_command = command` with no `_resolve_templates` call. `_resolve_templates` is only invoked for condition strings in `_evaluate_condition`. Passing a string command like `\"echo {{step_a}}\"` would raise a TypeError because strings are not callable. The required template substitution behavior for commands is entirely absent.",
+        "sub_recipe_delegation": "The primary code block in `recipe_step_executor.py` contains a bug: `_execute_with_retries` has no `is_sub_recipe` check, so a failing sub-recipe (which returns a non-None error with timed_out=False) will be retried up to max_retries times, violating 'Sub-recipe failure is non-transient and must NOT be retried.' The model acknowledges this and provides a corrected `_execute_with_retries` in the Design Notes, but the actual file-level implementation remains buggy. The test `assert results[0].retries_used == 0` would fail against the primary code block. Since the deliverable file contains the uncorrected version, Feature 6 fails."
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 225.0
+    },
+    {
+      "agent_id": "evaluator_1",
+      "persona": "You are a QA engineer testing whether an implementation meets its specification.",
+      "features": {
+        "conditional_execution": true,
+        "dependency_handling": false,
+        "retry_logic": true,
+        "timeout_semantics": true,
+        "output_capture": false,
+        "sub_recipe_delegation": true
+      },
+      "reasoning": {
+        "conditional_execution": "All four sub-requirements are satisfied. Steps with no condition field execute (condition is None \u2192 return True). Steps whose condition evaluates to false are marked 'skipped' and return early. Missing context keys cause a NameError during eval which is caught and returns False (skipped). Skipped steps return before the output-capture block, so context[step_id] is never set.",
+        "dependency_handling": "The code checks the condition BEFORE dependencies in _run_step (condition gate is step 1, dependency gate is step 2). The Cross-Feature Interaction Rule explicitly states 'Dependency evaluation happens BEFORE condition evaluation \u2014 a step blocked by a failed dep fails regardless of its condition.' In the generated code, a step that has a false condition (or references a missing key) would be SKIPPED before the dependency check is ever reached, even if a dependency is in a 'failed' or 'timed_out' state. This means the hard requirement 'A step blocked by a failed or timed_out step is marked failed' is violated whenever the step also carries a condition that evaluates to false. The Gherkin cross-feature scenario 'Timed-out step blocks a conditional step \u2014 blocked step fails, not skipped' would produce SKIPPED instead of FAILED.",
+        "retry_logic": "Default max_retries is 0 (step.get('max_retries', 0)). The backoff formula is 2**attempt, so attempt 0 \u2192 1s, attempt 1 \u2192 2s, attempt 2 \u2192 4s, matching the spec. Exhausting all retries returns StepStatus.FAILED; a successful retry returns StepStatus.COMPLETED. Output is only written to context after _execute_with_retries returns, so only the final successful output persists \u2014 intermediate failed-attempt outputs never pollute the context. Timed-out steps return immediately without entering the retry branch.",
+        "timeout_semantics": "Default timeout_seconds is 60 (step.get('timeout_seconds', 60)). The thread-join mechanism terminates a step that exceeds its timeout and returns (None, error, True), which the retry loop immediately converts to StepStatus.TIMED_OUT with an early return \u2014 no further retries. _check_dependencies treats both StepStatus.FAILED and StepStatus.TIMED_OUT as blocking, correctly propagating timed_out as a failure cause for dependent steps.",
+        "output_capture": "The executor uses callable commands (lambdas) rather than strings, and _execute_once assigns resolved_command = command with the comment 'the caller is responsible for wrapping strings if needed.' The _resolve_templates helper is only called inside _evaluate_condition, never on the command itself. The acceptance criteria explicitly requires '{{step_id}}' template syntax for referencing prior outputs in step commands, and the Gherkin scenario 'Subsequent step references prior output via template syntax' uses a string command 'echo \"processing {{step_a}}\"' that must resolve to 'processing data_123'. No mechanism in the generated code performs this substitution on command strings. The generated tests work around this by using Python f-strings inside lambdas, which is a different interface than the specified {{}} syntax.",
+        "sub_recipe_delegation": "The artifact includes a self-identified bug fix in the Design Notes that adds 'is_sub_recipe = \"sub_recipe\" in step' and an early return on sub-recipe failure with retries_used=0. Evaluating the corrected version: child context is created as dict(context) (inheriting all parent entries), child executor runs independently, child outputs are not copied to parent context by default (propagate=False), any child step in FAILED or TIMED_OUT causes the parent to return (None, error, False) which flows to FAILED status with retries_used=0 (non-retriable), and propagate_outputs=True copies new child context keys into the parent. All five sub-requirements are satisfied."
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 219.47
+    },
+    {
+      "agent_id": "evaluator_2",
+      "persona": "You are a systems architect evaluating whether behavioral contracts are satisfied.",
+      "features": {
+        "conditional_execution": true,
+        "dependency_handling": false,
+        "retry_logic": true,
+        "timeout_semantics": true,
+        "output_capture": false,
+        "sub_recipe_delegation": true
+      },
+      "reasoning": {
+        "conditional_execution": "All four sub-requirements are satisfied. Steps with no condition field always execute (_evaluate_condition returns True when condition is None). Steps with a false condition are marked SKIPPED and returned early before any output capture. Missing context keys are caught by the except-all in _eval_condition which returns False (skipped). Skipped steps never reach the output-capture block (context[step_id] = result.output), so they produce no context entry.",
+        "dependency_handling": "The cross-feature rule explicitly states 'Dependency evaluation happens BEFORE condition evaluation (a step blocked by a failed dep fails regardless of its condition).' The generated code in _run_step evaluates the condition FIRST (step 1) and returns SKIPPED before ever reaching the dependency check (step 2). Consequently, a step that has a false condition and a failed/timed-out dependency will be marked SKIPPED rather than FAILED with reason dependency_failed. None of the provided Gherkin test scenarios exercise this exact combination (all dependency tests have unconditional blocked steps, and the cross-feature timeout+conditional test has condition=True so the bug is not triggered), but the ordering is categorically wrong per the spec, violating the requirement that dependency_failed takes precedence over any condition.",
+        "retry_logic": "Default max_retries is 0. Backoff delays are computed as 2^attempt where attempt starts at 0, yielding 1s, 2s, 4s for successive retries \u2014 matching the spec. Timeouts are not retried (separate early return). After exhausting retries the step is marked FAILED. After a successful retry the step is COMPLETED. Critically, intermediate retry outputs never reach context because context[step_id] is only written in _run_step after execute_with_retries returns a COMPLETED result, so only the final output persists. The attempt semantics differ slightly from the reference (retries_used vs attempt_count) but all behavioral requirements hold.",
+        "timeout_semantics": "Default timeout_seconds is 60. Thread-based timeout via join(timeout) terminates the step and marks it TIMED_OUT. The dependency check treats TIMED_OUT the same as FAILED (dep.status in (StepStatus.FAILED, StepStatus.TIMED_OUT)), satisfying the propagation requirement. The corrected _execute_with_retries returns immediately on timed_out=True with no retry loop, so timed-out steps are never retried even when max_retries > 0.",
+        "output_capture": "The acceptance criteria explicitly requires '{{step_id}} template syntax' in step commands for referencing prior outputs. The implementation only resolves templates in condition strings via _resolve_templates. In _execute_once the line 'resolved_command = command' passes the callable/string without any template substitution, and the design note explicitly acknowledges this omission ('Template resolution for string commands is handled inside the callable; the caller is responsible'). The provided tests work around this by using Python lambda closures that access context directly, but the spec-required mechanism \u2014 where a command string containing {{step_a}} is automatically expanded \u2014 is absent. The sub-requirement 'Template references to missing keys remain as literal {{step_id}} strings' is also untestable for commands in this implementation.",
+        "sub_recipe_delegation": "All five sub-requirements are met in the corrected implementation. Child context is a shallow copy of parent context (inherits all entries). Without propagate_outputs, child outputs stay in child_context and never reach parent_context. With propagate_outputs=True, only keys absent from the original parent context are copied. A failed child step causes _execute_sub_recipe to return a non-None error string, which flows through as a failure. The corrected _execute_with_retries adds an is_sub_recipe guard that immediately returns FAILED with retries_used=0 on child failure, preventing any retry loop from executing \u2014 satisfying the non-transient failure requirement."
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 206.74
+    }
+  ],
+  "total_input_tokens": 0,
+  "total_output_tokens": 0,
+  "total_wall_clock_seconds": 225.0,
+  "notes": ["Split vote on sub_recipe_delegation: 2/3 PASS"]
+}

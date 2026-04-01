@@ -1,0 +1,15 @@
+{
+  "condition_id": "claude_opus_4_6__gherkin_plus_acceptance__r2",
+  "experiment_id": "gherkin-v2-recipe-executor",
+  "target_id": "recipe_step_executor",
+  "model_id": "claude-opus-4.6",
+  "model_sdk": "claude",
+  "prompt_variant_id": "gherkin_plus_acceptance",
+  "repeat_index": 2,
+  "prompt_path": "/home/azureuser/src/tla/experiments/hive_mind/gherkin_v2_recipe_executor/prompts/recipe_step_executor_gherkin_plus_acceptance.md",
+  "spec_path": "/home/azureuser/src/tla/experiments/hive_mind/gherkin_v2_recipe_executor/specs/recipe_step_executor.feature",
+  "refinement_path": "/home/azureuser/src/tla/experiments/hive_mind/gherkin_v2_recipe_executor/specs/recipe_step_executor_acceptance_criteria.md",
+  "materialized_prompt_file": "experiments/hive_mind/gherkin_v2_recipe_executor/results/full_consensus/claude_opus_4_6__gherkin_plus_acceptance__r2/prompt.md",
+  "materialized_spec_file": "experiments/hive_mind/gherkin_v2_recipe_executor/results/full_consensus/claude_opus_4_6__gherkin_plus_acceptance__r2/recipe_step_executor.feature",
+  "materialized_refinement_file": "experiments/hive_mind/gherkin_v2_recipe_executor/results/full_consensus/claude_opus_4_6__gherkin_plus_acceptance__r2/recipe_step_executor_acceptance_criteria.md"
+}

@@ -1,0 +1,61 @@
+{
+  "condition": {
+    "condition_id": "claude_opus_4_6__gherkin_plus_english__r3",
+    "experiment_id": "gherkin-v2-recipe-executor",
+    "target_id": "recipe_step_executor",
+    "model_id": "claude-opus-4.6",
+    "model_sdk": "claude",
+    "prompt_variant_id": "gherkin_plus_english",
+    "repeat_index": 3,
+    "prompt_path": "/home/azureuser/src/tla/experiments/hive_mind/gherkin_v2_recipe_executor/prompts/recipe_step_executor_gherkin_plus_english.md",
+    "spec_path": "/home/azureuser/src/tla/experiments/hive_mind/gherkin_v2_recipe_executor/specs/recipe_step_executor.feature"
+  },
+  "status": "completed",
+  "metrics": {
+    "baseline_score": 0.5,
+    "invariant_compliance": 0.5,
+    "proof_alignment": 0.5,
+    "local_protocol_alignment": 0.0,
+    "progress_signal": 0.5,
+    "specification_coverage": 0.5
+  },
+  "notes": [
+    "generation_provider=live",
+    "evaluation_kind=agent_consensus_v1",
+    "evaluator_agents=3",
+    "evaluator_model=claude-sonnet-4-20250514",
+    "generation_seconds=285.6",
+    "eval_seconds=84.8",
+    "eval_input_tokens=0",
+    "eval_output_tokens=0",
+    "runtime_model_id=claude-opus-4-6",
+    "EXCLUDED evaluator_1: CLI response JSON parse failed: Expecting value: line 1 column 1 (char 0)",
+    "Split vote on conditional_execution: 1/2 PASS",
+    "Split vote on dependency_handling: 1/2 PASS",
+    "Split vote on retry_logic: 1/2 PASS",
+    "Split vote on output_capture: 1/2 PASS",
+    "Split vote on sub_recipe_delegation: 1/2 PASS",
+    "Consensus based on 2/3 valid votes"
+  ],
+  "generated_artifact_path": "experiments/hive_mind/gherkin_v2_recipe_executor/results/full_consensus/claude_opus_4_6__gherkin_plus_english__r3/generated_artifact.md",
+  "evaluation_artifact_path": "experiments/hive_mind/gherkin_v2_recipe_executor/results/full_consensus/claude_opus_4_6__gherkin_plus_english__r3/evaluation.json",
+  "raw_response_path": "experiments/hive_mind/gherkin_v2_recipe_executor/results/full_consensus/claude_opus_4_6__gherkin_plus_english__r3/raw_response.txt",
+  "generation_metrics": {
+    "generation_wall_clock_seconds": 285.61,
+    "generation_input_tokens": 0,
+    "generation_output_tokens": 0
+  },
+  "evaluation_metrics": {
+    "eval_input_tokens": 0,
+    "eval_output_tokens": 0,
+    "eval_wall_clock_seconds": 84.83,
+    "consensus_scores": {
+      "conditional_execution": 0.5,
+      "dependency_handling": 0.5,
+      "retry_logic": 0.5,
+      "timeout_semantics": 0.0,
+      "output_capture": 0.5,
+      "sub_recipe_delegation": 0.5
+    }
+  }
+}
