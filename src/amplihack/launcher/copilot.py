@@ -1112,8 +1112,70 @@ def _extract_heading_block(text: str, start_heading: str, end_heading: str) -> s
     return block.strip()
 
 
+def _copilot_project_root() -> Path:
+    """Return the project root Copilot should use for workflow state lookups."""
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "").strip()
+    return Path(project_dir) if project_dir else Path.cwd()
+
+
+def _is_nested_recipe_session() -> bool:
+    """Return True when a nested Copilot session is running inside a recipe."""
+    try:
+        return int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0")) > 0
+    except ValueError:
+        return False
+
+
+def _is_workflow_active_for_copilot_context() -> bool:
+    """Return True when a workflow-active semaphore points at a live process."""
+    path = _copilot_project_root() / ".claude" / "runtime" / "locks" / ".workflow_active"
+    if not path.exists():
+        return False
+
+    try:
+        data = json.loads(path.read_text())
+        pid = int(data.get("pid", 0))
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        path.unlink(missing_ok=True)
+        return False
+
+    if pid > 0:
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            path.unlink(missing_ok=True)
+            return False
+
+    return True
+
+
+def _should_suppress_copilot_workflow_context() -> bool:
+    """Return True when nested Copilot sessions should not get top-level /dev rules."""
+    return _is_nested_recipe_session() or _is_workflow_active_for_copilot_context()
+
+
+def _build_suppressed_copilot_workflow_rules() -> str:
+    """Return nested-session guidance that prevents workflow recursion."""
+    return (
+        "A recipe-managed workflow is already active for this session.\n\n"
+        'Do NOT invoke `Skill(skill="dev-orchestrator")`, do NOT run '
+        '`run_recipe_by_name("smart-orchestrator")`, and do NOT reinterpret '
+        "the current prompt as a new top-level task.\n\n"
+        "Follow the current prompt exactly. Return only the requested output "
+        "format. Use tools only when the prompt explicitly requires them."
+    )
+
+
 def build_copilot_agents_context(claude_dir: Path, preferences_text: str | None = None) -> str:
     """Build the AGENTS.md context Copilot needs for workflow enforcement."""
+    if _should_suppress_copilot_workflow_context():
+        sections = [
+            "## Amplihack Copilot Workflow Rules\n\n" + _build_suppressed_copilot_workflow_rules()
+        ]
+        if preferences_text:
+            sections.append("## User Preferences\n\n" + preferences_text.strip())
+        return "\n\n".join(section for section in sections if section)
+
     routing_prompt = _read_text_if_exists(
         claude_dir / "tools" / "amplihack" / "hooks" / "templates" / "routing_prompt.txt"
     ).strip()
@@ -1169,7 +1231,28 @@ def generate_copilot_instructions(copilot_home: Path) -> None:
         if steps:
             workflow_desc = f"Standard development workflow ({len(steps)} steps)"
 
-    amplihack_section = f"""\
+    if _should_suppress_copilot_workflow_context():
+        amplihack_section = f"""\
+{INSTRUCTIONS_MARKER_START}
+# Amplihack Framework Integration
+
+{_build_suppressed_copilot_workflow_rules()}
+
+## Context
+Read context files from `{copilot_home}/context/amplihack/` for project philosophy and patterns:
+- `PHILOSOPHY.md` — Core principles (ruthless simplicity, zero-BS, modular design)
+- `PATTERNS.md` — Reusable solution patterns
+- `TRUST.md` — Anti-sycophancy and direct communication guidelines
+- `USER_PREFERENCES.md` — User-specific preferences (MANDATORY)
+
+## Agents
+Custom agents are available at `{copilot_home}/agents/amplihack/`. Use them via the task tool only when the current prompt explicitly requires an agentic invocation.
+
+## Skills
+Skills are available at `{copilot_home}/skills/`, but do not invoke workflow skills while this recipe-managed session is active.
+{INSTRUCTIONS_MARKER_END}"""
+    else:
+        amplihack_section = f"""\
 {INSTRUCTIONS_MARKER_START}
 # Amplihack Framework Integration
 

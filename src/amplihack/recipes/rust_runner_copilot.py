@@ -9,6 +9,17 @@ import tempfile
 from pathlib import Path
 
 
+def _build_disallowed_tools_instruction(raw_tools: str) -> str:
+    """Return a Copilot-compatible prompt instruction for a Claude no-tools flag."""
+    tools = [tool.strip() for tool in raw_tools.split(",") if tool.strip()]
+    if not tools:
+        return "Tool use is forbidden for this invocation. Do not call any tools."
+    return (
+        "Tool use is forbidden for this invocation. "
+        f"Do not call any tools. Original disallowed tool list: {', '.join(tools)}."
+    )
+
+
 def _has_explicit_copilot_permission(token: str, *, category: str) -> bool:
     """Return True when a Copilot arg already sets explicit permissions."""
     if category == "tool":
@@ -33,6 +44,24 @@ def _extract_copilot_prompt_parts(
 
     while i < len(args):
         token = args[i]
+        if token == "--dangerously-skip-permissions":
+            i += 1
+            continue
+        if token.startswith("--dangerously-skip-permissions="):
+            i += 1
+            continue
+        if token == "--disallowed-tools":
+            disallowed = args[i + 1] if i + 1 < len(args) else ""
+            system_prompt_parts.append(_build_disallowed_tools_instruction(disallowed))
+            saw_tool_permissions = True
+            i += 2 if i + 1 < len(args) else 1
+            continue
+        if token.startswith("--disallowed-tools="):
+            _, _, value = token.partition("=")
+            system_prompt_parts.append(_build_disallowed_tools_instruction(value))
+            saw_tool_permissions = True
+            i += 1
+            continue
         if token in {"--system-prompt", "--append-system-prompt"}:
             if i + 1 < len(args):
                 system_prompt_parts.append(args[i + 1])

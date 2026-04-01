@@ -535,6 +535,11 @@ class TestStageDirectory:
 class TestGenerateCopilotInstructions:
     """Tests for copilot-instructions.md generation."""
 
+    @pytest.fixture(autouse=True)
+    def _isolate_workflow_context(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+        monkeypatch.setenv("AMPLIHACK_SESSION_DEPTH", "0")
+
     def test_generates_instructions_file(self, tmp_path):
         """Must create ~/.copilot/copilot-instructions.md."""
         copilot_home = tmp_path / "copilot"
