@@ -10,6 +10,7 @@ Stop Hook Protocol (https://docs.claude.com/en/docs/claude-code/hooks):
 
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -471,6 +472,25 @@ class StopHook(HookProcessor):
             self.save_metric("lock_config_errors", 1)
             return DEFAULT_LOCK_TTL_SECONDS
 
+    @staticmethod
+    def _sanitize_session_id(session_id: str | None) -> str | None:
+        """Sanitize session_id to prevent path traversal and metadata injection.
+
+        Replaces any character that is not alphanumeric, hyphen, or underscore
+        with an underscore. This neutralizes ../../ path traversal, newline
+        injection, and other filesystem/shell metacharacters.
+
+        Args:
+            session_id: Raw session identifier, or None.
+
+        Returns:
+            Sanitized string safe for use as a filesystem path component,
+            or None if the input was None.
+        """
+        if session_id is None:
+            return None
+        return re.sub(r"[^A-Za-z0-9_\-]", "_", session_id)
+
     def _read_lock_metadata(self) -> dict[str, str]:
         """Parse key/value metadata from .lock_active.
 
@@ -498,7 +518,7 @@ class StopHook(HookProcessor):
             return None, None
 
         metadata = self._read_lock_metadata()
-        owner_session_id = metadata.get("session_id")
+        owner_session_id = self._sanitize_session_id(metadata.get("session_id"))
         if owner_session_id and owner_session_id != current_session_id:
             return (
                 f"lock belongs to session {owner_session_id}, not the active session {current_session_id}",
@@ -637,12 +657,13 @@ class StopHook(HookProcessor):
         """
         max_iterations = self._max_lock_iterations()
         try:
+            safe_session_id = self._sanitize_session_id(session_id) or "unknown"
             counter_file = (
                 self.project_root
                 / ".claude"
                 / "runtime"
                 / "locks"
-                / session_id
+                / safe_session_id
                 / "lock_invocations.txt"
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)

@@ -13,6 +13,7 @@ Usage:
 
 import argparse
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -35,6 +36,25 @@ CONTINUATION_PROMPT_FILE = LOCK_DIR / ".continuation_prompt"
 MESSAGE_FILE = LOCK_DIR / ".lock_message"
 
 
+def _sanitize_session_id(session_id: str | None) -> str | None:
+    """Sanitize session_id to prevent path traversal and metadata injection.
+
+    Replaces any character that is not alphanumeric, hyphen, or underscore
+    with an underscore. This neutralizes path traversal sequences (../../),
+    newline injection, and other shell/filesystem metacharacters.
+
+    Args:
+        session_id: Raw session identifier from environment, or None.
+
+    Returns:
+        Sanitized string safe for use as a filesystem path component, or None
+        if the input was None.
+    """
+    if session_id is None:
+        return None
+    return re.sub(r"[^A-Za-z0-9_\-]", "_", session_id)
+
+
 def _get_session_id() -> str | None:
     """Return the active session ID when the launcher exposes one."""
     return os.environ.get("AMPLIHACK_SESSION_ID") or os.environ.get("CLAUDE_SESSION_ID")
@@ -52,7 +72,7 @@ def create_lock() -> int:
         fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         try:
             metadata = [f"locked_at: {datetime.now().isoformat()}"]
-            session_id = _get_session_id()
+            session_id = _sanitize_session_id(_get_session_id())
             if session_id:
                 metadata.append(f"session_id: {session_id}")
             os.write(fd, ("\n".join(metadata) + "\n").encode())
