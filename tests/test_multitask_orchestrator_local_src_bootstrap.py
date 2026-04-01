@@ -204,8 +204,13 @@ def run_recipe_by_name(name, user_context=None, dry_run=False, progress=False, *
     captured = json.loads(capture_file.read_text(encoding="utf-8"))
     assert captured["resume_checkpoint"] == "checkpoint-after-review-feedback"
     assert captured["issue_number"] == 4032
+    assert captured["resume_worktree_path"] == "/repo/worktrees/fix/issue-4032-resumable-timeouts"
+    assert captured["resume_branch_name"] == "fix/issue-4032-resumable-timeouts"
     assert (
         captured["worktree_setup"]["worktree_path"]
         == "/repo/worktrees/fix/issue-4032-resumable-timeouts"
     )
+    assert captured["worktree_setup"]["branch_name"] == "fix/issue-4032-resumable-timeouts"
+    assert captured["worktree_setup"]["created"] is False
     assert captured["workstream_state_file"].endswith("ws-4032.json")
+    assert captured["workstream_progress_file"].endswith("ws-4032.progress.json")

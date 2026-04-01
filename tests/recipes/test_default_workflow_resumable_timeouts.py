@@ -32,6 +32,8 @@ def steps(recipe: dict) -> dict[str, dict]:
 def test_context_declares_resume_metadata_fields(recipe: dict):
     context = recipe["context"]
     assert "resume_checkpoint" in context
+    assert "resume_worktree_path" in context
+    assert "resume_branch_name" in context
     assert "workstream_state_file" in context
     assert "workstream_progress_file" in context
 
@@ -50,6 +52,8 @@ def test_step_04b_validate_worktree_exists_for_resume_handoff(steps: dict[str, d
     step = steps["step-04b-validate-worktree"]
     assert step["type"] == "bash"
     assert "worktree_setup.worktree_path" in step["command"]
+    assert "resume_worktree_path" in step["command"]
+    assert "resume_branch_name" in step["command"]
 
 
 def test_step_04b_validate_worktree_uses_json_encoder(steps: dict[str, dict]):
@@ -60,7 +64,12 @@ def test_step_04b_validate_worktree_uses_json_encoder(steps: dict[str, dict]):
 
 @pytest.mark.parametrize(
     "step_id",
-    ["step-07-write-tests", "step-08-implement", "checkpoint-after-implementation"],
+    [
+        "step-07-write-tests",
+        "step-08-implement",
+        "step-08b-integration",
+        "checkpoint-after-implementation",
+    ],
 )
 def test_pre_checkpoint_steps_skip_when_resume_checkpoint_exists(
     steps: dict[str, dict], step_id: str
@@ -82,9 +91,18 @@ def test_review_feedback_checkpoint_resume_skips_earlier_review_steps(
     assert "checkpoint-after-review-feedback" in condition
 
 
+def test_step_08b_integration_runs_in_validated_worktree(steps: dict[str, dict]):
+    step = steps["step-08b-integration"]
+    assert step["working_dir"] == "{{worktree_setup.worktree_path}}"
+    assert step["output"] == "integration_code"
+
+
 def test_checkpoint_after_implementation_persists_resume_metadata(steps: dict[str, dict]):
     command = steps["checkpoint-after-implementation"]["command"]
     assert "workstream_state_file" in command
+    assert "workstream_progress_file" in command
+    assert "integration_code" in command
+    assert "progress_sidecar" in command
     assert "checkpoint-after-implementation" in command
 
 
