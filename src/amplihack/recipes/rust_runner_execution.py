@@ -46,6 +46,7 @@ def emit_step_transition(step_name: str, status: str) -> None:
 
 
 _RECIPE_NAME_SANITIZE_RE = re.compile(r"[^a-zA-Z0-9_]")
+_MAX_RECIPE_NAME_LEN = 64
 
 _ALLOWED_RUST_ENV_VARS = {
     "AMPLIHACK_AGENT_BINARY",
@@ -85,6 +86,79 @@ _ALLOWED_RUST_ENV_VARS = {
     "https_proxy",
     "no_proxy",
 }
+
+
+def _validate_path_within_tmpdir(path: Path) -> Path:
+    """Ensure *path* resolves to a location inside the system temp directory.
+
+    Raises ``ValueError`` if the resolved path escapes the temp directory
+    (e.g. via ``..`` components or symlinks in the recipe name).
+    """
+    tmp_root = Path(tempfile.gettempdir()).resolve()
+    resolved = path.resolve()
+    if not (resolved == tmp_root or str(resolved).startswith(str(tmp_root) + os.sep)):
+        raise ValueError(f"Progress/log file path {resolved} escapes temp directory {tmp_root}")
+    return resolved
+
+
+def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
+    """Write *payload* as JSON to *path* atomically via a temp-file rename.
+
+    This ensures concurrent readers never observe a partially-written file.
+    On rename failure (e.g. cross-device), falls back to direct overwrite.
+    """
+    data = json.dumps(payload)
+    tmp_fd = None
+    tmp_path: str | None = None
+    try:
+        # Create temp file in same directory so rename is same-filesystem.
+        tmp_fd, tmp_path = tempfile.mkstemp(
+            dir=str(path.parent),
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+        )
+        os.fchmod(tmp_fd, _LOG_FILE_MODE)
+        os.write(tmp_fd, data.encode("utf-8"))
+        os.close(tmp_fd)
+        tmp_fd = None  # Prevent double-close in except
+        os.rename(tmp_path, str(path))
+    except OSError:
+        # Clean up temp file on failure, fall back to direct write.
+        if tmp_fd is not None:
+            os.close(tmp_fd)
+        if tmp_path is not None:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+        # Fallback: direct overwrite (original behaviour).
+        fd = os.open(str(path), _OPEN_CREATE_FLAGS, _LOG_FILE_MODE)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(data)
+
+
+def read_progress_file(path: Path | str) -> dict[str, Any] | None:
+    """Read and validate a progress JSON file, returning ``None`` on any error.
+
+    Handles missing files, permission errors, partial writes, and malformed
+    JSON gracefully -- the caller should treat ``None`` as "no progress info".
+    """
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    # Minimal schema check: require the keys that downstream consumers expect.
+    required_keys = {"recipe_name", "current_step", "status", "pid"}
+    if not required_keys.issubset(data):
+        return None
+    return data
+
 
 _STATUS_MAP = {
     "completed": StepStatus.COMPLETED,
@@ -150,12 +224,18 @@ def _stream_process_output(process: subprocess.Popen[str]) -> tuple[str, str, in
 
 
 def _progress_file_path(recipe_name: str, pid: int | None = None) -> Path:
-    """Return the temp-file path used to publish machine-readable recipe progress."""
+    """Return the temp-file path used to publish machine-readable recipe progress.
+
+    The recipe name is sanitised to alphanumerics/underscores and clamped to
+    ``_MAX_RECIPE_NAME_LEN`` characters.  The final path is validated to stay
+    within the system temp directory to prevent path-traversal attacks.
+    """
     if pid is None:
         pid = os.getpid()
     stem = Path(recipe_name).stem if ("/" in recipe_name or os.sep in recipe_name) else recipe_name
-    safe_name = _RECIPE_NAME_SANITIZE_RE.sub("_", stem)[:64]
-    return Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{pid}.json"
+    safe_name = _RECIPE_NAME_SANITIZE_RE.sub("_", stem)[:_MAX_RECIPE_NAME_LEN]
+    path = Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{pid}.json"
+    return _validate_path_within_tmpdir(path)
 
 
 def _write_progress_file(
@@ -188,9 +268,7 @@ def _write_progress_file(
         "updated_at": time.time(),
     }
     try:
-        fd = os.open(str(path), _OPEN_CREATE_FLAGS, _LOG_FILE_MODE)
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            fh.write(json.dumps(payload))
+        _atomic_write_json(path, payload)
     except OSError as error:
         logger.debug("Could not write progress file %s: %s", path, error)
     return path
@@ -205,8 +283,9 @@ def _recipe_log_path(recipe_name: str, pid: int | None = None) -> Path:
     if pid is None:
         pid = os.getpid()
     stem = Path(recipe_name).stem if ("/" in recipe_name or os.sep in recipe_name) else recipe_name
-    safe_name = _RECIPE_NAME_SANITIZE_RE.sub("_", stem)[:64]
-    return Path(tempfile.gettempdir()) / f"amplihack-recipe-{safe_name}-{pid}.log"
+    safe_name = _RECIPE_NAME_SANITIZE_RE.sub("_", stem)[:_MAX_RECIPE_NAME_LEN]
+    path = Path(tempfile.gettempdir()) / f"amplihack-recipe-{safe_name}-{pid}.log"
+    return _validate_path_within_tmpdir(path)
 
 
 def _stream_process_output_with_progress(
