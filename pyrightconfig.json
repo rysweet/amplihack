@@ -13,7 +13,8 @@
     "amplihack-memory-lib/",
     "amplifier-bundle/tools/",
     "amplifier-bundle/skills/",
-    "docs/claude/skills/"
+    "docs/claude/skills/",
+    "experiments/"
   ],
   "typeCheckingMode": "basic",
   "reportMissingImports": true,
