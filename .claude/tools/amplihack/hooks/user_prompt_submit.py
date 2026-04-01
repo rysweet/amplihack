@@ -448,15 +448,15 @@ class UserPromptSubmitHook(HookProcessor):
             "additionalContext": full_context,
         }
 
-    @staticmethod
-    def _is_workflow_active() -> bool:
+    def _is_workflow_active(self) -> bool:
         """Return True if a workflow is already in progress (semaphore check)."""
         try:
             from dev_intent_router import is_workflow_active
 
             return is_workflow_active()
         except ImportError:
-            return False  # dev_intent_router unavailable; assume no active workflow
+            self.log("dev_intent_router not importable — workflow-active guard disabled", "WARNING")
+            return False
 
     @staticmethod
     def _is_dev_prompt(prompt: str) -> bool:
