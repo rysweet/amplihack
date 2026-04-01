@@ -472,11 +472,9 @@ steps:
         CREATED=true
       fi
 
-      # Push branch to remote with tracking (idempotent).
-      # NOTE: Push failures are suppressed here and surface at step-16 PR creation.
-      # This allows idempotent re-runs where the remote branch already exists.
-      git -C "${WORKTREE_PATH}" push origin "${BRANCH_NAME}" > /dev/null 2>&1 || true
-      git -C "${WORKTREE_PATH}" branch --set-upstream-to="origin/${BRANCH_NAME}" "${BRANCH_NAME}" > /dev/null 2>&1 || true
+      # Keep setup local-only. Remote branch creation/tracking is deferred until
+      # step-15, when there is actual work to publish. This avoids redundant
+      # network round-trips on reruns and on branches that never produce a commit.
 
       echo "" >&2
       echo "=== Worktree Setup Complete ===" >&2
@@ -493,18 +491,66 @@ steps:
     output: "worktree_setup"
     parse_json: true
 
+  - id: "step-04b-validate-worktree"
+    type: "bash"
+    command: |
+      set -euo pipefail
+      WORKTREE_DIR="{{worktree_setup.worktree_path}}"
+      EXPECTED_BRANCH="{{worktree_setup.branch_name}}"
+
+      echo "=== Step 4b: Validating Worktree ===" >&2
+
+      if [ ! -d "$WORKTREE_DIR" ]; then
+        echo "ERROR: worktree directory '$WORKTREE_DIR' does not exist" >&2
+        exit 1
+      fi
+      WORKTREE_DIR="$(cd "$WORKTREE_DIR" && pwd -P)"
+      cd "$WORKTREE_DIR"
+
+      if [ "$(git rev-parse --is-inside-work-tree)" != "true" ]; then
+        echo "ERROR: '$WORKTREE_DIR' is not inside a git worktree" >&2
+        exit 1
+      fi
+
+      ACTUAL_TOPLEVEL="$(git rev-parse --show-toplevel)"
+      if [ "$ACTUAL_TOPLEVEL" != "$WORKTREE_DIR" ]; then
+        echo "ERROR: expected git top-level '$WORKTREE_DIR' but found '$ACTUAL_TOPLEVEL'" >&2
+        exit 1
+      fi
+
+      ACTUAL_BRANCH="$(git branch --show-current)"
+      if [ "$ACTUAL_BRANCH" != "$EXPECTED_BRANCH" ]; then
+        echo "ERROR: expected branch '$EXPECTED_BRANCH' but found '$ACTUAL_BRANCH'" >&2
+        exit 1
+      fi
+
+      cat <<EOF
+      {
+        "worktree_path": "$WORKTREE_DIR",
+        "branch_name": "$ACTUAL_BRANCH",
+        "validated": true
+      }
+      EOF
+    output: "worktree_validation"
+    parse_json: true
+
   # ==========================================================================
   # STEP 5: RESEARCH AND DESIGN
   # ==========================================================================
   - id: "step-05-architecture"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5: Research and Design - Architecture
 
       **Task:** {{task_description}}
       **Requirements:** {{final_requirements}}
       **Codebase Analysis:** {{codebase_analysis}}
-      **Worktree:** {{worktree_setup}}
+      **Active Repository Root:** {{worktree_setup.worktree_path}}
+      **Worktree Metadata:** {{worktree_setup}}
+
+      Treat `{{worktree_setup.worktree_path}}` as the active repository root for all code reads, edits,
+      and commands in this stream.
 
       Design the solution architecture:
 
@@ -521,6 +567,7 @@ steps:
 
   - id: "step-05b-api-design"
     agent: "amplihack:api-designer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5b: API Design (if applicable)
 
@@ -538,6 +585,7 @@ steps:
 
   - id: "step-05c-database-design"
     agent: "amplihack:database"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5c: Database Design (if applicable)
 
@@ -555,6 +603,7 @@ steps:
 
   - id: "step-05d-security-review"
     agent: "amplihack:security"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5d: Security Requirements Review
 
@@ -574,6 +623,7 @@ steps:
 
   - id: "step-05e-design-consolidation"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 5e: Design Consolidation
 
@@ -603,6 +653,7 @@ steps:
   # ==========================================================================
   - id: "step-06-documentation"
     agent: "amplihack:documentation-writer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 6: Retcon Documentation Writing
 
@@ -624,6 +675,7 @@ steps:
 
   - id: "step-06b-documentation-review"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 6b: Documentation Review
 
@@ -640,6 +692,7 @@ steps:
 
   - id: "step-06c-documentation-refinement"
     agent: "amplihack:documentation-writer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 6c: Documentation Refinement
 
@@ -655,6 +708,7 @@ steps:
   # ==========================================================================
   - id: "step-07-write-tests"
     agent: "amplihack:tester"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 7: TDD - Write Tests First
 
@@ -684,6 +738,7 @@ steps:
   # ==========================================================================
   - id: "step-08-implement"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 8: Implement the Solution
 
@@ -713,6 +768,7 @@ steps:
 
   - id: "step-08b-integration"
     agent: "amplihack:integration"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 8b: External Service Integration
 
@@ -734,19 +790,46 @@ steps:
   - id: "checkpoint-after-implementation"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
-      echo "=== Checkpoint: Staging Implementation ===" && \
-      git add -A && \
-      STAGED=$(git diff --cached --name-only) && \
-      if [ -n "$STAGED" ]; then \
+      set -euo pipefail
+      WORKTREE_DIR="{{worktree_setup.worktree_path}}"
+      EXPECTED_BRANCH="{{worktree_setup.branch_name}}"
+
+      if [ ! -d "$WORKTREE_DIR" ]; then
+        echo "ERROR: worktree directory '$WORKTREE_DIR' does not exist" >&2
+        exit 1
+      fi
+      WORKTREE_DIR="$(cd "$WORKTREE_DIR" && pwd -P)"
+      cd "$WORKTREE_DIR"
+
+      if [ "$(git rev-parse --is-inside-work-tree)" != "true" ]; then
+        echo "ERROR: '$WORKTREE_DIR' is not inside a git worktree" >&2
+        exit 1
+      fi
+
+      ACTUAL_TOPLEVEL="$(git rev-parse --show-toplevel)"
+      if [ "$ACTUAL_TOPLEVEL" != "$WORKTREE_DIR" ]; then
+        echo "ERROR: expected git top-level '$WORKTREE_DIR' but found '$ACTUAL_TOPLEVEL'" >&2
+        exit 1
+      fi
+
+      ACTUAL_BRANCH="$(git branch --show-current)"
+      if [ "$ACTUAL_BRANCH" != "$EXPECTED_BRANCH" ]; then
+        echo "ERROR: expected branch '$EXPECTED_BRANCH' but found '$ACTUAL_BRANCH'" >&2
+        exit 1
+      fi
+
+      echo "=== Checkpoint: Staging Implementation ==="
+      git add -A
+      STAGED="$(git diff --cached --name-only)"
+      if [ -n "$STAGED" ]; then
         git commit -m "wip: checkpoint after implementation (steps 7-8)
 
       Automatic checkpoint to preserve work in progress.
-      Tests and implementation saved before refactoring phase." && \
-        echo "Checkpoint commit created with $(wc -l <<< "$STAGED") file(s)" ; \
-      else \
-        echo "No changes to checkpoint" ; \
-      fi && \
+      Tests and implementation saved before refactoring phase."
+        echo "Checkpoint commit created with $(wc -l <<< "$STAGED") file(s)"
+      else
+        echo "No changes to checkpoint"
+      fi
       echo "=== Checkpoint Complete ==="
     output: "impl_checkpoint"
 
@@ -755,6 +838,7 @@ steps:
   # ==========================================================================
   - id: "step-09-refactor"
     agent: "amplihack:cleanup"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 9: Refactor and Simplify
 
@@ -783,6 +867,7 @@ steps:
 
   - id: "step-09b-optimize"
     agent: "amplihack:optimizer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 9b: Performance Optimization
 
@@ -803,6 +888,7 @@ steps:
   # ==========================================================================
   - id: "step-10-pre-commit-review"
     agent: "amplihack:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 10: Review Pass Before Commit
 
@@ -834,6 +920,7 @@ steps:
 
   - id: "step-10b-security-review"
     agent: "amplihack:security"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 10b: Security Review
 
@@ -853,6 +940,7 @@ steps:
 
   - id: "step-10c-philosophy-check"
     agent: "amplihack:philosophy-guardian"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 10c: Philosophy Compliance Check
 
@@ -874,6 +962,7 @@ steps:
   # ==========================================================================
   - id: "step-11-incorporate-feedback"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 11: Assess Review Feedback
 
@@ -891,6 +980,7 @@ steps:
 
   - id: "step-11b-implement-feedback"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 11b: Implement Review Feedback
 
@@ -913,19 +1003,46 @@ steps:
   - id: "checkpoint-after-review-feedback"
     type: "bash"
     command: |
-      cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}} && \
-      echo "=== Checkpoint: Staging Review Feedback ===" && \
-      git add -A && \
-      STAGED=$(git diff --cached --name-only) && \
-      if [ -n "$STAGED" ]; then \
+      set -euo pipefail
+      WORKTREE_DIR="{{worktree_setup.worktree_path}}"
+      EXPECTED_BRANCH="{{worktree_setup.branch_name}}"
+
+      if [ ! -d "$WORKTREE_DIR" ]; then
+        echo "ERROR: worktree directory '$WORKTREE_DIR' does not exist" >&2
+        exit 1
+      fi
+      WORKTREE_DIR="$(cd "$WORKTREE_DIR" && pwd -P)"
+      cd "$WORKTREE_DIR"
+
+      if [ "$(git rev-parse --is-inside-work-tree)" != "true" ]; then
+        echo "ERROR: '$WORKTREE_DIR' is not inside a git worktree" >&2
+        exit 1
+      fi
+
+      ACTUAL_TOPLEVEL="$(git rev-parse --show-toplevel)"
+      if [ "$ACTUAL_TOPLEVEL" != "$WORKTREE_DIR" ]; then
+        echo "ERROR: expected git top-level '$WORKTREE_DIR' but found '$ACTUAL_TOPLEVEL'" >&2
+        exit 1
+      fi
+
+      ACTUAL_BRANCH="$(git branch --show-current)"
+      if [ "$ACTUAL_BRANCH" != "$EXPECTED_BRANCH" ]; then
+        echo "ERROR: expected branch '$EXPECTED_BRANCH' but found '$ACTUAL_BRANCH'" >&2
+        exit 1
+      fi
+
+      echo "=== Checkpoint: Staging Review Feedback ==="
+      git add -A
+      STAGED="$(git diff --cached --name-only)"
+      if [ -n "$STAGED" ]; then
         git commit -m "wip: checkpoint after review feedback (steps 10-11)
 
       Automatic checkpoint to preserve review-addressed changes.
-      Saved before running pre-commit hooks and tests." && \
-        echo "Checkpoint commit created with $(wc -l <<< "$STAGED") file(s)" ; \
-      else \
-        echo "No changes to checkpoint" ; \
-      fi && \
+      Saved before running pre-commit hooks and tests."
+        echo "Checkpoint commit created with $(wc -l <<< "$STAGED") file(s)"
+      else
+        echo "No changes to checkpoint"
+      fi
       echo "=== Checkpoint Complete ==="
     output: "review_checkpoint"
 
@@ -934,6 +1051,7 @@ steps:
   # ==========================================================================
   - id: "step-12-run-precommit"
     agent: "amplihack:pre-commit-diagnostic"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 12: Run Tests and Pre-commit Hooks
 
@@ -971,11 +1089,12 @@ steps:
   # ==========================================================================
   - id: "step-13-local-testing"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 13: Mandatory Outside-In Testing (CANNOT BE SKIPPED)
 
       **Task:** {{task_description}}
-      **Repository:** {{repo_path}}
+      **Repository Worktree:** {{worktree_setup.worktree_path}}
       **Branch:** Run `git branch --show-current` to get the current branch name.
 
       You MUST perform outside-in testing using the `qa-team` skill (`outside-in-testing` remains an alias)
@@ -1053,6 +1172,7 @@ steps:
   # ==========================================================================
   - id: "step-14-bump-version"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 14: Bump Version in pyproject.toml (MANDATORY - DO NOT SKIP)
 
@@ -1063,7 +1183,7 @@ steps:
       Before committing changes to git history, bump the version number in `pyproject.toml` to reflect the nature of your changes.
 
       **Task:** {{task_description}}
-      **Repository:** {{repo_path}}
+      **Repository Worktree:** {{worktree_setup.worktree_path}}
 
       **Actions Required:**
 
@@ -1090,7 +1210,7 @@ steps:
 
       **Commands to execute:**
       ```bash
-      cd {{repo_path}}
+      cd {{worktree_setup.worktree_path}}
 
       # Show changes
       git diff main...HEAD --stat
@@ -1139,25 +1259,67 @@ steps:
     type: "bash"
     command: |
       set -euo pipefail
-      cd "{{worktree_setup.worktree_path}}"
+      WORKTREE_DIR="{{worktree_setup.worktree_path}}"
+      EXPECTED_BRANCH="{{worktree_setup.branch_name}}"
+      HAS_REMOTE=false
+
+      if [ ! -d "$WORKTREE_DIR" ]; then
+        echo "ERROR: worktree directory '$WORKTREE_DIR' does not exist" >&2
+        exit 1
+      fi
+      WORKTREE_DIR="$(cd "$WORKTREE_DIR" && pwd -P)"
+      cd "$WORKTREE_DIR"
+
+      if [ "$(git rev-parse --is-inside-work-tree)" != "true" ]; then
+        echo "ERROR: '$WORKTREE_DIR' is not inside a git worktree" >&2
+        exit 1
+      fi
+
+      ACTUAL_TOPLEVEL="$(git rev-parse --show-toplevel)"
+      if [ "$ACTUAL_TOPLEVEL" != "$WORKTREE_DIR" ]; then
+        echo "ERROR: expected git top-level '$WORKTREE_DIR' but found '$ACTUAL_TOPLEVEL'" >&2
+        exit 1
+      fi
+
+      ACTUAL_BRANCH="$(git branch --show-current)"
+      if [ "$ACTUAL_BRANCH" != "$EXPECTED_BRANCH" ]; then
+        echo "ERROR: expected branch '$EXPECTED_BRANCH' but found '$ACTUAL_BRANCH'" >&2
+        exit 1
+      fi
+
+      if git remote get-url origin >/dev/null 2>&1; then
+        HAS_REMOTE=true
+      fi
+
       echo "=== Step 15: Commit and Push ==="
       echo ""
       echo "--- Staging Changes ---"
       git add -A
       echo ""
       echo "--- Creating Commit ---"
-      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
       TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
       )
       COMMIT_TITLE=$(printf 'feat: %.72s' "$(printf '%s' "$TASK_DESC" | tr '\n\r' ' ' | head -1)")
-      COMMIT_MSG=$(printf '%s\n\nImplements issue #%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated\n\nCloses #%s' "$COMMIT_TITLE" {{issue_number}} {{issue_number}})
+      COMMIT_MSG=$(cat <<EOF
+      $COMMIT_TITLE
+
+      Implements issue #{{issue_number}}
+
+      Changes:
+      - Implementation as per design specification
+      - Tests added for new functionality
+      - Documentation updated
+
+      Closes #{{issue_number}}
+      EOF
+      )
       if [ -n "$(git diff --cached --name-only)" ]; then
         git commit -m "$COMMIT_MSG"
       else
         echo "ERROR: Nothing staged to commit. The implementation step may have written files" >&2
-        echo "outside the worktree ({{worktree_setup.worktree_path}}), or no code changes were produced." >&2
+        echo "outside the worktree ($WORKTREE_DIR), or no code changes were produced." >&2
         echo "This is a hollow-success condition — the workflow completed structurally but" >&2
         echo "produced no git artifacts. Check that agents created files in the worktree," >&2
         echo "not in AMPLIHACK_HOME or other locations." >&2
@@ -1166,19 +1328,28 @@ steps:
       fi
       echo ""
       echo "--- Pushing to Remote ---"
-      # REL-002: Detect missing upstream tracking branch before rev-list
-      if ! git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
-        echo "WARNING: No upstream tracking branch configured — skipping push" >&2
+      if [ "$HAS_REMOTE" != "true" ]; then
+        echo "WARNING: No origin remote configured — skipping push" >&2
         exit 0
       fi
-      COMMITS_AHEAD=$(git rev-list --count @{u}..HEAD)
-      if [ "$COMMITS_AHEAD" -ne 0 ]; then
-        # REL-001: No stderr suppression on rebase — surface conflict diagnostics
-        # Split into separate statements so set -e catches rebase failures
-        git pull --rebase
-        git push
+      UPSTREAM_REF=""
+      if git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
+        UPSTREAM_REF='@{u}'
+      elif git show-ref --verify --quiet "refs/remotes/origin/$EXPECTED_BRANCH"; then
+        git branch --set-upstream-to="origin/$EXPECTED_BRANCH" "$EXPECTED_BRANCH" >/dev/null
+        UPSTREAM_REF='@{u}'
+      fi
+      if [ -z "$UPSTREAM_REF" ]; then
+        echo "INFO: No upstream tracking branch configured — publishing branch and setting upstream" >&2
+        git push --set-upstream origin "$EXPECTED_BRANCH"
       else
-        echo "WARNING: Nothing to push - branch is up to date with remote"
+        COMMITS_AHEAD=$(git rev-list --count "${UPSTREAM_REF}..HEAD")
+        if [ "$COMMITS_AHEAD" -ne 0 ]; then
+          git pull --rebase
+          git push
+        else
+          echo "WARNING: Nothing to push - branch is up to date with remote"
+        fi
       fi
       echo ""
       echo "=== Commit and Push Complete ==="
@@ -1283,6 +1454,7 @@ steps:
   # ==========================================================================
   - id: "step-16b-outside-in-fix-loop"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 16b: Outside-In Testing and Fix Loop (MANDATORY)
 
@@ -1390,6 +1562,7 @@ steps:
 
   - id: "step-17b-reviewer-agent"
     agent: "amplihack:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 17b: Comprehensive Code Review (MANDATORY)
 
@@ -1417,6 +1590,7 @@ steps:
 
   - id: "step-17c-security-review"
     agent: "amplihack:security"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 17c: Security Review (MANDATORY)
 
@@ -1440,6 +1614,7 @@ steps:
 
   - id: "step-17d-philosophy-guardian"
     agent: "amplihack:philosophy-guardian"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 17d: Philosophy Guardian Review (MANDATORY)
 
@@ -1463,6 +1638,7 @@ steps:
 
   - id: "step-17e-address-blocking-issues"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 17e: Address Blocking Issues (MANDATORY)
 
@@ -1505,6 +1681,7 @@ steps:
   # ==========================================================================
   - id: "step-18a-analyze-feedback"
     agent: "amplihack:architect"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 18a: Analyze Review Feedback (MANDATORY)
 
@@ -1522,6 +1699,7 @@ steps:
 
   - id: "step-18b-implement-feedback"
     agent: "amplihack:builder"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 18b: Implement Review Feedback (MANDATORY)
 
@@ -1603,6 +1781,7 @@ steps:
   # ==========================================================================
   - id: "step-19a-philosophy-check"
     agent: "amplihack:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 19a: Philosophy Compliance Review (MANDATORY)
 
@@ -1622,6 +1801,7 @@ steps:
 
   - id: "step-19b-patterns-check"
     agent: "amplihack:patterns"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 19b: Pattern Compliance Review (MANDATORY)
 
@@ -1703,6 +1883,7 @@ steps:
   # ==========================================================================
   - id: "step-20-final-cleanup"
     agent: "amplihack:cleanup"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 20: Final Cleanup and Verification
 
@@ -1752,12 +1933,13 @@ steps:
   # ==========================================================================
   - id: "step-20c-quality-audit"
     agent: "amplihack:core:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 20c: Quality Audit Loop
 
       **Requirements:** {{final_requirements}}
       **PR URL:** {{pr_url}}
-      **Repository:** {{repo_path}}
+      **Repository Worktree:** {{worktree_setup.worktree_path}}
 
       Run a comprehensive, iterative quality audit on all files changed in
       this PR. This step follows the quality-audit-cycle recipe (v3.0).
@@ -1851,11 +2033,12 @@ steps:
   # ==========================================================================
   - id: "step-22-ensure-mergeable"
     agent: "amplihack:ci-diagnostic-workflow"
+    working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
       # Step 21: Ensure PR is Mergeable (TASK COMPLETION POINT)
 
       **PR URL:** {{pr_url}}
-      **Repository:** {{repo_path}}
+      **Repository Worktree:** {{worktree_setup.worktree_path}}
 
       Final verification that PR is ready to merge:
 
@@ -1880,21 +2063,47 @@ steps:
   - id: "step-22b-final-status"
     type: "bash"
     command: |
-      cd {{repo_path}} && \
-      echo "=== WORKFLOW COMPLETE ===" && \
-      echo "" && \
-      echo "PR Status:" && \
-      gh pr view --json state,mergeable,reviews,statusCheckRollup && \
-      echo "" && \
-      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
+      set -euo pipefail
+      WORKTREE_DIR="{{worktree_setup.worktree_path}}"
+      EXPECTED_BRANCH="{{worktree_setup.branch_name}}"
+
+      if [ ! -d "$WORKTREE_DIR" ]; then
+        echo "ERROR: worktree directory '$WORKTREE_DIR' does not exist" >&2
+        exit 1
+      fi
+      WORKTREE_DIR="$(cd "$WORKTREE_DIR" && pwd -P)"
+      cd "$WORKTREE_DIR"
+
+      if [ "$(git rev-parse --is-inside-work-tree)" != "true" ]; then
+        echo "ERROR: '$WORKTREE_DIR' is not inside a git worktree" >&2
+        exit 1
+      fi
+
+      ACTUAL_TOPLEVEL="$(git rev-parse --show-toplevel)"
+      if [ "$ACTUAL_TOPLEVEL" != "$WORKTREE_DIR" ]; then
+        echo "ERROR: expected git top-level '$WORKTREE_DIR' but found '$ACTUAL_TOPLEVEL'" >&2
+        exit 1
+      fi
+
+      ACTUAL_BRANCH="$(git branch --show-current)"
+      if [ "$ACTUAL_BRANCH" != "$EXPECTED_BRANCH" ]; then
+        echo "ERROR: expected branch '$EXPECTED_BRANCH' but found '$ACTUAL_BRANCH'" >&2
+        exit 1
+      fi
+
+      echo "=== WORKFLOW COMPLETE ==="
+      echo ""
+      echo "PR Status:"
+      gh pr view --json state,mergeable,reviews,statusCheckRollup
+      echo ""
       TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
-      ) && \
-      printf '=== Task: %s ===\n' "$TASK_DESC" && \
-      printf '=== Issue: #%s ===\n' {{issue_number}} && \
-      printf '=== PR: %s ===\n' {{pr_url}} && \
-      echo "" && \
+      )
+      printf '=== Task: %s ===\n' "$TASK_DESC"
+      printf '=== Issue: #%s ===\n' {{issue_number}}
+      printf '=== PR: %s ===\n' {{pr_url}}
+      echo ""
       echo "All 23 workflow steps completed successfully."
     output: "final_status"
 
