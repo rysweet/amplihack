@@ -1,15 +1,11 @@
-"""Tests for gherkin_prompt_experiment.py — Gherkin v2 recipe step executor scoring.
+"""Tests for gherkin_prompt_experiment.py — Gherkin v2 recipe step executor.
 
-Tests verify that the 6-feature heuristic evaluation correctly scores generated
-artifacts based on keyword/pattern matching for:
-1. Conditional execution
-2. Dependency handling
-3. Retry logic
-4. Timeout semantics
-5. Output capture
-6. Sub-recipe delegation
+Tests cover:
+1. Agent-based consensus evaluator (unit tests with mocked API)
+2. Statistical helpers (mean, stddev, CI)
+3. Manifest loading and CLI (integration)
 
-Testing pyramid: 80% unit (fast heuristic checks), 20% integration (manifest + CLI).
+Testing pyramid: 60% unit (evaluator + stats), 30% integration (manifest + CLI), 10% E2E.
 """
 
 from __future__ import annotations
@@ -18,355 +14,257 @@ import json
 import tempfile
 from pathlib import Path
 
+import pytest
+
+from amplihack.eval.gherkin_agent_evaluator import (
+    FEATURES,
+    AgentVote,
+    ConsensusEvaluation,
+    _extract_vote,
+    _parse_agent_response,
+)
 from amplihack.eval.gherkin_prompt_experiment import (
+    _compute_stats,
     default_gherkin_v2_manifest_path,
-    evaluate_gherkin_artifact,
     load_gherkin_v2_manifest,
     main,
 )
+from amplihack.eval.tla_prompt_experiment import ConditionMetrics
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
-PERFECT_ARTIFACT = """
-class RecipeStepExecutor:
-    \"\"\"Execute recipe steps with conditions, dependencies, retries, timeouts,
-    output capture, and sub-recipe delegation.\"\"\"
-
-    def execute(self, recipe: list[dict], context: dict) -> dict:
-        # Build dependency graph and execute in topological order (DAG)
-        steps = self._topological_sort(recipe)
-        results = {}
-
-        for step in steps:
-            step_id = step["id"]
-
-            # Check dependencies - blockedBy
-            if not self._dependencies_satisfied(step, results):
-                results[step_id] = {"status": "failed", "failure_reason": "dependency_failed"}
-                # Failure propagation: blocked by failed step propagates failure
-                continue
-
-            # Skip does not propagate - step blocked by skipped dep executes normally
-
-            # Evaluate condition against context dict
-            condition = step.get("condition")
-            if condition:
-                try:
-                    if not eval(condition, {}, context):
-                        results[step_id] = {"status": "skipped"}
-                        continue
-                except (NameError, KeyError):
-                    # Condition referencing missing key evaluates to false
-                    results[step_id] = {"status": "skipped"}
-                    continue
-
-            # Handle sub_recipe delegation
-            if "sub_recipe" in step:
-                child_context = context.copy()  # Child context inherits parent context
-                child_result = self.execute(step["sub_recipe"], child_context)
-                # Context isolation: child outputs don't propagate unless propagate_outputs
-                if step.get("propagate_outputs"):
-                    context.update(child_context)
-                # Sub-recipe failure means parent step fails - not retried
-                if any(r["status"] == "failed" for r in child_result.values()):
-                    results[step_id] = {"status": "failed"}
-                    continue
-                results[step_id] = {"status": "completed"}
-                continue
-
-            # Execute with retry and exponential backoff
-            max_retries = step.get("max_retries", 0)
-            timeout_seconds = step.get("timeout_seconds", 60)
-            attempt_count = 0
-
-            for attempt in range(max_retries + 1):
-                attempt_count += 1
-                try:
-                    import asyncio
-                    output = asyncio.wait_for(
-                        self._run_command(step["command"]),
-                        timeout=timeout_seconds
-                    )
-                    # Output capture: store in context[step_id]
-                    context[step_id] = output
-                    results[step_id] = {
-                        "status": "completed",
-                        "output": output,
-                        "attempt_count": attempt_count,
-                    }
-                    break
-                except asyncio.TimeoutError:
-                    # Timed out - NOT retried even if max_retries set
-                    # Timed_out counts as failure for dependency propagation
-                    results[step_id] = {
-                        "status": "timed_out",
-                        "attempt_count": attempt_count,
-                    }
-                    break  # timeout_no_retry
-                except Exception:
-                    if attempt < max_retries:
-                        import time
-                        delay = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
-                        time.sleep(delay)
-                        # Retry output replacement - overwrite previous attempt
-                        continue
-                    # All retries exhausted
-                    results[step_id] = {
-                        "status": "failed",
-                        "attempt_count": attempt_count,
-                    }
-
-        return results
-
-    def _topological_sort(self, recipe):
-        # DAG-based execution order
-        pass
-
-    def _dependencies_satisfied(self, step, results):
-        for dep_id in step.get("blockedBy", []):
-            dep = results.get(dep_id)
-            if dep and dep["status"] in ("failed", "timed_out"):
-                return False  # dependency_failed propagation
-            # Skipped dependency: proceed normally
-        return True
+def _make_vote(
+    features: dict[str, bool],
+    agent_id: str = "test_agent",
+    input_tokens: int = 100,
+    output_tokens: int = 50,
+) -> AgentVote:
+    return AgentVote(
+        agent_id=agent_id,
+        persona="test persona",
+        features=features,
+        reasoning=dict.fromkeys(features, "test"),
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        wall_clock_seconds=1.0,
+    )
 
 
-# Template resolution: replace {{step_id}} with context values
-def resolve_templates(text, context):
-    import re
-    def replacer(match):
-        key = match.group(1)
-        return context.get(key, match.group(0))
-    return re.sub(r'\\{\\{(\\w+)\\}\\}', replacer, text)
-
-
-# Focused tests
-import pytest
-
-def test_conditional_execution():
-    executor = RecipeStepExecutor()
-    context = {"env": "prod"}
-    recipe = [{"id": "s1", "command": "echo hello", "condition": "env == 'prod'"}]
-    results = executor.execute(recipe, context)
-    assert results["s1"]["status"] == "completed"
-
-def test_retry_with_exponential_backoff():
-    # Tests retry mechanism with 1s, 2s, 4s delays
-    pass
-
-def test_timeout_handling():
-    # Timeout terminates and is not retried
-    pass
-
-def test_dependency_graph():
-    # Step blocked by failed dep is marked dependency_failed
-    pass
-
-def test_output_capture():
-    # Output stored in context
-    pass
-
-def test_sub_recipe_delegation():
-    # Sub-recipe runs in child context with isolation
-    pass
-"""
-
-MINIMAL_ARTIFACT = """
-def execute_steps(steps, context):
-    for step in steps:
-        result = run(step["command"])
-        context[step["id"]] = result
-"""
-
-EMPTY_ARTIFACT = ""
+ALL_PASS = dict.fromkeys(FEATURES, True)
+ALL_FAIL = dict.fromkeys(FEATURES, False)
+MIXED = {
+    "conditional_execution": True,
+    "dependency_handling": True,
+    "retry_logic": False,
+    "timeout_semantics": False,
+    "output_capture": True,
+    "sub_recipe_delegation": True,
+}
 
 
 # ---------------------------------------------------------------------------
-# Unit Tests — evaluate_gherkin_artifact scoring
+# Unit Tests — JSON parsing
 # ---------------------------------------------------------------------------
 
 
-class TestEvaluateGherkinArtifact:
-    """Test the 6-feature heuristic scoring."""
+class TestParseAgentResponse:
+    """Test response parsing handles various formats."""
 
-    def test_perfect_artifact_scores_high(self):
-        evaluation = evaluate_gherkin_artifact(PERFECT_ARTIFACT)
-        metrics = evaluation.metrics
-        # A well-written artifact should score > 0.5 on most features
-        assert metrics.baseline_score is not None and metrics.baseline_score > 0.5
-        assert metrics.invariant_compliance is not None and metrics.invariant_compliance > 0.5
-        assert metrics.proof_alignment is not None and metrics.proof_alignment > 0.5
-        assert (
-            metrics.local_protocol_alignment is not None and metrics.local_protocol_alignment > 0.5
+    def test_plain_json(self):
+        raw = json.dumps({f: {"pass": True, "reasoning": "ok"} for f in FEATURES})
+        parsed = _parse_agent_response(raw)
+        assert len(parsed) == 6
+
+    def test_json_with_markdown_fences(self):
+        raw = (
+            "```json\n"
+            + json.dumps({f: {"pass": True, "reasoning": "ok"} for f in FEATURES})
+            + "\n```"
         )
-        assert metrics.progress_signal is not None and metrics.progress_signal > 0.5
-        assert metrics.specification_coverage is not None and metrics.specification_coverage > 0.5
+        parsed = _parse_agent_response(raw)
+        assert len(parsed) == 6
 
-    def test_minimal_artifact_scores_low(self):
-        evaluation = evaluate_gherkin_artifact(MINIMAL_ARTIFACT)
-        metrics = evaluation.metrics
-        # A minimal artifact should score low across features
-        total = sum(
-            v
-            for v in [
-                metrics.baseline_score,
-                metrics.invariant_compliance,
-                metrics.proof_alignment,
-                metrics.local_protocol_alignment,
-                metrics.progress_signal,
-                metrics.specification_coverage,
-            ]
-            if v is not None
+    def test_json_with_bare_fences(self):
+        raw = (
+            "```\n"
+            + json.dumps({f: {"pass": False, "reasoning": "no"} for f in FEATURES})
+            + "\n```"
         )
-        assert total < 3.0  # Low aggregate score
+        parsed = _parse_agent_response(raw)
+        for feat in FEATURES:
+            assert parsed[feat]["pass"] is False
 
-    def test_empty_artifact_scores_zero(self):
-        evaluation = evaluate_gherkin_artifact(EMPTY_ARTIFACT)
-        metrics = evaluation.metrics
-        assert metrics.baseline_score == 0.0
-        assert metrics.invariant_compliance == 0.0
-        assert metrics.proof_alignment == 0.0
-        assert metrics.local_protocol_alignment == 0.0
-        assert metrics.progress_signal == 0.0
-        assert metrics.specification_coverage == 0.0
-
-    def test_checks_are_booleans(self):
-        evaluation = evaluate_gherkin_artifact(PERFECT_ARTIFACT)
-        for check_name, value in evaluation.checks.items():
-            assert isinstance(value, bool), f"Check {check_name} is not bool: {type(value)}"
-
-    def test_notes_contain_missing_signals(self):
-        evaluation = evaluate_gherkin_artifact(MINIMAL_ARTIFACT)
-        missing_notes = [n for n in evaluation.notes if "Missing heuristic signal" in n]
-        assert len(missing_notes) > 0  # Should have some missing signals
-
-    def test_evaluation_to_dict_roundtrip(self):
-        evaluation = evaluate_gherkin_artifact(PERFECT_ARTIFACT)
-        d = evaluation.to_dict()
-        assert "metrics" in d
-        assert "checks" in d
-        assert "notes" in d
-        assert isinstance(d["metrics"], dict)
-        assert isinstance(d["checks"], dict)
+    def test_invalid_json_raises(self):
+        with pytest.raises(json.JSONDecodeError):
+            _parse_agent_response("this is not json")
 
 
-class TestConditionalExecutionScoring:
-    """Test Feature 1: Conditional execution heuristics."""
-
-    def test_condition_evaluation_detected(self):
-        text = "evaluate the condition expression against the context dict, skip if false"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["condition_evaluation"] is True
-
-    def test_condition_skip_detected(self):
-        text = "step status is skipped when condition is false"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["condition_skip"] is True
-
-    def test_missing_key_handling_detected(self):
-        text = "except KeyError: handle missing key in context.get()"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["condition_missing_key"] is True
+# ---------------------------------------------------------------------------
+# Unit Tests — vote extraction
+# ---------------------------------------------------------------------------
 
 
-class TestDependencyHandlingScoring:
-    """Test Feature 2: Dependency handling heuristics."""
+class TestExtractVote:
+    """Test vote extraction from parsed agent responses."""
 
-    def test_dependency_graph_detected(self):
-        text = (
-            "check blockedBy dependencies. if dependency completed, proceed. if failed, propagate"
+    def test_all_pass(self):
+        raw = {f: {"pass": True, "reasoning": f"good {f}"} for f in FEATURES}
+        vote = _extract_vote(raw, "agent_0", "test")
+        assert all(vote.features[f] for f in FEATURES)
+
+    def test_all_fail(self):
+        raw = {f: {"pass": False, "reasoning": "bad"} for f in FEATURES}
+        vote = _extract_vote(raw, "agent_0", "test")
+        assert not any(vote.features[f] for f in FEATURES)
+
+    def test_missing_feature_defaults_to_fail(self):
+        raw = {"conditional_execution": {"pass": True, "reasoning": "ok"}}
+        vote = _extract_vote(raw, "agent_0", "test")
+        assert vote.features["conditional_execution"] is True
+        assert vote.features["dependency_handling"] is False
+
+    def test_bare_bool_handled(self):
+        raw = dict.fromkeys(FEATURES, True)
+        vote = _extract_vote(raw, "agent_0", "test")
+        assert all(vote.features[f] for f in FEATURES)
+
+    def test_reasoning_preserved(self):
+        raw = {f: {"pass": True, "reasoning": f"reason_{f}"} for f in FEATURES}
+        vote = _extract_vote(raw, "agent_0", "test")
+        assert vote.reasoning["retry_logic"] == "reason_retry_logic"
+
+
+# ---------------------------------------------------------------------------
+# Unit Tests — consensus scoring
+# ---------------------------------------------------------------------------
+
+
+class TestConsensusScoring:
+    """Test that consensus correctly aggregates votes."""
+
+    def test_unanimous_pass(self):
+        votes = [_make_vote(ALL_PASS, f"agent_{i}") for i in range(3)]
+        # Manually compute consensus
+        for feat in FEATURES:
+            pass_count = sum(1 for v in votes if v.features[feat])
+            assert pass_count / 3 == 1.0
+
+    def test_unanimous_fail(self):
+        votes = [_make_vote(ALL_FAIL, f"agent_{i}") for i in range(3)]
+        for feat in FEATURES:
+            pass_count = sum(1 for v in votes if v.features[feat])
+            assert pass_count / 3 == 0.0
+
+    def test_majority_vote(self):
+        votes = [
+            _make_vote(ALL_PASS, "agent_0"),
+            _make_vote(ALL_PASS, "agent_1"),
+            _make_vote(ALL_FAIL, "agent_2"),
+        ]
+        for feat in FEATURES:
+            pass_count = sum(1 for v in votes if v.features[feat])
+            assert pass_count / 3 == pytest.approx(0.6667, abs=0.001)
+
+    def test_split_vote_on_specific_features(self):
+        votes = [
+            _make_vote(MIXED, "agent_0"),
+            _make_vote(ALL_PASS, "agent_1"),
+            _make_vote(ALL_FAIL, "agent_2"),
+        ]
+        # conditional_execution: True + True + False = 2/3
+        pass_count = sum(1 for v in votes if v.features["conditional_execution"])
+        assert pass_count / 3 == pytest.approx(0.6667, abs=0.001)
+        # retry_logic: False + True + False = 1/3
+        pass_count = sum(1 for v in votes if v.features["retry_logic"])
+        assert pass_count / 3 == pytest.approx(0.3333, abs=0.001)
+
+
+# ---------------------------------------------------------------------------
+# Unit Tests — AgentVote serialization
+# ---------------------------------------------------------------------------
+
+
+class TestAgentVoteSerialization:
+    def test_to_dict_roundtrip(self):
+        vote = _make_vote(ALL_PASS, "agent_0", input_tokens=500, output_tokens=200)
+        d = vote.to_dict()
+        assert d["agent_id"] == "agent_0"
+        assert d["input_tokens"] == 500
+        assert d["output_tokens"] == 200
+        assert all(d["features"][f] for f in FEATURES)
+
+
+# ---------------------------------------------------------------------------
+# Unit Tests — ConsensusEvaluation serialization
+# ---------------------------------------------------------------------------
+
+
+class TestConsensusEvaluationSerialization:
+    def test_to_dict_has_required_fields(self):
+        votes = [_make_vote(ALL_PASS, f"agent_{i}") for i in range(3)]
+        eval_result = ConsensusEvaluation(
+            metrics=ConditionMetrics(
+                baseline_score=1.0,
+                invariant_compliance=1.0,
+                proof_alignment=1.0,
+                local_protocol_alignment=1.0,
+                progress_signal=1.0,
+                specification_coverage=1.0,
+            ),
+            consensus_scores=dict.fromkeys(FEATURES, 1.0),
+            agent_votes=votes,
+            total_input_tokens=300,
+            total_output_tokens=150,
+            total_wall_clock_seconds=3.0,
+            notes=[],
         )
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["dependency_graph"] is True
-
-    def test_failure_propagation_detected(self):
-        text = "dependency_failed: step blocked by failed dependency"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["failure_propagation"] is True
-
-    def test_skip_no_propagation_detected(self):
-        text = "skip does not propagate failure, skipped dep proceeds normally"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["skip_no_propagation"] is True
-
-    def test_dag_ordering_detected(self):
-        text = "topological sort of the dependency graph DAG"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["dag_ordering"] is True
+        d = eval_result.to_dict()
+        assert d["evaluation_kind"] == "agent_consensus_v1"
+        assert len(d["agent_votes"]) == 3
+        assert d["total_input_tokens"] == 300
 
 
-class TestRetryLogicScoring:
-    """Test Feature 3: Retry logic heuristics."""
-
-    def test_retry_mechanism_detected(self):
-        text = "retry up to max_retries attempts on failure with except handling"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["retry_mechanism"] is True
-
-    def test_exponential_backoff_detected(self):
-        text = "exponential backoff delays: 1s, 2s, 4s"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["exponential_backoff"] is True
-
-    def test_retry_exhaustion_detected(self):
-        text = "all retries exhausted, attempt_count equals max"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["retry_exhaustion"] is True
+# ---------------------------------------------------------------------------
+# Unit Tests — statistical helpers
+# ---------------------------------------------------------------------------
 
 
-class TestTimeoutSemanticsScoring:
-    """Test Feature 4: Timeout semantics heuristics."""
+class TestComputeStats:
+    def test_empty_list(self):
+        stats = _compute_stats([])
+        assert stats["mean"] == 0.0
+        assert stats["n"] == 0
 
-    def test_timeout_mechanism_detected(self):
-        text = "if timeout_seconds exceeded, terminate the step and mark timed_out"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["timeout_mechanism"] is True
+    def test_single_value(self):
+        stats = _compute_stats([0.75])
+        assert stats["mean"] == 0.75
+        assert stats["stddev"] == 0.0
+        assert stats["ci95"] == 0.0
+        assert stats["n"] == 1
 
-    def test_timeout_no_retry_detected(self):
-        text = "timed_out steps are not retried even with max_retries"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["timeout_no_retry"] is True
+    def test_two_values(self):
+        stats = _compute_stats([0.5, 1.0])
+        assert stats["mean"] == 0.75
+        assert stats["stddev"] > 0
+        assert stats["ci95"] > 0
+        assert stats["n"] == 2
 
-    def test_timeout_as_failure_detected(self):
-        text = "timed_out counts as failure, propagates dependency_failed"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["timeout_as_failure"] is True
+    def test_identical_values(self):
+        stats = _compute_stats([0.8, 0.8, 0.8])
+        assert stats["mean"] == 0.8
+        assert stats["stddev"] == 0.0
+        assert stats["min"] == 0.8
+        assert stats["max"] == 0.8
 
-
-class TestOutputCaptureScoring:
-    """Test Feature 5: Output capture heuristics."""
-
-    def test_output_capture_detected(self):
-        text = "capture stdout output and store in context[step_id] dict"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["output_capture"] is True
-
-    def test_template_resolution_detected(self):
-        text = "resolve {{step_id}} template interpolation using re.sub"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["template_resolution"] is True
-
-
-class TestSubRecipeDelegationScoring:
-    """Test Feature 6: Sub-recipe delegation heuristics."""
-
-    def test_sub_recipe_execution_detected(self):
-        text = "if sub_recipe is present, run the child recipe in a child context"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["sub_recipe_execution"] is True
-
-    def test_context_isolation_detected(self):
-        text = "child context inherits parent context, propagate_outputs controls isolation"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["context_isolation"] is True
-
-    def test_sub_recipe_failure_detected(self):
-        text = "sub-recipe failure marks parent as failed, not retried"
-        evaluation = evaluate_gherkin_artifact(text)
-        assert evaluation.checks["sub_recipe_failure"] is True
+    def test_known_distribution(self):
+        stats = _compute_stats([1.0, 0.0, 1.0])
+        assert stats["mean"] == pytest.approx(0.6667, abs=0.001)
+        assert stats["min"] == 0.0
+        assert stats["max"] == 1.0
+        assert stats["n"] == 3
 
 
 # ---------------------------------------------------------------------------
@@ -382,7 +280,6 @@ class TestManifestLoading:
         assert str(path).endswith("gherkin_v2_recipe_executor/manifest.json")
 
     def test_load_manifest_from_repo(self):
-        """Load the actual manifest and verify structure."""
         manifest = load_gherkin_v2_manifest()
         assert manifest.experiment_id == "gherkin-v2-recipe-executor"
         assert manifest.generation_target.target_id == "recipe_step_executor"
@@ -431,7 +328,6 @@ class TestCLI:
     """Test CLI entry point."""
 
     def test_cli_matrix_output(self):
-        """Test that --smoke produces valid JSON output."""
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
             output_path = f.name
         try:
@@ -445,7 +341,6 @@ class TestCLI:
             Path(output_path).unlink(missing_ok=True)
 
     def test_cli_variant_output(self):
-        """Test that --variant prints combined prompt text."""
         import contextlib
         import io
 

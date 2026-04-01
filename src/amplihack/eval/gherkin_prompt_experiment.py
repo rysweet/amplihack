@@ -5,45 +5,49 @@ recipe step executor with 6 interacting features.  It reuses the shared
 infrastructure from tla_prompt_experiment and provides Gherkin-specific:
 
 - manifest loading (from experiments/hive_mind/gherkin_v2_recipe_executor/)
-- heuristic evaluation with 6 scoring dimensions matching the 6 features
+- agent-based consensus evaluation with 3+ independent LLM judges
+- token and wall-clock time tracking for both generation and evaluation
 - a thin CLI entry point that plugs into the same runner
 
 V2 redesign: replaced the user-auth ceiling task (PR #3964) with a harder
 recipe-step-executor target where models lack strong training priors and
 cross-feature interactions create genuine ambiguity.
+
+V3 scoring: replaced regex/keyword heuristic scoring with agent-based
+consensus evaluation — multiple independent agents judge each feature
+against the acceptance criteria rubric.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import re
+import math
 import sys
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from amplihack.eval.gherkin_agent_evaluator import (
+    EVALUATION_KIND,
+    evaluate_with_consensus,
+)
 from amplihack.eval.tla_prompt_experiment import (
-    ConditionMetrics,
     ConditionRunResult,
     ExperimentExecutionReport,
     ExperimentManifest,
-    HeuristicEvaluation,
     PromptGenerationError,
-    _contains_all_groups,
-    _contains_any,
     generate_condition_artifact,
     load_condition_result,
     load_experiment_manifest,
     materialize_condition_packets,
     summarize_condition_results,
-    write_condition_result,
 )
 
 DEFAULT_GHERKIN_V2_HOME = Path("experiments/hive_mind/gherkin_v2_recipe_executor")
 DEFAULT_MANIFEST_NAME = "manifest.json"
-GHERKIN_HEURISTIC_KIND = "gherkin_heuristic_v2"
 GHERKIN_LIVE_SYSTEM_PROMPT = (
     "You are participating in a controlled code-generation experiment. "
     "Follow the user prompt exactly, stay within scope, and return only the "
@@ -68,326 +72,115 @@ def load_gherkin_v2_manifest(
     return load_experiment_manifest(default_gherkin_v2_manifest_path(repo_root))
 
 
-def _matches_any(text: str, patterns: tuple[str, ...]) -> bool:
-    """Check if text matches any of the given regex patterns."""
-    return any(re.search(p, text) for p in patterns)
+# ---------------------------------------------------------------------------
+# Evaluation asset loading
+# ---------------------------------------------------------------------------
+
+
+def _load_evaluation_assets(
+    repo_root: Path | None = None,
+) -> tuple[str, str, str]:
+    """Load the acceptance criteria, .feature spec, and reference impl.
+
+    Returns (acceptance_criteria, feature_spec, reference_impl).
+    """
+    root = repo_root or _repo_root()
+    experiment_home = root / DEFAULT_GHERKIN_V2_HOME
+
+    acceptance_criteria = (
+        experiment_home / "specs" / "recipe_step_executor_acceptance_criteria.md"
+    ).read_text()
+    feature_spec = (experiment_home / "specs" / "recipe_step_executor.feature").read_text()
+    reference_impl = (experiment_home / "reference" / "recipe_step_executor.py").read_text()
+
+    return acceptance_criteria, feature_spec, reference_impl
 
 
 # ---------------------------------------------------------------------------
-# Gherkin v2 heuristic evaluation — recipe step executor (6 features)
+# Token and timing tracking
 # ---------------------------------------------------------------------------
 
 
 @dataclass
-class GherkinConditionMetrics:
-    """Score bundle for the 6-feature recipe step executor evaluation."""
+class GenerationMetrics:
+    """Timing and token metrics for one condition's generation phase."""
 
-    conditional_execution: float | None = None
-    dependency_handling: float | None = None
-    retry_logic: float | None = None
-    timeout_semantics: float | None = None
-    output_capture: float | None = None
-    sub_recipe_delegation: float | None = None
+    generation_wall_clock_seconds: float = 0.0
+    generation_input_tokens: int = 0
+    generation_output_tokens: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "conditional_execution": self.conditional_execution,
-            "dependency_handling": self.dependency_handling,
-            "retry_logic": self.retry_logic,
-            "timeout_semantics": self.timeout_semantics,
-            "output_capture": self.output_capture,
-            "sub_recipe_delegation": self.sub_recipe_delegation,
+            "generation_wall_clock_seconds": round(self.generation_wall_clock_seconds, 2),
+            "generation_input_tokens": self.generation_input_tokens,
+            "generation_output_tokens": self.generation_output_tokens,
         }
 
 
-def evaluate_gherkin_artifact(text: str) -> HeuristicEvaluation:
-    """Evaluate a generated artifact against recipe-step-executor behavioral scenarios.
+@dataclass
+class ConditionRunResultV2:
+    """Extended run result with token/time tracking and consensus evaluation."""
 
-    Scores 6 features plus cross-feature interaction signals. Each feature
-    score is a float in [0, 1] derived from heuristic keyword/pattern matching.
-    """
+    base_result: ConditionRunResult
+    generation_metrics: GenerationMetrics = field(default_factory=GenerationMetrics)
+    evaluation_metrics: dict[str, Any] | None = None  # from ConsensusEvaluation
 
-    normalized = text.lower()
-
-    checks: dict[str, bool] = {
-        # --- Feature 1: Conditional execution ---
-        "condition_evaluation": _contains_all_groups(
-            normalized,
-            ("condition", "eval"),
-            ("context", "dict", "skip", "false"),
-        ),
-        "condition_skip": _matches_any(
-            normalized,
-            (r"skipped", r"skip", r"status.*skip", r"condition.*false"),
-        ),
-        "condition_missing_key": _contains_any(
-            normalized,
-            (
-                "keyerror",
-                "nameerror",
-                "missing key",
-                "key not found",
-                "context.get",
-                "except (keyerror",
-                "except keyerror",
-                "except (nameerror",
-                "except nameerror",
-            ),
-        ),
-        # --- Feature 2: Step dependencies ---
-        "dependency_graph": _contains_all_groups(
-            normalized,
-            ("blockedby", "blocked_by", "depends", "dependencies", "dependency"),
-            ("complete", "completed", "failed", "status"),
-        ),
-        "failure_propagation": _contains_any(
-            normalized,
-            (
-                "dependency_failed",
-                "propagat",
-                "blocked by failed",
-                "blocked by a failed",
-                "dep.*fail",
-            ),
-        ),
-        "skip_no_propagation": _matches_any(
-            normalized,
-            (
-                r"skip.*does\s*not\s*propagat",
-                r"skip.*not.*fail",
-                r"skipped.*dep.*execut",
-                r"skipped.*proceed",
-                r"skip.*normal",
-            ),
-        ),
-        "dag_ordering": _contains_any(
-            normalized,
-            (
-                "topological",
-                "topo_sort",
-                "toposort",
-                "dependency graph",
-                "execution order",
-                "dag",
-                "directed acyclic",
-            ),
-        ),
-        # --- Feature 3: Retry with exponential backoff ---
-        "retry_mechanism": _contains_all_groups(
-            normalized,
-            ("retry", "max_retries", "retries", "attempt"),
-            ("fail", "error", "except"),
-        ),
-        "exponential_backoff": _matches_any(
-            normalized,
-            (
-                r"exponential.*backoff",
-                r"backoff.*exponential",
-                r"1s.*2s.*4s",
-                r"1,\s*2,\s*4",
-                r"2\s*\*\*",
-                r"delay\s*\*\s*2",
-                r"delay\s*\*=\s*2",
-            ),
-        ),
-        "retry_exhaustion": _contains_any(
-            normalized,
-            (
-                "exhausted",
-                "all retries",
-                "max retries reached",
-                "attempt_count",
-                "attempt count",
-                "attempts == max",
-            ),
-        ),
-        # --- Feature 4: Timeout handling ---
-        "timeout_mechanism": _contains_all_groups(
-            normalized,
-            ("timeout", "timeout_seconds", "timed_out", "timed out"),
-            ("terminat", "kill", "cancel", "signal", "interrupt", "raise"),
-        ),
-        "timeout_no_retry": _matches_any(
-            normalized,
-            (
-                r"timed.?out.*not.*retr",
-                r"timeout.*not.*retr",
-                r"not.*retr.*timed.?out",
-                r"timed_out.*skip.*retry",
-                r"if.*timed_out.*break",
-                r"if.*timed_out.*return",
-            ),
-        ),
-        "timeout_as_failure": _matches_any(
-            normalized,
-            (
-                r"timed.?out.*count.*fail",
-                r"timed.?out.*treat.*fail",
-                r"timed.?out.*propagat.*fail",
-                r"timed_out.*dependency_failed",
-            ),
-        ),
-        # --- Feature 5: Output capture ---
-        "output_capture": _contains_all_groups(
-            normalized,
-            ("output", "capture", "stdout", "result"),
-            ("context", "store", "dict", "context["),
-        ),
-        "template_resolution": _matches_any(
-            normalized,
-            (
-                r"\{\{step",
-                r"\{\{.*\}\}",
-                r"template",
-                r"interpolat",
-                r"re\.sub",
-                r"format.*\{",
-                r"replace.*\{\{",
-            ),
-        ),
-        # --- Feature 6: Sub-recipe delegation ---
-        "sub_recipe_execution": _contains_any(
-            normalized,
-            (
-                "sub_recipe",
-                "sub-recipe",
-                "child recipe",
-                "child context",
-                "child_context",
-                "nested recipe",
-            ),
-        ),
-        "context_isolation": _matches_any(
-            normalized,
-            (
-                r"child.*context.*inherit",
-                r"inherit.*parent.*context",
-                r"context.*copy",
-                r"context.*isol",
-                r"propagate_outputs",
-                r"propagate.*output",
-            ),
-        ),
-        "sub_recipe_failure": _matches_any(
-            normalized,
-            (
-                r"sub.?recipe.*fail",
-                r"child.*fail.*parent",
-                r"failed.*sub.?recipe",
-                r"sub.?recipe.*not.*retr",
-            ),
-        ),
-        # --- Cross-feature interactions ---
-        "retry_output_replacement": _matches_any(
-            normalized,
-            (
-                r"retr.*output.*replac",
-                r"final.*output",
-                r"overwrite.*output",
-                r"context\[.*\]\s*=.*output",
-                r"latest.*attempt",
-            ),
-        ),
-        "focused_tests": _contains_all_groups(
-            normalized,
-            ("test_", "pytest", "assert ", "unittest", "def test"),
-            ("condition", "retry", "timeout", "depend", "output", "sub_recipe"),
-        ),
-    }
-
-    # --- Feature scores (each in [0, 1]) ---
-
-    # Feature 1: Conditional execution (3 checks)
-    cond_score = (
-        sum(checks[c] for c in ("condition_evaluation", "condition_skip", "condition_missing_key"))
-        / 3.0
-    )
-
-    # Feature 2: Dependency handling (4 checks)
-    dep_score = (
-        sum(
-            checks[c]
-            for c in (
-                "dependency_graph",
-                "failure_propagation",
-                "skip_no_propagation",
-                "dag_ordering",
-            )
-        )
-        / 4.0
-    )
-
-    # Feature 3: Retry logic (3 checks)
-    retry_score = (
-        sum(checks[c] for c in ("retry_mechanism", "exponential_backoff", "retry_exhaustion")) / 3.0
-    )
-
-    # Feature 4: Timeout semantics (3 checks)
-    timeout_score = (
-        sum(checks[c] for c in ("timeout_mechanism", "timeout_no_retry", "timeout_as_failure"))
-        / 3.0
-    )
-
-    # Feature 5: Output capture (2 checks)
-    output_score = sum(checks[c] for c in ("output_capture", "template_resolution")) / 2.0
-
-    # Feature 6: Sub-recipe delegation (3 checks)
-    sub_recipe_score = (
-        sum(
-            checks[c]
-            for c in (
-                "sub_recipe_execution",
-                "context_isolation",
-                "sub_recipe_failure",
-            )
-        )
-        / 3.0
-    )
-
-    # Map to the shared ConditionMetrics (6 slots) for compatibility with the
-    # summarization and reporting pipeline:
-    #   baseline_score -> conditional_execution
-    #   invariant_compliance -> dependency_handling
-    #   proof_alignment -> retry_logic
-    #   local_protocol_alignment -> timeout_semantics
-    #   progress_signal -> output_capture
-    #   specification_coverage -> sub_recipe_delegation
-    metrics = ConditionMetrics(
-        baseline_score=round(cond_score, 4),
-        invariant_compliance=round(dep_score, 4),
-        proof_alignment=round(retry_score, 4),
-        local_protocol_alignment=round(timeout_score, 4),
-        progress_signal=round(output_score, 4),
-        specification_coverage=round(sub_recipe_score, 4),
-    )
-
-    _gherkin_metrics = GherkinConditionMetrics(
-        conditional_execution=round(cond_score, 4),
-        dependency_handling=round(dep_score, 4),
-        retry_logic=round(retry_score, 4),
-        timeout_semantics=round(timeout_score, 4),
-        output_capture=round(output_score, 4),
-        sub_recipe_delegation=round(sub_recipe_score, 4),
-    )
-
-    notes = [
-        "Gherkin v2 heuristic scoring for recipe step executor (6 features).",
-        "Metric mapping: baseline_score=conditional_execution, "
-        "invariant_compliance=dependency_handling, "
-        "proof_alignment=retry_logic, "
-        "local_protocol_alignment=timeout_semantics, "
-        "progress_signal=output_capture, "
-        "specification_coverage=sub_recipe_delegation.",
-    ]
-    for check_name, passed in checks.items():
-        if not passed:
-            notes.append(f"Missing heuristic signal: {check_name}")
-
-    return HeuristicEvaluation(metrics=metrics, checks=checks, notes=notes)
+    def to_dict(self) -> dict[str, Any]:
+        data = self.base_result.to_dict()
+        data["generation_metrics"] = self.generation_metrics.to_dict()
+        if self.evaluation_metrics is not None:
+            data["evaluation_metrics"] = self.evaluation_metrics
+        return data
 
 
 # ---------------------------------------------------------------------------
-# Gherkin v2 experiment runner — reuses shared pipeline with custom evaluation
+# Statistical helpers
+# ---------------------------------------------------------------------------
+
+
+def _compute_stats(values: list[float]) -> dict[str, float]:
+    """Compute mean, stddev, min, max, and 95% CI half-width for a list of values."""
+    n = len(values)
+    if n == 0:
+        return {"mean": 0.0, "stddev": 0.0, "min": 0.0, "max": 0.0, "ci95": 0.0, "n": 0}
+    mean = sum(values) / n
+    if n < 2:
+        return {
+            "mean": mean,
+            "stddev": 0.0,
+            "min": min(values),
+            "max": max(values),
+            "ci95": 0.0,
+            "n": n,
+        }
+    variance = sum((x - mean) ** 2 for x in values) / (n - 1)
+    stddev = math.sqrt(variance)
+    # t-value for 95% CI with n-1 degrees of freedom (approximation)
+    t_values = {
+        1: 12.706,
+        2: 4.303,
+        3: 3.182,
+        4: 2.776,
+        5: 2.571,
+        6: 2.447,
+        7: 2.365,
+        8: 2.306,
+        9: 2.262,
+    }
+    t = t_values.get(n - 1, 1.96)  # fall back to z=1.96 for large n
+    ci95 = t * stddev / math.sqrt(n)
+    return {
+        "mean": round(mean, 4),
+        "stddev": round(stddev, 4),
+        "min": round(min(values), 4),
+        "max": round(max(values), 4),
+        "ci95": round(ci95, 4),
+        "n": n,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Gherkin v2 experiment runner — agent-based consensus evaluation
 # ---------------------------------------------------------------------------
 
 
@@ -398,9 +191,20 @@ def run_gherkin_v2_experiment(
     manifest: ExperimentManifest | None = None,
     replay_dir: str | Path | None = None,
     allow_live: bool = False,
+    num_evaluator_agents: int = 3,
+    evaluator_model: str = "claude-sonnet-4-20250514",
 ) -> ExperimentExecutionReport:
-    """Run the gherkin v2 experiment with recipe-step-executor scoring."""
+    """Run the gherkin v2 experiment with agent-based consensus scoring.
 
+    Args:
+        output_dir: Directory to write per-condition results.
+        smoke: If True, use smoke matrix (fewer repeats).
+        manifest: Experiment manifest (loaded from default path if None).
+        replay_dir: If set, read pre-generated artifacts instead of live generation.
+        allow_live: If True, allow real SDK-backed generation.
+        num_evaluator_agents: Number of independent evaluator agents per condition.
+        evaluator_model: Model to use for evaluator agents.
+    """
     resolved_manifest = manifest or load_gherkin_v2_manifest()
     replay_root = Path(replay_dir) if replay_dir is not None else None
     if replay_root is None and not allow_live:
@@ -409,15 +213,26 @@ def run_gherkin_v2_experiment(
         )
     packets = materialize_condition_packets(output_dir, smoke=smoke, manifest=resolved_manifest)
 
+    # Load evaluation rubric assets once
+    acceptance_criteria, feature_spec, reference_impl = _load_evaluation_assets()
+
     results: list[ConditionRunResult] = []
+    extended_results: list[ConditionRunResultV2] = []
+
     for packet in packets:
         condition_dir = Path(packet.condition_dir)
         generated_file = condition_dir / "generated_artifact.md"
         raw_response_file = condition_dir / "raw_response.txt"
         evaluation_file = condition_dir / "evaluation.json"
         run_result_file = condition_dir / "run_result.json"
+
+        gen_metrics = GenerationMetrics()
+
         try:
             bundle = resolved_manifest.load_prompt_bundle(packet.condition.prompt_variant_id)
+
+            # --- Generation phase with timing ---
+            gen_start = time.monotonic()
             generated = generate_condition_artifact(
                 packet.condition,
                 bundle.combined_text(),
@@ -425,25 +240,67 @@ def run_gherkin_v2_experiment(
                 replay_dir=replay_root,
                 allow_live=allow_live,
             )
+            gen_metrics.generation_wall_clock_seconds = time.monotonic() - gen_start
+
+            # Extract token counts from generation metadata if available
+            gen_metrics.generation_input_tokens = int(generated.metadata.get("input_tokens", 0))
+            gen_metrics.generation_output_tokens = int(generated.metadata.get("output_tokens", 0))
+
             generated_file.write_text(generated.response_text)
             raw_response_file.write_text(generated.response_text)
-            # Use GHERKIN evaluation instead of TLA+ evaluation
-            evaluation = evaluate_gherkin_artifact(generated.response_text)
-            evaluation_file.write_text(json.dumps(evaluation.to_dict(), indent=2) + "\n")
-            generation_notes = [f"generation_provider={generated.provider}"]
+
+            # --- Evaluation phase: agent-based consensus ---
+            consensus = evaluate_with_consensus(
+                generated_code=generated.response_text,
+                acceptance_criteria=acceptance_criteria,
+                feature_spec=feature_spec,
+                reference_impl=reference_impl,
+                num_agents=num_evaluator_agents,
+                model=evaluator_model,
+            )
+            evaluation_file.write_text(json.dumps(consensus.to_dict(), indent=2) + "\n")
+
+            generation_notes = [
+                f"generation_provider={generated.provider}",
+                f"evaluation_kind={EVALUATION_KIND}",
+                f"evaluator_agents={num_evaluator_agents}",
+                f"evaluator_model={evaluator_model}",
+                f"generation_seconds={gen_metrics.generation_wall_clock_seconds:.1f}",
+                f"eval_seconds={consensus.total_wall_clock_seconds:.1f}",
+                f"eval_input_tokens={consensus.total_input_tokens}",
+                f"eval_output_tokens={consensus.total_output_tokens}",
+            ]
             runtime_model_id = generated.metadata.get("runtime_model_id")
             if runtime_model_id and runtime_model_id != packet.condition.model_id:
                 generation_notes.append(f"runtime_model_id={runtime_model_id}")
+            generation_notes.extend(consensus.notes)
+
             result = ConditionRunResult(
                 condition=packet.condition,
                 status="completed",
-                metrics=evaluation.metrics,
+                metrics=consensus.metrics,
                 generated_artifact_path=str(generated_file),
                 evaluation_artifact_path=str(evaluation_file),
                 raw_response_path=str(raw_response_file),
-                notes=[*generation_notes, *evaluation.notes],
+                notes=generation_notes,
             )
+            ext_result = ConditionRunResultV2(
+                base_result=result,
+                generation_metrics=gen_metrics,
+                evaluation_metrics={
+                    "eval_input_tokens": consensus.total_input_tokens,
+                    "eval_output_tokens": consensus.total_output_tokens,
+                    "eval_wall_clock_seconds": round(consensus.total_wall_clock_seconds, 2),
+                    "consensus_scores": {
+                        k: round(v, 4) for k, v in consensus.consensus_scores.items()
+                    },
+                },
+            )
+
         except PromptGenerationError as exc:
+            gen_metrics.generation_wall_clock_seconds = (
+                time.monotonic() - gen_start if "gen_start" in dir() else 0.0
+            )
             if exc.response_text:
                 raw_response_file.write_text(exc.response_text)
             failure_notes = [str(exc)]
@@ -460,14 +317,20 @@ def run_gherkin_v2_experiment(
                 notes=failure_notes,
                 raw_response_path=str(raw_response_file) if exc.response_text else None,
             )
+            ext_result = ConditionRunResultV2(base_result=result, generation_metrics=gen_metrics)
+
         except Exception as exc:
             result = ConditionRunResult(
                 condition=packet.condition,
                 status="failed",
                 notes=[str(exc)],
             )
-        write_condition_result(run_result_file, result)
+            ext_result = ConditionRunResultV2(base_result=result, generation_metrics=gen_metrics)
+
+        # Write extended result (includes generation_metrics and evaluation_metrics)
+        run_result_file.write_text(json.dumps(ext_result.to_dict(), indent=2) + "\n")
         results.append(result)
+        extended_results.append(ext_result)
 
     summary = summarize_condition_results(results)
     report = ExperimentExecutionReport(
@@ -485,12 +348,14 @@ def run_gherkin_v2_experiment(
     (output_root / "experiment_report.json").write_text(
         json.dumps(report.to_dict(), indent=2) + "\n"
     )
-    generate_gherkin_markdown_report(report, results, output_root / "experiment_report.md")
+    generate_gherkin_markdown_report(
+        report, results, extended_results, output_root / "experiment_report.md"
+    )
     return report
 
 
 # ---------------------------------------------------------------------------
-# Gherkin-specific markdown report
+# Gherkin-specific markdown report with statistics
 # ---------------------------------------------------------------------------
 
 # Gherkin metric labels for readable reports
@@ -503,13 +368,23 @@ _GHERKIN_METRIC_LABELS = {
     "specification_coverage": "SubRecipe",
 }
 
+_GHERKIN_METRIC_ORDER = [
+    "baseline_score",
+    "invariant_compliance",
+    "proof_alignment",
+    "local_protocol_alignment",
+    "progress_signal",
+    "specification_coverage",
+]
+
 
 def generate_gherkin_markdown_report(
     execution_report: ExperimentExecutionReport,
     results: list[ConditionRunResult],
+    extended_results: list[ConditionRunResultV2],
     output_path: str | Path,
 ) -> Path:
-    """Write a markdown report for a gherkin v2 experiment run."""
+    """Write a markdown report with per-condition scores, stats, and token usage."""
 
     output_file = Path(output_path)
     lines = [
@@ -519,7 +394,7 @@ def generate_gherkin_markdown_report(
         f"**Generated at**: `{execution_report.generated_at}`",
         f"**Matrix mode**: `{execution_report.matrix_mode}`",
         f"**Replay mode**: `{execution_report.replay_mode}`",
-        f"**Evaluation kind**: `{GHERKIN_HEURISTIC_KIND}`",
+        f"**Evaluation kind**: `{EVALUATION_KIND}`",
         f"**Output dir**: `{execution_report.output_dir}`",
         "",
         "## Summary",
@@ -541,24 +416,101 @@ def generate_gherkin_markdown_report(
         "",
         "## Condition Table",
         "",
-        "| Condition | Model | Prompt | Status | Conditional | Dependencies | Retry | Timeout | Output | SubRecipe |",
-        "|-----------|-------|--------|--------|-------------|--------------|-------|---------|--------|-----------|",
+        "| Condition | Model | Prompt | Status | Cond | Deps | Retry | T/O | Output | SubRec | Gen(s) | Eval(s) | Eval Tokens |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
-    for result in results:
+
+    for result, ext in zip(results, extended_results, strict=False):
         m = result.metrics
+        gm = ext.generation_metrics
+        em = ext.evaluation_metrics or {}
+        eval_tokens = em.get("eval_input_tokens", 0) + em.get("eval_output_tokens", 0)
         lines.append(
-            "| "
-            f"{result.condition.condition_id} | "
-            f"{result.condition.model_id} | "
-            f"{result.condition.prompt_variant_id} | "
-            f"{result.status} | "
-            f"{m.baseline_score if m.baseline_score is not None else '--'} | "
-            f"{m.invariant_compliance if m.invariant_compliance is not None else '--'} | "
-            f"{m.proof_alignment if m.proof_alignment is not None else '--'} | "
-            f"{m.local_protocol_alignment if m.local_protocol_alignment is not None else '--'} | "
-            f"{m.progress_signal if m.progress_signal is not None else '--'} | "
-            f"{m.specification_coverage if m.specification_coverage is not None else '--'} |"
+            f"| {result.condition.condition_id} "
+            f"| {result.condition.model_id} "
+            f"| {result.condition.prompt_variant_id} "
+            f"| {result.status} "
+            f"| {m.baseline_score if m.baseline_score is not None else '--'} "
+            f"| {m.invariant_compliance if m.invariant_compliance is not None else '--'} "
+            f"| {m.proof_alignment if m.proof_alignment is not None else '--'} "
+            f"| {m.local_protocol_alignment if m.local_protocol_alignment is not None else '--'} "
+            f"| {m.progress_signal if m.progress_signal is not None else '--'} "
+            f"| {m.specification_coverage if m.specification_coverage is not None else '--'} "
+            f"| {gm.generation_wall_clock_seconds:.1f} "
+            f"| {em.get('eval_wall_clock_seconds', 0):.1f} "
+            f"| {eval_tokens} |"
         )
+
+    # --- Per-variant statistics ---
+    completed = [
+        (r, e) for r, e in zip(results, extended_results, strict=False) if r.status == "completed"
+    ]
+    if completed:
+        # Group by prompt variant
+        by_variant: dict[str, list[ConditionRunResult]] = {}
+        for r, _ in completed:
+            by_variant.setdefault(r.condition.prompt_variant_id, []).append(r)
+
+        lines.extend(["", "## Per-Variant Statistics", ""])
+        lines.append("| Variant | N | Cond | Deps | Retry | T/O | Output | SubRec | AVG |")
+        lines.append("|---|---|---|---|---|---|---|---|---|")
+
+        for variant_id, variant_results in sorted(by_variant.items()):
+            n = len(variant_results)
+            metric_values: dict[str, list[float]] = {k: [] for k in _GHERKIN_METRIC_ORDER}
+            for r in variant_results:
+                for k in _GHERKIN_METRIC_ORDER:
+                    v = getattr(r.metrics, k)
+                    if v is not None:
+                        metric_values[k].append(v)
+
+            stats = {k: _compute_stats(metric_values[k]) for k in _GHERKIN_METRIC_ORDER}
+            all_means = [stats[k]["mean"] for k in _GHERKIN_METRIC_ORDER if stats[k]["n"] > 0]
+            avg = sum(all_means) / len(all_means) if all_means else 0.0
+
+            def _fmt(s: dict[str, float]) -> str:
+                if s["n"] < 2:
+                    return f"{s['mean']:.3f}"
+                return f"{s['mean']:.3f} +/-{s['ci95']:.3f}"
+
+            lines.append(
+                f"| {variant_id} | {n} "
+                f"| {_fmt(stats['baseline_score'])} "
+                f"| {_fmt(stats['invariant_compliance'])} "
+                f"| {_fmt(stats['proof_alignment'])} "
+                f"| {_fmt(stats['local_protocol_alignment'])} "
+                f"| {_fmt(stats['progress_signal'])} "
+                f"| {_fmt(stats['specification_coverage'])} "
+                f"| {avg:.3f} |"
+            )
+
+    # --- Token usage summary ---
+    lines.extend(["", "## Token Usage Summary", ""])
+    total_gen_tokens = sum(
+        e.generation_metrics.generation_input_tokens + e.generation_metrics.generation_output_tokens
+        for e in extended_results
+    )
+    total_eval_tokens = sum(
+        (e.evaluation_metrics or {}).get("eval_input_tokens", 0)
+        + (e.evaluation_metrics or {}).get("eval_output_tokens", 0)
+        for e in extended_results
+    )
+    total_gen_seconds = sum(
+        e.generation_metrics.generation_wall_clock_seconds for e in extended_results
+    )
+    total_eval_seconds = sum(
+        (e.evaluation_metrics or {}).get("eval_wall_clock_seconds", 0) for e in extended_results
+    )
+    lines.extend(
+        [
+            f"- Total generation tokens: {total_gen_tokens:,}",
+            f"- Total evaluation tokens: {total_eval_tokens:,}",
+            f"- Total generation time: {total_gen_seconds:.1f}s",
+            f"- Total evaluation time: {total_eval_seconds:.1f}s",
+        ]
+    )
+
+    # --- Failures ---
     failed = [item for item in results if item.status == "failed"]
     if failed:
         lines.extend(["", "## Failures", ""])
@@ -567,14 +519,15 @@ def generate_gherkin_markdown_report(
                 f"- `{result.condition.condition_id}`: "
                 + ("; ".join(result.notes[:3]) if result.notes else "Failed without notes")
             )
+
     lines.extend(
         [
             "",
             "## Notes",
             "",
-            "- Scores are heuristic local signals based on keyword/pattern matching.",
-            "- Each feature score is the fraction of sub-checks that matched (0.0 to 1.0).",
-            "- Cross-feature interaction checks contribute to individual feature scores.",
+            f"- Evaluation uses {EVALUATION_KIND}: multiple independent LLM agents judge each feature.",
+            "- Consensus score = fraction of agents voting PASS per feature.",
+            "- Statistics include mean, 95% CI (t-distribution) when N >= 2.",
             "",
         ]
     )
@@ -632,6 +585,17 @@ def main(argv: list[str] | None = None) -> int:
         help="Allow real SDK-backed model execution.",
     )
     parser.add_argument(
+        "--num-evaluators",
+        type=int,
+        default=3,
+        help="Number of independent evaluator agents (default: 3).",
+    )
+    parser.add_argument(
+        "--evaluator-model",
+        default="claude-sonnet-4-20250514",
+        help="Model to use for evaluator agents.",
+    )
+    parser.add_argument(
         "--summarize-results",
         type=Path,
         help="Read run_result.json files and print aggregate summary.",
@@ -648,6 +612,8 @@ def main(argv: list[str] | None = None) -> int:
             manifest=manifest,
             replay_dir=args.replay_dir,
             allow_live=args.allow_live,
+            num_evaluator_agents=args.num_evaluators,
+            evaluator_model=args.evaluator_model,
         )
         print(json.dumps(report.to_dict(), indent=2))
         if report.failed_conditions:
