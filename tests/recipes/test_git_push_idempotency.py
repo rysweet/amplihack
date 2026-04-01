@@ -71,6 +71,17 @@ def git_repo(tmp_path):
 class TestYamlStructure:
     """Verify the YAML step definitions contain idempotency guards."""
 
+    def test_step_04_stays_local_only(self, workflow_steps):
+        step = workflow_steps.get("step-04-setup-worktree")
+        assert step is not None, "step-04-setup-worktree should exist"
+        cmd = step.get("command", "")
+        assert 'git -C "${WORKTREE_PATH}" push origin "${BRANCH_NAME}"' not in cmd, (
+            "step-04 should not push a remote branch before there is work to publish"
+        )
+        assert 'branch --set-upstream-to="origin/${BRANCH_NAME}"' not in cmd, (
+            "step-04 should not spend time configuring remote tracking during local setup"
+        )
+
     def test_step_15_has_commit_idempotency_check(self, workflow_steps):
         step = workflow_steps.get("step-15-commit-push")
         assert step is not None, "step-15-commit-push should exist"
@@ -84,6 +95,14 @@ class TestYamlStructure:
         assert step is not None
         cmd = step.get("command", "")
         assert "git rev-list" in cmd, "step-15 should check for unpushed commits before pushing"
+
+    def test_step_15_bootstraps_upstream_on_first_push(self, workflow_steps):
+        step = workflow_steps.get("step-15-commit-push")
+        assert step is not None
+        cmd = step.get("command", "")
+        assert 'git push --set-upstream origin "$EXPECTED_BRANCH"' in cmd, (
+            "step-15 should create upstream tracking lazily instead of paying for it in step-04"
+        )
 
     def test_step_18c_has_commit_idempotency_check(self, workflow_steps):
         step = workflow_steps.get("step-18c-push-feedback-changes")
@@ -126,6 +145,17 @@ class TestGitIdempotency:
             text=True,
             cwd=str(cwd),
             timeout=30,
+        )
+
+    @staticmethod
+    def _render_step_15(
+        command: str, *, branch_name: str, task_description: str, issue_number: str
+    ) -> str:
+        return (
+            command.replace("{{worktree_setup.worktree_path}}", ".")
+            .replace("{{worktree_setup.branch_name}}", branch_name)
+            .replace("{{task_description}}", task_description)
+            .replace("{{issue_number}}", issue_number)
         )
 
     def test_nothing_to_commit_succeeds(self, git_repo):
@@ -210,6 +240,35 @@ class TestGitIdempotency:
         # Should have commit warning (nothing to commit) but no push warning
         assert "Nothing to commit" in result.stdout
         assert "Nothing to push" not in result.stdout
+
+    def test_step_15_sets_upstream_when_branch_has_no_tracking(self, workflow_steps, git_repo):
+        """A fresh feature branch should publish successfully without step-04 pre-pushing it."""
+        branch_name = "feat/issue-1234"
+        subprocess.run(
+            ["git", "-C", str(git_repo), "checkout", "-b", branch_name],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        (git_repo / "fresh_feature.txt").write_text("content\n")
+
+        script = self._render_step_15(
+            workflow_steps["step-15-commit-push"]["command"],
+            branch_name=branch_name,
+            task_description="test task",
+            issue_number="1234",
+        )
+
+        result = self._run_bash(script, git_repo)
+        assert result.returncode == 0, f"Step 15 should bootstrap upstream: {result.stderr}"
+
+        upstream = subprocess.run(
+            ["git", "-C", str(git_repo), "rev-parse", "--abbrev-ref", "@{u}"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        assert upstream.stdout.strip() == f"origin/{branch_name}"
 
     def test_full_step_15_command_with_no_changes(self, git_repo):
         """Full step-15 command should succeed when nothing to commit/push."""

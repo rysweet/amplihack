@@ -1,4 +1,4 @@
-"""Tests for worktree isolation fixes: GitHub issues #3684 and #3673.
+"""Tests for worktree isolation fixes: GitHub issues #4022, #3684 and #3673.
 
 Verifies:
 1. No silent fallback from worktree_path to repo_path in post-step-04 steps.
@@ -7,8 +7,12 @@ Verifies:
 4. step-14 version bump uses worktree_path, not repo_path.
 5. step-22b final-status uses worktree_path.
 6. Clean-worktree invariant is enforced in step-15.
+7. Post-step-04 agent steps run inside worktree_path via working_dir.
+8. step-05 architecture handoff names worktree_path as the active repo root.
+9. Post-step-04 agent prompts never route back to repo_path.
 
-References: #3684 (worktree handoff), #3673 (clean-worktree invariant),
+References: #4022 (shared checkout contamination), #3684 (worktree handoff),
+            #3673 (clean-worktree invariant),
             #3646 (duplicate), #3647 (duplicate)
 """
 
@@ -45,6 +49,18 @@ def step_ids(steps):
 
 
 @pytest.fixture(scope="module")
+def post_step04_steps(steps, step_ids):
+    step04_idx = step_ids.index("step-04-setup-worktree")
+    pre_step04_ids = set(step_ids[: step04_idx + 1])
+    return [step for step in steps if step["id"] not in pre_step04_ids]
+
+
+@pytest.fixture(scope="module")
+def post_step04_agent_steps(post_step04_steps):
+    return [step for step in post_step04_steps if "agent" in step]
+
+
+@pytest.fixture(scope="module")
 def recipe_text():
     return RECIPE_PATH.read_text()
 
@@ -71,9 +87,7 @@ class TestNoSilentFallback:
                 if stripped.startswith("#"):
                     continue
                 if stripped.startswith("cd {{repo_path}}"):
-                    pytest.fail(
-                        f"Step '{step['id']}' uses 'cd {{{{repo_path}}}}' after step-04."
-                    )
+                    pytest.fail(f"Step '{step['id']}' uses 'cd {{{{repo_path}}}}' after step-04.")
 
 
 class TestWorktreeValidationStep:
@@ -104,9 +118,7 @@ class TestWorktreeValidationStep:
         assert "EXPECTED_BRANCH" in cmd and "ACTUAL_BRANCH" in cmd
 
     def test_step_04b_has_output(self, step_map):
-        assert (
-            step_map["step-04b-validate-worktree"].get("output") == "worktree_validation"
-        )
+        assert step_map["step-04b-validate-worktree"].get("output") == "worktree_validation"
 
 
 class TestStep15CleanWorktreeInvariant:
@@ -172,3 +184,55 @@ class TestCheckpointSteps:
     def test_checkpoint_no_silent_fallback(self, step_map, step_id):
         cmd = step_map[step_id]["command"]
         assert "2>/dev/null || cd" not in cmd
+
+
+class TestPostStep04AgentIsolation:
+    """Verify post-worktree agent steps stay rooted in the stream-local tree."""
+
+    def test_post_step04_agent_steps_use_worktree_working_dir(self, post_step04_agent_steps):
+        expected = "{{worktree_setup.worktree_path}}"
+        missing: list[str] = []
+        wrong: list[str] = []
+
+        for step in post_step04_agent_steps:
+            working_dir = step.get("working_dir")
+            if working_dir is None:
+                missing.append(step["id"])
+            elif working_dir != expected:
+                wrong.append(f"{step['id']}={working_dir!r}")
+
+        details: list[str] = []
+        if missing:
+            details.append(f"missing working_dir on: {', '.join(missing)}")
+        if wrong:
+            details.append(f"wrong working_dir on: {', '.join(wrong)}")
+
+        assert not details, (
+            "Once step-04 creates the stream-local worktree, every later agent step must run with "
+            f"working_dir {expected!r} so concurrent streams cannot drift back to the shared checkout; "
+            + "; ".join(details)
+        )
+
+    def test_step05_handoff_names_worktree_path_as_active_repository(self, step_map):
+        prompt = step_map["step-05-architecture"].get("prompt", "")
+        assert "worktree_setup.worktree_path" in prompt, (
+            "Step 'step-05-architecture' is the first post-step-04 agent handoff and must name "
+            "{{worktree_setup.worktree_path}} explicitly so downstream agents treat the worktree, "
+            "not {{repo_path}}, as the active repository root."
+        )
+
+
+class TestPostStep04PromptIsolation:
+    """Verify agent prompts do not reintroduce shared-checkout guidance."""
+
+    def test_post_step04_agent_prompts_do_not_reference_repo_path(self, post_step04_agent_steps):
+        leaking_steps = [
+            step["id"]
+            for step in post_step04_agent_steps
+            if "{{repo_path}}" in step.get("prompt", "")
+        ]
+
+        assert not leaking_steps, (
+            "Post-step-04 agent prompts must not point back to {{repo_path}} after the worktree is "
+            f"created; found repo_path references in: {', '.join(leaking_steps)}"
+        )
