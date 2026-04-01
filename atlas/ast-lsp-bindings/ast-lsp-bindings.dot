@@ -108,4 +108,8 @@ digraph ast_lsp_bindings {
     // Test modules (bootstrap detection)
     node [shape=box, style="filled", fillcolor="#e8f5e9"];
     test_wf [label="{test_default_workflow_fixes|TestBL001\lTestBL002\lTestBL003\l}"];
+
+    // Recipe runner execution tests (PR #4141, fixes #3963/#3978)
+    tre [label="{test_rust_runner_execution|_atomic_write_json\l_progress_file_path\l_recipe_log_path\lread_progress_file\l}", shape=record, style="filled", fillcolor="#e8f5e9"];
+    tre -> f22 [label="imports", style="dashed"];
 }
