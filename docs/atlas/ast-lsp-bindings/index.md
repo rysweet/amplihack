@@ -149,3 +149,6 @@ Category: <strong>Structural</strong> | Generated: 2026-03-31T14:20:53Z
 Source: `layer2_ast_bindings.json` | [Mermaid source](ast-lsp-bindings.mmd)
 
 </div>
+
+<!-- Atlas staleness reviewed: PR #3974 changed .claude/tools/amplihack/hooks/*.py
+     (hook scripts, not application source). No symbol binding changes. -->

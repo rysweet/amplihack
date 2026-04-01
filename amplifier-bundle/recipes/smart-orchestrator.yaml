@@ -66,6 +66,22 @@ steps:
         echo "Restart: run_recipe_by_name('smart-orchestrator', user_context={'task_description': '...', 'repo_path': '...'}, progress=True)" >&2
         exit 1
       fi
+      # Set workflow-active semaphore EARLY so that nested agent steps
+      # (classify-and-decompose) don't get routing/classification hook
+      # injections that cause infinite recursion (fix #3971).
+      HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir 2>/dev/null || true)"
+      if [ -n "$HOOKS_DIR" ]; then
+        # Pass $PPID (recipe-runner-rs) so the semaphore PID survives the
+        # ephemeral bash step and is still alive when hooks check liveness.
+        python3 - "$HOOKS_DIR" "$PPID" <<'__AMPLIHACK_SEMAPHORE_PY__' 2>/dev/null || true
+      import sys; sys.path.insert(0, sys.argv[1])
+      try:
+          from dev_intent_router import set_workflow_active
+          set_workflow_active('pending', 0, pid=int(sys.argv[2]))
+      except Exception:
+          pass
+      __AMPLIHACK_SEMAPHORE_PY__
+      fi
       echo "=== Pre-flight passed ==="
     output: "preflight_status"
 
@@ -73,37 +89,34 @@ steps:
   # Phase 1: Classify & Decompose
   # ─────────────────────────────────────────────────────────────────────────
 
+  # classify-and-decompose: Use a bash step that calls claude directly with
+  # --disallowed-tools to prevent the model from making tool calls.
+  # Without this, the model returns JSON then continues into implementation,
+  # making hundreds of tool calls and never returning (#3971).
   - id: "classify-and-decompose"
-    type: "agent"
-    agent: "amplihack:core:architect"
-    prompt: |
-      === [RECIPE PROGRESS] Step: classify-and-decompose ===
+    type: "bash"
+    command: |
+      AGENT_BIN="${AMPLIHACK_AGENT_BINARY:-claude}"
+      _PROMPT_FILE=$(mktemp)
+      trap 'rm -f "$_PROMPT_FILE"' EXIT
+      cat > "$_PROMPT_FILE" <<'__AMPLIHACK_CLASSIFY_EOF__'
+      You are classifying a task for the smart-orchestrator recipe.
+      Return ONLY a JSON object. Do NOT use tools. Do NOT implement anything.
 
-      You are an intelligent task orchestrator. Analyze this request and produce a
-      structured orchestration plan.
+      REQUEST: {{task_description}}
 
-      **IMPORTANT**: You are ONLY classifying and decomposing. Do NOT implement,
-      build, code, or make any changes. Do NOT create files, edit code, or run
-      commands. Do NOT invoke any skills, workflows, or tools. Do NOT call
-      dev-orchestrator or any other orchestrator. Return ONLY the JSON object below.
-
-      **REQUEST**: {{task_description}}
-
-      Output:
+      Classify and decompose:
       1. task_type: Q&A | Operations | Investigation | Development
       2. goal: clear 1-sentence goal
       3. success_criteria: numbered list of verifiable criteria
       4. workstreams: array of independent parallel units
          - 1 workstream for cohesive/sequential tasks
          - 2-5 for CLEARLY INDEPENDENT components
-           e.g. "build webui + api" -> 2 workstreams
-                "investigate X then implement Y" -> 2 workstreams
          - recipe: "default-workflow" (dev) | "investigation-workflow" (research)
 
-      **Decomposition override**: {{force_single_workstream}} — if "true", use exactly 1 workstream regardless of task structure.
+      Decomposition override: {{force_single_workstream}} — if "true", use exactly 1 workstream.
 
-      **Output exactly this JSON**:
-      ```json
+      Output exactly this JSON (no markdown fences, no explanation):
       {
         "task_type": "Development",
         "goal": "One sentence goal",
@@ -112,7 +125,13 @@ steps:
           {"name": "slug", "description": "full task", "recipe": "default-workflow"}
         ]
       }
-      ```
+      __AMPLIHACK_CLASSIFY_EOF__
+      PROMPT=$(cat "$_PROMPT_FILE")
+      env -u CLAUDECODE "$AGENT_BIN" \
+        --dangerously-skip-permissions \
+        --disallowed-tools "Bash,Edit,Write,Read,Glob,Grep,Agent,Skill,NotebookEdit,WebFetch,WebSearch,TodoWrite" \
+        --append-system-prompt "You are a task classifier. Output ONLY JSON. Do NOT invoke dev-orchestrator or any workflow." \
+        -p "$PROMPT" 2>/dev/null
     output: "decomposition_json"
 
   # parse-decomposition: extract task_type from architect JSON output.
@@ -213,7 +232,8 @@ steps:
       # Enforce force_single_workstream override (fix #3130)
       count = 1 if force_single else raw_count
 
-      # Set workflow-active semaphore so the hook skips injection during execution
+      # Update workflow-active semaphore with actual task_type and workstream count
+      # (initial semaphore was set in preflight-validation with placeholder values)
       # Redirect stdout during import to prevent pollution of captured output
       _saved_stdout = sys.stdout
       sys.stdout = io.StringIO()
