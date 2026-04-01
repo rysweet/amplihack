@@ -5,8 +5,10 @@ from __future__ import annotations
 import io
 import json
 import os
+import stat
 import subprocess
 import sys
+import threading
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,7 +16,14 @@ import pytest
 
 from amplihack.recipes.models import StepStatus
 from amplihack.recipes.rust_runner import RustRunnerNotFoundError, run_recipe_via_rust
-from amplihack.recipes.rust_runner_execution import _write_progress_file
+from amplihack.recipes.rust_runner_execution import (
+    _atomic_write_json,
+    _progress_file_path,
+    _recipe_log_path,
+    _validate_path_within_tmpdir,
+    _write_progress_file,
+    read_progress_file,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -200,9 +209,7 @@ class TestRunRecipeViaRust:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("subprocess.run")
-    def test_forwards_pythonpath_and_seeds_claude_project_dir(
-        self, mock_run, mock_find
-    ):
+    def test_forwards_pythonpath_and_seeds_claude_project_dir(self, mock_run, mock_find):
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
             returncode=0,
@@ -590,3 +597,263 @@ class TestProgressFiles:
         assert payload["status"] == "running"
         assert payload["pid"] == pid
         assert "updated_at" in payload
+
+
+class TestPathTraversalPrevention:
+    """Verify that crafted recipe names cannot escape the temp directory."""
+
+    def test_normal_name_stays_in_tmpdir(self, tmp_path):
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
+            path = _progress_file_path("default-workflow", pid=1)
+            assert str(path.resolve()).startswith(str(tmp_path.resolve()))
+
+    def test_dotdot_in_recipe_name_is_sanitised(self, tmp_path):
+        """Path components like '..' are sanitised to underscores."""
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
+            path = _progress_file_path("../../etc/passwd", pid=1)
+            assert str(path.resolve()).startswith(str(tmp_path.resolve()))
+            assert "etc" not in str(path)
+
+    def test_log_path_dotdot_sanitised(self, tmp_path):
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
+            path = _recipe_log_path("../../etc/shadow", pid=1)
+            assert str(path.resolve()).startswith(str(tmp_path.resolve()))
+
+    def test_validate_path_rejects_escape(self, tmp_path):
+        """Direct call to _validate_path_within_tmpdir rejects paths outside tmpdir."""
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
+            with pytest.raises(ValueError, match="escapes temp directory"):
+                _validate_path_within_tmpdir(Path("/etc/passwd"))
+
+    def test_very_long_recipe_name_truncated(self, tmp_path):
+        long_name = "a" * 200
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(tmp_path),
+        ):
+            path = _progress_file_path(long_name, pid=1)
+            # The sanitised stem should be at most 64 chars
+            filename = path.name
+            # "amplihack-progress-" prefix + 64 chars + "-1.json" suffix
+            assert len(filename) <= len("amplihack-progress-") + 64 + len("-1.json")
+
+
+class TestAtomicWriteJson:
+    """Verify atomic write semantics for progress files."""
+
+    def test_atomic_write_creates_file_with_correct_content(self, tmp_path):
+        target = tmp_path / "test.json"
+        payload = {"key": "value", "num": 42}
+        _atomic_write_json(target, payload)
+        assert target.exists()
+        assert json.loads(target.read_text()) == payload
+
+    def test_atomic_write_file_permissions(self, tmp_path):
+        target = tmp_path / "perms.json"
+        _atomic_write_json(target, {"test": True})
+        mode = stat.S_IMODE(target.stat().st_mode)
+        assert mode == 0o600
+
+    def test_atomic_write_overwrites_existing(self, tmp_path):
+        target = tmp_path / "overwrite.json"
+        _atomic_write_json(target, {"version": 1})
+        _atomic_write_json(target, {"version": 2})
+        assert json.loads(target.read_text())["version"] == 2
+
+    def test_atomic_write_no_temp_files_left_on_success(self, tmp_path):
+        target = tmp_path / "clean.json"
+        _atomic_write_json(target, {"clean": True})
+        # Only the target file should exist
+        files = list(tmp_path.iterdir())
+        assert files == [target]
+
+    def test_atomic_write_fallback_on_readonly_parent(self, tmp_path):
+        """When the parent dir doesn't allow mkstemp, the fallback direct write kicks in.
+
+        We simulate this by patching tempfile.mkstemp to raise OSError.
+        """
+        target = tmp_path / "fallback.json"
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.mkstemp",
+            side_effect=OSError("simulated mkstemp failure"),
+        ):
+            _atomic_write_json(target, {"fallback": True})
+        assert json.loads(target.read_text()) == {"fallback": True}
+
+
+class TestConcurrentSidecarWrites:
+    """Verify that concurrent progress writes do not corrupt data."""
+
+    def test_concurrent_writes_produce_valid_json(self, tmp_path):
+        """Multiple threads writing progress files concurrently must each produce valid JSON."""
+        errors: list[str] = []
+        iterations = 20
+
+        def writer(thread_id: int) -> None:
+            for i in range(iterations):
+                with patch(
+                    "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                    return_value=str(tmp_path),
+                ):
+                    path = _write_progress_file(
+                        "concurrent-test",
+                        current_step=i,
+                        total_steps=iterations,
+                        step_name=f"step-{i}",
+                        elapsed_seconds=float(i),
+                        status="running",
+                        pid=thread_id,
+                    )
+                    try:
+                        data = json.loads(path.read_text(encoding="utf-8"))
+                        if not isinstance(data, dict):
+                            errors.append(f"Thread {thread_id} iter {i}: not a dict")
+                    except (json.JSONDecodeError, OSError) as exc:
+                        errors.append(f"Thread {thread_id} iter {i}: {exc}")
+
+        threads = [threading.Thread(target=writer, args=(tid,)) for tid in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert errors == [], f"Concurrent write errors: {errors}"
+
+    def test_concurrent_writes_to_same_pid_no_crash(self, tmp_path):
+        """Multiple threads targeting the same PID (same file) must not crash."""
+        errors: list[str] = []
+
+        def writer(thread_id: int) -> None:
+            for i in range(30):
+                try:
+                    with patch(
+                        "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                        return_value=str(tmp_path),
+                    ):
+                        _write_progress_file(
+                            "same-pid-test",
+                            current_step=i,
+                            total_steps=30,
+                            step_name=f"step-{i}-t{thread_id}",
+                            elapsed_seconds=float(i),
+                            status="running",
+                            pid=999,
+                        )
+                except Exception as exc:
+                    errors.append(f"Thread {thread_id} iter {i}: {exc}")
+
+        threads = [threading.Thread(target=writer, args=(tid,)) for tid in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert errors == [], f"Concurrent same-PID write errors: {errors}"
+
+
+class TestReadProgressFile:
+    """Verify graceful handling of malformed/corrupt progress files."""
+
+    def test_read_valid_file(self, tmp_path):
+        f = tmp_path / "good.json"
+        payload = {"recipe_name": "test", "current_step": 1, "status": "running", "pid": 123}
+        f.write_text(json.dumps(payload))
+        result = read_progress_file(f)
+        assert result == payload
+
+    def test_read_missing_file(self, tmp_path):
+        result = read_progress_file(tmp_path / "nonexistent.json")
+        assert result is None
+
+    def test_read_empty_file(self, tmp_path):
+        f = tmp_path / "empty.json"
+        f.write_text("")
+        assert read_progress_file(f) is None
+
+    def test_read_malformed_json(self, tmp_path):
+        f = tmp_path / "bad.json"
+        f.write_text("{truncated")
+        assert read_progress_file(f) is None
+
+    def test_read_json_array_instead_of_object(self, tmp_path):
+        f = tmp_path / "array.json"
+        f.write_text("[1,2,3]")
+        assert read_progress_file(f) is None
+
+    def test_read_missing_required_keys(self, tmp_path):
+        f = tmp_path / "partial.json"
+        f.write_text(json.dumps({"recipe_name": "test"}))
+        assert read_progress_file(f) is None
+
+    def test_read_binary_garbage(self, tmp_path):
+        f = tmp_path / "garbage.json"
+        f.write_bytes(b"\x00\xff\xfe\x80garbage")
+        assert read_progress_file(f) is None
+
+    def test_read_permission_denied(self, tmp_path):
+        f = tmp_path / "noperm.json"
+        f.write_text(json.dumps({"recipe_name": "x", "current_step": 0, "status": "r", "pid": 1}))
+        f.chmod(0o000)
+        try:
+            assert read_progress_file(f) is None
+        finally:
+            f.chmod(0o644)  # Restore for cleanup
+
+
+class TestRestrictedEnvironmentBehavior:
+    """Verify graceful degradation when the filesystem is restricted."""
+
+    def test_write_progress_to_readonly_dir_does_not_raise(self, tmp_path):
+        """Progress writes to a read-only directory should degrade silently (log only)."""
+        readonly_dir = tmp_path / "readonly"
+        readonly_dir.mkdir()
+        readonly_dir.chmod(0o444)
+        try:
+            with patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(readonly_dir),
+            ):
+                # Should not raise -- the function logs and returns the path.
+                path = _write_progress_file(
+                    "readonly-test",
+                    current_step=1,
+                    total_steps=1,
+                    step_name="step-1",
+                    elapsed_seconds=0.1,
+                    status="running",
+                    pid=42,
+                )
+                assert path is not None
+        finally:
+            readonly_dir.chmod(0o755)
+
+    def test_write_progress_missing_parent_dir_does_not_raise(self, tmp_path):
+        """If the tmpdir doesn't exist, _write_progress_file degrades gracefully."""
+        nonexistent = tmp_path / "does" / "not" / "exist"
+        with patch(
+            "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+            return_value=str(nonexistent),
+        ):
+            # Should not raise
+            path = _write_progress_file(
+                "missing-dir-test",
+                current_step=1,
+                total_steps=1,
+                step_name="step-1",
+                elapsed_seconds=0.1,
+                status="running",
+                pid=42,
+            )
+            assert path is not None
