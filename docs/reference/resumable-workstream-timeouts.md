@@ -326,6 +326,7 @@ If one of those invariants cannot be met, the workstream should fail loudly inst
 
 ## See Also
 
+- [Workflow worktree isolation overview](../worktree-support.md)
 - [Resumable workstream timeouts overview](../features/resumable-workstream-timeouts.md)
 - [How to configure resumable workstream timeouts](../howto/configure-resumable-workstream-timeouts.md)
 - [Tutorial: resumable workstream timeouts](../tutorials/resumable-workstream-timeouts.md)

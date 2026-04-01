@@ -95,6 +95,7 @@ nav:
           - Configuration: howto/configure-workflow-execution-guardrails.md
           - Tutorial: tutorials/workflow-execution-guardrails.md
           - Reference: reference/workflow-execution-guardrails.md
+      - Workflow Worktree Isolation: worktree-support.md
       - Resumable Workstream Timeouts:
           - Overview: features/resumable-workstream-timeouts.md
           - Configuration: howto/configure-resumable-workstream-timeouts.md

@@ -293,7 +293,7 @@ EOF
 
 If you encounter migration issues:
 
-1. **Run diagnostic**: See [Troubleshooting Guide](../../howto/power-steering-worktree-troubleshooting.md)
+1. **Run diagnostic**: See [Troubleshooting Guide](../../power-steering-worktree-troubleshooting.md)
 2. **Check logs**: `~/.claude/runtime/logs/power-steering-*.log`
 3. **File issue**: [GitHub Issues](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
 
@@ -317,6 +317,6 @@ EOF
 ## Related Documentation
 
 - [Power Steering Worktree Support](./worktree-support.md) - Feature overview
-- [How to Troubleshoot Worktrees](../../howto/power-steering-worktree-troubleshooting.md) - Fix common issues
+- [How to Troubleshoot Worktrees](../../power-steering-worktree-troubleshooting.md) - Fix common issues
 - [Git Utils API Reference](../../reference/git-utils-api.md) - Technical documentation
 - [Power Steering Configuration](./configuration.md) - Configuration options

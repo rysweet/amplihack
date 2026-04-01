@@ -178,6 +178,7 @@ This rule applies both during monitoring and on later startup/cleanup passes.
 
 ## Where To Go Next
 
+- Use the [workflow worktree isolation overview](../worktree-support.md) to understand why preserved worktree paths remain the active checkout across timeout and resume.
 - Use the [configuration guide](../howto/configure-resumable-workstream-timeouts.md) to tune runtime budgets and resume behavior.
 - Use the [tutorial](../tutorials/resumable-workstream-timeouts.md) for an end-to-end timeout and resume walkthrough.
 - Use the [reference page](../reference/resumable-workstream-timeouts.md) for lifecycle values, state file schemas, and compatibility rules.

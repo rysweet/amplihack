@@ -38,6 +38,7 @@ Intelligent guidance system that prevents common mistakes and ensures work compl
 
 Additional amplihack capabilities:
 
+- [Workflow Worktree Isolation](../worktree-support.md) - Stream-local worktrees, validated branch handoff, and launcher bootstrap isolation for recipe-driven workflow runs
 - [Resumable Workstream Timeouts](resumable-workstream-timeouts.md) - Configurable timeout handling, durable workstream state, and checkpoint-boundary resume in multitask orchestrator runs
   - [Configuration Guide](../howto/configure-resumable-workstream-timeouts.md) - Runtime budgets, preservation policy, and saved state inspection
   - [Tutorial](../tutorials/resumable-workstream-timeouts.md) - Timeout, preservation, and resume behavior end to end

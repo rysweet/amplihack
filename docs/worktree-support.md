@@ -1,223 +1,89 @@
-# Power Steering Worktree Support
+# Workflow Worktree Isolation
 
-Power Steering now works seamlessly across git worktrees, providing consistent workflow validation and counter persistence regardless of where you work in your repository structure.
+**Stream-local worktrees, validated handoff, and local-src launcher bootstrapping for recipe-driven workflow runs.**
 
-## What Changed
+> [Home](index.md) > Workflow Worktree Isolation
+>
+> **Implemented in issue #4022 and preserved by issue #4077's recovery-stack consolidation:** this page documents the shipped contract that keeps post-step-04 workflow execution rooted in a stream-local worktree instead of drifting back to the shared checkout.
 
-Previously, Power Steering had issues when working in git worktrees:
+## Quick Navigation
 
-- `.disabled` file detection failed (only checked current directory)
-- Block counters reset on every invocation (no shared state)
-- No hard maximum enforcement (potential infinite loops)
-- Confusing error messages
+- [Branch Name Generation](features/branch-name-generation.md)
+- [Resumable Workstream Timeouts](features/resumable-workstream-timeouts.md)
+- [Workflow Publish Import Validation](features/workflow-publish-import-validation.md)
 
-These issues are now resolved. Power Steering works identically in worktrees and standard repositories.
+---
 
-## Quick Start
+## What This Feature Does
 
-### Using Power Steering in Worktrees
+Workflow worktree isolation keeps every stream of a recipe-driven run inside its own validated checkout.
 
-Power Steering automatically detects worktree environments and uses shared state directories. No configuration changes required.
+1. **Step 04 creates or reuses the branch worktree.** `default-workflow` derives a branch name from the task, creates or reuses `<repo>/worktrees/<branch>`, and emits `worktree_setup.worktree_path` plus `branch_name`.
+2. **Step 04b validates the handoff immediately.** The workflow confirms that the directory exists, is the git top-level for that worktree, and is checked out on the expected branch before downstream agents run.
+3. **Post-step-04 agents stay in the worktree.** Architecture, implementation, review, testing, checkpoint, and final-status steps treat `{{worktree_setup.worktree_path}}` as the active repository root rather than dropping back to `{{repo_path}}`.
+4. **Step 15 publishes from the same validated checkout.** Commit/push revalidates the worktree path and branch before running scoped publish import validation and before creating a commit.
+5. **Multitask launchers import from the stream-local source tree first.** Generated `launcher.py` files prepend the cloned workstream's `src/` tree before importing `amplihack.recipes`, so stale installed packages or shared-checkout `PYTHONPATH` contamination cannot hijack a stream.
 
-```bash
-# Create a worktree
-git worktree add ../feature-branch feature-branch
+This contract also preserves the clean-worktree invariant and validated branch handoff tightened in the related fixes tracked as issues #3673 and #3684.
 
-# Work in the worktree
-cd ../feature-branch
+---
 
-# Power Steering works normally
-# - Block counter persists across invocations
-# - .disabled file detection works from any location
-# - Hard maximum prevents infinite loops
-```
+## Operational Guarantees
 
-### Disabling Power Steering
+| Guarantee                       | Behavior                                                                                                                                                | Why it matters                                                                                                               |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Stream-local execution root     | Every agent step after Step 04 uses `working_dir={{worktree_setup.worktree_path}}` and names that path as the active repository root.                   | Concurrent streams do not read from or write to the shared checkout by accident.                                             |
+| No silent fallback              | Post-step-04 workflow commands and prompts do not drop back to `{{repo_path}}`.                                                                         | Shared-checkout contamination is treated as a bug, not a normal recovery path.                                               |
+| Immediate worktree validation   | `step-04b-validate-worktree` checks directory existence, git membership, top-level path, and branch match.                                              | The workflow fails before design or implementation if setup drifted.                                                         |
+| Publish-time revalidation       | `step-15-commit-push` rechecks the worktree path and current branch before staging, scoped import validation, and commit creation.                      | Publish-time safety stays aligned with the checkout that implementation used.                                                |
+| Stream-local launcher bootstrap | Multitask launchers prepend the local workstream `src/` tree before importing `amplihack.recipes`, and pass durable worktree metadata into nested runs. | Resumed or parallel workstreams keep executing against their own clone rather than a stale installed package or shared tree. |
 
-Create a `.disabled` file in any of these locations (checked in order):
+---
 
-1. **Current working directory**: `touch .disabled`
-2. **Shared Git directory**: `touch $(git rev-parse --git-common-dir)/.claude/runtime/power-steering/.disabled`
-3. **Project root**: `cd $(git rev-parse --show-toplevel) && touch .disabled`
+## Where the Contract Applies
 
-Power Steering checks all three locations automatically.
+| Surface                               | Contract                                                                                                                                       |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default-workflow` Step 04 / Step 04b | Create or reuse the worktree, then validate that it is the real git root for the expected branch.                                              |
+| Post-step-04 agent steps              | Use the worktree path as `working_dir` and reference it explicitly in prompts.                                                                 |
+| `step-15-commit-push` and checkpoints | Revalidate the checkout, fail on branch drift, and refuse hollow-success publishes with no staged worktree changes.                            |
+| Multitask `launcher.py` / `run.sh`    | Bootstrap imports from the local `src/` tree, propagate worktree/state/progress metadata, and keep resume context attached to the same stream. |
 
-```bash
-# Example: Disable from worktree
-cd /path/to/worktree
-touch .disabled
+---
 
-# Or disable globally for all worktrees
-touch "$(git rev-parse --git-common-dir)/.claude/runtime/power-steering/.disabled"
-```
+## What Happens When Something Is Wrong
 
-## Features
+The contract fails closed when:
 
-### Worktree Detection
+- the worktree directory is missing
+- the directory is not actually inside a git worktree
+- the git top-level does not match the expected worktree path
+- the current branch does not match the expected branch
+- Step 15 finds no staged changes in the validated worktree and detects a hollow-success publish
 
-Power Steering automatically detects git worktrees using `git rev-parse --git-common-dir`:
+The workflow should not respond to those failures by silently changing directories, silently reusing `repo_path`, or accepting shared-checkout imports as "good enough."
 
-```python
-from amplihack.tools.amplihack.git_utils import (
-    get_common_git_dir,
-    is_worktree
-)
+---
 
-# Check if current directory is a worktree
-if is_worktree():
-    print("Working in a worktree")
+## Relationship to Related Workflow Features
 
-# Get shared Git directory
-common_dir = get_common_git_dir()
-# Returns: /path/to/main/repo/.git
-```
+- **Resumable Workstream Timeouts** preserve and later reuse the same worktree path, which is why timeout recovery can continue from a durable checkpoint without reconstructing a new checkout.
+- **Workflow Publish Import Validation** runs inside the same validated worktree and branch that produced the implementation, so scoped publish validation and commit creation operate on the correct checkout.
 
-### Shared State Persistence
+If the worktree cannot be trusted, both of those higher-level features should stop rather than continue on a weaker assumption.
 
-Counter state persists across all worktrees using a shared runtime directory:
+---
 
-- **State location**: `$(git rev-parse --git-common-dir)/.claude/runtime/power-steering/`
-- **Counter file**: `workflow_classification_block_counter.json`
-- **Shared across**: All worktrees and main repository
+## Compatibility Note for Older Power Steering Links
 
-```json
-{
-  "count": 3,
-  "last_updated": "2026-02-25T10:30:45Z",
-  "hard_maximum": 10
-}
-```
+This page is the canonical workflow-level overview. Earlier documentation also used a separate page for Power Steering-specific worktree behavior, and that legacy content still lives here:
 
-### Hard Maximum Enforcement
+- [Legacy Power Steering Worktree Support](features/power-steering/worktree-support.md)
 
-After 10 consecutive blocks, Power Steering automatically approves to prevent infinite loops:
+---
 
-```
-POWER STEERING: Classification blocked 10 times (hard maximum reached)
-Automatically approving to prevent infinite loop.
+## Where To Go Next
 
-CRITICAL: This indicates a systematic problem.
-File an issue: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues
-```
-
-### Multi-Path .disabled Check
-
-Power Steering checks three locations for the `.disabled` file:
-
-1. Current working directory (most convenient)
-2. Shared Git directory (affects all worktrees)
-3. Project root (backward compatible)
-
-```python
-# Example: Multi-path check
-from amplihack.tools.amplihack.git_utils import find_disabled_file
-
-disabled_file = find_disabled_file()
-if disabled_file:
-    print(f"Power Steering disabled via: {disabled_file}")
-```
-
-## Common Workflows
-
-### Working Across Multiple Worktrees
-
-```bash
-# Main branch
-cd /path/to/main-repo
-# Counter: 0
-
-# Create feature worktree
-git worktree add ../feature-a feature-a
-cd ../feature-a
-# Counter: 0 (shared state)
-
-# Block classification
-# Counter: 1 (persisted to shared location)
-
-# Switch to different worktree
-git worktree add ../feature-b feature-b
-cd ../feature-b
-# Counter: 1 (reads shared state)
-
-# Block again
-# Counter: 2 (updates shared state)
-```
-
-### Disabling Globally vs Locally
-
-```bash
-# Disable for current worktree only
-touch .disabled
-
-# Disable for all worktrees (main repo + all worktrees)
-touch "$(git rev-parse --git-common-dir)/.claude/runtime/power-steering/.disabled"
-
-# Remove global disable
-rm "$(git rev-parse --git-common-dir)/.claude/runtime/power-steering/.disabled"
-```
-
-## Backward Compatibility
-
-Power Steering remains fully compatible with non-worktree repositories:
-
-- Standard repos use `.git/` directory normally
-- `.disabled` file still works in project root
-- Counter persistence works identically
-- No configuration changes required
-
-## Troubleshooting
-
-### Counter Not Persisting
-
-**Problem**: Block counter resets on every invocation
-
-**Solution**: Check shared state directory exists
-
-```bash
-# Verify shared directory
-echo "$(git rev-parse --git-common-dir)/.claude/runtime/power-steering/"
-
-# Create if missing
-mkdir -p "$(git rev-parse --git-common-dir)/.claude/runtime/power-steering/"
-```
-
-### .disabled File Not Detected
-
-**Problem**: Power Steering still blocks despite `.disabled` file
-
-**Solution**: Check file location
-
-```bash
-# Show all checked locations
-python3 << 'EOF'
-from amplihack.tools.amplihack.git_utils import find_disabled_file
-result = find_disabled_file()
-if result:
-    print(f"Found: {result}")
-else:
-    print("Not found in any checked location")
-EOF
-```
-
-### Hard Maximum Triggered
-
-**Problem**: Hit 10-block limit and auto-approved
-
-**Action**: This indicates a bug. File an issue with:
-
-1. Session logs showing repeated blocks
-2. Classification attempts and reasons
-3. Worktree configuration details
-
-**Temporary workaround**: Reset counter manually
-
-```bash
-rm "$(git rev-parse --git-common-dir)/.claude/runtime/power-steering/workflow_classification_block_counter.json"
-```
-
-## Related Documentation
-
-- [Power Steering Overview](./README.md) - Core concepts and philosophy
-- [Configuration Guide](./configuration.md) - Complete configuration options
-- [Troubleshooting Guide](./troubleshooting.md) - Fix common issues
-- [Migration Guide v0.9.1](./migration-v0.9.1.md) - Upgrade from earlier versions
+- Use [Branch Name Generation](features/branch-name-generation.md) to understand how Step 04 derives the stream-local branch and worktree names before validation starts.
+- Use [Resumable Workstream Timeouts](features/resumable-workstream-timeouts.md) to understand preserved worktree reuse across timeouts and resume.
+- Use [Workflow Publish Import Validation](features/workflow-publish-import-validation.md) to understand the Step-15 publish surface that runs inside the validated worktree.

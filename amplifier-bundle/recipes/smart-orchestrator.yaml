@@ -89,10 +89,10 @@ steps:
   # Phase 1: Classify & Decompose
   # ─────────────────────────────────────────────────────────────────────────
 
-  # classify-and-decompose: Use a bash step that calls claude directly with
-  # --disallowed-tools to prevent the model from making tool calls.
-  # Without this, the model returns JSON then continues into implementation,
-  # making hundreds of tool calls and never returning (#3971).
+  # classify-and-decompose: invoke the active agent CLI in a tool-free mode so
+  # the classifier returns JSON instead of continuing into implementation.
+  # Claude supports --disallowed-tools directly; Copilot needs a prompt-only
+  # fallback because it does not accept Claude's flag surface (#3971).
   - id: "classify-and-decompose"
     type: "bash"
     command: |
@@ -127,11 +127,20 @@ steps:
       }
       __AMPLIHACK_CLASSIFY_EOF__
       PROMPT=$(cat "$_PROMPT_FILE")
-      env -u CLAUDECODE "$AGENT_BIN" \
-        --dangerously-skip-permissions \
-        --disallowed-tools "Bash,Edit,Write,Read,Glob,Grep,Agent,Skill,NotebookEdit,WebFetch,WebSearch,TodoWrite" \
-        --append-system-prompt "You are a task classifier. Output ONLY JSON. Do NOT invoke dev-orchestrator or any workflow." \
-        -p "$PROMPT" 2>/dev/null
+      CLASSIFIER_SYSTEM_PROMPT="You are a task classifier. Output ONLY JSON. Do NOT invoke dev-orchestrator or any workflow."
+      if [ "$AGENT_BIN" = "copilot" ]; then
+        COPILOT_PROMPT=$(printf '%s\n\n%s' "$CLASSIFIER_SYSTEM_PROMPT" "$PROMPT")
+        env -u CLAUDECODE "$AGENT_BIN" \
+          --allow-all-paths \
+          --available-tools '' \
+          -p "$COPILOT_PROMPT" 2>/dev/null
+      else
+        env -u CLAUDECODE "$AGENT_BIN" \
+          --dangerously-skip-permissions \
+          --disallowed-tools "Bash,Edit,Write,Read,Glob,Grep,Agent,Skill,NotebookEdit,WebFetch,WebSearch,TodoWrite" \
+          --append-system-prompt "$CLASSIFIER_SYSTEM_PROMPT" \
+          -p "$PROMPT" 2>/dev/null
+      fi
     output: "decomposition_json"
 
   # parse-decomposition: extract task_type from architect JSON output.

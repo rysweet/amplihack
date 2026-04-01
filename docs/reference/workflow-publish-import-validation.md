@@ -347,6 +347,7 @@ separate validation contract. That is outside the scope of this feature.
 
 ## See Also
 
+- [Workflow worktree isolation overview](../worktree-support.md)
 - [Workflow publish import validation overview](../features/workflow-publish-import-validation.md)
 - [How to configure workflow publish import validation](../howto/configure-workflow-publish-import-validation.md)
 - [Tutorial: workflow publish import validation](../tutorials/workflow-publish-import-validation.md)

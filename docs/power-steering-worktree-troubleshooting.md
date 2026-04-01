@@ -467,7 +467,7 @@ Include this report when filing issues at: https://github.com/rysweet/MicrosoftH
 
 ## Related Documentation
 
-- [Power Steering Worktree Support](../features/power-steering/worktree-support.md) - Feature overview
-- [Git Utils API Reference](../reference/git-utils-api.md) - Technical documentation
-- [Power Steering Configuration](../features/power-steering/configuration.md) - Configuration options
-- [Power Steering Troubleshooting](../features/power-steering/troubleshooting.md) - General troubleshooting
+- [Power Steering Worktree Support](./features/power-steering/worktree-support.md) - Feature overview
+- [Git Utils API Reference](./reference/git-utils-api.md) - Technical documentation
+- [Power Steering Configuration](./features/power-steering/configuration.md) - Configuration options
+- [Power Steering Troubleshooting](./features/power-steering/troubleshooting.md) - General troubleshooting

@@ -132,6 +132,7 @@ That failure is intentional because the missing import belongs to the staged pub
 
 ## Where To Go Next
 
+- Use the [workflow worktree isolation overview](../worktree-support.md) to understand why Step 15 revalidates the worktree and branch before scoped publish validation and commit creation.
 - Use the [configuration guide](../howto/configure-workflow-publish-import-validation.md) to review the manifest, root-boundary, and scoped-validator contract.
 - Use the [tutorial](../tutorials/workflow-publish-import-validation.md) for a design walkthrough of optional-dependency and scenario exclusions.
 - Use the [reference page](../reference/workflow-publish-import-validation.md) for the workflow contract, helper CLI, and `--files-from` semantics.

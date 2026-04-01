@@ -238,6 +238,7 @@ Code-enforced workflow execution engine with declarative YAML recipes.
 - [Recipe Runner Overview](recipes/README.md) - Architecture, YAML format, and creating custom recipes
 - [UltraThink Recipe Runner Integration](recipes/RECIPE_RUNNER_ULTRATHINK_INTEGRATION.md) - How ultrathink uses Recipe Runner for code-enforced workflow execution
 - [Recipe CLI Commands How-To](howto/recipe-cli-commands.md) - Task-oriented guide for using recipe commands
+- [Workflow Worktree Isolation](worktree-support.md) - Stream-local worktrees, validated handoff, and launcher bootstrap isolation for recipe-driven workflow runs
 - [Resumable Workstream Timeouts](features/resumable-workstream-timeouts.md) - Configurable timeout handling, durable state under `tmp_base/state`, and checkpoint-boundary resume for multitask workstreams
 - [How to Configure Resumable Workstream Timeouts](howto/configure-resumable-workstream-timeouts.md) - Runtime budgets, preservation policy, and saved state inspection
 - [Tutorial: Resumable Workstream Timeouts](tutorials/resumable-workstream-timeouts.md) - Timeout, preservation, and continuation walkthrough

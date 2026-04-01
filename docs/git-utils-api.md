@@ -452,6 +452,6 @@ if find_disabled_file():
 
 ## Related Documentation
 
-- [Power Steering Worktree Support](../features/power-steering/worktree-support.md) - User-facing guide
-- [Power Steering Configuration](../features/power-steering/configuration.md) - Configuration options
+- [Power Steering Worktree Support](./features/power-steering/worktree-support.md) - User-facing guide
+- [Power Steering Configuration](./features/power-steering/configuration.md) - Configuration options
 - [Git Worktree Documentation](https://git-scm.com/docs/git-worktree) - Official git docs
