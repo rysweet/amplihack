@@ -227,12 +227,12 @@ def run_gherkin_v2_experiment(
         run_result_file = condition_dir / "run_result.json"
 
         gen_metrics = GenerationMetrics()
+        gen_start = time.monotonic()
 
         try:
             bundle = resolved_manifest.load_prompt_bundle(packet.condition.prompt_variant_id)
 
             # --- Generation phase with timing ---
-            gen_start = time.monotonic()
             generated = generate_condition_artifact(
                 packet.condition,
                 bundle.combined_text(),
@@ -257,6 +257,7 @@ def run_gherkin_v2_experiment(
                 reference_impl=reference_impl,
                 num_agents=num_evaluator_agents,
                 model=evaluator_model,
+                work_dir=condition_dir / "eval_work",
             )
             evaluation_file.write_text(json.dumps(consensus.to_dict(), indent=2) + "\n")
 
@@ -298,9 +299,7 @@ def run_gherkin_v2_experiment(
             )
 
         except PromptGenerationError as exc:
-            gen_metrics.generation_wall_clock_seconds = (
-                time.monotonic() - gen_start if "gen_start" in dir() else 0.0
-            )
+            gen_metrics.generation_wall_clock_seconds = time.monotonic() - gen_start
             if exc.response_text:
                 raw_response_file.write_text(exc.response_text)
             failure_notes = [str(exc)]
