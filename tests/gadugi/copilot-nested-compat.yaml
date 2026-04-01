@@ -31,7 +31,7 @@ steps:
     agent: "cli-agent"
     action: "execute_command"
     params:
-      command: "bash -lc 'PYTHONPATH=src python3 tests/gadugi/copilot_nested_compat_smoke.py'"
+      command: "PYTHONPATH=src python3 tests/gadugi/copilot_nested_compat_smoke.py"
     timeout: 10000
 
   - name: "Verify prompt compatibility marker"

@@ -1139,12 +1139,17 @@ def _is_workflow_active_for_copilot_context() -> bool:
         path.unlink(missing_ok=True)
         return False
 
-    if pid > 0:
-        try:
-            os.kill(pid, 0)
-        except OSError:
-            path.unlink(missing_ok=True)
-            return False
+    if pid <= 0:
+        path.unlink(missing_ok=True)
+        return False
+
+    try:
+        os.kill(pid, 0)
+    except PermissionError:
+        return True
+    except OSError:
+        path.unlink(missing_ok=True)
+        return False
 
     return True
 
