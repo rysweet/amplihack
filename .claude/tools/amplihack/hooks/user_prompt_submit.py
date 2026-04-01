@@ -456,7 +456,7 @@ class UserPromptSubmitHook(HookProcessor):
 
             return is_workflow_active()
         except ImportError:
-            return False
+            return False  # dev_intent_router unavailable; assume no active workflow
 
     @staticmethod
     def _is_dev_prompt(prompt: str) -> bool:

@@ -71,14 +71,16 @@ steps:
       # injections that cause infinite recursion (fix #3971).
       HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir 2>/dev/null || true)"
       if [ -n "$HOOKS_DIR" ]; then
-        python3 - "$HOOKS_DIR" <<'SEMAPHORE_PY' 2>/dev/null || true
+        # Pass $PPID (recipe-runner-rs) so the semaphore PID survives the
+        # ephemeral bash step and is still alive when hooks check liveness.
+        python3 - "$HOOKS_DIR" "$PPID" <<'__AMPLIHACK_SEMAPHORE_PY__' 2>/dev/null || true
       import sys; sys.path.insert(0, sys.argv[1])
       try:
           from dev_intent_router import set_workflow_active
-          set_workflow_active('pending', 0)
+          set_workflow_active('pending', 0, pid=int(sys.argv[2]))
       except Exception:
           pass
-      SEMAPHORE_PY
+      __AMPLIHACK_SEMAPHORE_PY__
       fi
       echo "=== Pre-flight passed ==="
     output: "preflight_status"
@@ -97,7 +99,7 @@ steps:
       AGENT_BIN="${AMPLIHACK_AGENT_BINARY:-claude}"
       _PROMPT_FILE=$(mktemp)
       trap 'rm -f "$_PROMPT_FILE"' EXIT
-      cat > "$_PROMPT_FILE" <<'CLASSIFY_PROMPT'
+      cat > "$_PROMPT_FILE" <<'__AMPLIHACK_CLASSIFY_EOF__'
       You are classifying a task for the smart-orchestrator recipe.
       Return ONLY a JSON object. Do NOT use tools. Do NOT implement anything.
 
@@ -123,7 +125,7 @@ steps:
           {"name": "slug", "description": "full task", "recipe": "default-workflow"}
         ]
       }
-      CLASSIFY_PROMPT
+      __AMPLIHACK_CLASSIFY_EOF__
       PROMPT=$(cat "$_PROMPT_FILE")
       env -u CLAUDECODE "$AGENT_BIN" \
         --dangerously-skip-permissions \

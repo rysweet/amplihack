@@ -196,7 +196,7 @@ class WorkflowClassificationReminder(HookProcessor):
                 self.log("Workflow active - skipping classification reminder")
                 return {}
         except ImportError:
-            pass  # dev_intent_router may not be available in all environments
+            self.log("dev_intent_router not importable — workflow-active guard disabled", "WARNING")
 
         # Check if this is a new topic
         if not self.is_new_topic(user_prompt, input_data):
