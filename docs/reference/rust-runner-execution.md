@@ -27,6 +27,7 @@ Subprocess management, progress tracking, JSONL event emission, and log I/O help
 ```python
 def execute_rust_command(
     cmd: list[str],
+    *,
     name: str,
     progress: bool,
     env_builder: Callable[[], dict[str, str]],
@@ -49,6 +50,7 @@ Raises `RuntimeError` on non-zero exit or JSON parse failure.
 **Example:**
 
 ```python
+import shutil
 from amplihack.recipes.rust_runner_execution import execute_rust_command, build_rust_env
 from amplihack.recipes.rust_runner_binary import find_rust_binary
 
@@ -58,7 +60,7 @@ result = execute_rust_command(
     cmd=cmd,
     name="my-recipe",
     progress=True,
-    env_builder=lambda: build_rust_env(wrapper_factory=None, which=None),
+    env_builder=lambda: build_rust_env(wrapper_factory=shutil.which, which=shutil.which),
 )
 print(result.success, result.log_path)
 ```
@@ -87,19 +89,19 @@ if info:
     print(f"Step {info['current_step']}/{info['total_steps']}: {info['step_name']}")
 ```
 
-Returned dict fields (all present when the file is valid):
+Returned dict fields (required fields are always present when the function returns non-`None`; optional fields may be absent):
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `recipe_name` | `str` | Sanitized recipe name |
-| `current_step` | `int` | 1-based index of the running step |
-| `total_steps` | `int` | Total step count |
-| `step_name` | `str` | Human-readable step label |
-| `elapsed_seconds` | `float` | Seconds since recipe start |
-| `status` | `str` | One of `running`, `completed`, `failed` |
-| `pid` | `int` | PID of the recipe-runner-rs process |
-| `updated_at` | `float` | Unix timestamp of last write |
-| `transition` | `str` | Last step-transition type (`step_started`, `step_completed`, `step_failed`, `step_skipped`) |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `recipe_name` | `str` | ✓ | Sanitized recipe name |
+| `current_step` | `int` | ✓ | 1-based index of the running step |
+| `status` | `str` | ✓ | One of `running`, `completed`, `failed` |
+| `pid` | `int` | ✓ | PID of the recipe-runner-rs process |
+| `total_steps` | `int` | optional | Total step count |
+| `step_name` | `str` | optional | Human-readable step label |
+| `elapsed_seconds` | `float` | optional | Seconds since recipe start |
+| `updated_at` | `float` | optional | Unix timestamp of last write |
+| `transition` | `str` | optional | Last step-transition type (`step_started`, `step_completed`, `step_failed`, `step_skipped`) |
 
 ---
 
@@ -132,14 +134,15 @@ This function is called automatically by the streaming layer; only call it direc
 
 ```python
 def build_rust_env(
-    wrapper_factory: Callable[[str], str] | None,
-    which: Callable[[str], str | None] | None,
+    *,
+    wrapper_factory: Callable[[str], str],
+    which: Callable[..., str | None],
 ) -> dict[str, str]:
 ```
 
 Return a filtered environment dictionary suitable for passing to `subprocess.Popen`. Only variables on the `_ALLOWED_RUST_ENV_VARS` allowlist are included, preventing accidental secret leakage (e.g. `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`).
 
-Pass `wrapper_factory` and `which` when running inside GitHub Copilot CLI to wrap the binary in a compatibility shim. Pass `None` for both in standard usage.
+Both parameters are keyword-only. Pass callables that locate binaries (e.g. `shutil.which`) or provide shim directories. If `AMPLIHACK_AGENT_BINARY` is not `"copilot"`, neither callable is invoked.
 
 **Allowlisted variable families:**
 
