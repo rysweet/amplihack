@@ -1538,6 +1538,14 @@ steps:
       echo ""
       echo "--- Staging Changes ---"
       git add -A
+      PUBLISH_MANIFEST=$(mktemp "${TMPDIR:-/tmp}/amplihack-publish-manifest.XXXXXX.txt")
+      VALIDATION_SCOPE=$(mktemp "${TMPDIR:-/tmp}/amplihack-validation-scope.XXXXXX.txt")
+      SCOPE_COUNTS_JSON=$(mktemp "${TMPDIR:-/tmp}/amplihack-validation-counts.XXXXXX.json")
+      cleanup_scope_artifacts() {
+        rm -f "$PUBLISH_MANIFEST" "$VALIDATION_SCOPE" "$SCOPE_COUNTS_JSON"
+      }
+      trap cleanup_scope_artifacts EXIT
+      git diff --cached --name-only --diff-filter=ACMRT --relative > "$PUBLISH_MANIFEST"
       if [ -z "$(git diff --cached --name-only)" ]; then
         echo "ERROR: Nothing staged to commit. The implementation step may have written files" >&2
         echo "outside the worktree ($WORKTREE_DIR), or no code changes were produced." >&2
@@ -1546,6 +1554,46 @@ steps:
         echo "not in AMPLIHACK_HOME or other locations." >&2
         git --no-pager status >&2
         exit 1
+      fi
+      echo ""
+      echo "--- Publish Import Validation ---"
+      echo "publish_manifest=$PUBLISH_MANIFEST"
+      python3 scripts/pre-commit/build_publish_validation_scope.py \
+        --manifest "$PUBLISH_MANIFEST" \
+        --output "$VALIDATION_SCOPE" \
+        --repo-root . \
+        --exclude-claude-scenarios > "$SCOPE_COUNTS_JSON"
+      read -r seed_count expanded_local_dep_count validated_count <<EOFCOUNTS
+      $(python3 - "$SCOPE_COUNTS_JSON" <<'PY'
+      import json
+      import sys
+      from pathlib import Path
+      data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+      print(
+          data["seed_count"],
+          data["expanded_local_dep_count"],
+          data["validated_count"],
+      )
+      PY
+      )
+      EOFCOUNTS
+      echo "validation_scope=$VALIDATION_SCOPE"
+      echo "seed_count=$seed_count"
+      echo "expanded_local_dep_count=$expanded_local_dep_count"
+      echo "validated_count=$validated_count"
+      if [ "$validated_count" -eq 0 ]; then
+        echo "No Python files in publish scope; treating empty Python surface as success."
+      else
+        env -i \
+          PATH="${PATH:-}" \
+          HOME="${HOME:-}" \
+          TMPDIR="${TMPDIR:-/tmp}" \
+          TMP="${TMP:-}" \
+          TEMP="${TEMP:-}" \
+          SYSTEMROOT="${SYSTEMROOT:-}" \
+          USERPROFILE="${USERPROFILE:-}" \
+          PYTHONNOUSERSITE=1 \
+          python3 scripts/pre-commit/check_imports.py --files-from "$VALIDATION_SCOPE"
       fi
       echo ""
       echo "--- Creating Commit ---"
@@ -1568,7 +1616,8 @@ steps:
       EOF
       )
       if [ -n "$(git diff --cached --name-only)" ]; then
-        git commit -m "$COMMIT_MSG"
+        # Scoped validation already ran above; avoid rerunning repo-wide check-imports.
+        SKIP=check-imports${SKIP:+,$SKIP} git commit -m "$COMMIT_MSG"
       fi
       echo ""
       echo "--- Pushing to Remote ---"
@@ -2310,7 +2359,6 @@ steps:
       set -euo pipefail
       WORKTREE_DIR="{{worktree_setup.worktree_path}}"
       EXPECTED_BRANCH="{{worktree_setup.branch_name}}"
-      PR_URL="{{pr_url}}"
 
       if [ ! -d "$WORKTREE_DIR" ]; then
         echo "ERROR: worktree directory '$WORKTREE_DIR' does not exist" >&2
