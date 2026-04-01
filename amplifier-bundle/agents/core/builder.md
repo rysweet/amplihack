@@ -117,6 +117,14 @@ def primary_function(input: InputModel) -> OutputModel:
 - **Working defaults**: Use files instead of external services initially
 - **Every function works**: Or doesn't exist
 
+#### Stub/Placeholder Replacement
+
+When a task asks to "replace", "rewrite", or "implement" something, existing
+stubs, placeholders, `pass`-only functions, `NotImplementedError` raises, and
+TODO-marked code are **targets for replacement**. Do NOT treat them as
+intentional architecture to preserve. Producing zero file changes when the task
+explicitly requests code modifications is a hollow success and must be avoided.
+
 #### Module Quality
 
 - **Self-contained**: All module code in its directory
