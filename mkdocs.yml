@@ -61,6 +61,7 @@ nav:
       - Patterns: claude/context/PATTERNS.md
       - Trust & Anti-Sycophancy: claude/context/TRUST.md
       - User Preferences: claude/context/USER_PREFERENCES.md
+      - Rust Runner Execution Architecture: concepts/rust-runner-execution-architecture.md
   - Workflows:
       - Default Workflow: claude/workflow/DEFAULT_WORKFLOW.md
       - Document-Driven Development:
@@ -104,6 +105,8 @@ nav:
       - CI Diagnostic: claude/agents/amplihack/specialized/ci-diagnostic-workflow.md
       - Fix Workflow: claude/agents/amplihack/specialized/fix-agent.md
       - Oxidizer: OXIDIZER.md
+      - Issue Classifier:
+          - Configuration: howto/configure-issue-classifier-workflow.md
   - Agents:
       - Overview: claude/agents/README.md
       - Core Agents:
@@ -218,6 +221,7 @@ nav:
       - Testing: testing/README.md
       - Troubleshooting: troubleshooting/README.md
       - Code Review: CODE_REVIEW.md
+      - Rust Runner Execution: reference/rust-runner-execution.md
 
 # Plugins
 plugins:

@@ -254,6 +254,8 @@ Code-enforced workflow execution engine with declarative YAML recipes.
 - [Token Sanitizer](reference/token-sanitizer.md) - Pattern ordering, audit labels, and custom patterns for secret redaction
 - [RecipeResult](reference/recipe-result.md) - `RecipeResult` and `StepResult` dataclasses, `str()` format, JSON serialisation
 - [AppendHandler](reference/append-handler.md) - `AppendResult` class, timestamp filename format, atomic file writes
+- [Rust Runner Execution Reference](reference/rust-runner-execution.md) - `execute_rust_command`, `read_progress_file`, `emit_step_transition`, progress file schema, security model
+- [Rust Runner Execution Architecture](concepts/rust-runner-execution-architecture.md) - Thread-based I/O streaming, atomic writes, JSONL events, workstream integration
 
 **Quick Start**:
 
@@ -277,6 +279,10 @@ amplihack recipe show default-workflow
 - [N-Version Programming](claude/workflow/N_VERSION_WORKFLOW.md) - Multiple solutions for critical code
 - [Multi-Agent Debate](claude/workflow/DEBATE_WORKFLOW.md) - Structured decision-making
 - [Cascade Workflow](claude/workflow/CASCADE_WORKFLOW.md) - Graceful degradation patterns
+
+### GitHub Actions Workflows
+
+- [Configure Issue Classifier](howto/configure-issue-classifier-workflow.md) - Permissions, timeout, label extension, lock file recompilation, and troubleshooting
 
 ---
 
