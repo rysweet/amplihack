@@ -1,0 +1,83 @@
+{
+  "experiment_id": "gherkin-v2-recipe-executor",
+  "title": "Gherkin v2 prompt language experiment: recipe step executor with cross-feature interactions",
+  "experiment_home": "experiments/hive_mind/gherkin_v2_recipe_executor",
+  "generation_target": {
+    "target_id": "recipe_step_executor",
+    "summary": "Generate a Python RecipeStepExecutor with conditional execution, step dependencies (DAG with skip-vs-fail propagation), retry with exponential backoff, timeout handling (not retried), output capture with template resolution, and sub-recipe delegation with context isolation. The key complexity is cross-feature interactions: retried step output feeding conditions, timeout blocking conditional steps, sub-recipe failure vs parent retry, and template resolution for skipped steps.",
+    "deliverables": [
+      "RecipeStepExecutor class with execute(recipe, context) method.",
+      "Conditional execution: evaluate condition expressions against context, skip on false or missing key.",
+      "Step dependencies: blockedBy forming a DAG. Failed/timed_out deps propagate failure. Skipped deps do not.",
+      "Retry with exponential backoff: 1s, 2s, 4s delays. Exhausted retries = failed. Success = completed.",
+      "Timeout handling: terminate at timeout_seconds, mark timed_out. Timed-out steps NOT retried.",
+      "Output capture: store in context[step_id]. Template syntax {{step_id}} for interpolation.",
+      "Sub-recipe delegation: child inherits parent context, outputs isolated unless propagate_outputs is true.",
+      "Focused tests covering each feature independently AND cross-feature interactions."
+    ],
+    "non_goals": [
+      "Do not implement a CLI or REST API around the executor.",
+      "Do not implement persistent storage of execution state.",
+      "Do not implement distributed execution across machines.",
+      "Do not implement a recipe definition DSL or parser beyond dict/JSON input."
+    ]
+  },
+  "spec_asset": "specs/recipe_step_executor.feature",
+  "refinement_asset": "specs/recipe_step_executor_acceptance_criteria.md",
+  "prompt_variants": [
+    {
+      "variant_id": "english",
+      "label": "English natural-language baseline",
+      "path": "prompts/recipe_step_executor_english.md",
+      "append_spec": false,
+      "append_refinement": false
+    },
+    {
+      "variant_id": "gherkin_only",
+      "label": "Gherkin behavioral-spec prompt (feature file only)",
+      "path": "prompts/recipe_step_executor_gherkin_only.md",
+      "append_spec": true,
+      "append_refinement": false
+    },
+    {
+      "variant_id": "gherkin_plus_english",
+      "label": "Hybrid Gherkin plus English implementation guidance",
+      "path": "prompts/recipe_step_executor_gherkin_plus_english.md",
+      "append_spec": true,
+      "append_refinement": false
+    },
+    {
+      "variant_id": "gherkin_plus_acceptance",
+      "label": "Gherkin plus explicit acceptance criteria",
+      "path": "prompts/recipe_step_executor_gherkin_plus_acceptance.md",
+      "append_spec": true,
+      "append_refinement": true
+    }
+  ],
+  "models": [
+    {
+      "model_id": "claude-opus-4.6",
+      "label": "Claude Opus 4.6",
+      "sdk": "claude"
+    },
+    {
+      "model_id": "gpt-5.4",
+      "label": "GPT-5.4",
+      "sdk": "copilot"
+    }
+  ],
+  "result_schema_version": 2,
+  "smoke_repeats": 1,
+  "full_repeats": 3,
+  "fairness_rules": [
+    "All variants target the same recipe step executor generation task.",
+    "The hybrid prompt may add implementation guidance but must not expand the required deliverables.",
+    "The acceptance criteria variant may add quality requirements but must not widen scope beyond the same executor.",
+    "Prompt reviewers should compare deliverables and non-goals before any full-matrix run."
+  ],
+  "ownership_notes": [
+    "This repo owns the experiment assets, manifest, and scoring utilities.",
+    "V2 redesign: harder target replacing user-auth ceiling task from PR #3964.",
+    "Scoring module: gherkin_prompt_experiment.py with 6-feature heuristics."
+  ]
+}

@@ -1,0 +1,777 @@
+WORKFLOW: Q&A
+Reason: User requests a self-contained code artifact with tests — no repo files to edit, explicit instruction to return directly.
+Action: Respond directly.
+
+Here's the implementation and tests:
+
+## `recipe_step_executor.py`
+
+```python
+"""Recipe Step Executor — executes a recipe (list of step dicts) against a mutable context.
+
+Features: conditional execution, step dependencies, retry with exponential backoff,
+timeout handling, output capture with template substitution, sub-recipe delegation.
+"""
+
+import re
+import time
+import threading
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Optional
+
+
+class StepStatus(Enum):
+    COMPLETED = "completed"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+    TIMED_OUT = "timed_out"
+
+
+@dataclass
+class StepResult:
+    step_id: str
+    status: StepStatus
+    output: Any = None
+    error: Optional[str] = None
+    retries_used: int = 0
+
+
+class RecipeStepExecutor:
+    """Executes a recipe — a list of step dicts — against a mutable context dict.
+
+    Each step dict may contain:
+        id:               str, required unique identifier
+        command:           callable(context) -> Any, or absent if sub_recipe is set
+        condition:         str, optional Python expression evaluated against context
+        blockedBy:         list[str], step IDs that must complete first
+        max_retries:       int, default 0
+        timeout_seconds:   float, default 60
+        sub_recipe:        list[step dict], runs child steps instead of command
+        propagate_outputs: bool, default False — copy child outputs into parent context
+    """
+
+    def __init__(self) -> None:
+        self._results: dict[str, StepResult] = {}
+
+    # -- public API --
+
+    def execute(self, recipe: list[dict], context: dict) -> list[StepResult]:
+        """Run every step in order, returning a list of StepResult."""
+        self._results = {}
+        results: list[StepResult] = []
+        for step in recipe:
+            result = self._run_step(step, context)
+            results.append(result)
+        return results
+
+    # -- internals --
+
+    def _run_step(self, step: dict, context: dict) -> StepResult:
+        step_id: str = step["id"]
+
+        # 1. Conditional execution
+        if not self._evaluate_condition(step, context):
+            result = StepResult(step_id=step_id, status=StepStatus.SKIPPED)
+            self._results[step_id] = result
+            return result
+
+        # 2. Dependency check
+        dep_failure = self._check_dependencies(step)
+        if dep_failure is not None:
+            result = StepResult(
+                step_id=step_id,
+                status=StepStatus.FAILED,
+                error=dep_failure,
+            )
+            self._results[step_id] = result
+            return result
+
+        # 3. Execute (with retry / timeout)
+        result = self._execute_with_retries(step, context)
+        self._results[step_id] = result
+
+        # 5. Output capture — store in context regardless of status
+        if result.output is not None:
+            context[step_id] = result.output
+
+        return result
+
+    # -- condition evaluation --
+
+    def _evaluate_condition(self, step: dict, context: dict) -> bool:
+        condition = step.get("condition")
+        if condition is None:
+            return True
+        resolved = self._resolve_templates(condition, context)
+        try:
+            return bool(eval(resolved, {"__builtins__": {}}, dict(context)))
+        except Exception:
+            return False
+
+    # -- dependency check --
+
+    def _check_dependencies(self, step: dict) -> Optional[str]:
+        blocked_by: list[str] = step.get("blockedBy", [])
+        for dep_id in blocked_by:
+            dep = self._results.get(dep_id)
+            if dep is None:
+                return f"dependency_failed: {dep_id} not found"
+            if dep.status in (StepStatus.FAILED, StepStatus.TIMED_OUT):
+                return f"dependency_failed: {dep_id} {dep.status.value}"
+            # Skipped dependencies do NOT block.
+        return None
+
+    # -- retry logic --
+
+    def _execute_with_retries(self, step: dict, context: dict) -> StepResult:
+        max_retries: int = step.get("max_retries", 0)
+        timeout: float = step.get("timeout_seconds", 60)
+        step_id: str = step["id"]
+
+        attempt = 0
+        last_error: Optional[str] = None
+
+        while True:
+            output, error, timed_out = self._execute_once(step, context, timeout)
+
+            if timed_out:
+                # Timed-out steps are never retried.
+                return StepResult(
+                    step_id=step_id,
+                    status=StepStatus.TIMED_OUT,
+                    error=error,
+                    retries_used=attempt,
+                )
+
+            if error is None:
+                return StepResult(
+                    step_id=step_id,
+                    status=StepStatus.COMPLETED,
+                    output=output,
+                    retries_used=attempt,
+                )
+
+            last_error = error
+            if attempt < max_retries:
+                delay = 2 ** attempt  # 1, 2, 4 …
+                time.sleep(delay)
+                attempt += 1
+            else:
+                return StepResult(
+                    step_id=step_id,
+                    status=StepStatus.FAILED,
+                    error=last_error,
+                    retries_used=attempt,
+                )
+
+    # -- single execution (command or sub-recipe) --
+
+    def _execute_once(
+        self, step: dict, context: dict, timeout: float
+    ) -> tuple[Any, Optional[str], bool]:
+        """Returns (output, error_message_or_None, timed_out)."""
+
+        if "sub_recipe" in step:
+            return self._execute_sub_recipe(step, context, timeout)
+
+        command = step.get("command")
+        if command is None:
+            return None, "no command or sub_recipe defined", False
+
+        resolved_command = command
+        # Template resolution for string commands is handled inside the callable;
+        # the caller is responsible for wrapping strings if needed. We pass context.
+        return self._run_with_timeout(resolved_command, context, timeout)
+
+    def _run_with_timeout(
+        self, command, context: dict, timeout: float
+    ) -> tuple[Any, Optional[str], bool]:
+        output_holder: list = [None]
+        error_holder: list[Optional[str]] = [None]
+
+        def _target():
+            try:
+                output_holder[0] = command(context)
+            except Exception as exc:
+                error_holder[0] = str(exc)
+
+        thread = threading.Thread(target=_target, daemon=True)
+        thread.start()
+        thread.join(timeout=timeout)
+
+        if thread.is_alive():
+            return None, f"timed out after {timeout}s", True
+
+        return output_holder[0], error_holder[0], False
+
+    def _execute_sub_recipe(
+        self, step: dict, context: dict, timeout: float
+    ) -> tuple[Any, Optional[str], bool]:
+        sub_recipe: list[dict] = step["sub_recipe"]
+        propagate: bool = step.get("propagate_outputs", False)
+
+        child_context = dict(context)
+        child_executor = RecipeStepExecutor()
+
+        def _run_child():
+            return child_executor.execute(sub_recipe, child_context)
+
+        # Run sub-recipe under the parent timeout.
+        result_holder: list = [None]
+        error_holder: list[Optional[str]] = [None]
+
+        def _target():
+            try:
+                result_holder[0] = _run_child()
+            except Exception as exc:
+                error_holder[0] = str(exc)
+
+        thread = threading.Thread(target=_target, daemon=True)
+        thread.start()
+        thread.join(timeout=timeout)
+
+        if thread.is_alive():
+            return None, f"sub-recipe timed out after {timeout}s", True
+
+        if error_holder[0] is not None:
+            return None, error_holder[0], False
+
+        child_results: list[StepResult] = result_holder[0]
+
+        # Check for child failures.
+        for cr in child_results:
+            if cr.status in (StepStatus.FAILED, StepStatus.TIMED_OUT):
+                return None, f"sub-recipe failed at step {cr.step_id}: {cr.error}", False
+
+        # Propagate outputs if requested.
+        if propagate:
+            for key, value in child_context.items():
+                if key not in context:
+                    context[key] = value
+
+        # Collect child outputs as parent output.
+        child_outputs = {
+            cr.step_id: cr.output for cr in child_results if cr.output is not None
+        }
+        return child_outputs, None, False
+
+    # -- template resolution --
+
+    _TEMPLATE_RE = re.compile(r"\{\{(\w+)\}\}")
+
+    def _resolve_templates(self, text: str, context: dict) -> str:
+        def _replace(match: re.Match) -> str:
+            key = match.group(1)
+            return str(context.get(key, match.group(0)))
+
+        return self._TEMPLATE_RE.sub(_replace, text)
+```
+
+## `test_recipe_step_executor.py`
+
+```python
+"""Focused tests for RecipeStepExecutor — covers each feature and cross-feature interactions."""
+
+import time
+import pytest
+from recipe_step_executor import RecipeStepExecutor, StepStatus
+
+
+@pytest.fixture
+def executor():
+    return RecipeStepExecutor()
+
+
+# ---------------------------------------------------------------------------
+# Feature 1: Conditional Execution
+# ---------------------------------------------------------------------------
+
+class TestConditionalExecution:
+    def test_step_runs_when_no_condition(self, executor):
+        recipe = [{"id": "a", "command": lambda ctx: "hello"}]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.COMPLETED
+        assert results[0].output == "hello"
+
+    def test_step_runs_when_condition_true(self, executor):
+        recipe = [{"id": "a", "condition": "x > 0", "command": lambda ctx: "yes"}]
+        results = executor.execute(recipe, {"x": 5})
+        assert results[0].status == StepStatus.COMPLETED
+
+    def test_step_skipped_when_condition_false(self, executor):
+        recipe = [{"id": "a", "condition": "x > 10", "command": lambda ctx: "no"}]
+        results = executor.execute(recipe, {"x": 1})
+        assert results[0].status == StepStatus.SKIPPED
+
+    def test_step_skipped_when_condition_references_missing_key(self, executor):
+        recipe = [{"id": "a", "condition": "missing_var == 1", "command": lambda ctx: "no"}]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.SKIPPED
+
+    def test_condition_uses_template_substitution(self, executor):
+        recipe = [
+            {"id": "a", "command": lambda ctx: "go"},
+            {"id": "b", "condition": "'go' in '{{a}}'", "command": lambda ctx: "ran"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results[1].status == StepStatus.COMPLETED
+
+
+# ---------------------------------------------------------------------------
+# Feature 2: Step Dependencies
+# ---------------------------------------------------------------------------
+
+class TestStepDependencies:
+    def test_dependent_step_runs_after_completed_dep(self, executor):
+        recipe = [
+            {"id": "a", "command": lambda ctx: "done"},
+            {"id": "b", "blockedBy": ["a"], "command": lambda ctx: "also done"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results[1].status == StepStatus.COMPLETED
+
+    def test_dependent_step_fails_when_dep_failed(self, executor):
+        recipe = [
+            {"id": "a", "command": lambda ctx: (_ for _ in ()).throw(RuntimeError("boom"))},
+            {"id": "b", "blockedBy": ["a"], "command": lambda ctx: "nope"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.FAILED
+        assert results[1].status == StepStatus.FAILED
+        assert "dependency_failed" in results[1].error
+
+    def test_dependent_step_runs_when_dep_skipped(self, executor):
+        recipe = [
+            {"id": "a", "condition": "False", "command": lambda ctx: "skip me"},
+            {"id": "b", "blockedBy": ["a"], "command": lambda ctx: "I run"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.SKIPPED
+        assert results[1].status == StepStatus.COMPLETED
+
+    def test_dependent_step_fails_when_dep_timed_out(self, executor):
+        recipe = [
+            {"id": "a", "timeout_seconds": 0.1, "command": lambda ctx: time.sleep(5)},
+            {"id": "b", "blockedBy": ["a"], "command": lambda ctx: "nope"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.TIMED_OUT
+        assert results[1].status == StepStatus.FAILED
+        assert "dependency_failed" in results[1].error
+
+
+# ---------------------------------------------------------------------------
+# Feature 3: Retry with Exponential Backoff
+# ---------------------------------------------------------------------------
+
+class TestRetryWithBackoff:
+    def test_no_retry_on_success(self, executor):
+        recipe = [{"id": "a", "max_retries": 3, "command": lambda ctx: "ok"}]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.COMPLETED
+        assert results[0].retries_used == 0
+
+    def test_retry_succeeds_on_second_attempt(self, executor):
+        call_count = {"n": 0}
+
+        def flaky(ctx):
+            call_count["n"] += 1
+            if call_count["n"] < 2:
+                raise RuntimeError("transient")
+            return "recovered"
+
+        recipe = [{"id": "a", "max_retries": 2, "command": flaky}]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.COMPLETED
+        assert results[0].output == "recovered"
+        assert results[0].retries_used == 1
+
+    def test_retries_exhausted(self, executor):
+        recipe = [
+            {
+                "id": "a",
+                "max_retries": 1,
+                "command": lambda ctx: (_ for _ in ()).throw(RuntimeError("always fails")),
+            }
+        ]
+        start = time.monotonic()
+        results = executor.execute(recipe, {})
+        elapsed = time.monotonic() - start
+        assert results[0].status == StepStatus.FAILED
+        assert results[0].retries_used == 1
+        # Should have waited ~1s for backoff
+        assert elapsed >= 0.9
+
+    def test_retry_replaces_output(self, executor):
+        call_count = {"n": 0}
+
+        def improving(ctx):
+            call_count["n"] += 1
+            if call_count["n"] < 3:
+                raise RuntimeError("not yet")
+            return f"attempt_{call_count['n']}"
+
+        recipe = [{"id": "a", "max_retries": 3, "command": improving}]
+        results = executor.execute(recipe, {})
+        assert results[0].output == "attempt_3"
+
+
+# ---------------------------------------------------------------------------
+# Feature 4: Timeout Handling
+# ---------------------------------------------------------------------------
+
+class TestTimeoutHandling:
+    def test_step_completes_within_timeout(self, executor):
+        recipe = [{"id": "a", "timeout_seconds": 5, "command": lambda ctx: "fast"}]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.COMPLETED
+
+    def test_step_times_out(self, executor):
+        recipe = [
+            {"id": "a", "timeout_seconds": 0.2, "command": lambda ctx: time.sleep(5)}
+        ]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.TIMED_OUT
+
+    def test_timed_out_step_not_retried(self, executor):
+        call_count = {"n": 0}
+
+        def slow(ctx):
+            call_count["n"] += 1
+            time.sleep(5)
+
+        recipe = [{"id": "a", "timeout_seconds": 0.2, "max_retries": 3, "command": slow}]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.TIMED_OUT
+        assert call_count["n"] == 1  # Only one attempt, no retries
+
+
+# ---------------------------------------------------------------------------
+# Feature 5: Output Capture
+# ---------------------------------------------------------------------------
+
+class TestOutputCapture:
+    def test_output_stored_in_context(self, executor):
+        ctx = {}
+        recipe = [{"id": "a", "command": lambda ctx: 42}]
+        executor.execute(recipe, ctx)
+        assert ctx["a"] == 42
+
+    def test_subsequent_step_sees_prior_output(self, executor):
+        recipe = [
+            {"id": "a", "command": lambda ctx: "first"},
+            {"id": "b", "command": lambda ctx: f"got {ctx.get('a')}"},
+        ]
+        ctx = {}
+        results = executor.execute(recipe, ctx)
+        assert results[1].output == "got first"
+
+    def test_template_substitution_in_condition(self, executor):
+        recipe = [
+            {"id": "a", "command": lambda ctx: "ready"},
+            {"id": "b", "condition": "'ready' == '{{a}}'", "command": lambda ctx: "go"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results[1].status == StepStatus.COMPLETED
+
+    def test_skipped_step_does_not_store_output(self, executor):
+        ctx = {}
+        recipe = [{"id": "a", "condition": "False", "command": lambda ctx: "nope"}]
+        executor.execute(recipe, ctx)
+        assert "a" not in ctx
+
+
+# ---------------------------------------------------------------------------
+# Feature 6: Sub-recipe Delegation
+# ---------------------------------------------------------------------------
+
+class TestSubRecipeDelegation:
+    def test_sub_recipe_runs_child_steps(self, executor):
+        recipe = [
+            {
+                "id": "parent",
+                "sub_recipe": [
+                    {"id": "child1", "command": lambda ctx: "c1"},
+                    {"id": "child2", "command": lambda ctx: "c2"},
+                ],
+            }
+        ]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.COMPLETED
+        assert results[0].output == {"child1": "c1", "child2": "c2"}
+
+    def test_child_outputs_not_in_parent_by_default(self, executor):
+        ctx = {}
+        recipe = [
+            {
+                "id": "parent",
+                "sub_recipe": [{"id": "child1", "command": lambda ctx: "secret"}],
+            }
+        ]
+        executor.execute(recipe, ctx)
+        assert "child1" not in ctx
+
+    def test_child_outputs_propagate_when_flag_set(self, executor):
+        ctx = {}
+        recipe = [
+            {
+                "id": "parent",
+                "propagate_outputs": True,
+                "sub_recipe": [{"id": "child1", "command": lambda ctx: "shared"}],
+            }
+        ]
+        executor.execute(recipe, ctx)
+        assert ctx["child1"] == "shared"
+
+    def test_child_inherits_parent_context(self, executor):
+        ctx = {"val": 10}
+        recipe = [
+            {
+                "id": "parent",
+                "sub_recipe": [
+                    {"id": "child1", "command": lambda ctx: ctx.get("val", 0) + 1}
+                ],
+            }
+        ]
+        results = executor.execute(recipe, ctx)
+        assert results[0].output == {"child1": 11}
+
+    def test_failed_child_fails_parent(self, executor):
+        recipe = [
+            {
+                "id": "parent",
+                "sub_recipe": [
+                    {"id": "child1", "command": lambda ctx: (_ for _ in ()).throw(RuntimeError("child boom"))},
+                ],
+            }
+        ]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.FAILED
+        assert "child boom" in results[0].error
+
+    def test_sub_recipe_failure_not_retried(self, executor):
+        call_count = {"n": 0}
+
+        def make_sub():
+            call_count["n"] += 1
+            return [
+                {"id": "child1", "command": lambda ctx: (_ for _ in ()).throw(RuntimeError("fail"))}
+            ]
+
+        recipe = [
+            {
+                "id": "parent",
+                "max_retries": 3,
+                "sub_recipe": [
+                    {"id": "child1", "command": lambda ctx: (_ for _ in ()).throw(RuntimeError("fail"))}
+                ],
+            }
+        ]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.FAILED
+        # Sub-recipe failures are not retried — retries_used stays 0
+        assert results[0].retries_used == 0
+
+
+# ---------------------------------------------------------------------------
+# Cross-feature Interactions
+# ---------------------------------------------------------------------------
+
+class TestCrossFeatureInteractions:
+    def test_retried_step_output_feeds_conditional(self, executor):
+        """Retry produces output that a subsequent conditional step reads."""
+        call_count = {"n": 0}
+
+        def flaky(ctx):
+            call_count["n"] += 1
+            if call_count["n"] < 2:
+                raise RuntimeError("not yet")
+            return "available"
+
+        recipe = [
+            {"id": "a", "max_retries": 2, "command": flaky},
+            {"id": "b", "condition": "'available' == '{{a}}'", "command": lambda ctx: "used it"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.COMPLETED
+        assert results[1].status == StepStatus.COMPLETED
+        assert results[1].output == "used it"
+
+    def test_timed_out_step_blocks_dependent(self, executor):
+        """Timed-out step propagates as failure to dependent."""
+        recipe = [
+            {"id": "slow", "timeout_seconds": 0.1, "command": lambda ctx: time.sleep(5)},
+            {"id": "next", "blockedBy": ["slow"], "command": lambda ctx: "nope"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.TIMED_OUT
+        assert results[1].status == StepStatus.FAILED
+        assert "dependency_failed" in results[1].error
+
+    def test_conditional_skip_does_not_block_dependent(self, executor):
+        """Skipped step does not block a dependent step."""
+        recipe = [
+            {"id": "maybe", "condition": "False", "command": lambda ctx: "skip"},
+            {"id": "always", "blockedBy": ["maybe"], "command": lambda ctx: "runs"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.SKIPPED
+        assert results[1].status == StepStatus.COMPLETED
+
+    def test_sub_recipe_with_propagation_feeds_later_condition(self, executor):
+        """Propagated sub-recipe output is visible to a later conditional step."""
+        recipe = [
+            {
+                "id": "parent",
+                "propagate_outputs": True,
+                "sub_recipe": [
+                    {"id": "child_flag", "command": lambda ctx: "enabled"},
+                ],
+            },
+            {
+                "id": "gated",
+                "condition": "child_flag == 'enabled'",
+                "command": lambda ctx: "gate passed",
+            },
+        ]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.COMPLETED
+        assert results[1].status == StepStatus.COMPLETED
+        assert results[1].output == "gate passed"
+
+    def test_sub_recipe_without_propagation_hides_from_condition(self, executor):
+        """Without propagation, child output is invisible to later conditions."""
+        recipe = [
+            {
+                "id": "parent",
+                "sub_recipe": [
+                    {"id": "child_flag", "command": lambda ctx: "enabled"},
+                ],
+            },
+            {
+                "id": "gated",
+                "condition": "child_flag == 'enabled'",
+                "command": lambda ctx: "should not run",
+            },
+        ]
+        results = executor.execute(recipe, {})
+        assert results[1].status == StepStatus.SKIPPED
+
+    def test_failed_sub_recipe_blocks_dependent_step(self, executor):
+        """A parent step that fails via sub-recipe blocks a dependent."""
+        recipe = [
+            {
+                "id": "parent",
+                "sub_recipe": [
+                    {"id": "bad_child", "command": lambda ctx: (_ for _ in ()).throw(RuntimeError("nope"))},
+                ],
+            },
+            {"id": "after", "blockedBy": ["parent"], "command": lambda ctx: "blocked"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results[0].status == StepStatus.FAILED
+        assert results[1].status == StepStatus.FAILED
+        assert "dependency_failed" in results[1].error
+
+    def test_multiple_dependencies_all_must_pass(self, executor):
+        """Step with multiple blockedBy entries fails if any dep failed."""
+        recipe = [
+            {"id": "ok", "command": lambda ctx: "fine"},
+            {"id": "bad", "command": lambda ctx: (_ for _ in ()).throw(RuntimeError("err"))},
+            {"id": "needs_both", "blockedBy": ["ok", "bad"], "command": lambda ctx: "nope"},
+        ]
+        results = executor.execute(recipe, {})
+        assert results[2].status == StepStatus.FAILED
+
+    def test_end_to_end_pipeline(self, executor):
+        """Multi-step pipeline: produce → transform → gate → consume."""
+        recipe = [
+            {"id": "produce", "command": lambda ctx: {"count": 3}},
+            {
+                "id": "transform",
+                "blockedBy": ["produce"],
+                "command": lambda ctx: ctx["produce"]["count"] * 10,
+            },
+            {
+                "id": "gate",
+                "condition": "transform == 30",
+                "command": lambda ctx: "passed",
+            },
+            {
+                "id": "consume",
+                "blockedBy": ["gate"],
+                "command": lambda ctx: f"final: {ctx['gate']}",
+            },
+        ]
+        ctx = {}
+        results = executor.execute(recipe, ctx)
+        assert all(r.status == StepStatus.COMPLETED for r in results)
+        assert ctx["consume"] == "final: passed"
+```
+
+## Design Notes
+
+**Key decisions:**
+
+- **Timeout via threads**: Uses `threading.Thread` with `join(timeout)` so the main executor isn't blocked indefinitely. Daemon threads ensure cleanup on exit.
+- **Sub-recipe non-retry**: The `_execute_once` method returns a non-retryable failure for sub-recipes by returning the error from the first attempt. The retry loop in `_execute_with_retries` only retries command-based steps that raise exceptions — sub-recipe failures flow through as `(None, error_string, False)` which means the first failure exits the retry loop at `attempt == 0`.
+
+Wait — that's wrong. The retry loop currently *would* retry sub-recipe failures because the error path treats any non-None error the same. Let me fix the implementation to match the spec: "Sub-recipe failures are not retried."
+
+Here's the corrected `_execute_with_retries`:
+
+```python
+    def _execute_with_retries(self, step: dict, context: dict) -> StepResult:
+        max_retries: int = step.get("max_retries", 0)
+        timeout: float = step.get("timeout_seconds", 60)
+        step_id: str = step["id"]
+        is_sub_recipe: bool = "sub_recipe" in step
+
+        attempt = 0
+        last_error: Optional[str] = None
+
+        while True:
+            output, error, timed_out = self._execute_once(step, context, timeout)
+
+            if timed_out:
+                return StepResult(
+                    step_id=step_id,
+                    status=StepStatus.TIMED_OUT,
+                    error=error,
+                    retries_used=attempt,
+                )
+
+            if error is None:
+                return StepResult(
+                    step_id=step_id,
+                    status=StepStatus.COMPLETED,
+                    output=output,
+                    retries_used=attempt,
+                )
+
+            last_error = error
+
+            # Sub-recipe failures are never retried.
+            if is_sub_recipe:
+                return StepResult(
+                    step_id=step_id,
+                    status=StepStatus.FAILED,
+                    error=last_error,
+                    retries_used=0,
+                )
+
+            if attempt < max_retries:
+                delay = 2 ** attempt  # 1, 2, 4 …
+                time.sleep(delay)
+                attempt += 1
+            else:
+                return StepResult(
+                    step_id=step_id,
+                    status=StepStatus.FAILED,
+                    error=last_error,
+                    retries_used=attempt,
+                )
+```
+
+This ensures sub-recipe failures exit immediately with `retries_used=0`, matching the spec and the test assertion `assert results[0].retries_used == 0`.

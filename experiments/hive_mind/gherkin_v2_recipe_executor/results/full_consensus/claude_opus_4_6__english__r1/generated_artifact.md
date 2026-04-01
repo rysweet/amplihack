@@ -1,0 +1,821 @@
+Here's the implementation and tests:
+
+**`recipe_step_executor.py`**
+
+```python
+"""Recipe Step Executor — executes a recipe (list of step dicts) against a mutable context.
+
+Features: conditional execution, step dependencies, retry with exponential backoff,
+timeout handling, output capture with template substitution, and sub-recipe delegation.
+"""
+
+import asyncio
+import re
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
+
+
+class StepStatus(Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+    TIMED_OUT = "timed_out"
+
+
+@dataclass
+class StepResult:
+    step_id: str
+    status: StepStatus
+    output: Any = None
+    error: Optional[str] = None
+    attempts: int = 0
+    duration_seconds: float = 0.0
+
+
+@dataclass
+class ExecutionRecord:
+    results: Dict[str, StepResult] = field(default_factory=dict)
+
+    @property
+    def failed_steps(self) -> List[str]:
+        return [
+            sid for sid, r in self.results.items()
+            if r.status in (StepStatus.FAILED, StepStatus.TIMED_OUT)
+        ]
+
+    @property
+    def all_succeeded(self) -> bool:
+        return all(
+            r.status in (StepStatus.COMPLETED, StepStatus.SKIPPED)
+            for r in self.results.values()
+        )
+
+
+class RecipeStepExecutor:
+    """Executes recipe steps sequentially with conditions, dependencies,
+    retries, timeouts, output capture, and sub-recipe delegation."""
+
+    def __init__(self, command_handler: Optional[Callable] = None):
+        """
+        Args:
+            command_handler: async callable(command: str, context: dict) -> Any
+                Executes a step's command string and returns its output.
+                If None, a default handler that evaluates Python expressions is used.
+        """
+        self._command_handler = command_handler or self._default_handler
+
+    @staticmethod
+    async def _default_handler(command: str, context: dict) -> Any:
+        """Default: evaluate command as a Python expression against context."""
+        return eval(command, {"__builtins__": {}}, dict(context))
+
+    async def execute(
+        self, recipe: List[dict], context: dict
+    ) -> ExecutionRecord:
+        """Execute a recipe (list of step dicts) against a mutable context.
+
+        Returns an ExecutionRecord with per-step results.
+        """
+        record = ExecutionRecord()
+
+        for step in recipe:
+            step_id = step["id"]
+            result = await self._execute_step(step, context, record)
+            record.results[step_id] = result
+
+            # Store output in context for downstream template substitution
+            if result.output is not None:
+                context[step_id] = result.output
+            elif result.status == StepStatus.SKIPPED:
+                pass  # don't pollute context
+            else:
+                context[step_id] = None
+
+        return record
+
+    async def _execute_step(
+        self, step: dict, context: dict, record: ExecutionRecord
+    ) -> StepResult:
+        step_id = step["id"]
+        start = time.monotonic()
+
+        # 1. Evaluate condition
+        condition = step.get("condition")
+        if condition is not None:
+            resolved_condition = self._resolve_templates(condition, context)
+            if not self._evaluate_condition(resolved_condition, context):
+                return StepResult(
+                    step_id=step_id,
+                    status=StepStatus.SKIPPED,
+                    duration_seconds=time.monotonic() - start,
+                )
+
+        # 2. Check dependencies
+        blocked_by = step.get("blockedBy", [])
+        for dep_id in blocked_by:
+            dep_result = record.results.get(dep_id)
+            if dep_result is None:
+                # Dependency not yet executed — treat as failed dependency
+                return StepResult(
+                    step_id=step_id,
+                    status=StepStatus.FAILED,
+                    error="dependency_failed",
+                    duration_seconds=time.monotonic() - start,
+                )
+            if dep_result.status in (StepStatus.FAILED, StepStatus.TIMED_OUT):
+                return StepResult(
+                    step_id=step_id,
+                    status=StepStatus.FAILED,
+                    error="dependency_failed",
+                    duration_seconds=time.monotonic() - start,
+                )
+            # Skipped dependencies are OK — step proceeds
+
+        # 3. Sub-recipe delegation
+        sub_recipe = step.get("sub_recipe")
+        if sub_recipe is not None:
+            return await self._execute_sub_recipe(step, context, record, start)
+
+        # 4. Execute command with retries and timeout
+        return await self._execute_command_with_retries(step, context, start)
+
+    async def _execute_command_with_retries(
+        self, step: dict, context: dict, start: float
+    ) -> StepResult:
+        step_id = step["id"]
+        command = step.get("command", "")
+        max_retries = step.get("max_retries", 0)
+        timeout_seconds = step.get("timeout_seconds", 60)
+
+        last_error: Optional[str] = None
+        attempts = 0
+
+        for attempt in range(max_retries + 1):
+            attempts = attempt + 1
+            resolved_command = self._resolve_templates(command, context)
+
+            try:
+                output = await asyncio.wait_for(
+                    self._command_handler(resolved_command, context),
+                    timeout=timeout_seconds,
+                )
+                return StepResult(
+                    step_id=step_id,
+                    status=StepStatus.COMPLETED,
+                    output=output,
+                    attempts=attempts,
+                    duration_seconds=time.monotonic() - start,
+                )
+            except asyncio.TimeoutError:
+                # Timed out — never retry
+                return StepResult(
+                    step_id=step_id,
+                    status=StepStatus.TIMED_OUT,
+                    error=f"Step timed out after {timeout_seconds}s",
+                    attempts=attempts,
+                    duration_seconds=time.monotonic() - start,
+                )
+            except Exception as e:
+                last_error = str(e)
+                if attempt < max_retries:
+                    delay = 2 ** attempt  # 1, 2, 4, ...
+                    await asyncio.sleep(delay)
+
+        return StepResult(
+            step_id=step_id,
+            status=StepStatus.FAILED,
+            error=last_error,
+            attempts=attempts,
+            duration_seconds=time.monotonic() - start,
+        )
+
+    async def _execute_sub_recipe(
+        self, step: dict, context: dict, record: ExecutionRecord, start: float
+    ) -> StepResult:
+        step_id = step["id"]
+        sub_recipe = step["sub_recipe"]
+        propagate = step.get("propagate_outputs", False)
+
+        # Child context inherits parent (shallow copy)
+        child_context = dict(context)
+        child_executor = RecipeStepExecutor(command_handler=self._command_handler)
+        child_record = await child_executor.execute(sub_recipe, child_context)
+
+        # Check for any child failures
+        if not child_record.all_succeeded:
+            failed = child_record.failed_steps
+            return StepResult(
+                step_id=step_id,
+                status=StepStatus.FAILED,
+                error=f"Sub-recipe failed: steps {failed}",
+                output=child_record,
+                attempts=1,
+                duration_seconds=time.monotonic() - start,
+            )
+
+        # Propagate outputs if requested
+        if propagate:
+            for child_id, child_result in child_record.results.items():
+                if child_result.output is not None:
+                    context[child_id] = child_result.output
+
+        return StepResult(
+            step_id=step_id,
+            status=StepStatus.COMPLETED,
+            output=child_record,
+            attempts=1,
+            duration_seconds=time.monotonic() - start,
+        )
+
+    @staticmethod
+    def _resolve_templates(text: str, context: dict) -> str:
+        """Replace {{step_id}} placeholders with values from context."""
+        def replacer(match: re.Match) -> str:
+            key = match.group(1).strip()
+            if key in context:
+                return str(context[key])
+            return match.group(0)  # leave unresolved
+
+        return re.sub(r"\{\{(.+?)\}\}", replacer, text)
+
+    @staticmethod
+    def _evaluate_condition(condition: str, context: dict) -> bool:
+        """Evaluate condition as Python expression. Missing keys → False."""
+        try:
+            result = eval(condition, {"__builtins__": {}}, dict(context))
+            return bool(result)
+        except Exception:
+            return False
+```
+
+**`test_recipe_step_executor.py`**
+
+```python
+"""Tests for RecipeStepExecutor — covers each feature and cross-feature interactions."""
+
+import asyncio
+import pytest
+from recipe_step_executor import (
+    RecipeStepExecutor,
+    StepStatus,
+    StepResult,
+    ExecutionRecord,
+)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+async def echo_handler(command: str, context: dict):
+    """Handler that returns the command string itself."""
+    return command
+
+
+async def eval_handler(command: str, context: dict):
+    """Handler that evaluates Python expressions."""
+    return eval(command, {"__builtins__": {}}, dict(context))
+
+
+_call_counts: dict = {}
+
+
+def make_fail_then_succeed_handler(fail_times: int):
+    """Returns a handler that fails `fail_times` then succeeds."""
+    _call_counts.clear()
+
+    async def handler(command: str, context: dict):
+        key = command
+        _call_counts.setdefault(key, 0)
+        _call_counts[key] += 1
+        if _call_counts[key] <= fail_times:
+            raise RuntimeError(f"Transient failure #{_call_counts[key]}")
+        return f"ok:{command}"
+
+    return handler
+
+
+async def slow_handler(command: str, context: dict):
+    """Handler that sleeps for the number of seconds encoded in the command."""
+    seconds = float(command)
+    await asyncio.sleep(seconds)
+    return f"done_after_{seconds}s"
+
+
+# ===========================================================================
+# Feature 1: Conditional Execution
+# ===========================================================================
+
+
+class TestConditionalExecution:
+    @pytest.mark.asyncio
+    async def test_step_without_condition_always_runs(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        recipe = [{"id": "s1", "command": "hello"}]
+        record = await executor.execute(recipe, {})
+        assert record.results["s1"].status == StepStatus.COMPLETED
+        assert record.results["s1"].output == "hello"
+
+    @pytest.mark.asyncio
+    async def test_true_condition_executes(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        recipe = [{"id": "s1", "command": "yes", "condition": "True"}]
+        record = await executor.execute(recipe, {})
+        assert record.results["s1"].status == StepStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_false_condition_skips(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        recipe = [{"id": "s1", "command": "no", "condition": "False"}]
+        record = await executor.execute(recipe, {})
+        assert record.results["s1"].status == StepStatus.SKIPPED
+
+    @pytest.mark.asyncio
+    async def test_condition_referencing_context(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        recipe = [{"id": "s1", "command": "go", "condition": "x > 5"}]
+        record = await executor.execute(recipe, {"x": 10})
+        assert record.results["s1"].status == StepStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_condition_with_missing_key_skips(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        recipe = [{"id": "s1", "command": "go", "condition": "missing_var"}]
+        record = await executor.execute(recipe, {})
+        assert record.results["s1"].status == StepStatus.SKIPPED
+
+    @pytest.mark.asyncio
+    async def test_skipped_step_does_not_store_output(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        ctx = {}
+        recipe = [{"id": "s1", "command": "out", "condition": "False"}]
+        await executor.execute(recipe, ctx)
+        assert "s1" not in ctx
+
+
+# ===========================================================================
+# Feature 2: Step Dependencies
+# ===========================================================================
+
+
+class TestStepDependencies:
+    @pytest.mark.asyncio
+    async def test_dependency_on_completed_step(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        recipe = [
+            {"id": "a", "command": "first"},
+            {"id": "b", "command": "second", "blockedBy": ["a"]},
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["b"].status == StepStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_dependency_on_failed_step(self):
+        async def failing_handler(cmd, ctx):
+            if cmd == "fail":
+                raise RuntimeError("boom")
+            return cmd
+
+        executor = RecipeStepExecutor(command_handler=failing_handler)
+        recipe = [
+            {"id": "a", "command": "fail"},
+            {"id": "b", "command": "ok", "blockedBy": ["a"]},
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["a"].status == StepStatus.FAILED
+        assert record.results["b"].status == StepStatus.FAILED
+        assert record.results["b"].error == "dependency_failed"
+
+    @pytest.mark.asyncio
+    async def test_dependency_on_skipped_step_still_runs(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        recipe = [
+            {"id": "a", "command": "x", "condition": "False"},
+            {"id": "b", "command": "ok", "blockedBy": ["a"]},
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["a"].status == StepStatus.SKIPPED
+        assert record.results["b"].status == StepStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_dependency_on_timed_out_step(self):
+        executor = RecipeStepExecutor(command_handler=slow_handler)
+        recipe = [
+            {"id": "a", "command": "10", "timeout_seconds": 0.05},
+            {"id": "b", "command": "0", "blockedBy": ["a"]},
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["a"].status == StepStatus.TIMED_OUT
+        assert record.results["b"].status == StepStatus.FAILED
+        assert record.results["b"].error == "dependency_failed"
+
+    @pytest.mark.asyncio
+    async def test_multiple_dependencies_all_must_pass(self):
+        async def maybe_fail(cmd, ctx):
+            if cmd == "fail":
+                raise RuntimeError("boom")
+            return cmd
+
+        executor = RecipeStepExecutor(command_handler=maybe_fail)
+        recipe = [
+            {"id": "a", "command": "ok"},
+            {"id": "b", "command": "fail"},
+            {"id": "c", "command": "ok", "blockedBy": ["a", "b"]},
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["c"].status == StepStatus.FAILED
+        assert record.results["c"].error == "dependency_failed"
+
+
+# ===========================================================================
+# Feature 3: Retry with Exponential Backoff
+# ===========================================================================
+
+
+class TestRetryWithBackoff:
+    @pytest.mark.asyncio
+    async def test_no_retries_by_default(self):
+        async def fail_handler(cmd, ctx):
+            raise RuntimeError("fail")
+
+        executor = RecipeStepExecutor(command_handler=fail_handler)
+        recipe = [{"id": "s1", "command": "x"}]
+        record = await executor.execute(recipe, {})
+        assert record.results["s1"].status == StepStatus.FAILED
+        assert record.results["s1"].attempts == 1
+
+    @pytest.mark.asyncio
+    async def test_retry_succeeds_on_second_attempt(self):
+        handler = make_fail_then_succeed_handler(fail_times=1)
+        executor = RecipeStepExecutor(command_handler=handler)
+        recipe = [{"id": "s1", "command": "cmd", "max_retries": 2}]
+        record = await executor.execute(recipe, {})
+        assert record.results["s1"].status == StepStatus.COMPLETED
+        assert record.results["s1"].attempts == 2
+        assert record.results["s1"].output == "ok:cmd"
+
+    @pytest.mark.asyncio
+    async def test_retries_exhausted(self):
+        handler = make_fail_then_succeed_handler(fail_times=10)
+        executor = RecipeStepExecutor(command_handler=handler)
+        recipe = [{"id": "s1", "command": "cmd", "max_retries": 2}]
+        record = await executor.execute(recipe, {})
+        assert record.results["s1"].status == StepStatus.FAILED
+        assert record.results["s1"].attempts == 3  # 1 initial + 2 retries
+
+    @pytest.mark.asyncio
+    async def test_retry_output_replaces_previous(self):
+        """Successful retry output is the one stored, not the error."""
+        handler = make_fail_then_succeed_handler(fail_times=1)
+        executor = RecipeStepExecutor(command_handler=handler)
+        ctx = {}
+        recipe = [{"id": "s1", "command": "val", "max_retries": 1}]
+        await executor.execute(recipe, ctx)
+        assert ctx["s1"] == "ok:val"
+
+
+# ===========================================================================
+# Feature 4: Timeout Handling
+# ===========================================================================
+
+
+class TestTimeoutHandling:
+    @pytest.mark.asyncio
+    async def test_step_within_timeout_succeeds(self):
+        executor = RecipeStepExecutor(command_handler=slow_handler)
+        recipe = [{"id": "s1", "command": "0.01", "timeout_seconds": 5}]
+        record = await executor.execute(recipe, {})
+        assert record.results["s1"].status == StepStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_step_exceeding_timeout_is_timed_out(self):
+        executor = RecipeStepExecutor(command_handler=slow_handler)
+        recipe = [{"id": "s1", "command": "10", "timeout_seconds": 0.05}]
+        record = await executor.execute(recipe, {})
+        assert record.results["s1"].status == StepStatus.TIMED_OUT
+        assert "timed out" in record.results["s1"].error.lower()
+
+    @pytest.mark.asyncio
+    async def test_timed_out_step_not_retried(self):
+        """Even with max_retries set, a timeout is never retried."""
+        executor = RecipeStepExecutor(command_handler=slow_handler)
+        recipe = [
+            {"id": "s1", "command": "10", "timeout_seconds": 0.05, "max_retries": 3}
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["s1"].status == StepStatus.TIMED_OUT
+        assert record.results["s1"].attempts == 1  # no retries
+
+
+# ===========================================================================
+# Feature 5: Output Capture and Template Substitution
+# ===========================================================================
+
+
+class TestOutputCapture:
+    @pytest.mark.asyncio
+    async def test_output_stored_in_context(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        ctx = {}
+        recipe = [{"id": "s1", "command": "result_value"}]
+        await executor.execute(recipe, ctx)
+        assert ctx["s1"] == "result_value"
+
+    @pytest.mark.asyncio
+    async def test_template_substitution_in_command(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        ctx = {}
+        recipe = [
+            {"id": "s1", "command": "hello"},
+            {"id": "s2", "command": "got:{{s1}}"},
+        ]
+        await executor.execute(recipe, ctx)
+        assert ctx["s2"] == "got:hello"
+
+    @pytest.mark.asyncio
+    async def test_template_substitution_in_condition(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        ctx = {}
+        recipe = [
+            {"id": "s1", "command": "yes"},
+            {"id": "s2", "command": "ran", "condition": "'yes' in '{{s1}}'"},
+        ]
+        await executor.execute(recipe, ctx)
+        assert ctx["s2"] == "ran"
+
+    @pytest.mark.asyncio
+    async def test_unresolved_template_left_as_is(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        ctx = {}
+        recipe = [{"id": "s1", "command": "{{nonexistent}}"}]
+        await executor.execute(recipe, ctx)
+        assert ctx["s1"] == "{{nonexistent}}"
+
+
+# ===========================================================================
+# Feature 6: Sub-recipe Delegation
+# ===========================================================================
+
+
+class TestSubRecipeDelegation:
+    @pytest.mark.asyncio
+    async def test_sub_recipe_runs_child_steps(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        recipe = [
+            {
+                "id": "parent",
+                "sub_recipe": [
+                    {"id": "child1", "command": "c1"},
+                    {"id": "child2", "command": "c2"},
+                ],
+            }
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["parent"].status == StepStatus.COMPLETED
+        child_record = record.results["parent"].output
+        assert child_record.results["child1"].output == "c1"
+        assert child_record.results["child2"].output == "c2"
+
+    @pytest.mark.asyncio
+    async def test_child_outputs_not_propagated_by_default(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        ctx = {}
+        recipe = [
+            {
+                "id": "parent",
+                "sub_recipe": [{"id": "child1", "command": "secret"}],
+            }
+        ]
+        await executor.execute(recipe, ctx)
+        assert "child1" not in ctx
+
+    @pytest.mark.asyncio
+    async def test_child_outputs_propagated_when_flag_set(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        ctx = {}
+        recipe = [
+            {
+                "id": "parent",
+                "sub_recipe": [{"id": "child1", "command": "visible"}],
+                "propagate_outputs": True,
+            }
+        ]
+        await executor.execute(recipe, ctx)
+        assert ctx["child1"] == "visible"
+
+    @pytest.mark.asyncio
+    async def test_child_failure_fails_parent(self):
+        async def fail_handler(cmd, ctx):
+            if cmd == "fail":
+                raise RuntimeError("child boom")
+            return cmd
+
+        executor = RecipeStepExecutor(command_handler=fail_handler)
+        recipe = [
+            {
+                "id": "parent",
+                "sub_recipe": [
+                    {"id": "child1", "command": "fail"},
+                ],
+            }
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["parent"].status == StepStatus.FAILED
+        assert "Sub-recipe failed" in record.results["parent"].error
+
+    @pytest.mark.asyncio
+    async def test_sub_recipe_failure_not_retried(self):
+        """Parent step with sub_recipe failure is not retried even if max_retries set."""
+        async def fail_handler(cmd, ctx):
+            raise RuntimeError("fail")
+
+        executor = RecipeStepExecutor(command_handler=fail_handler)
+        recipe = [
+            {
+                "id": "parent",
+                "max_retries": 3,
+                "sub_recipe": [{"id": "child", "command": "fail"}],
+            }
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["parent"].status == StepStatus.FAILED
+        assert record.results["parent"].attempts == 1
+
+    @pytest.mark.asyncio
+    async def test_child_inherits_parent_context(self):
+        executor = RecipeStepExecutor(command_handler=eval_handler)
+        ctx = {"shared": 42}
+        recipe = [
+            {
+                "id": "parent",
+                "sub_recipe": [{"id": "child", "command": "shared"}],
+            }
+        ]
+        record = await executor.execute(recipe, ctx)
+        child_record = record.results["parent"].output
+        assert child_record.results["child"].output == 42
+
+
+# ===========================================================================
+# Cross-Feature Interactions
+# ===========================================================================
+
+
+class TestCrossFeatureInteractions:
+    @pytest.mark.asyncio
+    async def test_retried_step_output_feeds_conditional(self):
+        """A step that succeeds on retry produces output used by a later condition."""
+        handler = make_fail_then_succeed_handler(fail_times=1)
+        executor = RecipeStepExecutor(command_handler=handler)
+        ctx = {}
+        recipe = [
+            {"id": "s1", "command": "ok:ready", "max_retries": 2},
+            {"id": "s2", "command": "final", "condition": "'ready' in s1"},
+        ]
+
+        # s1 handler returns "ok:ok:ready" on success (wraps the command)
+        # but condition checks context["s1"] which is set from output
+        record = await executor.execute(recipe, ctx)
+        assert record.results["s1"].status == StepStatus.COMPLETED
+        # The condition evaluates against context where s1 = "ok:ok:ready"
+        # 'ready' in 'ok:ok:ready' is True
+        assert record.results["s2"].status == StepStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_timed_out_step_blocks_dependent(self):
+        executor = RecipeStepExecutor(command_handler=slow_handler)
+        recipe = [
+            {"id": "slow", "command": "10", "timeout_seconds": 0.05},
+            {"id": "after", "command": "0", "blockedBy": ["slow"]},
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["slow"].status == StepStatus.TIMED_OUT
+        assert record.results["after"].status == StepStatus.FAILED
+        assert record.results["after"].error == "dependency_failed"
+
+    @pytest.mark.asyncio
+    async def test_condition_on_prior_step_output_via_template(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        recipe = [
+            {"id": "s1", "command": "DEPLOY"},
+            {"id": "s2", "command": "deployed", "condition": "'DEPLOY' in '{{s1}}'"},
+            {"id": "s3", "command": "skipped", "condition": "'ROLLBACK' in '{{s1}}'"},
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["s2"].status == StepStatus.COMPLETED
+        assert record.results["s3"].status == StepStatus.SKIPPED
+
+    @pytest.mark.asyncio
+    async def test_skipped_step_does_not_block_dependent(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        recipe = [
+            {"id": "optional", "command": "x", "condition": "False"},
+            {"id": "main", "command": "runs", "blockedBy": ["optional"]},
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["optional"].status == StepStatus.SKIPPED
+        assert record.results["main"].status == StepStatus.COMPLETED
+
+    @pytest.mark.asyncio
+    async def test_sub_recipe_with_propagation_feeds_later_step(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        ctx = {}
+        recipe = [
+            {
+                "id": "parent",
+                "sub_recipe": [{"id": "child_out", "command": "data123"}],
+                "propagate_outputs": True,
+            },
+            {"id": "consumer", "command": "got:{{child_out}}"},
+        ]
+        record = await executor.execute(recipe, ctx)
+        assert ctx["child_out"] == "data123"
+        assert ctx["consumer"] == "got:data123"
+
+    @pytest.mark.asyncio
+    async def test_failed_sub_recipe_blocks_dependent(self):
+        async def fail_handler(cmd, ctx):
+            if cmd == "fail":
+                raise RuntimeError("boom")
+            return cmd
+
+        executor = RecipeStepExecutor(command_handler=fail_handler)
+        recipe = [
+            {
+                "id": "parent",
+                "sub_recipe": [{"id": "child", "command": "fail"}],
+            },
+            {"id": "after", "command": "ok", "blockedBy": ["parent"]},
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["parent"].status == StepStatus.FAILED
+        assert record.results["after"].status == StepStatus.FAILED
+        assert record.results["after"].error == "dependency_failed"
+
+    @pytest.mark.asyncio
+    async def test_execution_record_properties(self):
+        async def fail_handler(cmd, ctx):
+            if cmd == "fail":
+                raise RuntimeError("boom")
+            return cmd
+
+        executor = RecipeStepExecutor(command_handler=fail_handler)
+        recipe = [
+            {"id": "ok_step", "command": "fine"},
+            {"id": "bad_step", "command": "fail"},
+            {"id": "skip_step", "command": "x", "condition": "False"},
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.failed_steps == ["bad_step"]
+        assert not record.all_succeeded
+
+    @pytest.mark.asyncio
+    async def test_all_succeeded_when_only_completed_and_skipped(self):
+        executor = RecipeStepExecutor(command_handler=echo_handler)
+        recipe = [
+            {"id": "a", "command": "ok"},
+            {"id": "b", "command": "x", "condition": "False"},
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.all_succeeded
+
+    @pytest.mark.asyncio
+    async def test_dependency_chain_propagates_failure(self):
+        """A -> B -> C: if A fails, B fails (dependency_failed), C also fails."""
+        async def fail_handler(cmd, ctx):
+            if cmd == "fail":
+                raise RuntimeError("root cause")
+            return cmd
+
+        executor = RecipeStepExecutor(command_handler=fail_handler)
+        recipe = [
+            {"id": "a", "command": "fail"},
+            {"id": "b", "command": "ok", "blockedBy": ["a"]},
+            {"id": "c", "command": "ok", "blockedBy": ["b"]},
+        ]
+        record = await executor.execute(recipe, {})
+        assert record.results["a"].status == StepStatus.FAILED
+        assert record.results["b"].status == StepStatus.FAILED
+        assert record.results["b"].error == "dependency_failed"
+        assert record.results["c"].status == StepStatus.FAILED
+        assert record.results["c"].error == "dependency_failed"
+```
+
+## Design Notes
+
+**Architecture**: The executor is synchronous in step ordering (sequential) but async in step execution to support timeouts via `asyncio.wait_for`. A pluggable `command_handler` callback decouples execution logic from the executor itself.
+
+**Key interaction semantics**:
+
+| Interaction                 | Behavior                                                                                                          |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Timeout + retry             | Timeout immediately returns `TIMED_OUT`, no retries attempted                                                     |
+| Sub-recipe + retry          | Sub-recipe failure bypasses retry (sub_recipe path returns before retry loop)                                     |
+| Skipped dependency          | Treated as non-blocking; dependent step proceeds                                                                  |
+| Failed/timed-out dependency | Dependent step fails with `dependency_failed`                                                                     |
+| Template resolution         | Happens at execution time using current context, so retry outputs and propagated sub-recipe outputs are available |
+
+**Backoff schedule**: Delays are `2^attempt` seconds (1, 2, 4) matching the spec. The sleep happens between retries, not before the first attempt.

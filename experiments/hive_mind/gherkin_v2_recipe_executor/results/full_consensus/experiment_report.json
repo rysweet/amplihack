@@ -1,0 +1,203 @@
+{
+  "experiment_id": "gherkin-v2-recipe-executor",
+  "matrix_mode": "full",
+  "output_dir": "experiments/hive_mind/gherkin_v2_recipe_executor/results/full_consensus",
+  "generated_at": "2026-04-01T07:06:35.815417+00:00",
+  "total_conditions": 24,
+  "completed_conditions": 13,
+  "failed_conditions": 11,
+  "summary": {
+    "experiment_id": "gherkin-v2-recipe-executor",
+    "total_conditions": 24,
+    "completed_conditions": 13,
+    "failed_conditions": 11,
+    "metric_summary": {
+      "baseline_score": {
+        "mean": 0.9359,
+        "count": 13
+      },
+      "invariant_compliance": {
+        "mean": 0.6923,
+        "count": 13
+      },
+      "proof_alignment": {
+        "mean": 0.8205,
+        "count": 13
+      },
+      "local_protocol_alignment": {
+        "mean": 0.7949,
+        "count": 13
+      },
+      "progress_signal": {
+        "mean": 0.7564,
+        "count": 13
+      },
+      "specification_coverage": {
+        "mean": 0.9103,
+        "count": 13
+      }
+    },
+    "by_prompt_variant": {
+      "english": {
+        "baseline_score": {
+          "mean": 1.0,
+          "count": 3
+        },
+        "invariant_compliance": {
+          "mean": 0.1667,
+          "count": 3
+        },
+        "proof_alignment": {
+          "mean": 1.0,
+          "count": 3
+        },
+        "local_protocol_alignment": {
+          "mean": 1.0,
+          "count": 3
+        },
+        "progress_signal": {
+          "mean": 0.2222,
+          "count": 3
+        },
+        "specification_coverage": {
+          "mean": 0.8889,
+          "count": 3
+        }
+      },
+      "gherkin_only": {
+        "baseline_score": {
+          "mean": 1.0,
+          "count": 3
+        },
+        "invariant_compliance": {
+          "mean": 0.7778,
+          "count": 3
+        },
+        "proof_alignment": {
+          "mean": 0.8333,
+          "count": 3
+        },
+        "local_protocol_alignment": {
+          "mean": 0.7778,
+          "count": 3
+        },
+        "progress_signal": {
+          "mean": 1.0,
+          "count": 3
+        },
+        "specification_coverage": {
+          "mean": 1.0,
+          "count": 3
+        }
+      },
+      "gherkin_plus_english": {
+        "baseline_score": {
+          "mean": 0.875,
+          "count": 4
+        },
+        "invariant_compliance": {
+          "mean": 0.875,
+          "count": 4
+        },
+        "proof_alignment": {
+          "mean": 0.625,
+          "count": 4
+        },
+        "local_protocol_alignment": {
+          "mean": 0.5833,
+          "count": 4
+        },
+        "progress_signal": {
+          "mean": 0.875,
+          "count": 4
+        },
+        "specification_coverage": {
+          "mean": 0.875,
+          "count": 4
+        }
+      },
+      "gherkin_plus_acceptance": {
+        "baseline_score": {
+          "mean": 0.8889,
+          "count": 3
+        },
+        "invariant_compliance": {
+          "mean": 0.8889,
+          "count": 3
+        },
+        "proof_alignment": {
+          "mean": 0.8889,
+          "count": 3
+        },
+        "local_protocol_alignment": {
+          "mean": 0.8889,
+          "count": 3
+        },
+        "progress_signal": {
+          "mean": 0.8889,
+          "count": 3
+        },
+        "specification_coverage": {
+          "mean": 0.8889,
+          "count": 3
+        }
+      }
+    },
+    "by_model": {
+      "claude-opus-4.6": {
+        "baseline_score": {
+          "mean": 0.9306,
+          "count": 12
+        },
+        "invariant_compliance": {
+          "mean": 0.6667,
+          "count": 12
+        },
+        "proof_alignment": {
+          "mean": 0.8889,
+          "count": 12
+        },
+        "local_protocol_alignment": {
+          "mean": 0.7778,
+          "count": 12
+        },
+        "progress_signal": {
+          "mean": 0.7361,
+          "count": 12
+        },
+        "specification_coverage": {
+          "mean": 0.9028,
+          "count": 12
+        }
+      },
+      "gpt-5.4": {
+        "baseline_score": {
+          "mean": 1.0,
+          "count": 1
+        },
+        "invariant_compliance": {
+          "mean": 1.0,
+          "count": 1
+        },
+        "proof_alignment": {
+          "mean": 0.0,
+          "count": 1
+        },
+        "local_protocol_alignment": {
+          "mean": 1.0,
+          "count": 1
+        },
+        "progress_signal": {
+          "mean": 1.0,
+          "count": 1
+        },
+        "specification_coverage": {
+          "mean": 1.0,
+          "count": 1
+        }
+      }
+    }
+  },
+  "replay_mode": false,
+  "evaluation_kind": "heuristic_signal_v2"
+}

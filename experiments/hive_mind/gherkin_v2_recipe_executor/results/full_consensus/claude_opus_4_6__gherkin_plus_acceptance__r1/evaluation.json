@@ -1,0 +1,101 @@
+{
+  "evaluation_kind": "agent_consensus_v1",
+  "metrics": {
+    "baseline_score": 0.6667,
+    "invariant_compliance": 0.6667,
+    "proof_alignment": 0.6667,
+    "local_protocol_alignment": 0.6667,
+    "progress_signal": 0.6667,
+    "specification_coverage": 0.6667
+  },
+  "consensus_scores": {
+    "conditional_execution": 0.6667,
+    "dependency_handling": 0.6667,
+    "retry_logic": 0.6667,
+    "timeout_semantics": 0.6667,
+    "output_capture": 0.6667,
+    "sub_recipe_delegation": 0.6667
+  },
+  "agent_votes": [
+    {
+      "agent_id": "evaluator_0",
+      "persona": "You are a senior software engineer reviewing code for correctness.",
+      "features": {
+        "conditional_execution": false,
+        "dependency_handling": false,
+        "retry_logic": false,
+        "timeout_semantics": false,
+        "output_capture": false,
+        "sub_recipe_delegation": false
+      },
+      "reasoning": {
+        "conditional_execution": "",
+        "dependency_handling": "",
+        "retry_logic": "",
+        "timeout_semantics": "",
+        "output_capture": "",
+        "sub_recipe_delegation": ""
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 138.92
+    },
+    {
+      "agent_id": "evaluator_1",
+      "persona": "You are a QA engineer testing whether an implementation meets its specification.",
+      "features": {
+        "conditional_execution": true,
+        "dependency_handling": true,
+        "retry_logic": true,
+        "timeout_semantics": true,
+        "output_capture": true,
+        "sub_recipe_delegation": true
+      },
+      "reasoning": {
+        "conditional_execution": "All four sub-requirements are met. Steps with no condition field always execute (condition check is guarded by `if condition`). Steps with a false condition return StepResult(status='skipped'). Missing context keys cause _eval_condition to catch the NameError and return False, so the step is skipped. Skipped steps return early without writing to context, so no output is stored.",
+        "dependency_handling": "All sub-requirements are met. blockedBy is parsed from both comma-separated strings and lists via _parse_deps. The dependency loop checks for 'failed' or 'timed_out' and returns dependency_failed \u2014 but a 'skipped' dep does not match, so dependents run normally. The while-loop scheduler correctly handles diamond graphs: A runs first (no deps), B and C both unblock in the next pass, and D unblocks only after both B and C are in `resolved`. The ordering assertions in tests rely on started_at/completed_at timestamps which are set correctly.",
+        "retry_logic": "Default max_retries is 0 via `int(step.get('max_retries', 0))`. The loop runs range(1, max_retries+2) attempts, sleeping with delay = 2^(attempt-1) (giving 1, 2, 4 seconds). On success context[sid] is updated only with the final output, satisfying the 'only final output persists' requirement. On exhaustion the last attempt sets status='failed'. The test validates attempt_count=4 and retry_delays=[1.0, 2.0, 4.0] for max_retries=3.",
+        "timeout_semantics": "Default timeout is 60 via `float(step.get('timeout_seconds') or 60)`. TimeoutError from the command_runner returns immediately from _run_with_retries with status='timed_out' and attempt_count=attempt (1 on first try), satisfying 'never retried'. timed_out is included in the dependency failure check (`status in ('failed', 'timed_out')`), so dependents are correctly failed with dependency_failed.",
+        "output_capture": "On success, `context[sid] = output` stores the step's output. _resolve_templates uses a regex replacer that returns `m.group(0)` (the literal `{{key}}` string) when a key is absent from context, satisfying the requirement that references to missing/skipped steps remain as literal strings. Template resolution happens before execution, so subsequent steps correctly see substituted values.",
+        "sub_recipe_delegation": "Sub-recipe steps run a child RecipeStepExecutor with `child_context = dict(context)` (inheriting parent entries). When propagate_outputs is False (default), child_context keys not present in parent are not copied back. When True, new keys are propagated via `if key not in context: context[key] = val`. A failed child step sets status='failed'. The sub_recipe branch is outside the retry loop entirely, so attempt_count is always set to 1 and the step is never retried, satisfying the non-transient failure requirement."
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 84.58
+    },
+    {
+      "agent_id": "evaluator_2",
+      "persona": "You are a systems architect evaluating whether behavioral contracts are satisfied.",
+      "features": {
+        "conditional_execution": true,
+        "dependency_handling": true,
+        "retry_logic": true,
+        "timeout_semantics": true,
+        "output_capture": true,
+        "sub_recipe_delegation": true
+      },
+      "reasoning": {
+        "conditional_execution": "All four sub-requirements are met. Steps without a condition field always execute because the condition check is gated on `if condition and ...`. False conditions return StepResult(status='skipped') with no context update. Missing context keys are handled by the try/except in _eval_condition which returns False on any exception (including NameError). Skipped steps never call `context[sid] = output`, so they produce no context entry.",
+        "dependency_handling": "All four sub-requirements are met. The blockedBy field is parsed via _parse_deps which handles both string and list forms. In _execute_step, dependency check is explicitly performed BEFORE condition evaluation, satisfying the cross-feature ordering rule. Only 'failed' or 'timed_out' statuses trigger dependency_failed; 'skipped' is not in that set, so a skipped dependency allows the dependent step to proceed normally. The multi-pass while loop in execute() correctly handles diamond graphs of any topological ordering, as demonstrated by the diamond test.",
+        "retry_logic": "All four sub-requirements are met. Default max_retries defaults to 0 via `int(step.get('max_retries', 0))`. Exponential backoff uses `2 ** (attempt - 1)` producing delays 1.0, 2.0, 4.0 for attempts 1-3. When retries are exhausted the loop exits returning status='failed'. On any successful attempt, `context[sid] = output` is set and the function returns immediately, so only the final output ever persists in context \u2014 earlier failed attempts never write to context.",
+        "timeout_semantics": "All four sub-requirements are met. Default timeout is 60 via `float(step.get('timeout_seconds') or 60)`. TimeoutError raised by the runner is caught in _run_with_retries and immediately returns StepResult(status='timed_out') without looping again. timed_out is listed alongside 'failed' in the dependency check condition in _execute_step, so it correctly propagates as a blocking failure. The timed_out return path is outside the retry loop (it returns directly), so max_retries is never consulted after a timeout.",
+        "output_capture": "All three sub-requirements are met. On successful command execution, `context[sid] = output` stores stdout under the step ID. The _resolve_templates method uses a regex to find {{key}} patterns and substitutes from context. When a key is absent from context, the replacer function returns `m.group(0)` \u2014 the original literal {{key}} string \u2014 satisfying the requirement that references to missing/skipped steps remain as literal strings.",
+        "sub_recipe_delegation": "All five sub-requirements are met. Sub-recipe path is entered via `if step.get('sub_recipe')` and calls _run_sub_recipe which creates a shallow copy of parent context as child_context. Child inherits all parent entries via `dict(context)`. Without propagate, the parent context is never updated from child_context. With propagate=True, new keys from child_context are merged into parent context. A failed child step sets any_failed=True and returns StepResult(status='failed'). The sub-recipe path returns directly from _execute_step before reaching _run_with_retries, so max_retries is never applied; attempt_count is hardcoded to 1."
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 84.56
+    }
+  ],
+  "total_input_tokens": 0,
+  "total_output_tokens": 0,
+  "total_wall_clock_seconds": 138.92,
+  "notes": [
+    "Split vote on conditional_execution: 2/3 PASS",
+    "Split vote on dependency_handling: 2/3 PASS",
+    "Split vote on retry_logic: 2/3 PASS",
+    "Split vote on timeout_semantics: 2/3 PASS",
+    "Split vote on output_capture: 2/3 PASS",
+    "Split vote on sub_recipe_delegation: 2/3 PASS"
+  ]
+}

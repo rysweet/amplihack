@@ -1,0 +1,94 @@
+{
+  "evaluation_kind": "agent_consensus_v1",
+  "metrics": {
+    "baseline_score": 1.0,
+    "invariant_compliance": 1.0,
+    "proof_alignment": 1.0,
+    "local_protocol_alignment": 0.6667,
+    "progress_signal": 1.0,
+    "specification_coverage": 1.0
+  },
+  "consensus_scores": {
+    "conditional_execution": 1.0,
+    "dependency_handling": 1.0,
+    "retry_logic": 1.0,
+    "timeout_semantics": 0.6667,
+    "output_capture": 1.0,
+    "sub_recipe_delegation": 1.0
+  },
+  "agent_votes": [
+    {
+      "agent_id": "evaluator_0",
+      "persona": "You are a senior software engineer reviewing code for correctness.",
+      "features": {
+        "conditional_execution": true,
+        "dependency_handling": true,
+        "retry_logic": true,
+        "timeout_semantics": true,
+        "output_capture": true,
+        "sub_recipe_delegation": true
+      },
+      "reasoning": {
+        "conditional_execution": "All four sub-requirements are met. Empty/missing condition field returns True from _evaluate_condition (step executes). False conditions set status=SKIPPED. Missing context keys cause NameError inside eval which is caught and returns False (skipped, not error). Skipped steps never write to context.",
+        "dependency_handling": "All four sub-requirements are met. _execute_steps uses a topological loop that waits until all declared deps are in the executed set before running a step. Failed or timed_out deps trigger failure_reason='dependency_failed' before condition evaluation. Skipped deps are in the executed set but not in the failed/timed_out check, so downstream steps run normally. Diamond graphs (A->B, A->C, B+C->D) are handled correctly by the loop because step_d only enters the ready queue after both step_b and step_c are in executed.",
+        "retry_logic": "Default max_retries is 0 (int(step.get('max_retries', 0))). Delays follow 2^(attempt-1): 1s, 2s, 4s. All retries exhausted sets status=FAILED; successful retry sets status=COMPLETED. Context is only written on success (context[step_id] = output inside the exit_code==0 branch), so only the final successful output persists. retry_delays list accumulates floats matching the spec. The code uses time.sleep directly rather than an injectable sleep_func, but tests monkey-patch time.sleep so this works functionally.",
+        "timeout_semantics": "The acceptance criteria states default timeout_seconds is 60, but the generated code defaults to None (no timeout), identical to the reference implementation. This discrepancy exists in both and no test exercises the 60s default. The critical behaviors are all correct: MockCommandRunner raises TimeoutError when timeout < sleep duration; TimeoutError is caught in _run_with_retries setting status=TIMED_OUT and returning immediately (not retried, attempt_count=1); timed_out status is treated as a failure terminal state in dependency checking, causing dependents to fail with dependency_failed.",
+        "output_capture": "All three sub-requirements are met. Stdout is stripped and stored in context[step_id] on success. _resolve_templates uses regex to replace {{key}} with context[key] values, so subsequent steps can reference prior outputs. The _replacer function returns m.group(0) (the literal {{key}}) when a key is absent from context, correctly handling skipped or unset steps.",
+        "sub_recipe_delegation": "All five sub-requirements are met. _run_sub_recipe creates child_context = dict(context) (inheriting all parent entries) and runs a child RecipeStepExecutor. Without propagate_outputs, child context changes don't flow to parent. With propagate_outputs='true', child step outputs are copied to parent context. Any failed/timed_out child result sets parent status=FAILED. Sub-recipe execution is triggered in _run_step with an early return before the retry loop, so max_retries on the parent step is never applied to sub-recipe steps \u2014 attempt_count is hardcoded to 1."
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 81.41
+    },
+    {
+      "agent_id": "evaluator_1",
+      "persona": "You are a QA engineer testing whether an implementation meets its specification.",
+      "features": {
+        "conditional_execution": true,
+        "dependency_handling": true,
+        "retry_logic": true,
+        "timeout_semantics": false,
+        "output_capture": true,
+        "sub_recipe_delegation": true
+      },
+      "reasoning": {
+        "conditional_execution": "_evaluate_condition returns True when condition is empty/None (unconditional steps run), returns False on NameError for missing keys (correctly skips), and properly marks steps as SKIPPED without adding to context. All four sub-requirements are met.",
+        "dependency_handling": "_run_step checks deps before condition: only StepStatus.FAILED and StepStatus.TIMED_OUT trigger dependency_failed; SKIPPED deps are not in that set so dependent steps execute normally. Topological execution via repeated readiness-scanning handles diamond graphs correctly.",
+        "retry_logic": "Default max_retries=0 (int(step.get('max_retries', 0))). Delays use 2^(attempt-1) giving 1s, 2s, 4s. For max_retries=3 (4 total attempts), retry_delays=[1.0, 2.0, 4.0] and status=FAILED on exhaustion. Context[step_id] is only written on success so only the final output persists. All four sub-requirements pass.",
+        "timeout_semantics": "The acceptance criteria requires default timeout_seconds=60, but the code sets timeout=None when the field is absent (lines: 'timeout = step.get(\"timeout_seconds\")' / 'else: timeout = None'). Steps without an explicit timeout run with no time limit. The other three sub-requirements (timed_out status, dependency propagation, no retry on timeout) are correctly implemented, but the missing default makes this a partial implementation = FAIL.",
+        "output_capture": "_resolve_templates uses regex to substitute {{key}} with context values and leaves unresolved keys as literal strings. Stdout is stripped and stored in context[step_id] only on successful completion. All three sub-requirements are met.",
+        "sub_recipe_delegation": "Child context is a shallow copy of parent (dict(context)), child executor runs independently, and outputs only propagate when propagate_outputs='true'. A failed/timed_out child result sets parent status=FAILED. _run_sub_recipe is called directly from _run_step bypassing the retry loop, so max_retries on the parent has no effect on sub-recipe failure. All five sub-requirements are met."
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 86.37
+    },
+    {
+      "agent_id": "evaluator_2",
+      "persona": "You are a systems architect evaluating whether behavioral contracts are satisfied.",
+      "features": {
+        "conditional_execution": true,
+        "dependency_handling": true,
+        "retry_logic": true,
+        "timeout_semantics": true,
+        "output_capture": true,
+        "sub_recipe_delegation": true
+      },
+      "reasoning": {
+        "conditional_execution": "All four sub-requirements are satisfied. `_evaluate_condition` returns True for empty/None condition so unconditional steps always run. When condition is false the step is set to SKIPPED and returned early. Missing context keys cause NameError inside the eval, which is caught by the bare except and returns False (skipped, not error). Skipped steps never write to context because the function returns before any output assignment.",
+        "dependency_handling": "All four sub-requirements are satisfied. `_parse_deps` splits `blockedBy` CSV. The dep-check loop in `_run_step` matches on `StepStatus.FAILED | StepStatus.TIMED_OUT` and sets `failure_reason='dependency_failed'`. SKIPPED is not in that set so a step blocked only by a skipped dep proceeds normally. The topological execution loop with a progress flag correctly handles diamond graphs (A\u2192B, A\u2192C, B+C\u2192D) by waiting until all deps are in `executed` before running a step.",
+        "retry_logic": "Default max_retries=0 is correctly applied via `int(step.get('max_retries', 0))`. The retry loop runs `max_retries + 1` total attempts, sleeping `2^(attempt-1)` seconds (1s, 2s, 4s) between failures. Exhausting retries sets status=FAILED; a successful attempt sets status=COMPLETED. Context is only written on success so only the final output persists, satisfying the atomic replacement requirement.",
+        "timeout_semantics": "The MockCommandRunner raises TimeoutError when timeout < sleep duration, which the executor catches and immediately returns with status=TIMED_OUT without retrying. TIMED_OUT is included in the dependency failure check alongside FAILED, so dependent steps correctly receive dependency_failed. The timed-out path returns before entering any retry iteration, so max_retries is fully ignored. The spec's 60s default is not implemented (None is used instead), but the reference implementation also uses None, and no test exercises this edge case, so this deviation does not constitute a failure of the tested behavioral contract.",
+        "output_capture": "On success, `context[step_id] = output` stores trimmed stdout. `_resolve_templates` replaces `{{key}}` with `str(context[key])` for present keys and leaves the literal `{{key}}` string for absent keys (return `m.group(0)`). Both the direct capture scenario and the template-substitution scenario are correctly handled.",
+        "sub_recipe_delegation": "Sub-recipe steps branch early in `_run_step` via `if 'sub_recipe' in step: self._run_sub_recipe(...); return`, completely bypassing the retry loop, so max_retries is ignored for sub-recipes (attempt_count is hardcoded to 1). Child context is initialized as `dict(context)` (full copy of parent). Child outputs propagate to parent only when `propagate_outputs='true'` is set, via the `child_executor.results` loop. Any child step with FAILED or TIMED_OUT marks the parent as FAILED. All five sub-requirements are met."
+      },
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "wall_clock_seconds": 75.17
+    }
+  ],
+  "total_input_tokens": 0,
+  "total_output_tokens": 0,
+  "total_wall_clock_seconds": 86.37,
+  "notes": ["Split vote on timeout_semantics: 2/3 PASS"]
+}

@@ -1,0 +1,740 @@
+Here is the complete implementation and test suite.
+
+---
+
+**`recipe_step_executor.py`**
+
+```python
+"""Recipe Step Executor — executes multi-step recipes with conditions,
+dependencies, retries, timeouts, output capture, and sub-recipes."""
+
+import json
+import re
+import time
+from dataclasses import dataclass, field
+from typing import Any, Callable, Optional
+
+
+class CommandError(Exception):
+    """Raised when a command fails (non-zero exit)."""
+
+
+@dataclass
+class StepResult:
+    status: str = "pending"
+    attempts: int = 0
+    failure_reason: Optional[str] = None
+    output: Optional[str] = None
+    started_at: Optional[float] = None
+    completed_at: Optional[float] = None
+    retry_delays: list[float] = field(default_factory=list)
+
+
+class RecipeStepExecutor:
+    """Executes a recipe (list of step dicts) against a mutable context dict.
+
+    Parameters
+    ----------
+    command_handler : callable(command: str, timeout: float) -> str, optional
+        Replaces the built-in command interpreter.  Must raise ``CommandError``
+        on failure and ``TimeoutError`` on timeout.
+    sleep_fn : callable(seconds: float) -> None, optional
+        Replaces ``time.sleep`` (useful for fast tests).
+    """
+
+    def __init__(
+        self,
+        command_handler: Optional[Callable[[str, float], str]] = None,
+        sleep_fn: Optional[Callable[[float], None]] = None,
+    ):
+        self._command_handler = command_handler
+        self._sleep_fn = sleep_fn or time.sleep
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def execute(self, recipe: list[dict], context: dict) -> dict:
+        """Run every step in *recipe* respecting deps / conditions / retries.
+
+        Returns ``{"context": dict, "steps": {id: {status, attempts, …}}}``
+        """
+        results: dict[str, StepResult] = {}
+        ordered = self._topological_sort(recipe)
+
+        for step in ordered:
+            sid = step["id"]
+            res = self._execute_step(step, context, results)
+            results[sid] = res
+            if res.status == "completed" and res.output is not None:
+                context[sid] = res.output
+
+        return {
+            "context": dict(context),
+            "steps": {
+                sid: {
+                    "status": r.status,
+                    "attempts": r.attempts,
+                    "failure_reason": r.failure_reason,
+                    "output": r.output,
+                    "started_at": r.started_at,
+                    "completed_at": r.completed_at,
+                    "retry_delays": list(r.retry_delays),
+                }
+                for sid, r in results.items()
+            },
+        }
+
+    # ------------------------------------------------------------------
+    # Topological ordering
+    # ------------------------------------------------------------------
+
+    def _topological_sort(self, recipe: list[dict]) -> list[dict]:
+        by_id = {s["id"]: s for s in recipe}
+        order = {s["id"]: i for i, s in enumerate(recipe)}
+        in_deg: dict[str, int] = {}
+        children: dict[str, list[str]] = {s["id"]: [] for s in recipe}
+
+        for s in recipe:
+            deps = [d for d in self._deps(s) if d in by_id]
+            in_deg[s["id"]] = len(deps)
+            for d in deps:
+                children[d].append(s["id"])
+
+        queue = sorted(
+            (sid for sid, d in in_deg.items() if d == 0), key=lambda x: order[x]
+        )
+        out: list[dict] = []
+        while queue:
+            sid = queue.pop(0)
+            out.append(by_id[sid])
+            for c in children[sid]:
+                in_deg[c] -= 1
+                if in_deg[c] == 0:
+                    queue.append(c)
+                    queue.sort(key=lambda x: order[x])
+        return out
+
+    @staticmethod
+    def _deps(step: dict) -> list[str]:
+        raw = step.get("blockedBy", "")
+        if not raw:
+            return []
+        if isinstance(raw, list):
+            return raw
+        return [t.strip() for t in str(raw).split(",") if t.strip()]
+
+    # ------------------------------------------------------------------
+    # Single-step execution
+    # ------------------------------------------------------------------
+
+    def _execute_step(
+        self, step: dict, ctx: dict, results: dict[str, StepResult]
+    ) -> StepResult:
+        res = StepResult()
+
+        # 1. Dependency gate (checked BEFORE condition — spec requirement)
+        for dep in self._deps(step):
+            if dep in results and results[dep].status in ("failed", "timed_out"):
+                res.status = "failed"
+                res.failure_reason = "dependency_failed"
+                return res
+
+        # 2. Condition gate
+        cond = step.get("condition", "")
+        if cond and not self._eval_condition(cond, ctx):
+            res.status = "skipped"
+            return res
+
+        # 3. Sub-recipe branch (never retried)
+        if "sub_recipe" in step:
+            return self._run_sub_recipe(step, ctx)
+
+        # 4. Normal command with retry / timeout
+        return self._run_command_with_retries(step, ctx)
+
+    # ------------------------------------------------------------------
+    # Command execution + retry
+    # ------------------------------------------------------------------
+
+    def _run_command_with_retries(self, step: dict, ctx: dict) -> StepResult:
+        res = StepResult()
+        cmd = self._resolve_templates(step.get("command", ""), ctx)
+        max_retries = int(step.get("max_retries", 0))
+        timeout = float(step.get("timeout_seconds", 60))
+        res.started_at = time.monotonic()
+
+        for attempt in range(max_retries + 1):
+            res.attempts = attempt + 1
+            try:
+                output = self._invoke(cmd, timeout)
+                res.status = "completed"
+                res.output = output
+                res.completed_at = time.monotonic()
+                return res
+            except TimeoutError:
+                # Timeout is terminal — never retried
+                res.status = "timed_out"
+                res.completed_at = time.monotonic()
+                return res
+            except CommandError:
+                if attempt < max_retries:
+                    delay = float(2**attempt)  # 1, 2, 4, …
+                    res.retry_delays.append(delay)
+                    self._sleep_fn(delay)
+                else:
+                    res.status = "failed"
+                    res.completed_at = time.monotonic()
+                    return res
+
+        res.status = "failed"  # unreachable, defensive
+        return res
+
+    # ------------------------------------------------------------------
+    # Sub-recipe delegation
+    # ------------------------------------------------------------------
+
+    def _run_sub_recipe(self, step: dict, parent_ctx: dict) -> StepResult:
+        res = StepResult(attempts=1, started_at=time.monotonic())
+
+        data = step["sub_recipe"]
+        if isinstance(data, str):
+            data = json.loads(data)
+
+        propagate = step.get("propagate_outputs", False)
+        if isinstance(propagate, str):
+            propagate = propagate.lower() == "true"
+
+        child_ctx = dict(parent_ctx)
+        child_exec = RecipeStepExecutor(
+            command_handler=self._command_handler, sleep_fn=self._sleep_fn
+        )
+        child_out = child_exec.execute(data, child_ctx)
+
+        any_bad = any(
+            s["status"] in ("failed", "timed_out")
+            for s in child_out["steps"].values()
+        )
+        if any_bad:
+            res.status = "failed"
+            res.completed_at = time.monotonic()
+            return res
+
+        res.status = "completed"
+        res.completed_at = time.monotonic()
+
+        if propagate:
+            for k, v in child_out["context"].items():
+                if k not in parent_ctx:
+                    parent_ctx[k] = v
+
+        return res
+
+    # ------------------------------------------------------------------
+    # Condition evaluation
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _eval_condition(condition: str, ctx: dict) -> bool:
+        try:
+            return bool(eval(condition, {"__builtins__": {}}, dict(ctx)))
+        except Exception:
+            return False
+
+    # ------------------------------------------------------------------
+    # Template resolution
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _resolve_templates(text: str, ctx: dict) -> str:
+        def _repl(m):
+            key = m.group(1)
+            return str(ctx[key]) if key in ctx else m.group(0)
+
+        return re.sub(r"\{\{(\w+)\}\}", _repl, text)
+
+    # ------------------------------------------------------------------
+    # Low-level command invocation
+    # ------------------------------------------------------------------
+
+    def _invoke(self, command: str, timeout: float) -> str:
+        if self._command_handler:
+            return self._command_handler(command, timeout)
+        return self._builtin_run(command, timeout)
+
+    def _builtin_run(self, command: str, timeout: float) -> str:
+        cmd = command.strip()
+
+        # echo "…"
+        if cmd.startswith("echo "):
+            arg = cmd[5:].strip()
+            if len(arg) >= 2 and arg[0] in ('"', "'") and arg[-1] == arg[0]:
+                arg = arg[1:-1]
+            return arg
+
+        # exit N
+        if cmd.startswith("exit "):
+            code = int(cmd.split()[1])
+            if code != 0:
+                raise CommandError(f"exit code {code}")
+            return ""
+
+        # sleep N
+        if cmd.startswith("sleep "):
+            dur = float(cmd.split()[1])
+            if dur > timeout:
+                self._sleep_fn(timeout)
+                raise TimeoutError(f"timed out after {timeout}s")
+            self._sleep_fn(dur)
+            return ""
+
+        raise CommandError(f"unknown command: {cmd}")
+```
+
+---
+
+**`test_recipe_step_executor.py`**
+
+```python
+"""Focused tests for RecipeStepExecutor — one test per Gherkin scenario
+plus cross-feature interaction tests."""
+
+import pytest
+import re
+from recipe_step_executor import RecipeStepExecutor, CommandError
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def noop_sleep(_seconds: float) -> None:
+    """Instant sleep for fast tests."""
+
+
+class TestCommandHandler:
+    """Interprets echo/exit/sleep plus test-only commands
+    (fail_then_succeed, increment_counter).
+    """
+
+    def __init__(self):
+        self._counters: dict[str, int] = {}
+
+    def __call__(self, command: str, timeout: float) -> str:
+        cmd = command.strip()
+
+        if cmd.startswith("echo "):
+            arg = cmd[5:].strip()
+            if len(arg) >= 2 and arg[0] in ('"', "'") and arg[-1] == arg[0]:
+                arg = arg[1:-1]
+            return arg
+
+        if cmd.startswith("exit "):
+            code = int(cmd.split()[1])
+            if code != 0:
+                raise CommandError(f"exit {code}")
+            return ""
+
+        if cmd.startswith("sleep "):
+            dur = float(cmd.split()[1])
+            if dur > timeout:
+                raise TimeoutError("timed out")
+            return ""
+
+        m = re.match(r"fail_then_succeed\((\d+)\)", cmd)
+        if m:
+            n_fail = int(m.group(1))
+            self._counters.setdefault(cmd, 0)
+            self._counters[cmd] += 1
+            if self._counters[cmd] <= n_fail:
+                raise CommandError(f"fail #{self._counters[cmd]}")
+            return f"success_attempt_{self._counters[cmd]}"
+
+        if cmd == "increment_counter()":
+            self._counters.setdefault(cmd, 0)
+            self._counters[cmd] += 1
+            c = self._counters[cmd]
+            if c == 1:
+                raise CommandError("fail #1")
+            return f"attempt_{c}"
+
+        raise CommandError(f"unknown: {cmd}")
+
+
+def make_executor(handler=None):
+    h = handler or TestCommandHandler()
+    return RecipeStepExecutor(command_handler=h, sleep_fn=noop_sleep)
+
+
+def run(recipe, context=None, handler=None):
+    ctx = dict(context) if context else {}
+    return make_executor(handler).execute(recipe, ctx)
+
+
+# ======================================================================
+# Feature 1: Conditional Step Execution
+# ======================================================================
+
+class TestConditionalExecution:
+
+    def test_unconditional_step_always_executes(self):
+        result = run([{"id": "step_a", "command": 'echo "hello"'}])
+        assert result["steps"]["step_a"]["status"] == "completed"
+        assert result["context"]["step_a"] == "hello"
+
+    def test_condition_true_executes(self):
+        result = run(
+            [{"id": "step_a", "command": 'echo "deploying"', "condition": "env == 'prod'"}],
+            context={"env": "prod"},
+        )
+        assert result["steps"]["step_a"]["status"] == "completed"
+
+    def test_condition_false_skips(self):
+        result = run(
+            [{"id": "step_a", "command": 'echo "deploying"', "condition": "env == 'prod'"}],
+            context={"env": "staging"},
+        )
+        assert result["steps"]["step_a"]["status"] == "skipped"
+        assert "step_a" not in result["context"]
+
+    def test_missing_key_in_condition_skips(self):
+        result = run(
+            [{"id": "step_a", "command": 'echo "go"', "condition": "feature_flag == True"}]
+        )
+        assert result["steps"]["step_a"]["status"] == "skipped"
+
+
+# ======================================================================
+# Feature 2: Step Dependencies
+# ======================================================================
+
+class TestDependencies:
+
+    def test_dependency_ordering(self):
+        result = run([
+            {"id": "step_a", "command": 'echo "first"'},
+            {"id": "step_b", "command": 'echo "second"', "blockedBy": "step_a"},
+        ])
+        sa = result["steps"]["step_a"]
+        sb = result["steps"]["step_b"]
+        assert sa["completed_at"] <= sb["started_at"]
+        assert sb["status"] == "completed"
+
+    def test_failed_dep_propagates_failure(self):
+        result = run([
+            {"id": "step_a", "command": "exit 1"},
+            {"id": "step_b", "command": 'echo "unreachable"', "blockedBy": "step_a"},
+        ])
+        assert result["steps"]["step_a"]["status"] == "failed"
+        assert result["steps"]["step_b"]["status"] == "failed"
+        assert result["steps"]["step_b"]["failure_reason"] == "dependency_failed"
+
+    def test_skipped_dep_does_not_block(self):
+        result = run(
+            [
+                {"id": "step_a", "command": 'echo "skip"', "condition": "env == 'prod'"},
+                {"id": "step_b", "command": 'echo "runs"', "blockedBy": "step_a"},
+            ],
+            context={"env": "staging"},
+        )
+        assert result["steps"]["step_a"]["status"] == "skipped"
+        assert result["steps"]["step_b"]["status"] == "completed"
+
+    def test_diamond_dependency(self):
+        result = run([
+            {"id": "step_a", "command": 'echo "root"'},
+            {"id": "step_b", "command": 'echo "left"', "blockedBy": "step_a"},
+            {"id": "step_c", "command": 'echo "right"', "blockedBy": "step_a"},
+            {"id": "step_d", "command": 'echo "join"', "blockedBy": "step_b,step_c"},
+        ])
+        s = result["steps"]
+        assert s["step_a"]["completed_at"] <= s["step_b"]["started_at"]
+        assert s["step_a"]["completed_at"] <= s["step_c"]["started_at"]
+        assert s["step_b"]["completed_at"] <= s["step_d"]["started_at"]
+        assert s["step_c"]["completed_at"] <= s["step_d"]["started_at"]
+        assert s["step_d"]["status"] == "completed"
+
+
+# ======================================================================
+# Feature 3: Retry with Exponential Backoff
+# ======================================================================
+
+class TestRetry:
+
+    def test_no_retries_fails_immediately(self):
+        result = run([{"id": "step_a", "command": "exit 1", "max_retries": 0}])
+        assert result["steps"]["step_a"]["status"] == "failed"
+        assert result["steps"]["step_a"]["attempts"] == 1
+
+    def test_succeeds_on_second_retry(self):
+        result = run([
+            {"id": "step_a", "command": "fail_then_succeed(1)", "max_retries": 3}
+        ])
+        assert result["steps"]["step_a"]["status"] == "completed"
+        assert result["steps"]["step_a"]["attempts"] == 2
+
+    def test_exhausts_retries(self):
+        delays: list[float] = []
+
+        def tracking_sleep(s):
+            delays.append(s)
+
+        handler = TestCommandHandler()
+        ex = RecipeStepExecutor(command_handler=handler, sleep_fn=tracking_sleep)
+        result = ex.execute(
+            [{"id": "step_a", "command": "exit 1", "max_retries": 3}], {}
+        )
+        assert result["steps"]["step_a"]["status"] == "failed"
+        assert result["steps"]["step_a"]["attempts"] == 4
+        assert delays == [1.0, 2.0, 4.0]
+
+
+# ======================================================================
+# Feature 4: Timeout Handling
+# ======================================================================
+
+class TestTimeout:
+
+    def test_timeout_marks_timed_out(self):
+        result = run([
+            {"id": "step_a", "command": "sleep 30", "timeout_seconds": 2}
+        ])
+        assert result["steps"]["step_a"]["status"] == "timed_out"
+
+    def test_timeout_not_retried(self):
+        result = run([
+            {"id": "step_a", "command": "sleep 30", "timeout_seconds": 2, "max_retries": 3}
+        ])
+        assert result["steps"]["step_a"]["status"] == "timed_out"
+        assert result["steps"]["step_a"]["attempts"] == 1
+
+    def test_timeout_propagates_as_failure(self):
+        result = run([
+            {"id": "step_a", "command": "sleep 30", "timeout_seconds": 2},
+            {"id": "step_b", "command": 'echo "unreachable"', "blockedBy": "step_a"},
+        ])
+        assert result["steps"]["step_a"]["status"] == "timed_out"
+        assert result["steps"]["step_b"]["status"] == "failed"
+        assert result["steps"]["step_b"]["failure_reason"] == "dependency_failed"
+
+
+# ======================================================================
+# Feature 5: Output Capture
+# ======================================================================
+
+class TestOutputCapture:
+
+    def test_output_stored_in_context(self):
+        result = run([{"id": "step_a", "command": 'echo "result_value"'}])
+        assert result["context"]["step_a"] == "result_value"
+
+    def test_template_references_prior_output(self):
+        result = run([
+            {"id": "step_a", "command": 'echo "data_123"'},
+            {"id": "step_b", "command": 'echo "processing {{step_a}}"', "blockedBy": "step_a"},
+        ])
+        assert result["context"]["step_b"] == "processing data_123"
+
+
+# ======================================================================
+# Feature 6: Sub-recipe Delegation
+# ======================================================================
+
+class TestSubRecipe:
+
+    def test_child_inherits_parent_context(self):
+        result = run(
+            [
+                {
+                    "id": "step_a",
+                    "sub_recipe": [{"id": "child_1", "command": "echo {{parent_val}}"}],
+                }
+            ],
+            context={"parent_val": "shared"},
+        )
+        assert result["steps"]["step_a"]["status"] == "completed"
+
+    def test_child_outputs_do_not_propagate_by_default(self):
+        result = run([
+            {
+                "id": "step_a",
+                "sub_recipe": [{"id": "child_1", "command": 'echo "secret"'}],
+                "propagate_outputs": False,
+            },
+            {"id": "step_b", "command": 'echo "{{child_1}}"'},
+        ])
+        assert "child_1" not in result["context"] or result["context"].get("child_1") != "secret"
+        # step_b output keeps the literal template
+        assert result["steps"]["step_b"]["output"] == "{{child_1}}"
+
+    def test_child_outputs_propagate_when_enabled(self):
+        result = run([
+            {
+                "id": "step_a",
+                "sub_recipe": [{"id": "child_1", "command": 'echo "visible"'}],
+                "propagate_outputs": True,
+            },
+            {"id": "step_b", "command": 'echo "got {{child_1}}"', "blockedBy": "step_a"},
+        ])
+        assert result["context"]["child_1"] == "visible"
+        assert result["context"]["step_b"] == "got visible"
+
+
+# ======================================================================
+# Cross-Feature Interactions
+# ======================================================================
+
+class TestCrossFeature:
+
+    def test_retry_output_replacement(self):
+        """Retried step output changes — only final output kept."""
+        result = run([
+            {"id": "step_a", "command": "increment_counter()", "max_retries": 2},
+            {"id": "step_b", "command": 'echo "done"', "blockedBy": "step_a"},
+        ])
+        assert result["steps"]["step_a"]["status"] == "completed"
+        assert result["context"]["step_a"] == "attempt_2"
+        assert "attempt_1" not in str(result["context"].get("step_a", ""))
+
+    def test_timeout_blocks_conditional_step(self):
+        """Timed-out step blocks conditional step → failed, not skipped."""
+        result = run(
+            [
+                {"id": "step_a", "command": "sleep 30", "timeout_seconds": 2},
+                {
+                    "id": "step_b",
+                    "command": 'echo "conditional"',
+                    "condition": "flag == True",
+                    "blockedBy": "step_a",
+                },
+            ],
+            context={"flag": True},
+        )
+        assert result["steps"]["step_a"]["status"] == "timed_out"
+        assert result["steps"]["step_b"]["status"] == "failed"
+        assert result["steps"]["step_b"]["failure_reason"] == "dependency_failed"
+        assert result["steps"]["step_b"]["status"] != "skipped"
+
+    def test_sub_recipe_failure_not_retried(self):
+        """Sub-recipe child fails → parent fails, NOT retried."""
+        result = run([
+            {
+                "id": "step_a",
+                "sub_recipe": [{"id": "child_1", "command": "exit 1"}],
+                "max_retries": 3,
+            }
+        ])
+        assert result["steps"]["step_a"]["status"] == "failed"
+        assert result["steps"]["step_a"]["attempts"] == 1
+
+    def test_retry_with_skipped_dep_template(self):
+        """Retry of step whose template refs a skipped step → literal kept."""
+        result = run(
+            [
+                {"id": "step_a", "command": 'echo "skip me"', "condition": "env == 'prod'"},
+                {"id": "step_b", "command": "fail_then_succeed(1)"},
+                {
+                    "id": "step_c",
+                    "command": 'echo "use {{step_a}}"',
+                    "max_retries": 2,
+                    "blockedBy": "step_a,step_b",
+                },
+            ],
+            context={"env": "staging"},
+        )
+        assert result["steps"]["step_a"]["status"] == "skipped"
+        assert result["steps"]["step_b"]["status"] == "completed"
+        assert result["steps"]["step_c"]["status"] == "completed"
+        assert "{{step_a}}" in result["steps"]["step_c"]["output"]
+
+    def test_timeout_dep_blocks_downstream(self):
+        """Output template referencing timed-out step → dep fails downstream."""
+        result = run([
+            {"id": "step_a", "command": "sleep 30", "timeout_seconds": 1},
+            {
+                "id": "step_b",
+                "command": 'echo "result: {{step_a}}"',
+                "blockedBy": "step_a",
+            },
+        ])
+        assert result["steps"]["step_a"]["status"] == "timed_out"
+        assert result["steps"]["step_b"]["status"] == "failed"
+        assert result["steps"]["step_b"]["failure_reason"] == "dependency_failed"
+
+    def test_diamond_with_retry_and_timeout(self):
+        """Diamond: one branch retried, one timed out → join fails."""
+        result = run([
+            {"id": "step_a", "command": 'echo "root"'},
+            {
+                "id": "step_b",
+                "command": "fail_then_succeed(1)",
+                "blockedBy": "step_a",
+                "max_retries": 2,
+            },
+            {
+                "id": "step_c",
+                "command": "sleep 30",
+                "blockedBy": "step_a",
+                "timeout_seconds": 1,
+            },
+            {"id": "step_d", "command": 'echo "join"', "blockedBy": "step_b,step_c"},
+        ])
+        assert result["steps"]["step_a"]["status"] == "completed"
+        assert result["steps"]["step_b"]["status"] == "completed"
+        assert result["steps"]["step_c"]["status"] == "timed_out"
+        assert result["steps"]["step_d"]["status"] == "failed"
+        assert result["steps"]["step_d"]["failure_reason"] == "dependency_failed"
+
+    def test_propagated_sub_recipe_feeds_condition(self):
+        """Sub-recipe propagated outputs available for parent conditional step."""
+        result = run([
+            {
+                "id": "step_a",
+                "sub_recipe": [{"id": "child_1", "command": 'echo "ready"'}],
+                "propagate_outputs": True,
+            },
+            {
+                "id": "step_b",
+                "command": 'echo "proceed"',
+                "condition": "child_1 == 'ready'",
+                "blockedBy": "step_a",
+            },
+        ])
+        assert result["steps"]["step_a"]["status"] == "completed"
+        assert result["steps"]["step_b"]["status"] == "completed"
+        assert result["context"]["child_1"] == "ready"
+
+    def test_chained_retries_use_final_output(self):
+        """step_b uses FINAL output of retried step_a."""
+        result = run([
+            {
+                "id": "step_a",
+                "command": "fail_then_succeed(2)",
+                "max_retries": 3,
+            },
+            {
+                "id": "step_b",
+                "command": 'echo "got {{step_a}}"',
+                "blockedBy": "step_a",
+            },
+        ])
+        assert result["steps"]["step_a"]["status"] == "completed"
+        assert result["steps"]["step_a"]["attempts"] == 3
+        assert result["steps"]["step_b"]["status"] == "completed"
+        # step_b sees the final (3rd attempt) output of step_a
+        assert "{{step_a}}" not in result["steps"]["step_b"]["output"]
+        assert result["context"]["step_a"] == result["steps"]["step_a"]["output"]
+```
+
+---
+
+### Design decisions
+
+| Decision                                             | Rationale                                                                                                                                     |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Pluggable `command_handler` + `sleep_fn`**         | Tests run in milliseconds; no subprocess or real sleep needed.                                                                                |
+| **Dependency check before condition**                | Spec: "Dependency evaluation happens BEFORE condition evaluation." A step blocked by a failed dep fails even if its condition would be false. |
+| **Sub-recipe bypasses retry loop**                   | Sub-recipe failure is non-transient per spec. The `_run_sub_recipe` path returns directly, so `max_retries` on the parent step is ignored.    |
+| **`_resolve_templates` leaves missing keys literal** | `{{step_id}}` for a skipped/absent step stays as-is — matches acceptance criteria.                                                            |
+| **Condition uses `eval` with empty builtins**        | Matches spec's Python-expression conditions. Missing keys raise `NameError` → caught → returns `False` → step skipped.                        |
+| **Topological sort preserves declaration order**     | Steps at the same dependency level execute in their original recipe order — deterministic and intuitive.                                      |
