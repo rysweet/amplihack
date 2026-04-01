@@ -41,30 +41,62 @@ validation:
 - **Measurable Success**: Clear, testable acceptance criteria
 - **Complexity-Aware**: Accurate effort and risk assessment
 - **Quality-First**: Built-in validation and completeness checks
-- **Formal Over Prose for Constraints**: When requirements include behavioral
-  constraints (must never, must always, must eventually), express them as formal
-  predicates rather than English prose. Evidence shows formal constraints
-  produce 2x better code generation quality than English descriptions.
+- **Formal Specifications as Judgment Call**: When requirements involve complex
+  behavior or constraints, formal specifications (Gherkin or TLA+) can improve
+  downstream code generation quality. This is a judgment call — English-only is
+  the default. Formal specs earn their place when complexity warrants them.
 
-### Constraint Recognition Heuristic
+### Specification Language Judgment (Tri-Path)
 
-When clarifying requirements, check if formal constraints would improve
-downstream code generation:
+When clarifying requirements, use judgment about whether a formal specification
+language would improve downstream code generation. The default is always
+English-only. Formal specs add value only when complexity justifies them.
 
-**Formalize when:**
-- Multiple actors/agents modifying shared state
-- "Must never" / "must always" / "must eventually" language in requirements
-- Protocol correctness with ordering or atomicity requirements
-- State machine with subtle transition rules
+**Path 1: English-Only (DEFAULT)**
+Use for most tasks. No formal specification needed.
 
-**Do NOT formalize when:**
 - Simple CRUD or sequential value transformations
-- UI layout or styling requirements
+- UI layout, styling, configuration changes
 - Requirements where the hard part is domain knowledge, not state space
+- Internal utilities with a single developer as audience
+- Straightforward bug fixes with obvious behavior
 
-When formalizing, express constraints as predicates, not prose:
+**Path 2: Gherkin/BDD Scenarios**
+Consider when behavioral complexity is high. Evidence: gherkin_only AVG=0.898
+vs english 0.713 (+26%) for behavioral requirements (N=3 agent consensus).
+
+- Complex multi-step behavioral requirements with many edge cases
+- Multi-actor scenarios (user does X, system responds Y, admin sees Z)
+- Business rules with combinatorial conditions
+- Acceptance criteria that stakeholders need to validate
+- Features where "what done looks like" is ambiguous in English
+
+**Path 3: TLA+ Formal Predicates**
+Consider when concurrency or safety invariants are the concern. Evidence:
+TLA+ 0.86 vs english 0.57 (+51%) for concurrent systems (#3497 experiment).
+
+- Multiple actors/agents modifying shared state concurrently
+- "Must never" / "must always" / "must eventually" at the system level
+- Protocol correctness with ordering or atomicity requirements
+- State machines with non-obvious valid transitions
+- Distributed protocols (fan-out/merge, quorum, timeout handling)
+
+**Judgment Indicators (NOT rules):**
+
+- If the hard part is "what does done look like?" → consider Gherkin
+- If the hard part is "what must always/never be true?" → consider TLA+
+- If the hard part is neither → English is fine
+- When in doubt, start with English. Upgrade if it proves insufficient.
+
+When using TLA+ predicates, express constraints as formal predicates:
+
 - Good: `failedAgents ≠ {} ⟹ phase ≠ "complete"`
 - Bad: "Make sure the system doesn't complete when there are failures"
+
+When using Gherkin, express behaviors as Given/When/Then:
+
+- Good: `Given a registered user / When they submit invalid credentials 3 times / Then their account is locked`
+- Bad: "Users should get locked out after too many bad passwords"
 
 ## Primary Responsibilities
 

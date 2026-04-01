@@ -579,6 +579,14 @@ steps:
       3. Plan implementation approach
       4. Document module specifications
       5. Identify risks and dependencies
+      6. For components with concurrent state or multiple actors modifying shared
+         state, express key safety invariants as formal predicates (e.g.,
+         "failedAgents ≠ {} ⟹ phase ≠ complete"). Formal constraints in the
+         design output produce better code generation than English descriptions.
+      7. When designing complex behavioral requirements, consider whether Gherkin
+         scenarios or TLA+ specs would clarify the design. This is a judgment
+         call — English-only is the default. See PATTERNS.md "Formal
+         Specification as Prompt" for evidence and guidance.
 
       Consider the INVESTIGATION-FIRST PATTERN if the codebase is unfamiliar.
 
@@ -752,6 +760,10 @@ steps:
       - Integration tests for workflows
       - Edge case tests
       - Error handling tests
+
+      When the design includes Gherkin scenarios or TLA+ formal predicates,
+      use them as the primary source for test case derivation — they define
+      the behavioral contract more precisely than English requirements.
 
       These tests should:
       - Define the contract for the implementation
