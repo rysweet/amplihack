@@ -32,7 +32,7 @@ steps:
     action: "execute_command"
     params:
       command: >-
-        bash -lc '/home/azureuser/src/amplihack-pm/.venv/bin/python -m pytest tests/unit/workflows/test_issue_classifier_workflow.py tests/recipes/test_rust_runner_execution.py::TestProgressStreaming::test_progress_mode_announces_and_writes_recipe_log -q && gh aw compile issue-classifier --no-emit 2>&1 && echo ISSUE_CLASSIFIER_COMPILE_OK && echo ISSUE_CLASSIFIER_QA_OK'
+        PYTHONPATH=src uv run pytest tests/unit/workflows/test_issue_classifier_workflow.py tests/recipes/test_rust_runner_execution.py::TestProgressStreaming::test_progress_mode_announces_and_writes_recipe_log -q && gh aw compile issue-classifier --no-emit 2>&1 && echo ISSUE_CLASSIFIER_COMPILE_OK && echo ISSUE_CLASSIFIER_QA_OK
     timeout: 90000
 
   - name: "Verify issue classifier QA marker"
