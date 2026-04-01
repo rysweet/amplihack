@@ -66,4 +66,11 @@ graph LR
         TTT["trace_to_test<br/>TLC DOT → pytest"]
     end
 
+    %% recipe runner execution tests (PR #4141, fixes #3963/#3978)
+    subgraph recipe_runner_tests["tests/recipes"]
+        TRE["test_rust_runner_execution<br/>_atomic_write_json, _progress_file_path,<br/>_recipe_log_path, read_progress_file"]
+    end
+    TRE --> F22
+    TRE -.->|"imports"| F0
+
     click F0 "../ast-lsp-bindings/" "View AST bindings"
