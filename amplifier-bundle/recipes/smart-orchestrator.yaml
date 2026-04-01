@@ -127,11 +127,27 @@ steps:
       }
       __AMPLIHACK_CLASSIFY_EOF__
       PROMPT=$(cat "$_PROMPT_FILE")
+      _STDERR_FILE=$(mktemp)
+      trap 'rm -f "$_PROMPT_FILE" "$_STDERR_FILE"' EXIT
+      set +e
       env -u CLAUDECODE "$AGENT_BIN" \
         --dangerously-skip-permissions \
         --disallowed-tools "Bash,Edit,Write,Read,Glob,Grep,Agent,Skill,NotebookEdit,WebFetch,WebSearch,TodoWrite" \
         --append-system-prompt "You are a task classifier. Output ONLY JSON. Do NOT invoke dev-orchestrator or any workflow." \
-        -p "$PROMPT" 2>/dev/null
+        -p "$PROMPT" 2>"$_STDERR_FILE"
+      _EXIT_CODE=$?
+      set -e
+      if [ "$_EXIT_CODE" -ne 0 ]; then
+        _STDERR_CONTENT=$(cat "$_STDERR_FILE" 2>/dev/null || true)
+        echo "classify-and-decompose: $AGENT_BIN exited $_EXIT_CODE" >&2
+        if [ -n "$_STDERR_CONTENT" ]; then
+          echo "stderr: $_STDERR_CONTENT" >&2
+        else
+          echo "stderr: (empty — binary produced no diagnostic output)" >&2
+          echo "hint: verify '$AGENT_BIN' is installed, ANTHROPIC_API_KEY is set, and network is reachable" >&2
+        fi
+        exit "$_EXIT_CODE"
+      fi
     output: "decomposition_json"
 
   # parse-decomposition: extract task_type from architect JSON output.

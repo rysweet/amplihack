@@ -20,7 +20,7 @@ import json
 import re
 import sys
 import unittest
-from pathlib import Path  # noqa: F401 (kept for _TOOLS_DIR construction below)
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Import production helper directly from amplifier-bundle/tools/orch_helper.py
@@ -32,7 +32,7 @@ from pathlib import Path  # noqa: F401 (kept for _TOOLS_DIR construction below)
 
 _TOOLS_DIR = Path(__file__).parent.parent / "amplifier-bundle" / "tools"
 sys.path.insert(0, str(_TOOLS_DIR))
-import orch_helper as _h  # noqa: E402
+import orch_helper as _h
 
 extract_json = _h.extract_json
 normalise_type = _h.normalise_type
@@ -398,24 +398,26 @@ class TestJsonParsingRobustness(unittest.TestCase):
 
     def test_nested_json_in_code_block(self):
         """Greedy regex must handle nested objects inside the code block correctly."""
-        inner = json.dumps({
-            "task_type": "Development",
-            "goal": "Ship it",
-            "success_criteria": ["Tests pass"],
-            "workstreams": [
-                {
-                    "name": "backend",
-                    "description": "Build backend with config: {\"debug\": true}",
-                    "recipe": "default-workflow",
-                    "metadata": {"priority": "high"},
-                },
-                {
-                    "name": "frontend",
-                    "description": "Build frontend",
-                    "recipe": "default-workflow",
-                },
-            ],
-        })
+        inner = json.dumps(
+            {
+                "task_type": "Development",
+                "goal": "Ship it",
+                "success_criteria": ["Tests pass"],
+                "workstreams": [
+                    {
+                        "name": "backend",
+                        "description": 'Build backend with config: {"debug": true}',
+                        "recipe": "default-workflow",
+                        "metadata": {"priority": "high"},
+                    },
+                    {
+                        "name": "frontend",
+                        "description": "Build frontend",
+                        "recipe": "default-workflow",
+                    },
+                ],
+            }
+        )
         text = f"```json\n{inner}\n```"
         task_type, count = parse_decomposition(text)
         self.assertEqual(task_type, "Development")
@@ -510,8 +512,7 @@ class TestNormaliseTypeRoundTrip(unittest.TestCase):
     def test_abbreviated_type_normalised_in_parse_decomposition(self):
         """'Ops' input normalises to 'Operations' through the parse_decomposition shim."""
         raw = _make_decomposition_json(
-            "Ops",
-            [{"name": "ws", "description": "task", "recipe": "default-workflow"}]
+            "Ops", [{"name": "ws", "description": "task", "recipe": "default-workflow"}]
         )
         task_type, _ = parse_decomposition(raw)
         self.assertEqual(task_type, "Operations")
@@ -687,7 +688,9 @@ class TestMultiBlockLLMResponse(unittest.TestCase):
             "task_type": "Development",
             "goal": "do x",
             "success_criteria": [],
-            "workstreams": [{"name": "api", "description": "build it", "recipe": "default-workflow"}],
+            "workstreams": [
+                {"name": "api", "description": "build it", "recipe": "default-workflow"}
+            ],
         }
         text = f"```json\n{json.dumps(obj)}\n```"
         result = extract_json(text)
@@ -696,17 +699,19 @@ class TestMultiBlockLLMResponse(unittest.TestCase):
 
     def test_two_code_blocks_returns_first_valid_one(self):
         """extract_json must return the FIRST valid code block, not a merge of both."""
-        block1_json = json.dumps({
-            "task_type": "Q&A",
-            "goal": "this is the first block",
-            "workstreams": []
-        })
-        block2_json = json.dumps({
-            "task_type": "Development",
-            "goal": "this is the second block",
-            "success_criteria": ["done"],
-            "workstreams": [{"name": "ws1", "description": "build it", "recipe": "default-workflow"}],
-        })
+        block1_json = json.dumps(
+            {"task_type": "Q&A", "goal": "this is the first block", "workstreams": []}
+        )
+        block2_json = json.dumps(
+            {
+                "task_type": "Development",
+                "goal": "this is the second block",
+                "success_criteria": ["done"],
+                "workstreams": [
+                    {"name": "ws1", "description": "build it", "recipe": "default-workflow"}
+                ],
+            }
+        )
         text = (
             "Here is an example:\n"
             f"```json\n{block1_json}\n```\n\n"
@@ -715,8 +720,11 @@ class TestMultiBlockLLMResponse(unittest.TestCase):
         )
         result = extract_json(text)
         # Must return the FIRST block with its specific goal value
-        self.assertEqual(result.get("goal"), "this is the first block",
-            f"Expected first block's goal, got: {result}")
+        self.assertEqual(
+            result.get("goal"),
+            "this is the first block",
+            f"Expected first block's goal, got: {result}",
+        )
         self.assertEqual(result.get("task_type"), "Q&A")
         # Must NOT merge into the second block
         self.assertNotIn("this is the second block", str(result))
@@ -725,7 +733,9 @@ class TestMultiBlockLLMResponse(unittest.TestCase):
         """The old greedy {.*} regex merges two blocks into invalid JSON.
         This test verifies the fix returns the correct FIRST block.
         """
-        block1_json = '{"task_type": "Development", "goal": "first-goal", "workstreams": [{"name": "a"}]}'
+        block1_json = (
+            '{"task_type": "Development", "goal": "first-goal", "workstreams": [{"name": "a"}]}'
+        )
         block2_json = '{"task_type": "Investigation", "goal": "second-goal", "workstreams": []}'
         text = f"First:\n```json\n{block1_json}\n```\n\nSecond:\n```json\n{block2_json}\n```"
 
@@ -733,12 +743,17 @@ class TestMultiBlockLLMResponse(unittest.TestCase):
         # (or falls back to balanced-brace which returns the first object found)
         # The point: the fixed regex must return the FIRST block correctly.
         result = extract_json(text)
-        self.assertEqual(result.get("task_type"), "Development",
-            f"Must return first block type 'Development', got: {result}")
-        self.assertEqual(result.get("goal"), "first-goal",
-            f"Must return first block goal, got: {result}")
-        self.assertEqual(len(result.get("workstreams", [])), 1,
-            f"First block has 1 workstream, got: {result}")
+        self.assertEqual(
+            result.get("task_type"),
+            "Development",
+            f"Must return first block type 'Development', got: {result}",
+        )
+        self.assertEqual(
+            result.get("goal"), "first-goal", f"Must return first block goal, got: {result}"
+        )
+        self.assertEqual(
+            len(result.get("workstreams", [])), 1, f"First block has 1 workstream, got: {result}"
+        )
 
     def test_prose_with_embedded_json_no_code_block(self):
         """JSON embedded in prose (no code block) is extracted via balanced-brace fallback."""
@@ -773,16 +788,10 @@ class TestMultiBlockLLMResponse(unittest.TestCase):
 class TestRound1SuccessPath(unittest.TestCase):
     """Verify the fixed reflect-final condition covers the round-1-success case."""
 
-    def _reflect_final_should_run(
-        self, task_type: str, round_1_result: str
-    ) -> bool:
+    def _reflect_final_should_run(self, task_type: str, round_1_result: str) -> bool:
         """Simulate the fixed reflect-final condition from the recipe."""
         # New (fixed) condition: Q&A/Ops excluded, round_1_result must be truthy
-        return (
-            "Q&A" not in task_type
-            and "Operations" not in task_type
-            and bool(round_1_result)
-        )
+        return "Q&A" not in task_type and "Operations" not in task_type and bool(round_1_result)
 
     def test_reflect_final_runs_on_achieved_round_1(self):
         """When round 1 ACHIEVED the goal, reflect-final must still run."""
@@ -862,8 +871,9 @@ class TestRound1SuccessPath(unittest.TestCase):
             and "Operations" not in "Development"
             and bool(round_1_result)
         )
-        self.assertTrue(should_reflect_final,
-            "reflect-final should run when there is a real result")
+        self.assertTrue(
+            should_reflect_final, "reflect-final should run when there is a real result"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -880,12 +890,15 @@ class TestProseBraceEdgeCases(unittest.TestCase):
             "task_type": "Development",
             "goal": "build the thing",
             "success_criteria": [],
-            "workstreams": [{"name": "ws", "description": "do x", "recipe": "default-workflow"}]
+            "workstreams": [{"name": "ws", "description": "do x", "recipe": "default-workflow"}],
         }
         text = f"The config {{for this}} should be: {json.dumps(actual)} Please proceed."
         result = extract_json(text)
-        self.assertEqual(result.get("task_type"), "Development",
-            f"Must skip prose brace and find actual JSON, got: {result}")
+        self.assertEqual(
+            result.get("task_type"),
+            "Development",
+            f"Must skip prose brace and find actual JSON, got: {result}",
+        )
         self.assertEqual(result.get("goal"), "build the thing")
 
     def test_multiple_prose_braces_before_json(self):
@@ -906,15 +919,14 @@ class TestForceSingleWorkstream(unittest.TestCase):
 
     def _execute_single_condition(self, task_type, workstream_count, force_single):
         """Simulate execute-single-round-1 condition from recipe (fix #3606)."""
-        return (
-            ("Development" in task_type or "Investigation" in task_type)
-            and (
-                (workstream_count == 1 or workstream_count == "1" or workstream_count == "")
-                or force_single == "true"
-            )
+        return ("Development" in task_type or "Investigation" in task_type) and (
+            (workstream_count == 1 or workstream_count == "1" or workstream_count == "")
+            or force_single == "true"
         )
 
-    def _create_parallel_condition(self, task_type, workstream_count, force_single, recursion_guard):
+    def _create_parallel_condition(
+        self, task_type, workstream_count, force_single, recursion_guard
+    ):
         """Simulate create-workstreams-config condition from recipe (fix #3606)."""
         return (
             ("Development" in task_type or "Investigation" in task_type)
@@ -961,23 +973,19 @@ class TestSummarizeSkipCondition(unittest.TestCase):
 
     def _summarize_should_run(self, task_type, round_1_result):
         """Simulate summarize condition from recipe."""
-        return (
-            'Q&A' not in task_type
-            and 'Operations' not in task_type
-            and bool(round_1_result)
-        )
+        return "Q&A" not in task_type and "Operations" not in task_type and bool(round_1_result)
 
     def test_summarize_skips_for_qa(self):
-        self.assertFalse(self._summarize_should_run('Q&A', 'Here is your answer.'))
+        self.assertFalse(self._summarize_should_run("Q&A", "Here is your answer."))
 
     def test_summarize_skips_for_operations(self):
-        self.assertFalse(self._summarize_should_run('Operations', 'Done. STATUS: COMPLETE'))
+        self.assertFalse(self._summarize_should_run("Operations", "Done. STATUS: COMPLETE"))
 
     def test_summarize_runs_for_development(self):
-        self.assertTrue(self._summarize_should_run('Development', 'PR created. STATUS: COMPLETE'))
+        self.assertTrue(self._summarize_should_run("Development", "PR created. STATUS: COMPLETE"))
 
     def test_summarize_skips_when_no_round_1_result(self):
-        self.assertFalse(self._summarize_should_run('Development', ''))
+        self.assertFalse(self._summarize_should_run("Development", ""))
 
 
 # ---------------------------------------------------------------------------
@@ -996,15 +1004,14 @@ class TestWorkstreamCountTrailingWhitespace(unittest.TestCase):
 
     def _single_dev_condition(self, workstream_count, force_single="false"):
         """Simulate execute-single-round-1-development condition (post-fix #3606)."""
-        return (
-            "Development" in "Development"
-            and (
-                (workstream_count == 1 or workstream_count == "1" or workstream_count == "")
-                or force_single == "true"
-            )
+        return "Development" in "Development" and (
+            (workstream_count == 1 or workstream_count == "1" or workstream_count == "")
+            or force_single == "true"
         )
 
-    def _parallel_condition(self, workstream_count, recursion_guard="ALLOWED", force_single="false"):
+    def _parallel_condition(
+        self, workstream_count, recursion_guard="ALLOWED", force_single="false"
+    ):
         """Simulate create-workstreams-config / launch-parallel-round-1 condition (post-fix #3606)."""
         return (
             workstream_count != 1
@@ -1026,7 +1033,6 @@ class TestWorkstreamCountTrailingWhitespace(unittest.TestCase):
         # so it would route to parallel. This is acceptable because
         # sys.stdout.write(str(count)) (fix #3570) ensures no trailing newline.
         # The defense against trailing whitespace is now at the output layer.
-        pass
 
     def test_integer_single_routes_to_single(self):
         """The actual bug from #3606 — integer 1 must route to single."""
@@ -1045,6 +1051,94 @@ class TestWorkstreamCountTrailingWhitespace(unittest.TestCase):
     def test_empty_routes_to_single(self):
         self.assertTrue(self._single_dev_condition(""))
         self.assertFalse(self._parallel_condition(""))
+
+
+class TestClassifyAndDecomposeErrorSurfacing(unittest.TestCase):
+    """Verify classify-and-decompose surfaces actionable errors when binary fails (#4073).
+
+    The bash step previously used ``2>/dev/null`` which swallowed stderr,
+    causing an exit-1 with empty diagnostic output. The fix captures stderr
+    to a temp file and reports it on failure.
+    """
+
+    @unittest.skipUnless(sys.platform != "win32", "bash required")
+    def test_binary_failure_produces_nonempty_stderr(self):
+        """When the agent binary exits non-zero, stderr contains diagnostics."""
+        # Simulate the fixed bash pattern: capture stderr to file, report on failure.
+        # Uses set +e / set -e around the command to capture exit code without
+        # triggering errexit, matching the production recipe pattern.
+        script = r"""
+        set -euo pipefail
+        _STDERR_FILE=$(mktemp)
+        trap 'rm -f "$_STDERR_FILE"' EXIT
+        AGENT_BIN="false"  # always exits 1
+        set +e
+        "$AGENT_BIN" 2>"$_STDERR_FILE"
+        _EXIT_CODE=$?
+        set -e
+        if [ "$_EXIT_CODE" -ne 0 ]; then
+            _STDERR_CONTENT=$(cat "$_STDERR_FILE" 2>/dev/null || true)
+            echo "classify-and-decompose: $AGENT_BIN exited $_EXIT_CODE" >&2
+            if [ -n "$_STDERR_CONTENT" ]; then
+                echo "stderr: $_STDERR_CONTENT" >&2
+            else
+                echo "stderr: (empty — binary produced no diagnostic output)" >&2
+                echo "hint: verify '$AGENT_BIN' is installed, ANTHROPIC_API_KEY is set, and network is reachable" >&2
+            fi
+            exit "$_EXIT_CODE"
+        fi
+        """
+        import subprocess
+
+        r = subprocess.run(
+            ["bash", "-c", script],
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(r.returncode, 0)
+        # The key assertion: stderr must be non-empty and actionable
+        self.assertIn("classify-and-decompose", r.stderr)
+        self.assertIn("exited", r.stderr)
+        # Should include hint when binary itself produces empty stderr
+        self.assertIn("hint:", r.stderr)
+
+    @unittest.skipUnless(sys.platform != "win32", "bash required")
+    def test_binary_failure_with_stderr_surfaces_original_message(self):
+        """When the agent binary writes to stderr before failing, the message is preserved."""
+        script = r"""
+        set -euo pipefail
+        _STDERR_FILE=$(mktemp)
+        trap 'rm -f "$_STDERR_FILE"' EXIT
+        # Simulate a binary that prints an error then exits 1
+        AGENT_BIN="bash"
+        set +e
+        "$AGENT_BIN" -c 'echo "API key invalid" >&2; exit 1' 2>"$_STDERR_FILE"
+        _EXIT_CODE=$?
+        set -e
+        if [ "$_EXIT_CODE" -ne 0 ]; then
+            _STDERR_CONTENT=$(cat "$_STDERR_FILE" 2>/dev/null || true)
+            echo "classify-and-decompose: $AGENT_BIN exited $_EXIT_CODE" >&2
+            if [ -n "$_STDERR_CONTENT" ]; then
+                echo "stderr: $_STDERR_CONTENT" >&2
+            else
+                echo "stderr: (empty — binary produced no diagnostic output)" >&2
+                echo "hint: verify '$AGENT_BIN' is installed, ANTHROPIC_API_KEY is set, and network is reachable" >&2
+            fi
+            exit "$_EXIT_CODE"
+        fi
+        """
+        import subprocess
+
+        r = subprocess.run(
+            ["bash", "-c", script],
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("classify-and-decompose", r.stderr)
+        self.assertIn("API key invalid", r.stderr)
+        # Should NOT contain hint since stderr was non-empty
+        self.assertNotIn("hint:", r.stderr)
 
 
 if __name__ == "__main__":
