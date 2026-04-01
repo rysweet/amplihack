@@ -602,7 +602,10 @@ class TestProgressStreaming:
 
         stderr_text = streamed_stderr.getvalue()
         prefix = "[amplihack] recipe log: "
-        log_line = next(line for line in stderr_text.splitlines() if line.startswith(prefix))
+        matching_lines = [line for line in stderr_text.splitlines() if line.startswith(prefix)]
+        assert matching_lines, "expected progress=True stderr to announce the recipe log path"
+        assert len(matching_lines) == 1
+        log_line = matching_lines[0]
         log_path = Path(log_line[len(prefix) :])
 
         assert log_path.exists(), "progress=True should create a persistent recipe log"
@@ -835,6 +838,8 @@ class TestProgressFiles:
         sidecar = json.loads(progress_sidecar.read_text(encoding="utf-8"))
         assert read_count == 2
         assert sidecar["checkpoint_id"] == "checkpoint-two"
+
+
 class TestPathTraversalPrevention:
     """Verify that crafted recipe names cannot escape the temp directory."""
 
