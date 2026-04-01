@@ -61,6 +61,11 @@ context:
   issue_number: ""
   branch_name: ""
   worktree_path: ""
+  resume_checkpoint: ""
+  resume_worktree_path: ""
+  resume_branch_name: ""
+  workstream_state_file: ""
+  workstream_progress_file: ""
   design_spec: ""
   documentation: ""
   test_spec: ""
@@ -150,6 +155,7 @@ steps:
   # ==========================================================================
   - id: "step-01-prepare-workspace"
     type: "bash"
+    condition: "not resume_checkpoint"
     command: |
       cd {{repo_path}} && \
       echo "=== Step 1: Preparing Workspace ===" && \
@@ -173,6 +179,7 @@ steps:
   # ==========================================================================
   - id: "step-02-clarify-requirements"
     agent: "amplihack:prompt-writer"
+    condition: "not resume_checkpoint"
     prompt: |
       # Step 2: Rewrite and Clarify Requirements
 
@@ -207,6 +214,7 @@ steps:
 
   - id: "step-02b-analyze-codebase"
     agent: "amplihack:architect"
+    condition: "not resume_checkpoint"
     prompt: |
       # Step 2b: Analyze Existing Codebase Context
 
@@ -260,6 +268,7 @@ steps:
 
   - id: "step-02c-resolve-ambiguity"
     agent: "amplihack:ambiguity"
+    condition: "not resume_checkpoint"
     prompt: |
       # Step 2c: Resolve Any Remaining Ambiguity
 
@@ -288,6 +297,7 @@ steps:
   # ==========================================================================
   - id: "step-03-create-issue"
     type: "bash"
+    condition: "not issue_number"
     command: |
       set -euo pipefail
       cd "{{repo_path}}"
@@ -364,6 +374,7 @@ steps:
 
   - id: "step-03b-extract-issue-number"
     type: "bash"
+    condition: "not issue_number"
     command: |
       # Extract issue number from the creation output.
       # FIX (issue #3022): Use safe heredoc capture instead of echo {{variable}} to
@@ -394,6 +405,7 @@ steps:
   # ==========================================================================
   - id: "step-04-setup-worktree"
     type: "bash"
+    condition: "not resume_checkpoint"
     command: |
       set -euo pipefail
       # Guard: fail-fast if repo_path does not exist (prevents path traversal, catches misconfiguration).
@@ -496,41 +508,48 @@ steps:
     command: |
       set -euo pipefail
       WORKTREE_DIR="{{worktree_setup.worktree_path}}"
+      if [ -z "$WORKTREE_DIR" ]; then
+        WORKTREE_DIR="{{resume_worktree_path}}"
+      fi
       EXPECTED_BRANCH="{{worktree_setup.branch_name}}"
+      if [ -z "$EXPECTED_BRANCH" ]; then
+        EXPECTED_BRANCH="{{resume_branch_name}}"
+      fi
 
-      echo "=== Step 4b: Validating Worktree ===" >&2
-
+      if [ -z "$WORKTREE_DIR" ]; then
+        echo "ERROR: No worktree path available for validation" >&2
+        exit 1
+      fi
       if [ ! -d "$WORKTREE_DIR" ]; then
-        echo "ERROR: worktree directory '$WORKTREE_DIR' does not exist" >&2
+        echo "ERROR: Worktree directory does not exist: $WORKTREE_DIR" >&2
         exit 1
       fi
-      WORKTREE_DIR="$(cd "$WORKTREE_DIR" && pwd -P)"
-      cd "$WORKTREE_DIR"
-
-      if [ "$(git rev-parse --is-inside-work-tree)" != "true" ]; then
-        echo "ERROR: '$WORKTREE_DIR' is not inside a git worktree" >&2
+      if ! git -C "$WORKTREE_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        echo "ERROR: Not a valid git worktree: $WORKTREE_DIR" >&2
         exit 1
       fi
-
-      ACTUAL_TOPLEVEL="$(git rev-parse --show-toplevel)"
-      if [ "$ACTUAL_TOPLEVEL" != "$WORKTREE_DIR" ]; then
-        echo "ERROR: expected git top-level '$WORKTREE_DIR' but found '$ACTUAL_TOPLEVEL'" >&2
-        exit 1
+      if [ -n "$EXPECTED_BRANCH" ]; then
+        ACTUAL_BRANCH=$(git -C "$WORKTREE_DIR" branch --show-current)
+        if [ "$ACTUAL_BRANCH" != "$EXPECTED_BRANCH" ]; then
+          echo "ERROR: Worktree branch mismatch: expected '$EXPECTED_BRANCH', got '$ACTUAL_BRANCH'" >&2
+          exit 1
+        fi
       fi
+      export WORKTREE_DIR EXPECTED_BRANCH
+      python3 - <<'PY'
+      import json
+      import os
 
-      ACTUAL_BRANCH="$(git branch --show-current)"
-      if [ "$ACTUAL_BRANCH" != "$EXPECTED_BRANCH" ]; then
-        echo "ERROR: expected branch '$EXPECTED_BRANCH' but found '$ACTUAL_BRANCH'" >&2
-        exit 1
-      fi
-
-      cat <<EOF
-      {
-        "worktree_path": "$WORKTREE_DIR",
-        "branch_name": "$ACTUAL_BRANCH",
-        "validated": true
-      }
-      EOF
+      print(
+          json.dumps(
+              {
+                  "worktree_path": os.environ["WORKTREE_DIR"],
+                  "branch_name": os.environ["EXPECTED_BRANCH"],
+                  "validated": True,
+              }
+          )
+      )
+      PY
     output: "worktree_validation"
     parse_json: true
 
@@ -540,6 +559,7 @@ steps:
   - id: "step-05-architecture"
     agent: "amplihack:architect"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "not resume_checkpoint"
     prompt: |
       # Step 5: Research and Design - Architecture
 
@@ -559,10 +579,6 @@ steps:
       3. Plan implementation approach
       4. Document module specifications
       5. Identify risks and dependencies
-      6. For components with concurrent state or multiple actors modifying shared
-         state, express key safety invariants as formal predicates (e.g.,
-         "failedAgents ≠ {} ⟹ phase ≠ complete"). Formal constraints in the
-         design output produce better code generation than English descriptions.
 
       Consider the INVESTIGATION-FIRST PATTERN if the codebase is unfamiliar.
 
@@ -572,6 +588,7 @@ steps:
   - id: "step-05b-api-design"
     agent: "amplihack:api-designer"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "not resume_checkpoint"
     prompt: |
       # Step 5b: API Design (if applicable)
 
@@ -590,6 +607,7 @@ steps:
   - id: "step-05c-database-design"
     agent: "amplihack:database"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "not resume_checkpoint"
     prompt: |
       # Step 5c: Database Design (if applicable)
 
@@ -608,6 +626,7 @@ steps:
   - id: "step-05d-security-review"
     agent: "amplihack:security"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "not resume_checkpoint"
     prompt: |
       # Step 5d: Security Requirements Review
 
@@ -628,6 +647,7 @@ steps:
   - id: "step-05e-design-consolidation"
     agent: "amplihack:architect"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "not resume_checkpoint"
     prompt: |
       # Step 5e: Design Consolidation
 
@@ -658,6 +678,7 @@ steps:
   - id: "step-06-documentation"
     agent: "amplihack:documentation-writer"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "not resume_checkpoint"
     prompt: |
       # Step 6: Retcon Documentation Writing
 
@@ -680,6 +701,7 @@ steps:
   - id: "step-06b-documentation-review"
     agent: "amplihack:architect"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "not resume_checkpoint"
     prompt: |
       # Step 6b: Documentation Review
 
@@ -697,6 +719,7 @@ steps:
   - id: "step-06c-documentation-refinement"
     agent: "amplihack:documentation-writer"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "not resume_checkpoint"
     prompt: |
       # Step 6c: Documentation Refinement
 
@@ -713,6 +736,7 @@ steps:
   - id: "step-07-write-tests"
     agent: "amplihack:tester"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "resume_checkpoint not in ['checkpoint-after-implementation', 'checkpoint-after-review-feedback']"
     prompt: |
       # Step 7: TDD - Write Tests First
 
@@ -743,6 +767,7 @@ steps:
   - id: "step-08-implement"
     agent: "amplihack:builder"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "resume_checkpoint not in ['checkpoint-after-implementation', 'checkpoint-after-review-feedback']"
     prompt: |
       # Step 8: Implement the Solution
 
@@ -783,6 +808,7 @@ steps:
   - id: "step-08b-integration"
     agent: "amplihack:integration"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "resume_checkpoint not in ['checkpoint-after-implementation', 'checkpoint-after-review-feedback']"
     prompt: |
       # Step 8b: External Service Integration
 
@@ -847,6 +873,7 @@ steps:
   # --------------------------------------------------------------------------
   - id: "checkpoint-after-implementation"
     type: "bash"
+    condition: "resume_checkpoint not in ['checkpoint-after-implementation', 'checkpoint-after-review-feedback']"
     command: |
       set -euo pipefail
       WORKTREE_DIR="{{worktree_setup.worktree_path}}"
@@ -888,6 +915,83 @@ steps:
       else
         echo "No changes to checkpoint"
       fi
+      STATE_FILE="{{workstream_state_file}}"
+      if [ -n "$STATE_FILE" ]; then
+        export STATE_FILE WORKTREE_DIR
+        export RESUME_TEST_SPEC="$(cat <<'EOF_TEST_SPEC'
+      {{test_spec}}
+      EOF_TEST_SPEC
+        )"
+        export RESUME_IMPLEMENTATION="$(cat <<'EOF_IMPLEMENTATION'
+      {{implementation}}
+      EOF_IMPLEMENTATION
+        )"
+        export RESUME_INTEGRATION="$(cat <<'EOF_INTEGRATION'
+      {{integration_code}}
+      EOF_INTEGRATION
+        )"
+        export RESUME_DESIGN_SPEC="$(cat <<'EOF_DESIGN_SPEC'
+      {{design_spec}}
+      EOF_DESIGN_SPEC
+        )"
+        export RESUME_FINAL_REQUIREMENTS="$(cat <<'EOF_FINAL_REQUIREMENTS'
+      {{final_requirements}}
+      EOF_FINAL_REQUIREMENTS
+        )"
+        export RESUME_SECURITY_REQUIREMENTS="$(cat <<'EOF_SECURITY_REQUIREMENTS'
+      {{security_requirements}}
+      EOF_SECURITY_REQUIREMENTS
+        )"
+        export RESUME_FINAL_DOCUMENTATION="$(cat <<'EOF_FINAL_DOCUMENTATION'
+      {{final_documentation}}
+      EOF_FINAL_DOCUMENTATION
+        )"
+        export RESUME_WORKTREE_JSON="$(cat <<'EOF_WORKTREE_SETUP'
+      {{worktree_setup}}
+      EOF_WORKTREE_SETUP
+        )"
+        python3 - <<'PY'
+      import json
+      import os
+      from pathlib import Path
+
+      state_path = Path(os.environ["STATE_FILE"])
+      state_path.parent.mkdir(parents=True, exist_ok=True)
+      state = {}
+      if state_path.exists():
+          try:
+              state = json.loads(state_path.read_text(encoding="utf-8"))
+          except json.JSONDecodeError:
+              state = {}
+      resume_context = state.get("resume_context")
+      if not isinstance(resume_context, dict):
+          resume_context = {}
+      resume_context.update(
+          {
+              "test_spec": os.environ.get("RESUME_TEST_SPEC", ""),
+              "implementation": os.environ.get("RESUME_IMPLEMENTATION", ""),
+              "integration_code": os.environ.get("RESUME_INTEGRATION", ""),
+              "design_spec": os.environ.get("RESUME_DESIGN_SPEC", ""),
+              "final_requirements": os.environ.get("RESUME_FINAL_REQUIREMENTS", ""),
+              "security_requirements": os.environ.get("RESUME_SECURITY_REQUIREMENTS", ""),
+              "final_documentation": os.environ.get("RESUME_FINAL_DOCUMENTATION", ""),
+              "worktree_setup": json.loads(os.environ.get("RESUME_WORKTREE_JSON", "{}") or "{}"),
+          }
+      )
+      state.update(
+          {
+              "checkpoint_id": "checkpoint-after-implementation",
+              "current_step": "checkpoint-after-implementation",
+              "worktree_path": os.environ["WORKTREE_DIR"],
+              "progress_sidecar": "{{workstream_progress_file}}",
+              "resume_context": resume_context,
+          }
+      )
+      tmp = state_path.with_name(f".{state_path.name}.tmp")
+      tmp.write_text(json.dumps(state, sort_keys=True), encoding="utf-8")
+      tmp.replace(state_path)
+      PY
+      fi
       echo "=== Checkpoint Complete ==="
     output: "impl_checkpoint"
 
@@ -897,6 +1001,7 @@ steps:
   - id: "step-09-refactor"
     agent: "amplihack:cleanup"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "resume_checkpoint != 'checkpoint-after-review-feedback'"
     prompt: |
       # Step 9: Refactor and Simplify
 
@@ -926,6 +1031,7 @@ steps:
   - id: "step-09b-optimize"
     agent: "amplihack:optimizer"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "resume_checkpoint != 'checkpoint-after-review-feedback'"
     prompt: |
       # Step 9b: Performance Optimization
 
@@ -947,6 +1053,7 @@ steps:
   - id: "step-10-pre-commit-review"
     agent: "amplihack:reviewer"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "resume_checkpoint != 'checkpoint-after-review-feedback'"
     prompt: |
       # Step 10: Review Pass Before Commit
 
@@ -979,6 +1086,7 @@ steps:
   - id: "step-10b-security-review"
     agent: "amplihack:security"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "resume_checkpoint != 'checkpoint-after-review-feedback'"
     prompt: |
       # Step 10b: Security Review
 
@@ -999,6 +1107,7 @@ steps:
   - id: "step-10c-philosophy-check"
     agent: "amplihack:philosophy-guardian"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "resume_checkpoint != 'checkpoint-after-review-feedback'"
     prompt: |
       # Step 10c: Philosophy Compliance Check
 
@@ -1021,6 +1130,7 @@ steps:
   - id: "step-11-incorporate-feedback"
     agent: "amplihack:architect"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "resume_checkpoint != 'checkpoint-after-review-feedback'"
     prompt: |
       # Step 11: Assess Review Feedback
 
@@ -1039,6 +1149,7 @@ steps:
   - id: "step-11b-implement-feedback"
     agent: "amplihack:builder"
     working_dir: "{{worktree_setup.worktree_path}}"
+    condition: "resume_checkpoint != 'checkpoint-after-review-feedback'"
     prompt: |
       # Step 11b: Implement Review Feedback
 
@@ -1060,6 +1171,7 @@ steps:
   # --------------------------------------------------------------------------
   - id: "checkpoint-after-review-feedback"
     type: "bash"
+    condition: "resume_checkpoint != 'checkpoint-after-review-feedback'"
     command: |
       set -euo pipefail
       WORKTREE_DIR="{{worktree_setup.worktree_path}}"
@@ -1100,6 +1212,78 @@ steps:
         echo "Checkpoint commit created with $(wc -l <<< "$STAGED") file(s)"
       else
         echo "No changes to checkpoint"
+      fi
+      STATE_FILE="{{workstream_state_file}}"
+      if [ -n "$STATE_FILE" ]; then
+        export STATE_FILE WORKTREE_DIR
+        export RESUME_REVIEW_FEEDBACK="$(cat <<'EOF_REVIEW_FEEDBACK'
+      {{review_feedback}}
+      EOF_REVIEW_FEEDBACK
+        )"
+        export RESUME_PRE_COMMIT_REVIEW="$(cat <<'EOF_PRE_COMMIT_REVIEW'
+      {{pre_commit_review}}
+      EOF_PRE_COMMIT_REVIEW
+        )"
+        export RESUME_SECURITY_REVIEW="$(cat <<'EOF_SECURITY_REVIEW'
+      {{security_review}}
+      EOF_SECURITY_REVIEW
+        )"
+        export RESUME_PHILOSOPHY_REVIEW="$(cat <<'EOF_PHILOSOPHY_REVIEW'
+      {{philosophy_review}}
+      EOF_PHILOSOPHY_REVIEW
+        )"
+        export RESUME_DESIGN_SPEC="$(cat <<'EOF_DESIGN_SPEC'
+      {{design_spec}}
+      EOF_DESIGN_SPEC
+        )"
+        export RESUME_FINAL_REQUIREMENTS="$(cat <<'EOF_FINAL_REQUIREMENTS'
+      {{final_requirements}}
+      EOF_FINAL_REQUIREMENTS
+        )"
+        export RESUME_WORKTREE_JSON="$(cat <<'EOF_WORKTREE_SETUP'
+      {{worktree_setup}}
+      EOF_WORKTREE_SETUP
+        )"
+        python3 - <<'PY'
+      import json
+      import os
+      from pathlib import Path
+
+      state_path = Path(os.environ["STATE_FILE"])
+      state_path.parent.mkdir(parents=True, exist_ok=True)
+      state = {}
+      if state_path.exists():
+          try:
+              state = json.loads(state_path.read_text(encoding="utf-8"))
+          except json.JSONDecodeError:
+              state = {}
+      resume_context = state.get("resume_context")
+      if not isinstance(resume_context, dict):
+          resume_context = {}
+      resume_context.update(
+          {
+              "review_feedback": os.environ.get("RESUME_REVIEW_FEEDBACK", ""),
+              "pre_commit_review": os.environ.get("RESUME_PRE_COMMIT_REVIEW", ""),
+              "security_review": os.environ.get("RESUME_SECURITY_REVIEW", ""),
+              "philosophy_review": os.environ.get("RESUME_PHILOSOPHY_REVIEW", ""),
+              "design_spec": os.environ.get("RESUME_DESIGN_SPEC", ""),
+              "final_requirements": os.environ.get("RESUME_FINAL_REQUIREMENTS", ""),
+              "worktree_setup": json.loads(os.environ.get("RESUME_WORKTREE_JSON", "{}") or "{}"),
+          }
+      )
+      state.update(
+          {
+              "checkpoint_id": "checkpoint-after-review-feedback",
+              "current_step": "checkpoint-after-review-feedback",
+              "worktree_path": os.environ["WORKTREE_DIR"],
+              "progress_sidecar": "{{workstream_progress_file}}",
+              "resume_context": resume_context,
+          }
+      )
+      tmp = state_path.with_name(f".{state_path.name}.tmp")
+      tmp.write_text(json.dumps(state, sort_keys=True), encoding="utf-8")
+      tmp.replace(state_path)
+      PY
       fi
       echo "=== Checkpoint Complete ==="
     output: "review_checkpoint"
@@ -1350,9 +1534,19 @@ steps:
       fi
 
       echo "=== Step 15: Commit and Push ==="
+      echo "Repository root: $ACTUAL_TOPLEVEL"
       echo ""
       echo "--- Staging Changes ---"
       git add -A
+      if [ -z "$(git diff --cached --name-only)" ]; then
+        echo "ERROR: Nothing staged to commit. The implementation step may have written files" >&2
+        echo "outside the worktree ($WORKTREE_DIR), or no code changes were produced." >&2
+        echo "This is a hollow-success condition — the workflow completed structurally but" >&2
+        echo "produced no git artifacts. Check that agents created files in the worktree," >&2
+        echo "not in AMPLIHACK_HOME or other locations." >&2
+        git --no-pager status >&2
+        exit 1
+      fi
       echo ""
       echo "--- Creating Commit ---"
       TASK_DESC=$(cat <<EOFTASKDESC
@@ -1375,14 +1569,6 @@ steps:
       )
       if [ -n "$(git diff --cached --name-only)" ]; then
         git commit -m "$COMMIT_MSG"
-      else
-        echo "ERROR: Nothing staged to commit. The implementation step may have written files" >&2
-        echo "outside the worktree ($WORKTREE_DIR), or no code changes were produced." >&2
-        echo "This is a hollow-success condition — the workflow completed structurally but" >&2
-        echo "produced no git artifacts. Check that agents created files in the worktree," >&2
-        echo "not in AMPLIHACK_HOME or other locations." >&2
-        git --no-pager status >&2
-        exit 1
       fi
       echo ""
       echo "--- Pushing to Remote ---"
@@ -2124,6 +2310,7 @@ steps:
       set -euo pipefail
       WORKTREE_DIR="{{worktree_setup.worktree_path}}"
       EXPECTED_BRANCH="{{worktree_setup.branch_name}}"
+      PR_URL="{{pr_url}}"
 
       if [ ! -d "$WORKTREE_DIR" ]; then
         echo "ERROR: worktree directory '$WORKTREE_DIR' does not exist" >&2
@@ -2159,8 +2346,8 @@ steps:
       EOFTASKDESC
       )
       printf '=== Task: %s ===\n' "$TASK_DESC"
-      printf '=== Issue: #%s ===\n' {{issue_number}}
-      printf '=== PR: %s ===\n' {{pr_url}}
+      printf '=== Issue: #%s ===\n' "{{issue_number}}"
+      printf '=== PR: %s ===\n' "$PR_URL"
       echo ""
       echo "All 23 workflow steps completed successfully."
     output: "final_status"

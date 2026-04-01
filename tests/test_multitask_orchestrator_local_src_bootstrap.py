@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -139,3 +140,76 @@ def test_recipe_launcher_isolates_from_broken_shared_checkout_pythonpath(tmp_pat
     assert result.returncode == 0, result.stderr
     assert "RECIPE EXECUTION RESULTS" in result.stdout
     assert "stream-local-step" in result.stdout
+
+
+def test_recipe_launcher_injects_resume_context_for_preserved_workstream(tmp_path):
+    """Preserved workstreams must pass durable resume metadata into default-workflow."""
+    orchestrator = _load_orchestrator_module()
+    ParallelOrchestrator = orchestrator.ParallelOrchestrator
+    Workstream = orchestrator.Workstream
+
+    work_dir = tmp_path / "ws-4032"
+    work_dir.mkdir()
+    capture_file = work_dir / "captured-context.json"
+
+    ws = Workstream(
+        issue=4032,
+        branch="fix/issue-4032-resumable-timeouts",
+        description="Resume preserved workstream",
+        task="Continue from preserved checkpoint",
+        recipe="default-workflow",
+    )
+    ws.work_dir = work_dir
+    ws.log_file = tmp_path / "log-4032.txt"
+    ws.resume_checkpoint = "checkpoint-after-review-feedback"
+    ws.state_file = tmp_path / "state" / "ws-4032.json"
+    ws.progress_file = tmp_path / "state" / "ws-4032.progress.json"
+    ws.worktree_path = "/repo/worktrees/fix/issue-4032-resumable-timeouts"
+
+    orch = ParallelOrchestrator(repo_url="https://example.invalid/repo.git", tmp_base=str(tmp_path))
+    orch._write_recipe_launcher(ws)
+
+    _write_file(work_dir / "src" / "amplihack" / "__init__.py", "")
+    _write_file(
+        work_dir / "src" / "amplihack" / "recipes" / "__init__.py",
+        f"""import json
+from pathlib import Path
+
+
+class _Status:
+    value = "completed"
+
+
+class _StepResult:
+    step_id = "resume-context"
+    status = _Status()
+
+
+class _Result:
+    success = True
+    step_results = [_StepResult()]
+
+
+def run_recipe_by_name(name, user_context=None, dry_run=False, progress=False, **_kwargs):
+    Path({str(capture_file)!r}).write_text(json.dumps(user_context), encoding="utf-8")
+    return _Result()
+""",
+    )
+
+    result = subprocess.run(
+        [sys.executable, "launcher.py"],
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+    assert result.returncode == 0, result.stderr
+    captured = json.loads(capture_file.read_text(encoding="utf-8"))
+    assert captured["resume_checkpoint"] == "checkpoint-after-review-feedback"
+    assert captured["issue_number"] == 4032
+    assert (
+        captured["worktree_setup"]["worktree_path"]
+        == "/repo/worktrees/fix/issue-4032-resumable-timeouts"
+    )
+    assert captured["workstream_state_file"].endswith("ws-4032.json")

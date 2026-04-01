@@ -175,3 +175,59 @@ def test_report_remains_stdout_only(tmp_orchestrator, tmp_path):
     assert "PARALLEL WORKSTREAM REPORT" in report_text
     assert report_text in stdout.getvalue()
     assert stderr.getvalue() == ""
+
+
+def test_monitor_heartbeat_includes_resumable_metadata(tmp_orchestrator, tmp_path):
+    ws = _completed_workstream(tmp_path, issue=104)
+    ws.exit_code = -15
+    ws.lifecycle_state = "timed_out_resumable"
+    ws.cleanup_eligible = False
+    ws.checkpoint_id = "checkpoint-after-review-feedback"
+    ws.worktree_path = "/repo/worktrees/fix-issue-104"
+    ws.state_file = tmp_orchestrator.tmp_base / "state" / "ws-104.json"
+    ws.state_file.parent.mkdir(parents=True, exist_ok=True)
+    ws.state_file.write_text(
+        json.dumps(
+            {
+                "issue": 104,
+                "lifecycle_state": "timed_out_resumable",
+                "cleanup_eligible": False,
+                "checkpoint_id": "checkpoint-after-review-feedback",
+                "worktree_path": "/repo/worktrees/fix-issue-104",
+                "log_file": str(ws.log_file),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    _attach_completed_workstream(tmp_orchestrator, ws)
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with patch.object(sys, "stdout", stdout), patch.object(sys, "stderr", stderr):
+        tmp_orchestrator.monitor(check_interval=1, max_runtime=5)
+
+    heartbeat = _heartbeat_events(stderr.getvalue())[0]
+    workstream = heartbeat["workstreams"][0]
+    assert workstream["lifecycle_state"] == "timed_out_resumable"
+    assert workstream["checkpoint_id"] == "checkpoint-after-review-feedback"
+    assert workstream["worktree_path"] == "/repo/worktrees/fix-issue-104"
+    assert workstream["log_path"] == str(ws.log_file)
+    assert workstream["cleanup_eligible"] is False
+
+
+def test_report_includes_resume_fields(tmp_orchestrator, tmp_path):
+    ws = _completed_workstream(tmp_path, issue=105)
+    ws.exit_code = -15
+    ws.lifecycle_state = "timed_out_resumable"
+    ws.cleanup_eligible = False
+    ws.checkpoint_id = "checkpoint-after-review-feedback"
+    ws.worktree_path = "/repo/worktrees/fix-issue-105"
+    tmp_orchestrator.workstreams.append(ws)
+
+    report = tmp_orchestrator.report()
+
+    assert "Lifecycle: timed_out_resumable" in report
+    assert "Checkpoint: checkpoint-after-review-feedback" in report
+    assert "Worktree: /repo/worktrees/fix-issue-105" in report
+    assert "Cleanup eligible: False" in report

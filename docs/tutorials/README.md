@@ -79,6 +79,35 @@ loop, and output interpretation.
 /dev fix the login timeout bug
 ```
 
+### [Resumable Workstream Timeouts](resumable-workstream-timeouts.md)
+
+Walkthrough of issue #4032's resumable timeout contract.
+Covers runtime budgets, lifecycle states, durable state inspection, and
+checkpoint-boundary continuation.
+
+**Topics Covered**:
+
+- Running a workstream with `max_runtime`
+- Reading `timed_out_resumable` from heartbeat output
+- Inspecting preserved worktree, log, and state files
+- Resuming from a preserved workflow checkpoint
+- Verifying cleanup only affects terminal states
+
+**Prerequisites**: Writable clone of `amplihack`, Python 3
+
+**Status**: Available with issue #4032's resumable timeout implementation
+
+**Duration**: ~20 minutes
+
+**Start Learning**:
+
+```bash
+# Example
+python .claude/skills/multitask/orchestrator.py workstreams.json \
+  --max-runtime 300 \
+  --timeout-policy interrupt-preserve
+```
+
 ---
 
 ## Platform-Specific Quick Starts

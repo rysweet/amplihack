@@ -238,6 +238,10 @@ Code-enforced workflow execution engine with declarative YAML recipes.
 - [Recipe Runner Overview](recipes/README.md) - Architecture, YAML format, and creating custom recipes
 - [UltraThink Recipe Runner Integration](recipes/RECIPE_RUNNER_ULTRATHINK_INTEGRATION.md) - How ultrathink uses Recipe Runner for code-enforced workflow execution
 - [Recipe CLI Commands How-To](howto/recipe-cli-commands.md) - Task-oriented guide for using recipe commands
+- [Resumable Workstream Timeouts](features/resumable-workstream-timeouts.md) - Configurable timeout handling, durable state under `tmp_base/state`, and checkpoint-boundary resume for multitask workstreams
+- [How to Configure Resumable Workstream Timeouts](howto/configure-resumable-workstream-timeouts.md) - Runtime budgets, preservation policy, and saved state inspection
+- [Tutorial: Resumable Workstream Timeouts](tutorials/resumable-workstream-timeouts.md) - Timeout, preservation, and continuation walkthrough
+- [Resumable Workstream Timeouts Reference](reference/resumable-workstream-timeouts.md) - Lifecycle, state-file, heartbeat, and compatibility contract
 - [Workflow Execution Guardrails](features/workflow-execution-guardrails.md) - Canonical execution roots, exact GitHub identity checks, and observer-only stall detection
 - [How to Configure Workflow Execution Guardrails](howto/configure-workflow-execution-guardrails.md) - Supply `expected_gh_account`, inspect `execution_root`, and troubleshoot failures
 - [Tutorial: Workflow Execution Guardrails](tutorials/workflow-execution-guardrails.md) - End-to-end walkthrough of the guarded workflow contract

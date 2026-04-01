@@ -598,7 +598,159 @@ class TestProgressFiles:
         assert payload["pid"] == pid
         assert "updated_at" in payload
 
+    def test_write_progress_file_uses_atomic_replace_for_progress_and_sidecar(self, tmp_path):
+        pid = os.getpid()
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        state_file = state_dir / "ws-4032.json"
+        state_file.write_text(
+            json.dumps({"checkpoint_id": "checkpoint-after-review-feedback"}),
+            encoding="utf-8",
+        )
+        progress_sidecar = state_dir / "ws-4032.progress.json"
+        real_replace = os.replace
 
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(tmp_path),
+            ),
+            patch.dict(
+                os.environ,
+                {
+                    "AMPLIHACK_WORKSTREAM_ISSUE": "4032",
+                    "AMPLIHACK_WORKSTREAM_PROGRESS_FILE": str(progress_sidecar),
+                    "AMPLIHACK_WORKSTREAM_STATE_FILE": str(state_file),
+                },
+                clear=False,
+            ),
+            patch(
+                "amplihack.recipes.rust_runner_execution.os.replace",
+                side_effect=real_replace,
+            ) as mock_replace,
+        ):
+            progress_path = _write_progress_file(
+                "default-workflow",
+                current_step=12,
+                total_steps=23,
+                step_name="step-12-run-precommit",
+                elapsed_seconds=42.0,
+                status="running",
+                pid=pid,
+            )
+
+        replaced_targets = {Path(call.args[1]).resolve() for call in mock_replace.call_args_list}
+        assert progress_path.resolve() in replaced_targets
+        assert progress_sidecar.resolve() in replaced_targets
+
+    def test_write_progress_file_writes_durable_workstream_sidecar(self, tmp_path):
+        pid = os.getpid()
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        state_file = state_dir / "ws-4032.json"
+        state_file.write_text(
+            json.dumps({"checkpoint_id": "checkpoint-after-review-feedback"}),
+            encoding="utf-8",
+        )
+        progress_sidecar = state_dir / "ws-4032.progress.json"
+
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(tmp_path),
+            ),
+            patch.dict(
+                os.environ,
+                {
+                    "AMPLIHACK_WORKSTREAM_ISSUE": "4032",
+                    "AMPLIHACK_WORKSTREAM_PROGRESS_FILE": str(progress_sidecar),
+                    "AMPLIHACK_WORKSTREAM_STATE_FILE": str(state_file),
+                },
+                clear=False,
+            ),
+        ):
+            _write_progress_file(
+                "default-workflow",
+                current_step=12,
+                total_steps=23,
+                step_name="step-12-run-precommit",
+                elapsed_seconds=42.0,
+                status="running",
+                pid=pid,
+            )
+
+        sidecar = json.loads(progress_sidecar.read_text(encoding="utf-8"))
+        assert sidecar["issue"] == 4032
+        assert sidecar["recipe_name"] == "default-workflow"
+        assert sidecar["step_name"] == "step-12-run-precommit"
+        assert sidecar["checkpoint_id"] == "checkpoint-after-review-feedback"
+        assert sidecar["pid"] == pid
+
+    def test_write_progress_file_reuses_cached_workstream_state_until_file_changes(self, tmp_path):
+        pid = os.getpid()
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        state_file = state_dir / "ws-4032.json"
+        state_file.write_text(json.dumps({"checkpoint_id": "checkpoint-one"}), encoding="utf-8")
+        progress_sidecar = state_dir / "ws-4032.progress.json"
+        resolved_state_file = state_file.resolve()
+        original_read_text = Path.read_text
+        read_count = 0
+
+        def counting_read_text(self, *args, **kwargs):
+            nonlocal read_count
+            if self == resolved_state_file:
+                read_count += 1
+            return original_read_text(self, *args, **kwargs)
+
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(tmp_path),
+            ),
+            patch.dict(
+                os.environ,
+                {
+                    "AMPLIHACK_WORKSTREAM_ISSUE": "4032",
+                    "AMPLIHACK_WORKSTREAM_PROGRESS_FILE": str(progress_sidecar),
+                    "AMPLIHACK_WORKSTREAM_STATE_FILE": str(state_file),
+                },
+                clear=False,
+            ),
+            patch.object(Path, "read_text", new=counting_read_text),
+        ):
+            _write_progress_file(
+                "default-workflow",
+                current_step=1,
+                total_steps=23,
+                step_name="step-01-prepare-workspace",
+                elapsed_seconds=1.0,
+                status="running",
+                pid=pid,
+            )
+            _write_progress_file(
+                "default-workflow",
+                current_step=2,
+                total_steps=23,
+                step_name="step-02-clarify-requirements",
+                elapsed_seconds=2.0,
+                status="running",
+                pid=pid,
+            )
+            state_file.write_text(json.dumps({"checkpoint_id": "checkpoint-two"}), encoding="utf-8")
+            _write_progress_file(
+                "default-workflow",
+                current_step=3,
+                total_steps=23,
+                step_name="step-03-investigate",
+                elapsed_seconds=3.0,
+                status="running",
+                pid=pid,
+            )
+
+        sidecar = json.loads(progress_sidecar.read_text(encoding="utf-8"))
+        assert read_count == 2
+        assert sidecar["checkpoint_id"] == "checkpoint-two"
 class TestPathTraversalPrevention:
     """Verify that crafted recipe names cannot escape the temp directory."""
 
