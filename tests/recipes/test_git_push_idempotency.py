@@ -241,6 +241,29 @@ class TestGitIdempotency:
         assert "Nothing to commit" in result.stdout
         assert "Nothing to push" not in result.stdout
 
+    @staticmethod
+    def _create_publish_validation_stubs(repo_path: Path) -> None:
+        """Create stub scripts so the publish-import-validation phase succeeds."""
+        scripts_dir = repo_path / "scripts" / "pre-commit"
+        scripts_dir.mkdir(parents=True, exist_ok=True)
+        (scripts_dir / "build_publish_validation_scope.py").write_text(
+            "import json, sys, argparse\n"
+            "p = argparse.ArgumentParser()\n"
+            'p.add_argument("--manifest")\n'
+            'p.add_argument("--output")\n'
+            'p.add_argument("--repo-root")\n'
+            'p.add_argument("--exclude-claude-scenarios", action="store_true")\n'
+            "args = p.parse_args()\n"
+            'open(args.output, "w").write("")\n'
+            'print(json.dumps({"seed_count": 0, "expanded_local_dep_count": 0, "validated_count": 0}))\n'
+        )
+        (scripts_dir / "check_imports.py").write_text(
+            "import argparse\n"
+            "p = argparse.ArgumentParser()\n"
+            'p.add_argument("--files-from")\n'
+            "p.parse_args()\n"
+        )
+
     def test_step_15_sets_upstream_when_branch_has_no_tracking(self, workflow_steps, git_repo):
         """A fresh feature branch should publish successfully without step-04 pre-pushing it."""
         branch_name = "feat/issue-1234"
@@ -251,6 +274,7 @@ class TestGitIdempotency:
             text=True,
         )
         (git_repo / "fresh_feature.txt").write_text("content\n")
+        self._create_publish_validation_stubs(git_repo)
 
         script = self._render_step_15(
             workflow_steps["step-15-commit-push"]["command"],
