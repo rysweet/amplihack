@@ -298,6 +298,22 @@ class TestS4SafeLogPath:
                 # Raising for invalid IDs is acceptable
                 pass
 
+    @pytest.mark.skipif(not hasattr(os, "O_NOFOLLOW"), reason="platform lacks O_NOFOLLOW")
+    def test_write_json_file_rejects_symlinked_temp_target(self, tmp_path):
+        """S4: _write_json_file() must refuse symlinked temp targets during atomic writes."""
+        orc = make_orchestrator(tmp_path)
+        state_file = tmp_path / "state" / "ws-1.json"
+        state_file.parent.mkdir(parents=True)
+        victim = tmp_path / "victim.txt"
+        victim.write_text("do-not-touch", encoding="utf-8")
+        symlink_tmp = state_file.with_name(f".{state_file.name}.{os.getpid()}.tmp")
+        symlink_tmp.symlink_to(victim)
+
+        with pytest.raises(OSError):
+            orc._write_json_file(state_file, {"issue": 1})
+
+        assert victim.read_text(encoding="utf-8") == "do-not-touch"
+
 
 # ---------------------------------------------------------------------------
 # S5: DELEGATE_COMMANDS dict prevents .split() injection

@@ -157,7 +157,7 @@ steps:
     type: "bash"
     condition: "not resume_checkpoint"
     command: |
-      cd {{repo_path}} && \
+      cd "{{repo_path}}" && \
       echo "=== Step 1: Preparing Workspace ===" && \
       echo "" && \
       echo "Current directory: $(pwd)" && \
@@ -413,7 +413,7 @@ steps:
         echo "ERROR: repo_path '{{repo_path}}' does not exist or is not a directory" >&2
         exit 1
       fi
-      cd {{repo_path}}
+      cd "{{repo_path}}"
 
       echo "=== Step 4: Creating Worktree and Branch ===" >&2
       echo "" >&2

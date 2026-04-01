@@ -37,6 +37,8 @@ from typing import Any
 # Pre-compiled patterns for hot-path sanitization
 _SAFE_ID_RE = re.compile(r"[^a-zA-Z0-9_-]")
 _SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9_]")
+_OPEN_CREATE_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+_PRIVATE_FILE_MODE = 0o600
 
 try:
     from amplihack.hooks.launcher_detector import LauncherDetector
@@ -289,9 +291,17 @@ class ParallelOrchestrator:
     def _write_json_file(self, path: Path, payload: dict[str, Any]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-        tmp_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
-        tmp_path.chmod(0o600)
-        tmp_path.replace(path)
+        fd = os.open(str(tmp_path), _OPEN_CREATE_FLAGS, _PRIVATE_FILE_MODE)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(json.dumps(payload, sort_keys=True))
+            os.replace(tmp_path, path)
+        except Exception:
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
+            raise
         try:
             stat_result = path.stat()
         except OSError:

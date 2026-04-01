@@ -742,3 +742,87 @@ class TestProgressFiles:
         sidecar = json.loads(progress_sidecar.read_text(encoding="utf-8"))
         assert read_count == 2
         assert sidecar["checkpoint_id"] == "checkpoint-two"
+
+    def test_write_progress_file_ignores_progress_target_outside_state_directory(self, tmp_path):
+        pid = os.getpid()
+        allowed_tmp = tmp_path / "allowed"
+        allowed_tmp.mkdir()
+        state_dir = allowed_tmp / "state"
+        state_dir.mkdir()
+        state_file = state_dir / "ws-4032.json"
+        state_file.write_text(
+            json.dumps({"checkpoint_id": "checkpoint-after-review-feedback"}),
+            encoding="utf-8",
+        )
+        expected_sidecar = state_dir / "ws-4032.progress.json"
+        poisoned_sidecar = tmp_path / "outside" / "state" / "ws-4032.progress.json"
+        poisoned_sidecar.parent.mkdir(parents=True)
+
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(allowed_tmp),
+            ),
+            patch.dict(
+                os.environ,
+                {
+                    "AMPLIHACK_WORKSTREAM_ISSUE": "4032",
+                    "AMPLIHACK_WORKSTREAM_PROGRESS_FILE": str(poisoned_sidecar),
+                    "AMPLIHACK_WORKSTREAM_STATE_FILE": str(state_file),
+                },
+                clear=False,
+            ),
+        ):
+            _write_progress_file(
+                "default-workflow",
+                current_step=12,
+                total_steps=23,
+                step_name="step-12-run-precommit",
+                elapsed_seconds=42.0,
+                status="running",
+                pid=pid,
+            )
+
+        assert expected_sidecar.exists()
+        assert not poisoned_sidecar.exists()
+
+    def test_write_progress_file_ignores_state_file_outside_temp_root(self, tmp_path):
+        pid = os.getpid()
+        allowed_tmp = tmp_path / "allowed"
+        allowed_tmp.mkdir()
+        state_dir = allowed_tmp / "state"
+        state_dir.mkdir()
+        progress_sidecar = state_dir / "ws-4032.progress.json"
+        poisoned_state = tmp_path / "outside" / "state" / "ws-4032.json"
+        poisoned_state.parent.mkdir(parents=True)
+        poisoned_state.write_text(
+            json.dumps({"checkpoint_id": "should-not-be-read"}),
+            encoding="utf-8",
+        )
+
+        with (
+            patch(
+                "amplihack.recipes.rust_runner_execution.tempfile.gettempdir",
+                return_value=str(allowed_tmp),
+            ),
+            patch.dict(
+                os.environ,
+                {
+                    "AMPLIHACK_WORKSTREAM_ISSUE": "4032",
+                    "AMPLIHACK_WORKSTREAM_PROGRESS_FILE": str(progress_sidecar),
+                    "AMPLIHACK_WORKSTREAM_STATE_FILE": str(poisoned_state),
+                },
+                clear=False,
+            ),
+        ):
+            _write_progress_file(
+                "default-workflow",
+                current_step=12,
+                total_steps=23,
+                step_name="step-12-run-precommit",
+                elapsed_seconds=42.0,
+                status="running",
+                pid=pid,
+            )
+
+        assert not progress_sidecar.exists()

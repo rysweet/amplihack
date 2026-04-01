@@ -121,6 +121,19 @@ class TestWorktreeValidationStep:
         assert step_map["step-04b-validate-worktree"].get("output") == "worktree_validation"
 
 
+class TestRepoPathQuoting:
+    @pytest.mark.parametrize(
+        "step_id",
+        [
+            "step-01-prepare-workspace",
+            "step-04-setup-worktree",
+        ],
+    )
+    def test_repo_path_cd_is_quoted(self, step_map, step_id):
+        cmd = step_map[step_id]["command"]
+        assert 'cd "{{repo_path}}"' in cmd
+
+
 class TestStep15CleanWorktreeInvariant:
     """Verify step-15 validates worktree before committing."""
 

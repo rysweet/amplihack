@@ -32,6 +32,7 @@ _LEGACY_STEP_TRANSITION_PREFIX = '{"transition":"step_'
 _HEARTBEAT_PREFIX = '{"type":"heartbeat"'
 _LEGACY_HEARTBEAT_PREFIX = "::heartbeat::"
 _WORKSTREAM_STATE_CACHE: dict[Path, tuple[int, int, dict[str, Any]]] = {}
+_WORKSTREAM_ISSUE_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
 def emit_step_transition(step_name: str, status: str) -> None:
@@ -159,31 +160,78 @@ def _progress_file_path(recipe_name: str, pid: int | None = None) -> Path:
     return Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{pid}.json"
 
 
-def _workstream_progress_sidecar_path() -> Path | None:
-    raw = os.environ.get("AMPLIHACK_WORKSTREAM_PROGRESS_FILE")
-    if not raw:
+def _workstream_issue_identifier() -> str | None:
+    raw = os.environ.get("AMPLIHACK_WORKSTREAM_ISSUE")
+    if raw is None:
         return None
+    value = str(raw).strip()
+    if not value or not _WORKSTREAM_ISSUE_RE.fullmatch(value):
+        logger.debug("Ignoring invalid workstream issue identifier: %r", raw)
+        return None
+    return value
+
+
+def _trusted_temp_root() -> Path | None:
     try:
-        path = Path(raw).resolve()
+        return Path(tempfile.gettempdir()).resolve()
     except OSError:
         return None
-    return path
 
 
 def _workstream_state_file_path() -> Path | None:
     raw = os.environ.get("AMPLIHACK_WORKSTREAM_STATE_FILE")
-    if not raw:
+    issue_id = _workstream_issue_identifier()
+    temp_root = _trusted_temp_root()
+    if not raw or issue_id is None or temp_root is None:
         return None
+    try:
+        path = Path(raw).resolve()
+        path.relative_to(temp_root)
+    except (OSError, ValueError):
+        logger.debug("Ignoring unsafe workstream state file path: %r", raw)
+        return None
+    if path.parent.name != "state" or path.name != f"ws-{issue_id}.json":
+        logger.debug("Ignoring unexpected workstream state file path: %s", path)
+        return None
+    if not path.exists() or not path.is_file():
+        logger.debug("Ignoring missing workstream state file path: %s", path)
+        return None
+    return path
+
+
+def _workstream_progress_sidecar_path() -> Path | None:
+    issue_id = _workstream_issue_identifier()
+    state_path = _workstream_state_file_path()
+    if issue_id is None or state_path is None:
+        return None
+    expected = state_path.with_name(f"ws-{issue_id}.progress.json")
+    raw = os.environ.get("AMPLIHACK_WORKSTREAM_PROGRESS_FILE")
+    if not raw:
+        return expected
     try:
         path = Path(raw).resolve()
     except OSError:
         return None
-    return path
+    if path != expected:
+        logger.debug(
+            "Ignoring mismatched workstream progress file path %s; expected %s",
+            path,
+            expected,
+        )
+    return expected
 
 
 def _workstream_state_payload() -> dict[str, Any]:
     path = _workstream_state_file_path()
     if path is None:
+        return {}
+    progress_path = _workstream_progress_sidecar_path()
+    if progress_path is not None and progress_path.parent != path.parent:
+        logger.debug(
+            "Ignoring workstream state file %s due to mismatched sidecar directory %s",
+            path,
+            progress_path.parent,
+        )
         return {}
     try:
         stat_result = path.stat()
