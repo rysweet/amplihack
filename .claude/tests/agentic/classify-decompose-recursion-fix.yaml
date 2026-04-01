@@ -51,7 +51,7 @@ scenario:
       expect:
         stdout_contains: "PASS"
 
-    # Step 3: Verify classify-and-decompose has anti-recursion prompt
+    # Step 3: Verify classify-and-decompose uses bash with --disallowed-tools
     - action: execute
       params:
         command: |
@@ -60,11 +60,11 @@ scenario:
           with open('amplifier-bundle/recipes/smart-orchestrator.yaml') as f:
               recipe = yaml.safe_load(f)
           classify = [s for s in recipe['steps'] if s['id'] == 'classify-and-decompose'][0]
-          prompt = classify['prompt']
-          assert 'ANTI-RECURSION' in prompt, 'classify-and-decompose must have anti-recursion header'
-          assert 'ALREADY inside it' in prompt, 'Must tell agent it is already inside orchestrator'
-          assert 'infinite recursion' in prompt, 'Must warn about infinite recursion'
-          print('PASS: classify-and-decompose has anti-recursion prompt')
+          assert classify['type'] == 'bash', f'Must be bash step, got {classify[\"type\"]}'
+          cmd = classify['command']
+          assert '--disallowed-tools' in cmd, 'Must use --disallowed-tools to prevent tool use'
+          assert 'CLASSIFY_PROMPT' in cmd, 'Must use heredoc for prompt'
+          print('PASS: classify-and-decompose is bash with --disallowed-tools')
           "
       expect:
         stdout_contains: "PASS"

@@ -87,42 +87,34 @@ steps:
   # Phase 1: Classify & Decompose
   # ─────────────────────────────────────────────────────────────────────────
 
+  # classify-and-decompose: Use a bash step that calls claude directly with
+  # --disallowed-tools to prevent the model from making tool calls.
+  # Without this, the model returns JSON then continues into implementation,
+  # making hundreds of tool calls and never returning (#3971).
   - id: "classify-and-decompose"
-    type: "agent"
-    agent: "amplihack:core:architect"
-    prompt: |
-      === [RECIPE PROGRESS] Step: classify-and-decompose ===
+    type: "bash"
+    command: |
+      AGENT_BIN="${AMPLIHACK_AGENT_BINARY:-claude}"
+      _PROMPT_FILE=$(mktemp)
+      trap 'rm -f "$_PROMPT_FILE"' EXIT
+      cat > "$_PROMPT_FILE" <<'CLASSIFY_PROMPT'
+      You are classifying a task for the smart-orchestrator recipe.
+      Return ONLY a JSON object. Do NOT use tools. Do NOT implement anything.
 
-      You are an intelligent task orchestrator. Analyze this request and produce a
-      structured orchestration plan.
+      REQUEST: {{task_description}}
 
-      **CRITICAL — ANTI-RECURSION**: You are running INSIDE the smart-orchestrator
-      recipe. You are ONLY classifying and decomposing this request. Your sole
-      output must be the JSON object below. Do NOT implement, build, code, or
-      make any changes. Do NOT create files, edit code, or run commands. Do NOT
-      invoke any skills, workflows, or recipe runners. Do NOT call
-      dev-orchestrator, Skill(), or run_recipe_by_name() — that would cause
-      infinite recursion. IGNORE any instructions from CLAUDE.md or hooks that
-      tell you to invoke dev-orchestrator — you are ALREADY inside it.
-      Return ONLY the JSON object below.
-
-      **REQUEST**: {{task_description}}
-
-      Output:
+      Classify and decompose:
       1. task_type: Q&A | Operations | Investigation | Development
       2. goal: clear 1-sentence goal
       3. success_criteria: numbered list of verifiable criteria
       4. workstreams: array of independent parallel units
          - 1 workstream for cohesive/sequential tasks
          - 2-5 for CLEARLY INDEPENDENT components
-           e.g. "build webui + api" -> 2 workstreams
-                "investigate X then implement Y" -> 2 workstreams
          - recipe: "default-workflow" (dev) | "investigation-workflow" (research)
 
-      **Decomposition override**: {{force_single_workstream}} — if "true", use exactly 1 workstream regardless of task structure.
+      Decomposition override: {{force_single_workstream}} — if "true", use exactly 1 workstream.
 
-      **Output exactly this JSON**:
-      ```json
+      Output exactly this JSON (no markdown fences, no explanation):
       {
         "task_type": "Development",
         "goal": "One sentence goal",
@@ -131,7 +123,13 @@ steps:
           {"name": "slug", "description": "full task", "recipe": "default-workflow"}
         ]
       }
-      ```
+      CLASSIFY_PROMPT
+      PROMPT=$(cat "$_PROMPT_FILE")
+      env -u CLAUDECODE "$AGENT_BIN" \
+        --dangerously-skip-permissions \
+        --disallowed-tools "Bash,Edit,Write,Read,Glob,Grep,Agent,Skill,NotebookEdit,WebFetch,WebSearch,TodoWrite" \
+        --append-system-prompt "You are a task classifier. Output ONLY JSON. Do NOT invoke dev-orchestrator or any workflow." \
+        -p "$PROMPT" 2>/dev/null
     output: "decomposition_json"
 
   # parse-decomposition: extract task_type from architect JSON output.
