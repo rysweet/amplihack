@@ -2,6 +2,118 @@
 
 This file documents non-obvious problems, solutions, and patterns discovered during amplihack development. Review and update this regularly, removing outdated entries or those replaced by better practices, code, or tools. Update entries where best practices have evolved.
 
+## Classify-and-Decompose Recursion via Instruction Leak (2026-04-01)
+
+### Issue
+
+The `classify-and-decompose` agent step in `smart-orchestrator` recursed into full workflow narration instead of producing the expected JSON decomposition. Runs became infinite — the step never completed.
+
+### Root Cause
+
+Two compounding problems:
+
+1. **Instruction leak into nested sessions**: Multiple layers of "use dev-orchestrator" instructions from `CLAUDE.md` and `workflow_classification_reminder.py` were injected into every Claude session, including the nested `claude -p` subprocess spawned by the recipe runner for the agent step. The child session classified its subtask, concluded it was a Development task, and invoked `/dev` — recursing into the orchestrator instead of returning JSON.
+
+2. **No turn limit in `claude -p` agent mode**: When `claude -p` is invoked in non-interactive (agent) mode it has no turn limit. Even when the model correctly produced the JSON decomposition first, it continued past that output and began implementing, discarding the structured output.
+
+### Solution
+
+**PR #3974** (five-part fix):
+1. Set a `workflow_active` semaphore in the `preflight-validation` step before any agent steps run
+2. `workflow_classification_reminder.py` now skips injection when `workflow_active` is set
+3. `user_prompt_submit.py` skips `AMPLIHACK.md` framework re-injection when `workflow_active` is set
+4. `classify-and-decompose` converted from `type: "agent"` (interactive Claude session) to `type: "bash"` invoking `claude -p` with `--disallowed-tools` — prevents all tool use, forcing a single-turn JSON response
+5. `classify-and-decompose` now completes in ~11 seconds (was infinite)
+
+### Key Learnings
+
+1. **Routing instructions must be depth-aware**: Any hook that injects "classify and invoke the orchestrator" logic must check whether it is already inside an orchestrated workflow. Child steps have a task; re-routing them destroys the workflow.
+2. **`claude -p` agent mode has no turn limit**: A model that produces correct output can still continue past it. Use `--disallowed-tools` to enforce single-turn responses on steps that need only text output.
+3. **Prefer `type: "bash"` for structured-output steps**: Agent steps that must produce machine-readable output (JSON, YAML) are more reliable as bash steps invoking `claude -p --disallowed-tools` than as interactive agent steps.
+4. **Semaphore pattern for workflow context**: An environment-level semaphore (`workflow_active` env var or marker file) lets all hooks and sub-processes know they are inside a managed workflow without requiring deep parameter threading.
+
+### Prevention
+
+- Set `workflow_active` semaphore before any agent steps in all recipes
+- Guard all routing-injection hooks with `is_workflow_active()` checks
+- Use `--disallowed-tools` on `claude -p` invocations that must return structured output
+- Test agent steps end-to-end in a real recipe run, not just unit tests — the recursion only manifests with the full hook stack active
+
+---
+
+## Rust Recipe Runner: Bracket Subscript Not Supported in Conditions (2026-03-31)
+
+### Issue
+
+A recipe condition written as `scope and scope['has_ambiguities']` caused a `Parse error: unexpected character: '['` at runtime when executed by the Rust recipe runner. The same condition worked correctly in the Python (simpleeval) evaluator.
+
+### Root Cause
+
+The Rust recipe runner's `condition.rs` tokenizer only recognizes: identifiers, dots, parentheses, quote-delimited strings, numbers, and comparison operators. The `[` and `]` characters fall to the default match arm and produce `ConditionError::Parse`. The Python `simpleeval` evaluator in contrast supports full Python-subset expression syntax including bracket subscript.
+
+This portability gap means conditions that pass Python-only CI tests can silently fail or parse-error at runtime when the Rust runner is in use.
+
+### Solution
+
+**PR #3783**: Replace bracket subscript with dot notation throughout all recipe conditions:
+- `scope['has_ambiguities']` → `scope.has_ambiguities`
+- The short-circuit guard (`scope and scope.has_ambiguities`) is preserved to handle falsy/missing scope
+
+Both evaluators support dot-notation property access on dict/object values.
+
+### Key Learnings
+
+1. **Use dot notation exclusively in recipe conditions**: `scope.key` works in both Python and Rust evaluators. `scope['key']` only works in Python.
+2. **Portability gap is invisible in CI**: If CI uses the Python evaluator, bracket subscript will pass all tests and only fail at runtime on the Rust runner.
+3. **Audit all conditions when switching evaluators**: Any migration from Python to Rust recipe runner requires a condition audit for bracket subscript usage.
+
+### Prevention
+
+- Write all recipe conditions using dot notation (`scope.x`, not `scope['x']`)
+- Add a pre-commit lint rule or CI check scanning YAML condition strings for `[` or `]` characters
+- Keep regression tests (`test_condition_evaluator.py`) that explicitly document unsupported syntax as failing cases
+
+---
+
+## Hollow-Success Failures in Default-Workflow Recipe (2026-03-31)
+
+### Issue
+
+Three steps in `default-workflow.yaml` silently swallowed failure cases, producing misleading "success" signals while doing nothing:
+
+- **Step 03b** (`extract-issue-number`): Returned empty string when issue number extraction failed — downstream steps received `""` as the issue number
+- **Step 15** (`commit-push`): Exited 0 when nothing was staged, silently skipping the commit
+- **Step 16** (`create-draft-pr`): Exited 0 when zero commits were ahead of base, creating no PR without signalling failure
+
+### Root Cause
+
+1. Bash pipelines without `set -euo pipefail` continue past failed commands, producing empty or stale values that look valid to callers
+2. `git commit` exits 1 when nothing is staged, but the step did not check for this and simply reported success
+3. PR creation guards checked for empty issue numbers but not for empty commit ranges
+
+### Solution
+
+**PR #3484**:
+- Step 03b: Empty extraction now `exit 1` with a diagnostic message listing possible causes
+- Step 15: Detects "nothing to commit" state via `git diff --cached --quiet`, exits 1 with `git status` output attached
+- Step 16: Detects zero-commit range via `git rev-list`, exits 1 with root-cause checklist
+- All three steps now enforce `set -euo pipefail`
+
+### Key Learnings
+
+1. **Silent empty-string returns are hollow successes**: A step that returns `""` on failure signals success to the recipe runner. Always `exit 1` when extraction produces no result.
+2. **`set -euo pipefail` is mandatory in recipe bash steps**: Without it, any sub-command failure is masked and execution continues with stale or empty values.
+3. **Check preconditions explicitly, not just command exit codes**: `git commit` succeeds semantically only if there is something staged. Check the precondition before the command.
+4. **Hollow successes are worse than hard failures**: A hard failure stops the workflow and surfaces the problem. A hollow success advances the workflow with corrupt state.
+
+### Prevention
+
+- Enforce `set -euo pipefail` at the top of every recipe bash step
+- For any extraction step, add an explicit non-empty check: `[ -n "$VALUE" ] || { echo "ERROR: ..."; exit 1; }`
+- For commit/push/PR steps, add precondition guards (staged files, commit range, upstream tracking) before executing the action
+
+---
+
 ## Cleanup Agent Gap: Root Directory Organization (2026-01-12)
 
 ### Issue
