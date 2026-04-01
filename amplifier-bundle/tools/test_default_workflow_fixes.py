@@ -62,6 +62,8 @@ _BL001_FIXED_CMD = textwrap.dedent("""\
     raw_timeout = os.environ.get("GH_TIMEOUT_SECONDS", "60")
     try:
         timeout = int(raw_timeout)
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
     except ValueError:
         print(
             f"WARNING: invalid AMPLIHACK_WORKFLOW_GH_TIMEOUT_SECONDS={{raw_timeout!r}}; using 60",
@@ -145,7 +147,10 @@ _BL001_FIXED_CMD = textwrap.dedent("""\
 
 
 def _run_extraction_fixed(
-    issue_creation: str, task_description: str = "", gh_mock: str | None = None
+    issue_creation: str,
+    task_description: str = "",
+    gh_mock: str | None = None,
+    extra_env: dict[str, str] | None = None,
 ) -> str:
     """Run the FIXED BL-001 extraction bash snippet and return trimmed stdout.
 
@@ -162,6 +167,8 @@ def _run_extraction_fixed(
             gh_path.write_text(gh_mock)
             gh_path.chmod(0o755)
             env["PATH"] = f"{tmpdir}:{env['PATH']}"
+        if extra_env:
+            env.update(extra_env)
 
         result = subprocess.run(
             ["bash", "-c", script],
@@ -449,6 +456,28 @@ class TestExtractIssueNumber(unittest.TestCase):
             gh_mock=gh_mock,
         )
         self.assertEqual(result, "3969")
+
+    def test_extract_issue_number_rejects_nonpositive_timeout_override(self):
+        """Zero or negative timeout overrides must fall back to the default timeout."""
+        issue_creation = "https://github.com/org/repo/pull/3975\n"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "pr" && "$2" == "view" && "$3" == "3975" ]]; then
+              echo "3969"
+              exit 0
+            fi
+            exit 1
+        """)
+
+        for timeout_value in ["0", "-5"]:
+            with self.subTest(timeout_value=timeout_value):
+                result = _run_extraction_fixed(
+                    issue_creation,
+                    task_description="Resume PR #3975 follow-up work",
+                    gh_mock=gh_mock,
+                    extra_env={"AMPLIHACK_WORKFLOW_GH_TIMEOUT_SECONDS": timeout_value},
+                )
+                self.assertEqual(result, "3969")
 
     def test_extract_issue_number_skips_pr_reference_and_selects_issue_reference(self):
         """Mixed #NNNN references should choose the real issue, not the related PR."""

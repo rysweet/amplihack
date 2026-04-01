@@ -405,6 +405,8 @@ steps:
       raw_timeout = os.environ.get("GH_TIMEOUT_SECONDS", "60")
       try:
           timeout = int(raw_timeout)
+          if timeout <= 0:
+              raise ValueError("timeout must be positive")
       except ValueError:
           print(
               f"WARNING: invalid AMPLIHACK_WORKFLOW_GH_TIMEOUT_SECONDS={raw_timeout!r}; using 60",
