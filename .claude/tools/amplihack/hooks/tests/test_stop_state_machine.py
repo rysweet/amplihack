@@ -530,3 +530,114 @@ class TestReflectionSemaphore:
         assert result["decision"] == "approve"
         # Semaphore should have been cleaned up
         assert not semaphore.exists()
+
+
+# ============================================================================
+# TDD: session_id sanitization in stop.py (issue #3960)
+# Tests FAIL until _sanitize_session_id() is added to StopHook and applied
+# in _increment_lock_counter() and _get_lock_recovery_reason().
+# ============================================================================
+
+
+class TestSessionIdSanitizationInStopHook:
+    """Tests for session_id sanitization in StopHook methods.
+
+    All tests in this class FAIL until _sanitize_session_id() is implemented
+    in stop.py and applied in the relevant path-construction methods.
+    """
+
+    def test_sanitize_session_id_method_exists(self, tmp_path):
+        """StopHook must expose _sanitize_session_id as an instance or static method."""
+        hook = _make_stop_hook(tmp_path)
+        assert hasattr(hook, "_sanitize_session_id"), (
+            "_sanitize_session_id() not found on StopHook — add the method"
+        )
+
+    def test_sanitize_session_id_normal(self, tmp_path):
+        """Normal alphanumeric session_id passes through unchanged."""
+        hook = _make_stop_hook(tmp_path)
+        assert hook._sanitize_session_id("session-123") == "session-123"
+        assert hook._sanitize_session_id("my_session") == "my_session"
+
+    def test_sanitize_session_id_path_traversal(self, tmp_path):
+        """Path traversal in session_id is neutralized before filesystem use."""
+        hook = _make_stop_hook(tmp_path)
+        result = hook._sanitize_session_id("../../etc/passwd")
+        assert "/" not in result, f"Slash survived sanitization: {result!r}"
+        assert ".." not in result, f"Dotdot survived sanitization: {result!r}"
+
+    def test_sanitize_session_id_newline_rejected(self, tmp_path):
+        """Newlines in session_id are replaced — no metadata injection possible."""
+        hook = _make_stop_hook(tmp_path)
+        result = hook._sanitize_session_id("session\ninjected: evil")
+        assert "\n" not in result, f"Newline survived sanitization: {result!r}"
+
+    def test_increment_lock_counter_sanitizes_path_traversal_session_id(self, tmp_path):
+        """Counter directory must stay within expected .claude/runtime/locks/ tree."""
+        hook = _make_stop_hook(tmp_path)
+        # Call with a path-traversal session_id
+        result = hook._increment_lock_counter("../../evil")
+        # The return value should still be 1 (first increment), not a crash
+        assert result == 1, f"Expected 1, got {result!r}"
+        # The counter dir MUST be inside the locks directory, not outside
+        locks_dir = tmp_path / ".claude" / "runtime" / "locks"
+        counter_files = list(locks_dir.rglob("lock_invocations.txt"))
+        assert len(counter_files) == 1, f"Expected 1 counter file, found: {counter_files}"
+        # Verify the counter file is inside locks_dir (not outside)
+        counter_path = counter_files[0].resolve()
+        assert str(counter_path).startswith(str(locks_dir.resolve())), (
+            f"Counter file {counter_path} escaped locks_dir {locks_dir.resolve()}"
+        )
+
+    def test_increment_lock_counter_sanitizes_newline_in_session_id(self, tmp_path):
+        """Session_id with newlines must be sanitized before path construction."""
+        hook = _make_stop_hook(tmp_path)
+        result = hook._increment_lock_counter("session\npath-component")
+        # Should not crash and should return a valid count
+        assert isinstance(result, int) and result >= 1, f"Unexpected result: {result!r}"
+        # Verify no directory with a literal newline was created
+        locks_dir = tmp_path / ".claude" / "runtime" / "locks"
+        for p in locks_dir.rglob("*"):
+            assert "\n" not in str(p), f"Newline found in path: {p!r}"
+
+    def test_get_lock_recovery_reason_rejects_slash_in_metadata_session_id(self, tmp_path):
+        """session_id read from lock metadata containing '/' is treated as invalid/mismatch."""
+        hook = _make_stop_hook(tmp_path)
+        # Write a lock file with a path-traversal session_id in the metadata
+        hook.lock_flag.parent.mkdir(parents=True, exist_ok=True)
+        hook.lock_flag.write_text(
+            "locked_at: 2099-01-01T00:00:00\nsession_id: ../../evil\n",
+            encoding="utf-8",
+        )
+        # Current session is legit
+        hook._get_current_session_id = MagicMock(return_value="current-session")
+
+        reason, owner_id = hook._get_lock_recovery_reason("current-session")
+        # The slash-containing session_id must NOT be returned as a valid owner
+        # (either recovery triggers, or owner_id is sanitized/None)
+        if owner_id is not None:
+            assert "/" not in owner_id, (
+                f"Slash-containing session_id escaped sanitization as owner_id: {owner_id!r}"
+            )
+            assert ".." not in owner_id, (
+                f"Dotdot session_id escaped sanitization as owner_id: {owner_id!r}"
+            )
+
+    def test_get_lock_recovery_reason_rejects_dotdot_in_metadata_session_id(self, tmp_path):
+        """session_id with '..' in lock metadata is sanitized — no path traversal via owner_id."""
+        hook = _make_stop_hook(tmp_path)
+        hook.lock_flag.parent.mkdir(parents=True, exist_ok=True)
+        hook.lock_flag.write_text(
+            "locked_at: 2099-01-01T00:00:00\nsession_id: ../..\n",
+            encoding="utf-8",
+        )
+        hook._get_current_session_id = MagicMock(return_value="current-session")
+
+        reason, owner_id = hook._get_lock_recovery_reason("current-session")
+        if owner_id is not None:
+            assert ".." not in owner_id, (
+                f"Dotdot survived in owner_id: {owner_id!r}"
+            )
+            assert "/" not in owner_id, (
+                f"Slash survived in owner_id: {owner_id!r}"
+            )

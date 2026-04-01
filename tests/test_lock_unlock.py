@@ -462,3 +462,126 @@ class TestStopHookWithCustomPrompts:
 
         assert result["decision"] == "allow"
         assert result["continue"] is False
+
+
+# ===========================================================================
+# TDD: session_id sanitization in lock_tool.py (issue #3960)
+# Tests FAIL until _sanitize_session_id() is added and applied in create_lock()
+# ===========================================================================
+
+
+class TestSessionIdSanitization:
+    """Tests for _sanitize_session_id() helper and its application in create_lock().
+
+    All tests in this class FAIL until the implementation is complete because
+    _sanitize_session_id() does not yet exist in lock_tool.py.
+    """
+
+    @pytest.fixture
+    def lock_tool_module(self, tmp_path, monkeypatch):
+        """Load lock_tool.py with a temp project root."""
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+        spec = importlib.util.spec_from_file_location(
+            "lock_tool_sanitize_test",
+            Path(__file__).parent.parent / ".claude" / "tools" / "amplihack" / "lock_tool.py",
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        return module
+
+    def test_sanitize_session_id_exists_as_function(self, lock_tool_module):
+        """_sanitize_session_id must be importable from lock_tool.py."""
+        assert hasattr(lock_tool_module, "_sanitize_session_id"), (
+            "_sanitize_session_id() not found in lock_tool.py — add the function"
+        )
+
+    def test_sanitize_session_id_normal_passthrough(self, lock_tool_module):
+        """Alphanumeric, hyphens, and underscores are preserved unchanged."""
+        fn = lock_tool_module._sanitize_session_id
+        assert fn("session-123") == "session-123"
+        assert fn("my_session_id") == "my_session_id"
+        assert fn("abc123") == "abc123"
+
+    def test_sanitize_session_id_path_traversal(self, lock_tool_module):
+        """Path traversal sequences must be sanitized (slashes/dots replaced)."""
+        fn = lock_tool_module._sanitize_session_id
+        result = fn("../../etc/passwd")
+        assert "/" not in result, f"Slash survived sanitization: {result!r}"
+        assert ".." not in result, f"Dotdot survived sanitization: {result!r}"
+        # re.sub(r'[^A-Za-z0-9_\-]', '_', ...) → '______etc_passwd'
+        assert result == "______etc_passwd", f"Unexpected result: {result!r}"
+
+    def test_sanitize_session_id_newline_injection(self, lock_tool_module):
+        """Newline characters must be replaced — they corrupt key-value metadata."""
+        fn = lock_tool_module._sanitize_session_id
+        result = fn("session\ninjected_key: evil_value")
+        assert "\n" not in result, f"Newline survived sanitization: {result!r}"
+        assert result == "session_injected_key__evil_value", f"Unexpected result: {result!r}"
+
+    def test_sanitize_session_id_whitespace_only(self, lock_tool_module):
+        """All-whitespace session_id becomes underscores (not empty)."""
+        fn = lock_tool_module._sanitize_session_id
+        result = fn("   ")
+        assert result == "___", f"Unexpected result for whitespace: {result!r}"
+
+    def test_sanitize_session_id_none_returns_none(self, lock_tool_module):
+        """None input passes through unchanged — lock still works without session."""
+        fn = lock_tool_module._sanitize_session_id
+        assert fn(None) is None
+
+    def test_sanitize_session_id_empty_string_passthrough(self, lock_tool_module):
+        """Empty string returns empty string (no crash)."""
+        fn = lock_tool_module._sanitize_session_id
+        assert fn("") == ""
+
+    def test_sanitize_session_id_control_characters(self, lock_tool_module):
+        """Control characters (tab, CR, null) are replaced."""
+        fn = lock_tool_module._sanitize_session_id
+        result = fn("session\x00\t\r")
+        assert "\x00" not in result
+        assert "\t" not in result
+        assert "\r" not in result
+
+    def test_create_lock_sanitizes_path_traversal_in_metadata(self, tmp_path, monkeypatch):
+        """create_lock() must write sanitized session_id to lock metadata."""
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+        monkeypatch.setenv("AMPLIHACK_SESSION_ID", "../../etc/shadow")
+
+        spec = importlib.util.spec_from_file_location(
+            "lock_tool_traversal_test",
+            Path(__file__).parent.parent / ".claude" / "tools" / "amplihack" / "lock_tool.py",
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+
+        assert module.create_lock() == 0
+        lock_file = tmp_path / ".claude" / "runtime" / "locks" / ".lock_active"
+        content = lock_file.read_text(encoding="utf-8")
+        assert "../../etc/shadow" not in content, (
+            "Raw path-traversal session_id must not appear in lock metadata"
+        )
+        assert "/" not in content.split("session_id:")[-1].split("\n")[0] if "session_id:" in content else True, (
+            "Sanitized session_id must not contain slashes"
+        )
+
+    def test_create_lock_sanitizes_newline_in_metadata(self, tmp_path, monkeypatch):
+        """create_lock() must prevent newline injection in lock metadata."""
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+        monkeypatch.setenv("AMPLIHACK_SESSION_ID", "session\ninjected: evil")
+
+        spec = importlib.util.spec_from_file_location(
+            "lock_tool_newline_test",
+            Path(__file__).parent.parent / ".claude" / "tools" / "amplihack" / "lock_tool.py",
+        )
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+
+        assert module.create_lock() == 0
+        lock_file = tmp_path / ".claude" / "runtime" / "locks" / ".lock_active"
+        content = lock_file.read_text(encoding="utf-8")
+        assert "injected: evil" not in content, (
+            "Newline-injected metadata key must not appear in lock file"
+        )

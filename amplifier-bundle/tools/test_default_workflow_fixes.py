@@ -1276,6 +1276,166 @@ class TestStep16CreateDraftPR(unittest.TestCase):
 
 
 # ===========================================================================
+# ===========================================================================
+# TDD: 3-tier issue extraction edge cases (issue #3983)
+# Tests cover scenarios not addressed by existing BL-001 tests.
+# Some tests may fail if the YAML step-03b doesn't yet handle these cases.
+# ===========================================================================
+
+
+class TestStep03bThreeTierEdgeCases(unittest.TestCase):
+    """
+    Edge-case tests for the 3-tier issue extraction in step-03b.
+
+    Tier 1: Direct issues/<N> URL match (already tested in BL-001)
+    Tier 2: PR URL → gh pr view closingIssuesReferences → issue number
+    Tier 3: #N pattern in task_description → gh issue view verify
+
+    These tests focus on:
+    - Tier 2 fallback when closingIssuesReferences is empty → Tier 3
+    - Tier 3 rejects candidate with PR URL, selects next with issue URL
+    - Tier 1 wins over PR URL when both appear in same text
+    - Tier 2 gh failure falls through to Tier 3
+    """
+
+    def test_tier1_beats_pr_url_when_issue_url_also_present(self):
+        """
+        Tier 1 direct match: if both issues/<N> and pull/<N> appear in the same
+        text, the issues/<N> number must be returned (not the PR number).
+        This confirms Tier 1 takes priority.
+        """
+        issue_creation = (
+            "https://github.com/org/repo/pull/4000\n"
+            "https://github.com/org/repo/issues/3983\n"
+        )
+        result = _run_extraction_fixed(issue_creation)
+        self.assertEqual(result, "3983", "Tier 1 issues/ URL must beat PR URL")
+
+    def test_tier2_fallback_when_closing_issues_empty_uses_tier3(self):
+        """
+        Tier 2 fallback: PR URL present but closingIssuesReferences is empty.
+        step-03b must fall through to Tier 3 and pick up #3983 from task_description.
+        """
+        issue_creation = "https://github.com/org/repo/pull/4000\n"
+        task_description = "Resume work on issue #3983"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            # pr view returns empty closingIssuesReferences
+            if [[ "$1" == "pr" && "$2" == "view" ]]; then
+              echo ""
+              exit 0
+            fi
+            # issue view confirms #3983 is a real issue
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3983" ]]; then
+              echo "https://github.com/org/repo/issues/3983"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(issue_creation, task_description, gh_mock)
+        self.assertEqual(result, "3983", "Should fall through to Tier 3 and find #3983")
+
+    def test_tier3_skips_candidate_whose_gh_url_is_a_pr(self):
+        """
+        Tier 3 rejection: candidate #4000 resolves to a PR URL (*/pull/*) and
+        must be skipped; candidate #3983 resolves to issues/ URL and is selected.
+        """
+        issue_creation = ""
+        task_description = "Check #4000 and fix #3983"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "4000" ]]; then
+              echo "https://github.com/org/repo/pull/4000"
+              exit 0
+            fi
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3983" ]]; then
+              echo "https://github.com/org/repo/issues/3983"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(issue_creation, task_description, gh_mock)
+        self.assertEqual(result, "3983", "Tier 3 should skip PR candidate and select issue")
+
+    def test_tier3_skips_candidate_when_gh_fails(self):
+        """
+        Tier 3 resilience: if gh fails for one candidate, that candidate is
+        skipped; a subsequent candidate that succeeds is used.
+        """
+        issue_creation = ""
+        task_description = "Fix #9999 and close #3983"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "9999" ]]; then
+              echo ""  # gh returns empty URL (not a real issue)
+              exit 0
+            fi
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3983" ]]; then
+              echo "https://github.com/org/repo/issues/3983"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(issue_creation, task_description, gh_mock)
+        self.assertEqual(result, "3983", "Should skip empty-URL candidate and use next valid one")
+
+    def test_tier2_gh_command_failure_falls_through_to_tier3(self):
+        """
+        Tier 2 resilience: if gh pr view exits non-zero, step-03b must not
+        abort — it should fall through to Tier 3.
+        """
+        issue_creation = "https://github.com/org/repo/pull/4000\n"
+        task_description = "Resume issue #3983"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "pr" && "$2" == "view" ]]; then
+              echo "gh: error: not found" >&2
+              exit 1
+            fi
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3983" ]]; then
+              echo "https://github.com/org/repo/issues/3983"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(issue_creation, task_description, gh_mock)
+        self.assertEqual(result, "3983", "Tier 2 gh failure should fall through to Tier 3")
+
+    def test_tier3_deduplicates_repeated_candidates(self):
+        """
+        Tier 3 dedup: #3983 appears twice in task_description but gh is only
+        called once and result is still 3983.
+        """
+        issue_creation = ""
+        task_description = "Fix #3983 as mentioned in #3983"
+        gh_call_count = [0]
+
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3983" ]]; then
+              echo "https://github.com/org/repo/issues/3983"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(issue_creation, task_description, gh_mock)
+        self.assertEqual(result, "3983")
+
+    def test_extraction_fails_when_all_tiers_exhausted(self):
+        """
+        When no tier yields a valid issue number, step-03b must exit 1.
+        Regression: before the fix, this returned empty string silently.
+        """
+        issue_creation = "No URLs here"
+        task_description = "Nothing to extract"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            exit 1
+        """)
+        with self.assertRaises(RuntimeError, msg="Should raise when no issue found"):
+            _run_extraction_fixed(issue_creation, task_description, gh_mock)
+
+
 # Entry point
 # ===========================================================================
 
