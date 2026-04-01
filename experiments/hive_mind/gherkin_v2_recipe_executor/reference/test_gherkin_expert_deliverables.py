@@ -8,7 +8,6 @@ Validates that all 5 files meet acceptance criteria:
 5. amplifier-bundle/recipes/default-workflow.yaml — workflow guidance
 """
 
-import os
 from pathlib import Path
 
 import pytest
@@ -16,12 +15,11 @@ import pytest
 # Base paths — resolve relative to repo root
 # Navigate up from experiments/hive_mind/gherkin_v2_recipe_executor/reference/
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
-AMPLIHACK_ROOT = Path(os.environ.get("AMPLIHACK_ROOT", Path.home() / ".amplihack"))
 
-SKILL_PATH = AMPLIHACK_ROOT / ".claude/skills/gherkin-expert/SKILL.md"
-AGENT_PATH = AMPLIHACK_ROOT / ".claude/agents/amplihack/specialized/gherkin-expert.md"
-PROMPT_WRITER_PATH = AMPLIHACK_ROOT / ".claude/agents/amplihack/specialized/prompt-writer.md"
-PATTERNS_PATH = AMPLIHACK_ROOT / ".claude/context/PATTERNS.md"
+SKILL_PATH = REPO_ROOT / ".claude/skills/gherkin-expert/SKILL.md"
+AGENT_PATH = REPO_ROOT / ".claude/agents/amplihack/specialized/gherkin-expert.md"
+PROMPT_WRITER_PATH = REPO_ROOT / ".claude/agents/amplihack/specialized/prompt-writer.md"
+PATTERNS_PATH = REPO_ROOT / ".claude/context/PATTERNS.md"
 WORKFLOW_PATH = REPO_ROOT / "amplifier-bundle/recipes/default-workflow.yaml"
 
 

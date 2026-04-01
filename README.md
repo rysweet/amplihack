@@ -536,6 +536,8 @@ Custom workflows:
   Full CLI support
 - **[Awesome-Copilot Integration](docs/howto/awesome-copilot-integration.md)** -
   MCP server and plugin marketplace
+- **[Gherkin Expert](docs/howto/use_gherkin_expert.md)** - BDD specification
+  skill for behavioral requirements (+26% over English)
 - **[Azure DevOps Tools](docs/azure-devops/README.md)** - Work item management
   with CLI tools
 
