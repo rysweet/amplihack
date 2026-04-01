@@ -123,15 +123,19 @@ class TestWorktreeValidationStep:
 
 class TestRepoPathQuoting:
     @pytest.mark.parametrize(
-        "step_id",
+        ("step_id", "expected_fragment"),
         [
-            "step-01-prepare-workspace",
-            "step-04-setup-worktree",
+            (
+                "step-00-workflow-preparation",
+                "printf 'Repository: %s\\n' \"{{repo_path}}\"",
+            ),
+            ("step-01-prepare-workspace", 'cd "{{repo_path}}"'),
+            ("step-04-setup-worktree", 'cd "{{repo_path}}"'),
         ],
     )
-    def test_repo_path_cd_is_quoted(self, step_map, step_id):
+    def test_repo_path_shell_usage_is_quoted(self, step_map, step_id, expected_fragment):
         cmd = step_map[step_id]["command"]
-        assert 'cd "{{repo_path}}"' in cmd
+        assert expected_fragment in cmd
 
 
 class TestStep15CleanWorktreeInvariant:
