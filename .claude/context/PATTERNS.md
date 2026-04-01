@@ -965,12 +965,12 @@ MSG → detect ALL signals in parallel:
 
 **Empirical Evidence** (PR #3249, 16 agent runs):
 
-| Approach | Accuracy |
-|----------|----------|
-| Text-only categories | 12/15 (80%) |
-| Sequential flowchart | 12/15 (80%) + ordering bug |
-| Parallel graph only | 12/15 (80%) |
-| **Parallel graph + examples** | **15/15 (100%)** |
+| Approach                      | Accuracy                   |
+| ----------------------------- | -------------------------- |
+| Text-only categories          | 12/15 (80%)                |
+| Sequential flowchart          | 12/15 (80%) + ordering bug |
+| Parallel graph only           | 12/15 (80%)                |
+| **Parallel graph + examples** | **15/15 (100%)**           |
 
 **Key Points**:
 
@@ -986,42 +986,69 @@ MSG → detect ALL signals in parallel:
 
 ### Pattern: Formal Specification as Prompt
 
-**Challenge**: Natural language prompts for concurrent/distributed system code generation produce unreliable results because English is inherently ambiguous about safety invariants.
+**Challenge**: Natural language prompts for code generation produce unreliable results when requirements involve complex behavior or safety invariants, because English is inherently ambiguous about constraints.
 
-**Solution**: Provide the TLA+ specification directly as the prompt context instead of (or in addition to) English descriptions.
+**Solution**: Use formal specification languages as prompt context instead of (or in addition to) English descriptions. Two complementary formalisms apply to different domains:
 
-**Empirical Evidence** (Issue #3497, 8 conditions, 2 models):
+- **TLA+** for concurrency and safety invariants
+- **Gherkin/BDD** for complex behavioral requirements
 
-| Prompt Variant        | Baseline Score | Coverage Score |
-|----------------------|---------------|----------------|
-| english              | 0.57          | 0.43           |
-| tla_only             | **0.86**      | **0.86**       |
-| tla_plus_english     | 0.50          | 0.50           |
-| tla_plus_refinement  | 0.71          | 0.71           |
+**This is a judgment call, not a rule.** English-only is the default. Formal specs earn their place when complexity warrants them.
 
-**Key Finding**: The formal TLA+ spec alone produces the best results. Adding natural language to the prompt consistently *degrades* performance. Both Claude and GPT-5.4 reach 0.86 with tla_only.
+#### TLA+ Evidence (Issue #3497, 8 conditions, 2 models)
 
-**When to Use**:
+| Prompt Variant      | Baseline Score | Coverage Score |
+| ------------------- | -------------- | -------------- |
+| english             | 0.57           | 0.43           |
+| tla_only            | **0.86**       | **0.86**       |
+| tla_plus_english    | 0.50           | 0.50           |
+| tla_plus_refinement | 0.71           | 0.71           |
+
+TLA+ alone produces the best results for concurrent systems (+51% over English). Hybrid TLA++English _degrades_ performance.
+
+#### Gherkin Evidence (N=3 agent consensus, recipe step executor task)
+
+| Prompt Variant          | Average Score |
+| ----------------------- | ------------- |
+| english                 | 0.713         |
+| gherkin_only            | **0.898**     |
+| gherkin_plus_english    | 0.842         |
+| gherkin_plus_acceptance | 0.856         |
+
+Gherkin alone produces the best results for behavioral requirements (+26% over English). Unlike TLA+, Gherkin+English hybrids also improve over English-only, though pure Gherkin is best.
+
+#### Domain Guidance (Judgment, Not Rules)
+
+**Consider TLA+ when:**
 
 - Concurrent components with safety invariants (mutual exclusion, ordering, liveness)
 - Distributed protocols (fan-out/merge, quorum, timeout handling)
 - State machines with non-obvious valid transitions
-- Any component where "what must always be true" matters more than "how to implement"
+- The hard part is "what must always/never be true?"
 
-**When NOT to Use**:
+**Consider Gherkin when:**
+
+- Complex multi-step behavioral requirements with many edge cases
+- Multi-actor scenarios with specific acceptance criteria
+- Business rules with combinatorial conditions
+- The hard part is "what does done look like?"
+
+**Use English-only when:**
 
 - CRUD endpoints, UI components, simple data transformations
-- When no safety invariants exist to formalize
-- When the team lacks TLA+ literacy (training cost > benefit)
+- No safety invariants or complex behavioral specs exist
+- The requirement is straightforward and unambiguous
 
 **Key Points**:
 
 - Formal specs remove English ambiguity — the model gets unambiguous constraints
-- Hybrid prompts (TLA+ + English) perform *worse* than TLA+ alone, likely because the model resolves conflicts between the two in unpredictable ways
-- The spec doubles as a verification artifact: TLC model-checks the invariants before any code is generated
-- Proportionality applies — only formalize when invariants are non-trivial
+- For TLA+: hybrid prompts perform _worse_ than spec-only (model resolves conflicts unpredictably)
+- For Gherkin: hybrid prompts still improve over English, but spec-only is best
+- TLA+ specs double as verification artifacts (TLC model-checks invariants)
+- Gherkin specs double as acceptance test definitions
+- Proportionality applies — only formalize when complexity is non-trivial
 
-> **Origin**: #3497 experiment (2026-03-31). TLC validated: 5,927 states, 2,660 distinct, 0 errors, 7 invariants hold. See `experiments/hive_mind/tla_prompt_language/`.
+> **Origin**: TLA+ — #3497 experiment (2026-03-31). TLC validated: 5,927 states, 2,660 distinct, 0 errors, 7 invariants hold. See `experiments/hive_mind/tla_prompt_language/`. Gherkin — #3939 experiment series (2026-04). See `experiments/hive_mind/gherkin_v2_recipe_executor/`.
 
 ---
 

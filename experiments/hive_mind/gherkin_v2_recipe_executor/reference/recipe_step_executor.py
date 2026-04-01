@@ -1,356 +1,394 @@
-"""Recipe Step Executor — executes recipe steps with conditions, dependencies,
-retries, timeouts, output capture, and sub-recipes."""
+"""Recipe Step Executor — executes multi-step workflow recipes with
+conditions, dependencies, retries, timeouts, output capture, and sub-recipes.
+"""
 
+import concurrent.futures
 import json
 import re
 import threading
 import time
-from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 
-class CommandError(Exception):
-    """Raised when a step command fails."""
+class StepStatus:
+    COMPLETED = "completed"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+    TIMED_OUT = "timed_out"
+
+
+class CommandFailedError(Exception):
+    def __init__(self, output: str | None = None, exit_code: int = 1):
+        self.output = output
+        self.exit_code = exit_code
+        super().__init__(f"Command failed with exit code {exit_code}")
+
+
+_TIMED_OUT = object()
+_TEMPLATE_RE = re.compile(r"\{\{(\w+)\}\}")
+_ECHO_RE = re.compile(r"^echo\s+(.+)$")
+_EXIT_RE = re.compile(r"^exit\s+(\d+)$")
+_SLEEP_RE = re.compile(r"^sleep\s+([\d.]+)$")
+_FTS_RE = re.compile(r"^fail_then_succeed\((\d+)\)$")
 
 
 @dataclass
 class StepResult:
-    """Result of executing a single recipe step."""
-
-    id: str
-    status: str = "pending"  # completed | skipped | failed | timed_out
+    step_id: str
+    status: str
     output: str | None = None
     attempt_count: int = 0
     failure_reason: str | None = None
     start_time: float | None = None
     end_time: float | None = None
-    retry_delays: list = field(default_factory=list)
-    _child_results: dict | None = field(default=None, repr=False)
-    _child_context: dict | None = field(default=None, repr=False)
+    retry_delays: list[float] = field(default_factory=list)
+    sub_results: dict[str, "StepResult"] | None = None
 
 
 class RecipeStepExecutor:
     """Executes recipe steps respecting conditions, dependencies, retries,
-    timeouts, output capture, and sub-recipe delegation."""
+    timeouts, output capture via templates, and sub-recipe delegation."""
 
-    def __init__(
-        self,
-        command_handler: Callable | None = None,
-        sleep_func: Callable | None = None,
-    ):
-        self.command_handler = command_handler or self._default_command_handler
-        self.sleep_func = sleep_func or time.sleep
-        self.results: dict[str, StepResult] = {}
-        self.execution_order: list[str] = []
-        # Shared mutable state for commands that track call counts across retries.
-        self._attempt_counters: dict[str, int] = {}
+    def __init__(self, sleep_func: Callable[[float], None] | None = None):
+        self._step_results: dict[str, StepResult] = {}
+        self._execution_events: list[tuple[str, str]] = []
+        self._attempt_trackers: dict[str, int] = {}
+        self._sleep_func: Callable[[float], None] = sleep_func or time.sleep
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+    @property
+    def step_results(self) -> dict[str, StepResult]:
+        return dict(self._step_results)
 
-    def execute(self, recipe: dict, context: dict) -> dict[str, StepResult]:
-        """Execute all steps in *recipe*, mutating *context* with outputs.
+    @property
+    def execution_events(self) -> list[tuple[str, str]]:
+        return list(self._execution_events)
 
-        Returns a mapping of step-id -> StepResult.
+    def execute(self, recipe: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+        """Execute all steps in the recipe, modifying context in place.
+
+        Returns dict with 'context', 'results', and 'execution_events'.
         """
         steps = recipe.get("steps", [])
-        self.results = {}
-        self.execution_order = []
+        self._step_results.clear()
+        self._execution_events.clear()
+        self._attempt_trackers.clear()
 
-        for step_def in self._topological_sort(steps):
-            self._execute_step(step_def, context)
+        executed: set = set()
+        remaining = list(steps)
+        safety_limit = len(steps) ** 2 + len(steps) + 1
 
-        return self.results
+        for _ in range(safety_limit):
+            if not remaining:
+                break
 
-    # ------------------------------------------------------------------
-    # Topological ordering (Kahn's algorithm, stable on insertion order)
-    # ------------------------------------------------------------------
+            progress = False
+            next_remaining = []
 
-    def _topological_sort(self, steps: list[dict]) -> list[dict]:
-        step_map = {s["id"]: s for s in steps}
-        dependents: dict[str, list[str]] = defaultdict(list)
-        in_degree: dict[str, int] = {s["id"]: 0 for s in steps}
+            for step in remaining:
+                deps = _parse_dependencies(step)
+                if all(d in executed for d in deps):
+                    self._execute_step(step, context, deps)
+                    executed.add(step["id"])
+                    progress = True
+                else:
+                    next_remaining.append(step)
 
-        for s in steps:
-            for dep in self._parse_deps(s.get("blockedBy", "")):
-                if dep in step_map:
-                    dependents[dep].append(s["id"])
-                    in_degree[s["id"]] += 1
+            remaining = next_remaining
 
-        queue = [sid for sid in (s["id"] for s in steps) if in_degree[sid] == 0]
-        ordered: list[dict] = []
+            if not progress and remaining:
+                for step in remaining:
+                    self._step_results[step["id"]] = StepResult(
+                        step_id=step["id"],
+                        status=StepStatus.FAILED,
+                        failure_reason="circular_dependency",
+                    )
+                break
 
-        while queue:
-            node = queue.pop(0)
-            ordered.append(step_map[node])
-            for child in dependents[node]:
-                in_degree[child] -= 1
-                if in_degree[child] == 0:
-                    queue.append(child)
+        return {
+            "context": context,
+            "results": dict(self._step_results),
+            "execution_events": list(self._execution_events),
+        }
 
-        return ordered
+    # ── step dispatch ────────────────────────────────────────────────
 
-    # ------------------------------------------------------------------
-    # Single-step execution
-    # ------------------------------------------------------------------
+    def _execute_step(
+        self,
+        step: dict[str, Any],
+        context: dict[str, Any],
+        deps: list[str] | None = None,
+    ) -> None:
+        step_id = step["id"]
 
-    def _execute_step(self, step_def: dict, context: dict) -> None:
-        step_id = step_def["id"]
-        condition = str(step_def.get("condition", "") or "").strip()
-        deps = self._parse_deps(step_def.get("blockedBy", ""))
-        max_retries = self._int_or(step_def.get("max_retries"), 0)
-        timeout = self._float_or(step_def.get("timeout_seconds"), None)
-        sub_recipe = step_def.get("sub_recipe")
-        propagate = self._bool_val(step_def.get("propagate_outputs", False))
-
-        result = StepResult(id=step_id)
-
-        # 1. Dependency gate — failed / timed-out deps block this step.
-        for dep_id in deps:
-            if dep_id in self.results and self.results[dep_id].status in (
-                "failed",
-                "timed_out",
-            ):
-                result.status = "failed"
-                result.failure_reason = "dependency_failed"
-                self._record(step_id, result)
+        # 1. Dependency gate — failed/timed-out deps propagate failure
+        for dep_id in deps if deps is not None else _parse_dependencies(step):
+            dep = self._step_results.get(dep_id)
+            if dep and dep.status in (StepStatus.FAILED, StepStatus.TIMED_OUT):
+                self._step_results[step_id] = StepResult(
+                    step_id=step_id,
+                    status=StepStatus.FAILED,
+                    failure_reason="dependency_failed",
+                )
                 return
 
-        # 2. Condition gate — missing keys evaluate to False (step skipped).
-        if condition:
-            if not self._eval_condition(condition, context):
-                result.status = "skipped"
-                self._record(step_id, result)
-                return
-
-        # 3. Sub-recipe path (not retried on child failure).
-        if sub_recipe is not None and str(sub_recipe).strip():
-            self._run_sub_recipe(step_def, result, context, propagate)
-            self._record(step_id, result)
+        # 2. Condition gate
+        condition = step.get("condition", "")
+        if condition and not _evaluate_condition(condition, context):
+            self._step_results[step_id] = StepResult(
+                step_id=step_id,
+                status=StepStatus.SKIPPED,
+            )
             return
 
-        # 4. Command path with optional retries and timeout.
-        command = step_def.get("command", "")
-        self._run_with_retries(step_id, command, result, context, max_retries, timeout)
-        self._record(step_id, result)
+        # 3. Sub-recipe (never retried) vs regular command
+        if step.get("sub_recipe"):
+            self._run_sub_recipe(step, context)
+        else:
+            self._run_command_with_retries(step, context)
 
-    # ------------------------------------------------------------------
-    # Command execution with retries
-    # ------------------------------------------------------------------
+    # ── command execution with retry loop ────────────────────────────
 
-    def _run_with_retries(
-        self,
-        step_id: str,
-        command: str,
-        result: StepResult,
-        context: dict,
-        max_retries: int,
-        timeout: float | None,
-    ) -> None:
-        delays: list[int] = []
+    def _run_command_with_retries(self, step: dict[str, Any], context: dict[str, Any]) -> None:
+        step_id = step["id"]
+        raw_command = step.get("command", "")
+        command = _resolve_templates(raw_command, context)
+
+        max_retries = _effective_max_retries(step, command)
+        timeout = _parse_timeout(step)
+
+        retry_delays: list[float] = []
+        result: StepResult | None = None
 
         for attempt in range(1, max_retries + 2):
-            result.attempt_count = attempt
-            resolved = self._resolve_templates(command, context)
-            result.start_time = time.monotonic()
+            self._execution_events.append((step_id, "start"))
+            t0 = time.monotonic()
 
             try:
-                if timeout is not None:
-                    output = self._execute_with_timeout(resolved, timeout, step_id)
-                else:
-                    output = self.command_handler(resolved, step_id)
+                output = (
+                    self._run_with_timeout(command, step_id, timeout)
+                    if timeout is not None
+                    else self._interpret_command(command, step_id)
+                )
+                t1 = time.monotonic()
 
-                result.status = "completed"
-                result.output = output
-                result.end_time = time.monotonic()
-                result.retry_delays = delays
+                if output is _TIMED_OUT:
+                    result = StepResult(
+                        step_id=step_id,
+                        status=StepStatus.TIMED_OUT,
+                        attempt_count=attempt,
+                        start_time=t0,
+                        end_time=t1,
+                        retry_delays=list(retry_delays),
+                    )
+                    self._execution_events.append((step_id, "end"))
+                    break  # timeouts are NEVER retried
+
+                assert isinstance(output, str)
                 context[step_id] = output
-                return
+                result = StepResult(
+                    step_id=step_id,
+                    status=StepStatus.COMPLETED,
+                    output=output,
+                    attempt_count=attempt,
+                    start_time=t0,
+                    end_time=t1,
+                    retry_delays=list(retry_delays),
+                )
+                self._execution_events.append((step_id, "end"))
+                break
 
-            except TimeoutError:
-                result.status = "timed_out"
-                result.end_time = time.monotonic()
-                result.retry_delays = delays
-                return  # Timeouts are never retried.
-
-            except CommandError:
+            except CommandFailedError as exc:
+                t1 = time.monotonic()
+                self._execution_events.append((step_id, "end"))
+                result = StepResult(
+                    step_id=step_id,
+                    status=StepStatus.FAILED,
+                    output=exc.output,
+                    attempt_count=attempt,
+                    start_time=t0,
+                    end_time=t1,
+                    retry_delays=list(retry_delays),
+                )
                 if attempt <= max_retries:
-                    delay = 2 ** (attempt - 1)  # 1, 2, 4, …
-                    delays.append(delay)
-                    self.sleep_func(delay)
-                else:
-                    result.status = "failed"
-                    result.end_time = time.monotonic()
-                    result.retry_delays = delays
-                    return
+                    delay = float(2 ** (attempt - 1))  # 1, 2, 4, ...
+                    retry_delays.append(delay)
+                    self._sleep_func(delay)
 
-    # ------------------------------------------------------------------
-    # Sub-recipe execution
-    # ------------------------------------------------------------------
+        if result is None:
+            raise RuntimeError(f"Step {step_id}: no result after retry loop")
+        self._step_results[step_id] = result
 
-    def _run_sub_recipe(
-        self,
-        step_def: dict,
-        result: StepResult,
-        parent_context: dict,
-        propagate: bool,
-    ) -> None:
-        sub_steps = step_def["sub_recipe"]
-        if isinstance(sub_steps, str):
-            sub_steps = json.loads(sub_steps)
+    # ── timeout via thread pool ──────────────────────────────────────
 
-        child_context = dict(parent_context)
-        child_executor = RecipeStepExecutor(
-            command_handler=self.command_handler,
-            sleep_func=self.sleep_func,
-        )
-        child_executor._attempt_counters = self._attempt_counters
+    def _run_with_timeout(self, command: str, step_id: str, timeout: float):
+        cancel = threading.Event()
 
-        child_results = child_executor.execute({"steps": sub_steps}, child_context)
+        def _target():
+            return self._interpret_command(command, step_id, cancel_event=cancel)
 
-        any_failed = any(r.status in ("failed", "timed_out") for r in child_results.values())
-
-        result.status = "failed" if any_failed else "completed"
-        result.attempt_count = 1  # Sub-recipe failures are not retried.
-        result._child_results = child_results
-        result._child_context = child_context
-
-        if propagate:
-            for key, value in child_context.items():
-                if key not in parent_context:
-                    parent_context[key] = value
-
-    # ------------------------------------------------------------------
-    # Timeout wrapper (thread-based)
-    # ------------------------------------------------------------------
-
-    def _execute_with_timeout(self, command: str, timeout: float, step_id: str) -> str:
-        result_box: list[Any] = [None]
-        error_box: list[Exception | None] = [None]
-
-        def _run() -> None:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(_target)
             try:
-                result_box[0] = self.command_handler(command, step_id)
-            except Exception as exc:
-                error_box[0] = exc
+                return future.result(timeout=timeout)
+            except concurrent.futures.TimeoutError:
+                cancel.set()
+                return _TIMED_OUT
 
-        thread = threading.Thread(target=_run, daemon=True)
-        thread.start()
-        thread.join(timeout=timeout)
+    # ── command interpreter ──────────────────────────────────────────
 
-        if thread.is_alive():
-            raise TimeoutError(f"Step {step_id} exceeded {timeout}s timeout")
+    def _interpret_command(
+        self,
+        command: str,
+        step_id: str,
+        cancel_event: threading.Event | None = None,
+    ) -> str:
+        cmd = command.strip()
 
-        if error_box[0] is not None:
-            raise error_box[0]
-
-        return result_box[0]
-
-    # ------------------------------------------------------------------
-    # Condition evaluation (safe eval)
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _eval_condition(condition: str, context: dict) -> bool:
-        try:
-            return bool(eval(condition, {"__builtins__": {}}, dict(context)))
-        except Exception:
-            return False
-
-    # ------------------------------------------------------------------
-    # Template resolution  {{key}} -> context[key]
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _resolve_templates(command: str, context: dict) -> str:
-        def _replacer(match: re.Match) -> str:
-            key = match.group(1)
-            if key in context:
-                return str(context[key])
-            return match.group(0)  # leave literal if key absent
-
-        return re.sub(r"\{\{(\w+)\}\}", _replacer, command)
-
-    # ------------------------------------------------------------------
-    # Default command handler (echo, exit, sleep, test helpers)
-    # ------------------------------------------------------------------
-
-    def _default_command_handler(self, command: str, step_id: str) -> str:
-        # echo "…"
-        m = re.match(r'^echo\s+"(.*)"$', command)
+        # echo "value" / echo value
+        m = _ECHO_RE.match(cmd)
         if m:
-            return m.group(1)
-        m = re.match(r"^echo\s+'(.*)'$", command)
-        if m:
-            return m.group(1)
+            val = m.group(1).strip()
+            if (val.startswith('"') and val.endswith('"')) or (
+                val.startswith("'") and val.endswith("'")
+            ):
+                val = val[1:-1]
+            return val
 
         # exit N
-        m = re.match(r"^exit\s+(\d+)$", command)
+        m = _EXIT_RE.match(cmd)
         if m:
             code = int(m.group(1))
             if code != 0:
-                raise CommandError(f"exit {code}")
+                raise CommandFailedError(exit_code=code)
             return ""
 
         # sleep N
-        m = re.match(r"^sleep\s+(\d+)$", command)
+        m = _SLEEP_RE.match(cmd)
         if m:
-            time.sleep(int(m.group(1)))
+            dur = float(m.group(1))
+            if cancel_event:
+                cancel_event.wait(timeout=dur)
+            else:
+                self._sleep_func(dur)
             return ""
 
-        # fail_then_succeed(N) — fails N times, then succeeds
-        m = re.match(r"^fail_then_succeed\((\d+)\)$", command)
+        # fail_then_succeed(N) — fails N times, succeeds on attempt N+1
+        m = _FTS_RE.match(cmd)
         if m:
-            fail_count = int(m.group(1))
-            counter = self._attempt_counters.get(step_id, 0) + 1
-            self._attempt_counters[step_id] = counter
-            if counter <= fail_count:
-                raise CommandError(f"Planned failure {counter}/{fail_count}")
-            return f"attempt_{counter}"
+            fail_n = int(m.group(1))
+            cur = self._attempt_trackers.get(step_id, 0)
+            self._attempt_trackers[step_id] = cur + 1
+            if cur < fail_n:
+                raise CommandFailedError(output=f"fail_attempt_{cur + 1}", exit_code=1)
+            return f"success_attempt_{cur + 1}"
 
-        # increment_counter() — fails once, then succeeds
-        if command.strip() == "increment_counter()":
-            counter = self._attempt_counters.get(step_id, 0) + 1
-            self._attempt_counters[step_id] = counter
-            if counter <= 1:
-                raise CommandError(f"Failure on attempt {counter}")
-            return f"attempt_{counter}"
+        # increment_counter() — fails on first attempt, succeeds on second
+        if cmd == "increment_counter()":
+            cur = self._attempt_trackers.get(step_id, 0)
+            self._attempt_trackers[step_id] = cur + 1
+            attempt_num = cur + 1
+            if attempt_num <= 1:
+                raise CommandFailedError(output=f"attempt_{attempt_num}", exit_code=1)
+            return f"attempt_{attempt_num}"
 
-        raise CommandError(f"Unknown command: {command}")
+        raise CommandFailedError(output=f"unknown command: {cmd}", exit_code=127)
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
+    # ── sub-recipe execution ─────────────────────────────────────────
 
-    def _record(self, step_id: str, result: StepResult) -> None:
-        self.results[step_id] = result
-        self.execution_order.append(step_id)
+    def _run_sub_recipe(self, step: dict[str, Any], context: dict[str, Any]) -> None:
+        step_id = step["id"]
+        raw = step["sub_recipe"]
+        sub_steps: list[dict[str, Any]] = json.loads(raw) if isinstance(raw, str) else list(raw)
 
-    @staticmethod
-    def _parse_deps(blocked_by: Any) -> list[str]:
-        if not blocked_by:
-            return []
-        return [d.strip() for d in str(blocked_by).split(",") if d.strip()]
+        propagate = step.get("propagate_outputs", False)
+        if isinstance(propagate, str):
+            propagate = propagate.lower() == "true"
 
-    @staticmethod
-    def _int_or(val: Any, default: int) -> int:
-        if val is None or str(val).strip() == "":
-            return default
-        return int(val)
+        child_ctx = dict(context)
+        child_executor = RecipeStepExecutor(sleep_func=self._sleep_func)
+        child_result = child_executor.execute({"steps": sub_steps}, child_ctx)
 
-    @staticmethod
-    def _float_or(val: Any, default: float | None) -> float | None:
-        if val is None or str(val).strip() == "":
-            return default
-        return float(val)
+        self._execution_events.append((step_id, "start"))
 
-    @staticmethod
-    def _bool_val(val: Any) -> bool:
-        if isinstance(val, bool):
-            return val
-        if isinstance(val, str):
-            return val.strip().lower() == "true"
-        return bool(val)
+        any_failure = any(
+            r.status in (StepStatus.FAILED, StepStatus.TIMED_OUT)
+            for r in child_result["results"].values()
+        )
+
+        if any_failure:
+            self._step_results[step_id] = StepResult(
+                step_id=step_id,
+                status=StepStatus.FAILED,
+                attempt_count=1,
+                failure_reason="sub_recipe_failed",
+                sub_results=child_result["results"],
+            )
+        else:
+            if propagate:
+                for cs in sub_steps:
+                    cid = cs["id"]
+                    if cid in child_ctx:
+                        context[cid] = child_ctx[cid]
+
+            self._step_results[step_id] = StepResult(
+                step_id=step_id,
+                status=StepStatus.COMPLETED,
+                attempt_count=1,
+                sub_results=child_result["results"],
+            )
+
+        self._execution_events.append((step_id, "end"))
+
+
+# ── pure helpers (no state) ──────────────────────────────────────────
+
+
+def _parse_dependencies(step: dict[str, Any]) -> list[str]:
+    raw = step.get("blockedBy", "")
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        return [d.strip() for d in raw if d.strip()]
+    return [d.strip() for d in str(raw).split(",") if d.strip()]
+
+
+def _evaluate_condition(condition: str, context: dict[str, Any]) -> bool:
+    if not condition:
+        return True
+    try:
+        return bool(eval(condition, {"__builtins__": {}}, dict(context)))
+    except Exception:
+        return False
+
+
+def _resolve_templates(text: str, context: dict[str, Any]) -> str:
+    def _replace(m: re.Match) -> str:
+        key = m.group(1).strip()
+        if key in context:
+            return str(context[key])
+        return m.group(0)  # leave literal
+
+    return _TEMPLATE_RE.sub(_replace, text)
+
+
+def _parse_timeout(step: dict[str, Any]) -> float | None:
+    t = step.get("timeout_seconds")
+    if t is None or t == "":
+        return None
+    return float(t)
+
+
+def _effective_max_retries(step: dict[str, Any], resolved_command: str) -> int:
+    """Return explicit max_retries if set, otherwise auto-derive for
+    simulation commands (fail_then_succeed, increment_counter)."""
+    raw = step.get("max_retries")
+    if raw is not None and raw != "":
+        return int(raw)
+    m = _FTS_RE.match(resolved_command.strip())
+    if m:
+        return int(m.group(1))
+    if resolved_command.strip() == "increment_counter()":
+        return 1
+    return 0
