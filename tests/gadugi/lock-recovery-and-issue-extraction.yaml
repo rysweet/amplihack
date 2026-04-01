@@ -32,7 +32,7 @@ steps:
     action: "execute_command"
     params:
       command: >-
-        bash -lc '/home/azureuser/src/amplihack-pm/.venv/bin/python -m pytest tests/outside_in/test_stop_hook_safety_valve_e2e.py::TestSafetyValveE2EClaude::test_stale_lock_is_auto_disabled tests/outside_in/test_stop_hook_safety_valve_e2e.py::TestSafetyValveE2EClaude::test_corrupt_counter_triggers_recovery tests/test_lock_unlock.py::TestLockUnlockCommands::test_lock_tool_writes_session_metadata tests/test_lock_unlock.py::TestLockUnlockCommands::test_lock_tool_unlock_cleans_related_lock_state -q && echo LOCK_RECOVERY_QA_OK'
+        PYTHONPATH=src uv run pytest tests/outside_in/test_stop_hook_safety_valve_e2e.py::TestSafetyValveE2EClaude::test_stale_lock_is_auto_disabled tests/outside_in/test_stop_hook_safety_valve_e2e.py::TestSafetyValveE2EClaude::test_corrupt_counter_triggers_recovery tests/test_lock_unlock.py::TestLockUnlockCommands::test_lock_tool_writes_session_metadata tests/test_lock_unlock.py::TestLockUnlockCommands::test_lock_tool_unlock_cleans_related_lock_state -q && echo LOCK_RECOVERY_QA_OK
     timeout: 90000
 
   - name: "Verify lock recovery marker"
@@ -47,7 +47,7 @@ steps:
     action: "execute_command"
     params:
       command: >-
-        bash -lc 'PYTHONPATH=amplifier-bundle /home/azureuser/src/amplihack-pm/.venv/bin/python -m pytest amplifier-bundle/tools/test_default_workflow_fixes.py -q && echo ISSUE_EXTRACTION_QA_OK'
+        PYTHONPATH=src:amplifier-bundle uv run pytest amplifier-bundle/tools/test_default_workflow_fixes.py -q && echo ISSUE_EXTRACTION_QA_OK
     timeout: 90000
 
   - name: "Verify issue extraction marker"
