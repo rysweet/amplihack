@@ -11,6 +11,8 @@ tags: ["orchestration", "routing", "parallel", "auto-classify", "goal-seeking"]
 context:
   task_description: ""
   repo_path: "."
+  max_runtime: ""
+  timeout_policy: ""
   decomposition_json: ""
   session_id: ""
   tree_id: ""
@@ -454,8 +456,10 @@ steps:
       cat > "$_DECOMP_TMPFILE" <<__DECOMP_EOF__
       {{decomposition_json}}
       __DECOMP_EOF__
+      MAX_RUNTIME="{{max_runtime}}"
+      TIMEOUT_POLICY="{{timeout_policy}}"
       export DECOMP_TMPFILE="$_DECOMP_TMPFILE"
-      export HELPER_PATH
+      export HELPER_PATH MAX_RUNTIME TIMEOUT_POLICY
       python3 - <<'PYEOF'
       import json, os, re, tempfile, sys
       sys.path.insert(0, os.path.dirname(os.environ['HELPER_PATH']))
@@ -464,16 +468,23 @@ steps:
           decomp = f.read()
       obj = orch_helper.extract_json(decomp)
       config = []
+      max_runtime = os.environ.get("MAX_RUNTIME", "")
+      timeout_policy = os.environ.get("TIMEOUT_POLICY", "")
       for i, ws in enumerate(obj.get("workstreams", [])):
           name = ws.get("name", f"workstream-{i+1}")
           slug = re.sub(r'[^a-z0-9-]', '-', name.lower())[:30].strip('-') or f"ws-{i+1}"
-          config.append({
+          entry = {
               "issue": "TBD",
               "branch": f"feat/orch-{i+1}-{slug}",
               "description": name,
               "task": ws.get("description", name),
               "recipe": ws.get("recipe", "default-workflow")
-          })
+          }
+          if max_runtime:
+              entry["max_runtime"] = int(max_runtime)
+          if timeout_policy:
+              entry["timeout_policy"] = timeout_policy
+          config.append(entry)
       fd, p = tempfile.mkstemp(prefix="smart-orch-ws-", suffix=".json", dir="/tmp")
       os.chmod(p, 0o600)
       with os.fdopen(fd, "w") as f: json.dump(config, f, indent=2)
@@ -566,11 +577,18 @@ steps:
       echo "Launching parallel workstreams (tree: $TREE_ID, depth: $SESSION_DEPTH):"
       cat "$WS_FILE"
       echo "---"
+      ORCH_ARGS=()
+      if [ -n "${RECIPE_VAR_max_runtime:-}" ]; then
+        ORCH_ARGS+=(--max-runtime "$RECIPE_VAR_max_runtime")
+      fi
+      if [ -n "${RECIPE_VAR_timeout_policy:-}" ]; then
+        ORCH_ARGS+=(--timeout-policy "$RECIPE_VAR_timeout_policy")
+      fi
       status=0
       AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$SESSION_DEPTH" \
         AMPLIHACK_PARENT_STEP="launch-parallel-round-1" \
         AMPLIHACK_REPO_PATH="$REPO_PATH" \
-        python3 -u "$ORCH_SCRIPT" "$WS_FILE" | tee /dev/stderr || status=$?
+        python3 -u "$ORCH_SCRIPT" "${ORCH_ARGS[@]}" "$WS_FILE" | tee /dev/stderr || status=$?
       # Clean up workstreams file now, before this step's output inflates
       # the recipe context. Doing it here avoids the E2BIG error that
       # occurs when a later bash step inherits megabytes of env vars

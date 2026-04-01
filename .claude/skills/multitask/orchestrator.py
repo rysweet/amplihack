@@ -32,6 +32,7 @@ import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 # Pre-compiled patterns for hot-path sanitization
 _SAFE_ID_RE = re.compile(r"[^a-zA-Z0-9_-]")
@@ -55,6 +56,19 @@ VALID_DELEGATES: frozenset[str] = frozenset(
 # Log size cap: prevent /tmp exhaustion from runaway subprocesses.
 # Configurable via AMPLIHACK_MAX_LOG_BYTES env var.
 MAX_LOG_BYTES: int = int(os.environ.get("AMPLIHACK_MAX_LOG_BYTES", str(100 * 1024 * 1024)))
+DEFAULT_MAX_RUNTIME = 7200
+INTERRUPT_PRESERVE_TIMEOUT_POLICY = "interrupt-preserve"
+CONTINUE_PRESERVE_TIMEOUT_POLICY = "continue-preserve"
+DEFAULT_TIMEOUT_POLICY = INTERRUPT_PRESERVE_TIMEOUT_POLICY
+VALID_TIMEOUT_POLICIES: frozenset[str] = frozenset(
+    {INTERRUPT_PRESERVE_TIMEOUT_POLICY, CONTINUE_PRESERVE_TIMEOUT_POLICY}
+)
+RESUMABLE_LIFECYCLE_STATES: frozenset[str] = frozenset(
+    {"failed_resumable", "timed_out_resumable", "interrupted_resumable"}
+)
+CLEANUP_ELIGIBLE_LIFECYCLE_STATES: frozenset[str] = frozenset(
+    {"completed", "failed_terminal", "abandoned"}
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +88,17 @@ class Workstream:
     start_time: float | None = None
     end_time: float | None = None
     exit_code: int | None = None
+    lifecycle_state: str = "pending"
+    cleanup_eligible: bool = False
+    state_file: Path = field(default_factory=Path)
+    progress_file: Path = field(default_factory=Path)
+    worktree_path: str = ""
+    checkpoint_id: str = ""
+    last_step: str = ""
+    attempt: int = 0
+    timeout_policy: str = DEFAULT_TIMEOUT_POLICY
+    max_runtime: int | None = None
+    resume_checkpoint: str = ""
 
     @property
     def is_running(self) -> bool:
@@ -104,6 +129,7 @@ class ParallelOrchestrator:
     ):
         self.repo_url = repo_url
         self.tmp_base = Path(tmp_base)
+        self.state_dir = self.tmp_base / "state"
         self.mode = mode
         self.workstreams: list[Workstream] = []
         self._processes: dict[int, subprocess.Popen] = {}
@@ -112,12 +138,19 @@ class ParallelOrchestrator:
         self._stdout_lock = threading.Lock()  # Serialize concurrent stdout writes
         self._tail_threads: dict[int, threading.Thread] = {}  # Per-workstream tailing threads
         self._max_log_bytes: int = MAX_LOG_BYTES
+        self._json_cache: dict[Path, tuple[int, int, dict[str, Any]]] = {}
+        self._default_branch: str | None = None
+        self.default_max_runtime = self._resolve_max_runtime(
+            os.environ.get("AMPLIHACK_MAX_RUNTIME")
+        )
+        self.default_timeout_policy = self._resolve_timeout_policy(
+            os.environ.get("AMPLIHACK_TIMEOUT_POLICY")
+        )
 
     def setup(self) -> None:
-        """Create clean temporary directory for workstreams and check disk space."""
-        if self.tmp_base.exists():
-            shutil.rmtree(self.tmp_base)
-        self.tmp_base.mkdir(parents=True, mode=0o700)
+        """Prepare the persistent runtime directories and check disk space."""
+        self.tmp_base.mkdir(parents=True, exist_ok=True, mode=0o700)
+        self.state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
 
         # Check disk space and warn if low
         self._check_disk_space()
@@ -186,6 +219,437 @@ class ParallelOrchestrator:
         )
         return "amplihack claude"
 
+    def _timestamp(self) -> str:
+        return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+    def _resolve_max_runtime(self, raw: object | None) -> int:
+        if raw in (None, ""):
+            return DEFAULT_MAX_RUNTIME
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            warnings.warn(
+                f"Invalid max_runtime value {raw!r}; using default {DEFAULT_MAX_RUNTIME}s.",
+                stacklevel=2,
+            )
+            return DEFAULT_MAX_RUNTIME
+        if value < 0:
+            warnings.warn(
+                f"Negative max_runtime value {value!r}; using default {DEFAULT_MAX_RUNTIME}s.",
+                stacklevel=2,
+            )
+            return DEFAULT_MAX_RUNTIME
+        return value
+
+    def _resolve_timeout_policy(self, raw: object | None) -> str:
+        if raw in (None, ""):
+            return DEFAULT_TIMEOUT_POLICY
+        value = str(raw).strip()
+        if value in VALID_TIMEOUT_POLICIES:
+            return value
+        warnings.warn(
+            f"Invalid timeout_policy value {raw!r}; using default {DEFAULT_TIMEOUT_POLICY!r}.",
+            stacklevel=2,
+        )
+        return DEFAULT_TIMEOUT_POLICY
+
+    def _safe_state_path(self, issue_id: object) -> Path:
+        safe_id = _SAFE_ID_RE.sub("_", str(issue_id))
+        candidate = (self.state_dir / f"ws-{safe_id}.json").resolve()
+        if not str(candidate).startswith(str(self.state_dir.resolve())):
+            raise ValueError(f"Unsafe state path detected for issue_id={issue_id!r}")
+        return candidate
+
+    def _safe_progress_sidecar_path(self, issue_id: object) -> Path:
+        safe_id = _SAFE_ID_RE.sub("_", str(issue_id))
+        candidate = (self.state_dir / f"ws-{safe_id}.progress.json").resolve()
+        if not str(candidate).startswith(str(self.state_dir.resolve())):
+            raise ValueError(f"Unsafe progress path detected for issue_id={issue_id!r}")
+        return candidate
+
+    def _read_json_file(self, path: Path) -> dict[str, Any]:
+        try:
+            stat_result = path.stat()
+        except OSError:
+            self._json_cache.pop(path, None)
+            return {}
+        cached = self._json_cache.get(path)
+        signature = (stat_result.st_mtime_ns, stat_result.st_size)
+        if cached is not None and cached[:2] == signature:
+            return cached[2]
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            payload: dict[str, Any] = {}
+        else:
+            payload = data if isinstance(data, dict) else {}
+        self._json_cache[path] = (signature[0], signature[1], payload)
+        return payload
+
+    def _write_json_file(self, path: Path, payload: dict[str, Any]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+        tmp_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+        tmp_path.chmod(0o600)
+        tmp_path.replace(path)
+        try:
+            stat_result = path.stat()
+        except OSError:
+            self._json_cache.pop(path, None)
+        else:
+            self._json_cache[path] = (stat_result.st_mtime_ns, stat_result.st_size, payload)
+
+    def _load_state(self, issue: int) -> dict[str, Any]:
+        return self._read_json_file(self._safe_state_path(issue))
+
+    def _find_matching_saved_state(self, *, branch: str, description: str) -> dict[str, Any]:
+        if not self.state_dir.exists():
+            return {}
+        for state_file in sorted(self.state_dir.glob("ws-*.json")):
+            payload = self._read_json_file(state_file)
+            if not payload:
+                continue
+            if payload.get("cleanup_eligible"):
+                continue
+            if payload.get("branch") == branch or payload.get("description") == description:
+                return payload
+        return {}
+
+    def _derive_cleanup_eligible(self, lifecycle_state: str) -> bool:
+        return lifecycle_state in CLEANUP_ELIGIBLE_LIFECYCLE_STATES
+
+    def _coerce_int(self, raw: object, *, default: int | None = None) -> int | None:
+        if raw in (None, ""):
+            return default
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return default
+
+    def _new_workstream(
+        self,
+        *,
+        issue: int,
+        branch: str,
+        description: str,
+        task: str,
+        recipe: str,
+    ) -> Workstream:
+        ws = Workstream(
+            issue=issue,
+            branch=branch,
+            description=description,
+            task=task,
+            recipe=recipe,
+            lifecycle_state="pending",
+            cleanup_eligible=False,
+        )
+        ws.work_dir = self.tmp_base / f"ws-{issue}"
+        ws.log_file = self._safe_log_path(issue)
+        ws.state_file = self._safe_state_path(issue)
+        ws.progress_file = self._safe_progress_sidecar_path(issue)
+        ws.max_runtime = self.default_max_runtime
+        ws.timeout_policy = self.default_timeout_policy
+        return ws
+
+    def _apply_runtime_overrides(
+        self,
+        ws: Workstream,
+        *,
+        max_runtime: int | None = None,
+        timeout_policy: str | None = None,
+    ) -> None:
+        if max_runtime is not None:
+            ws.max_runtime = self._resolve_max_runtime(max_runtime)
+        if timeout_policy is not None:
+            ws.timeout_policy = self._resolve_timeout_policy(timeout_policy)
+
+    def _apply_saved_state(self, ws: Workstream, payload: dict[str, Any]) -> None:
+        if not payload:
+            return
+        ws.branch = str(payload.get("branch") or ws.branch)
+        ws.description = str(payload.get("description") or ws.description)
+        ws.lifecycle_state = str(payload.get("lifecycle_state") or ws.lifecycle_state)
+        ws.cleanup_eligible = bool(
+            payload.get("cleanup_eligible", self._derive_cleanup_eligible(ws.lifecycle_state))
+        )
+        ws.worktree_path = str(payload.get("worktree_path") or ws.worktree_path)
+        checkpoint_id = str(payload.get("checkpoint_id") or ws.checkpoint_id)
+        if checkpoint_id:
+            ws.checkpoint_id = checkpoint_id
+            ws.resume_checkpoint = checkpoint_id
+        ws.last_step = str(payload.get("current_step") or ws.last_step)
+        ws.attempt = self._coerce_int(payload.get("attempt"), default=ws.attempt) or 0
+        ws.max_runtime = self._resolve_max_runtime(
+            payload["max_runtime"] if payload.get("max_runtime") is not None else ws.max_runtime
+        )
+        ws.timeout_policy = self._resolve_timeout_policy(
+            payload["timeout_policy"]
+            if payload.get("timeout_policy") is not None
+            else ws.timeout_policy
+        )
+        ws.pid = self._coerce_int(payload.get("last_pid"), default=ws.pid)
+        if ws.exit_code is None or payload.get("last_exit_code") is not None:
+            ws.exit_code = self._coerce_int(payload.get("last_exit_code"), default=ws.exit_code)
+        work_dir = payload.get("work_dir")
+        if work_dir:
+            ws.work_dir = Path(str(work_dir))
+        log_file = payload.get("log_file")
+        if log_file:
+            ws.log_file = Path(str(log_file))
+
+    def _load_state_into_workstream(self, ws: Workstream) -> dict[str, Any]:
+        if str(ws.state_file) in {"", "."}:
+            return {}
+        state = self._read_json_file(ws.state_file)
+        self._apply_saved_state(ws, state)
+        return state
+
+    def _read_progress_payload(self, ws: Workstream) -> dict[str, Any]:
+        candidates: list[Path] = []
+        if str(ws.progress_file) not in {"", "."}:
+            candidates.append(ws.progress_file)
+        if ws.pid is not None:
+            safe_name = _SAFE_NAME_RE.sub("_", ws.recipe)[:64]
+            candidates.append(
+                Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{ws.pid}.json"
+            )
+        for candidate in candidates:
+            payload = self._read_json_file(candidate)
+            if payload:
+                return payload
+        return {}
+
+    def _sync_progress_to_workstream(self, ws: Workstream) -> dict[str, Any]:
+        payload = self._read_progress_payload(ws)
+        if not payload:
+            return {}
+        ws.last_step = str(payload.get("step_name") or payload.get("current_step") or ws.last_step)
+        checkpoint_id = payload.get("checkpoint_id")
+        if checkpoint_id:
+            ws.checkpoint_id = str(checkpoint_id)
+            ws.resume_checkpoint = str(checkpoint_id)
+        worktree_path = payload.get("worktree_path")
+        if worktree_path:
+            ws.worktree_path = str(worktree_path)
+        return payload
+
+    def _persist_workstream_state(
+        self,
+        ws: Workstream,
+        *,
+        lifecycle_state: str | None = None,
+        exit_code: int | None = None,
+        sync_progress: bool = True,
+    ) -> None:
+        if sync_progress:
+            self._sync_progress_to_workstream(ws)
+        if lifecycle_state is not None:
+            ws.lifecycle_state = lifecycle_state
+        if exit_code is not None:
+            ws.exit_code = exit_code
+        ws.cleanup_eligible = self._derive_cleanup_eligible(ws.lifecycle_state)
+        if str(ws.state_file) in {"", "."}:
+            return
+        previous = self._read_json_file(ws.state_file)
+        created_at = previous.get("created_at", self._timestamp())
+        payload: dict[str, Any] = {
+            "issue": ws.issue,
+            "branch": ws.branch,
+            "description": ws.description,
+            "task": ws.task,
+            "recipe": ws.recipe,
+            "lifecycle_state": ws.lifecycle_state,
+            "cleanup_eligible": ws.cleanup_eligible,
+            "attempt": ws.attempt,
+            "last_pid": ws.pid,
+            "last_exit_code": ws.exit_code,
+            "current_step": ws.last_step or "unknown",
+            "checkpoint_id": ws.checkpoint_id,
+            "work_dir": str(ws.work_dir),
+            "worktree_path": ws.worktree_path,
+            "log_file": str(ws.log_file),
+            "progress_sidecar": str(ws.progress_file),
+            "max_runtime": ws.max_runtime or self.default_max_runtime,
+            "timeout_policy": ws.timeout_policy,
+            "created_at": created_at,
+            "updated_at": self._timestamp(),
+        }
+        resume_context = previous.get("resume_context")
+        if isinstance(resume_context, dict):
+            payload["resume_context"] = resume_context
+        self._write_json_file(ws.state_file, payload)
+
+    def _terminate_process(self, proc: subprocess.Popen) -> None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=10)
+
+    def _close_active_workstream(
+        self,
+        ws: Workstream,
+        *,
+        proc: subprocess.Popen,
+        lifecycle_state: str,
+    ) -> None:
+        ws.end_time = time.time()
+        ws.exit_code = proc.returncode if proc.returncode is not None else -15
+        self._finalize_workstream_with_lifecycle(ws, lifecycle_state)
+        self._processes.pop(ws.issue, None)
+        self._tail_threads.pop(ws.issue, None)
+
+    def _finalize_finished_process(
+        self,
+        ws: Workstream,
+        proc: subprocess.Popen,
+        *,
+        returncode: int | None = None,
+    ) -> bool:
+        if returncode is None:
+            returncode = proc.poll()
+        if returncode is None:
+            return False
+        self._finalize_workstream(ws, returncode)
+        self._processes.pop(ws.issue, None)
+        self._tail_threads.pop(ws.issue, None)
+        return True
+
+    def _finalize_workstream(self, ws: Workstream, returncode: int) -> None:
+        if ws.end_time is None:
+            ws.end_time = time.time()
+        ws.exit_code = returncode
+        progress = self._sync_progress_to_workstream(ws)
+        if ws.lifecycle_state == "interrupted_resumable":
+            self._persist_workstream_state(ws, sync_progress=False)
+            return
+        if (
+            ws.lifecycle_state == "timed_out_resumable"
+            and ws.timeout_policy == INTERRUPT_PRESERVE_TIMEOUT_POLICY
+        ):
+            self._persist_workstream_state(ws, sync_progress=False)
+            return
+        if returncode == 0:
+            ws.lifecycle_state = "completed"
+        elif ws.checkpoint_id or progress:
+            ws.lifecycle_state = "failed_resumable"
+        else:
+            ws.lifecycle_state = "failed_terminal"
+        self._persist_workstream_state(ws, sync_progress=False)
+
+    def _timed_out(self, ws: Workstream, budget: int) -> None:
+        proc = self._processes.get(ws.issue)
+        if proc is None:
+            return
+        returncode = proc.poll()
+        if returncode is not None:
+            self._finalize_finished_process(ws, proc, returncode=returncode)
+            return
+        if ws.timeout_policy == INTERRUPT_PRESERVE_TIMEOUT_POLICY:
+            print(f"[{ws.issue}] Timed out after {budget}s, marking workstream timed_out_resumable")
+            if self._finalize_finished_process(ws, proc):
+                return
+            self._terminate_process(proc)
+            self._close_active_workstream(ws, proc=proc, lifecycle_state="timed_out_resumable")
+            return
+        print(
+            f"[{ws.issue}] Timed out after {budget}s, marking workstream timed_out_resumable "
+            "without interrupting subprocess"
+        )
+        self._persist_workstream_state(ws, lifecycle_state="timed_out_resumable")
+
+    def _interrupt_workstream(self, ws: Workstream) -> None:
+        proc = self._processes.get(ws.issue)
+        if proc is None or proc.poll() is not None:
+            return
+        print(f"[{ws.issue}] Terminating PID {ws.pid}...")
+        self._terminate_process(proc)
+        self._close_active_workstream(ws, proc=proc, lifecycle_state="interrupted_resumable")
+
+    def _finalize_workstream_with_lifecycle(self, ws: Workstream, lifecycle_state: str) -> None:
+        self._sync_progress_to_workstream(ws)
+        ws.lifecycle_state = lifecycle_state
+        self._persist_workstream_state(ws, sync_progress=False)
+
+    def _resolve_default_branch(self) -> str:
+        if self._default_branch is not None:
+            return self._default_branch
+        default_branch = "main"
+        try:
+            result = subprocess.run(
+                ["git", "ls-remote", "--symref", self.repo_url, "HEAD"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+        except (OSError, subprocess.SubprocessError):
+            self._default_branch = default_branch
+            return default_branch
+        for line in result.stdout.splitlines():
+            if line.startswith("ref: refs/heads/"):
+                default_branch = line.split("refs/heads/")[1].split("\t")[0].strip()
+                break
+        self._default_branch = default_branch
+        return default_branch
+
+    def _resume_context(self, ws: Workstream) -> dict[str, Any]:
+        state_payload = (
+            self._read_json_file(ws.state_file) if str(ws.state_file) not in {"", "."} else {}
+        )
+        context: dict[str, Any] = {
+            "task_description": ws.task,
+            "repo_path": ".",
+            "issue_number": ws.issue,
+            "workstream_state_file": str(ws.state_file),
+            "workstream_progress_file": str(ws.progress_file),
+        }
+        resume_payload = state_payload.get("resume_context")
+        if isinstance(resume_payload, dict):
+            context.update(resume_payload)
+        if ws.resume_checkpoint:
+            context["resume_checkpoint"] = ws.resume_checkpoint
+        if ws.worktree_path:
+            context["worktree_setup"] = {
+                "worktree_path": ws.worktree_path,
+                "branch_name": ws.branch,
+                "created": False,
+            }
+            context["resume_worktree_path"] = ws.worktree_path
+            context["resume_branch_name"] = ws.branch
+        return context
+
+    def _workstream_summary(self, ws: Workstream, status: str) -> dict[str, Any]:
+        if status != "running":
+            self._load_state_into_workstream(ws)
+        self._sync_progress_to_workstream(ws)
+        summary: dict[str, Any] = {
+            "issue": ws.issue,
+            "status": status,
+            "step": ws.last_step or "unknown",
+            "elapsed_s": int(ws.runtime_seconds or 0),
+        }
+        if (
+            ws.lifecycle_state in RESUMABLE_LIFECYCLE_STATES
+            or ws.checkpoint_id
+            or ws.worktree_path
+            or (ws.lifecycle_state and ws.lifecycle_state not in {"pending", "completed"})
+        ):
+            summary.update(
+                {
+                    "lifecycle_state": ws.lifecycle_state or "pending",
+                    "checkpoint_id": ws.checkpoint_id,
+                    "worktree_path": ws.worktree_path,
+                    "log_path": str(ws.log_file),
+                    "cleanup_eligible": ws.cleanup_eligible,
+                }
+            )
+        return summary
+
+    def _cleanup_allowed(self, ws: Workstream) -> bool:
+        return ws.cleanup_eligible
+
     def add_workstream(
         self,
         issue: int,
@@ -195,15 +659,13 @@ class ParallelOrchestrator:
         recipe: str = "default-workflow",
     ) -> Workstream:
         """Create a workstream with its directory without cloning a repository."""
-        ws = Workstream(
+        ws = self._new_workstream(
             issue=issue,
             branch=branch,
             description=description,
             task=task,
             recipe=recipe,
         )
-        ws.work_dir = self.tmp_base / f"ws-{issue}"
-        ws.log_file = self._safe_log_path(issue)
         ws.work_dir.mkdir(parents=True, exist_ok=True)
         return ws
 
@@ -214,29 +676,38 @@ class ParallelOrchestrator:
         description: str,
         task: str,
         recipe: str = "default-workflow",
+        *,
+        max_runtime: int | None = None,
+        timeout_policy: str | None = None,
     ) -> Workstream:
         """Add a workstream. Clones from main and prepares execution files.
 
         If issue is "TBD", auto-creates a GitHub issue using gh CLI.
         """
+        saved_state: dict[str, Any] = {}
         # Auto-create issue if TBD
         if str(issue).upper() == "TBD":
-            print(f"[TBD] Creating GitHub issue for: {description}...")
-            result = subprocess.run(
-                ["gh", "issue", "create", "--title", description, "--body", task],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            if result.returncode == 0:
-                # Extract issue number from URL like https://github.com/.../issues/123
-                url = result.stdout.strip()
-                issue = int(url.rstrip("/").split("/")[-1])
-                print(f"[{issue}] Created issue: {url}")
+            saved_state = self._find_matching_saved_state(branch=branch, description=description)
+            if saved_state:
+                issue = int(saved_state["issue"])
+                print(f"[{issue}] Reusing preserved resumable workstream")
             else:
-                # Fallback: use timestamp-based ID
-                issue = int(time.time()) % 100000
-                print(f"[{issue}] Could not create issue, using fallback ID")
+                print(f"[TBD] Creating GitHub issue for: {description}...")
+                result = subprocess.run(
+                    ["gh", "issue", "create", "--title", description, "--body", task],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                if result.returncode == 0:
+                    # Extract issue number from URL like https://github.com/.../issues/123
+                    url = result.stdout.strip()
+                    issue = int(url.rstrip("/").split("/")[-1])
+                    print(f"[{issue}] Created issue: {url}")
+                else:
+                    # Fallback: use timestamp-based ID
+                    issue = int(time.time()) % 100000
+                    print(f"[{issue}] Could not create issue, using fallback ID")
 
         # Validate issue is a positive integer to prevent path/shell injection
         try:
@@ -246,54 +717,48 @@ class ParallelOrchestrator:
         except (TypeError, ValueError) as e:
             raise ValueError(f"Invalid issue number in workstream config: {issue!r}") from e
 
-        ws = Workstream(
+        ws = self._new_workstream(
             issue=issue,
             branch=branch,
             description=description,
             task=task,
             recipe=recipe,
         )
-        ws.work_dir = self.tmp_base / f"ws-{issue}"
-        ws.log_file = self.tmp_base / f"log-{issue}.txt"
+        if not saved_state:
+            saved_state = self._load_state(issue)
+        self._apply_saved_state(ws, saved_state)
+        self._apply_runtime_overrides(
+            ws,
+            max_runtime=max_runtime,
+            timeout_policy=timeout_policy,
+        )
 
-        # Clean up stale work dir from previous runs
-        if ws.work_dir.exists():
-            import shutil
-
+        reuse_existing = bool(saved_state) and not ws.cleanup_eligible and ws.work_dir.exists()
+        if not reuse_existing and ws.work_dir.exists():
             shutil.rmtree(ws.work_dir)
 
-        # Detect the default branch of the remote repository
-        try:
-            default_branch_result = subprocess.run(
-                ["git", "ls-remote", "--symref", self.repo_url, "HEAD"],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            # Output: "ref: refs/heads/main\tHEAD" -> extract "main"
-            default_branch = "main"  # fallback
-            for line in default_branch_result.stdout.splitlines():
-                if line.startswith("ref: refs/heads/"):
-                    default_branch = line.split("refs/heads/")[1].split("\t")[0].strip()
-                    break
-        except Exception:
-            default_branch = "main"
+        default_branch = self._resolve_default_branch()
 
-        print(f"[{issue}] Cloning default branch '{default_branch}' from remote...")
-        subprocess.run(
-            [
-                "git",
-                "clone",
-                "--depth=1",
-                f"--branch={default_branch}",
-                self.repo_url,
-                str(ws.work_dir),
-            ],
-            check=True,
-            capture_output=True,
-            timeout=120,
-        )
-        # Note: The workflow Step 4 will create the feature branch
+        if reuse_existing:
+            print(f"[{issue}] Reusing preserved work dir {ws.work_dir}")
+        else:
+            print(f"[{issue}] Cloning default branch '{default_branch}' from remote...")
+            subprocess.run(
+                [
+                    "git",
+                    "clone",
+                    "--depth=1",
+                    f"--branch={default_branch}",
+                    self.repo_url,
+                    str(ws.work_dir),
+                ],
+                check=True,
+                capture_output=True,
+                timeout=120,
+            )
+            # Note: The workflow Step 4 will create the feature branch
+
+        ws.work_dir.mkdir(parents=True, exist_ok=True)
 
         # Write execution files based on mode
         if self.mode == "recipe":
@@ -301,6 +766,7 @@ class ParallelOrchestrator:
         else:
             self._write_classic_launcher(ws)
 
+        self._persist_workstream_state(ws)
         self.workstreams.append(ws)
         return ws
 
@@ -314,13 +780,14 @@ class ParallelOrchestrator:
         # Use json.dumps for proper escaping of all special characters
         import json
 
-        safe_task = json.dumps(ws.task)
         safe_recipe = json.dumps(ws.recipe)
+        safe_context = json.dumps(self._resume_context(ws))
         launcher_py.write_text(
             textwrap.dedent(f"""\
             #!/usr/bin/env python3
             \"\"\"Workstream launcher - Rust recipe runner execution.\"\"\"
             import sys
+            import json
             import logging
             from pathlib import Path
 
@@ -340,12 +807,10 @@ class ParallelOrchestrator:
                 print("ERROR: amplihack package not importable. Falling back to classic mode.")
                 sys.exit(2)
 
+            user_context = json.loads({json.dumps(safe_context)})
             result = run_recipe_by_name(
                 {safe_recipe},
-                user_context={{
-                    "task_description": {safe_task},
-                    "repo_path": ".",
-                }},
+                user_context=user_context,
                 progress=True,
             )
 
@@ -379,6 +844,10 @@ class ParallelOrchestrator:
         safe_max_depth = shlex.quote(os.environ.get("AMPLIHACK_MAX_DEPTH", "3"))
         safe_max_sessions = shlex.quote(os.environ.get("AMPLIHACK_MAX_SESSIONS", "10"))
         safe_delegate = shlex.quote(delegate)
+        safe_workstream_issue = shlex.quote(str(ws.issue))
+        safe_progress_file = shlex.quote(str(ws.progress_file))
+        safe_state_file = shlex.quote(str(ws.state_file))
+        safe_worktree_path = shlex.quote(ws.worktree_path)
 
         run_sh = ws.work_dir / "run.sh"
         run_sh.write_text(
@@ -392,6 +861,10 @@ class ParallelOrchestrator:
             export AMPLIHACK_MAX_SESSIONS={safe_max_sessions}
             # Bake in the detected delegate so nested ClaudeProcess inherits it (S2)
             export AMPLIHACK_DELEGATE={safe_delegate}
+            export AMPLIHACK_WORKSTREAM_ISSUE={safe_workstream_issue}
+            export AMPLIHACK_WORKSTREAM_PROGRESS_FILE={safe_progress_file}
+            export AMPLIHACK_WORKSTREAM_STATE_FILE={safe_state_file}
+            export AMPLIHACK_WORKTREE_PATH={safe_worktree_path}
             # Unbuffered stdout/stderr is required so the parent multitask
             # orchestrator can stream nested recipe progress live.
             exec python3 -u launcher.py
@@ -480,7 +953,13 @@ class ParallelOrchestrator:
         )
         ws.pid = proc.pid
         ws.start_time = time.time()
+        ws.end_time = None
+        ws.exit_code = None
+        ws.lifecycle_state = "running"
+        ws.cleanup_eligible = False
+        ws.attempt = (ws.attempt or 0) + 1
         self._processes[ws.issue] = proc
+        self._persist_workstream_state(ws)
 
         # Start a daemon thread to tee stdout → log file + prefixed console output
         tail_thread = threading.Thread(
@@ -506,18 +985,25 @@ class ParallelOrchestrator:
 
         for ws in self.workstreams:
             proc = self._processes.get(ws.issue)
-            if proc and proc.poll() is None:
+            returncode = proc.poll() if proc else None
+            if proc and returncode is None:
+                if not (
+                    ws.lifecycle_state == "timed_out_resumable"
+                    and ws.timeout_policy == CONTINUE_PRESERVE_TIMEOUT_POLICY
+                ):
+                    ws.lifecycle_state = "running"
                 status["running"].add(ws.issue)
             elif proc:
-                ws.exit_code = proc.returncode
-                if ws.end_time is None:
-                    ws.end_time = time.time()
-                if ws.exit_code == 0:
+                self._finalize_finished_process(ws, proc, returncode=returncode)
+                if ws.lifecycle_state == "completed":
                     status["completed"].add(ws.issue)
                 else:
                     status["failed"].add(ws.issue)
             else:
-                status["failed"].add(ws.issue)
+                if ws.exit_code == 0 or ws.lifecycle_state == "completed":
+                    status["completed"].add(ws.issue)
+                else:
+                    status["failed"].add(ws.issue)
 
         return status
 
@@ -529,6 +1015,8 @@ class ParallelOrchestrator:
         workstreams consume ~90GB (1.5GB each) and fill the disk.
         """
         if ws.issue in self._cleaned_up:
+            return
+        if not self._cleanup_allowed(ws):
             return
         if not ws.work_dir.exists():
             self._cleaned_up.add(ws.issue)
@@ -561,42 +1049,57 @@ class ParallelOrchestrator:
             f"[{ws.issue}] Cleaned up work dir ({freed_mb:.0f}MB freed, log preserved at {ws.log_file})"
         )
 
-    def _read_workstream_progress(self, ws: Workstream) -> str:
-        """Read current step name from a workstream's progress file."""
-        if ws.pid is None:
-            return "unknown"
-        safe_name = _SAFE_NAME_RE.sub("_", ws.recipe)[:64]
-        progress_path = (
-            Path(tempfile.gettempdir()) / f"amplihack-progress-{safe_name}-{ws.pid}.json"
-        )
-        try:
-            real_path = progress_path.resolve()
-            if not str(real_path).startswith(str(Path(tempfile.gettempdir()).resolve())):
-                return "unknown"
-            data = json.loads(real_path.read_text(encoding="utf-8"))
-            return data.get("step_name", "unknown")
-        except (OSError, json.JSONDecodeError, KeyError) as exc:
-            logger.debug("Could not read progress for %s: %s", ws.recipe, exc)
-            return "unknown"
+    def _workstream_runtime_budget(self, ws: Workstream, default_budget: int) -> int:
+        """Resolve the runtime budget for a single workstream.
 
-    def monitor(self, check_interval: int = 10, max_runtime: int = 7200) -> None:
-        """Monitor all workstreams until complete or timeout.
+        ``monitor(max_runtime=...)`` provides the run-wide default budget, while
+        ``ws.max_runtime`` remains the authoritative per-workstream override.
+        """
+        if ws.max_runtime is not None:
+            return self._resolve_max_runtime(ws.max_runtime)
+        return self._resolve_max_runtime(default_budget)
 
-        Auto-cleans completed workstream directories to prevent disk exhaustion.
-        Emits a machine-readable JSON heartbeat on each check cycle so callers
-        can detect freshness without parsing human-readable text.
+    def _enforce_running_timeouts(self, default_budget: int) -> None:
+        """Transition over-budget running workstreams into resumable timeout state."""
+        now = time.time()
+        for ws in self.workstreams:
+            proc = self._processes.get(ws.issue)
+            if proc is None or proc.poll() is not None:
+                continue
+            if (
+                ws.lifecycle_state == "timed_out_resumable"
+                and ws.timeout_policy == CONTINUE_PRESERVE_TIMEOUT_POLICY
+            ):
+                continue
+            budget = self._workstream_runtime_budget(ws, default_budget)
+            started_at = ws.start_time if ws.start_time is not None else now
+            if now - started_at >= budget:
+                self._timed_out(ws, budget)
+
+    def monitor(self, check_interval: int = 10, max_runtime: int | None = None) -> None:
+        """Monitor all workstreams until they complete or hit their runtime budgets.
+
+        ``max_runtime`` provides the run-wide default timeout budget. Individual
+        workstreams can override that default via ``ws.max_runtime`` and are
+        timed out independently while monitoring continues for the rest.
         """
         start = time.time()
+        runtime_budget = self._resolve_max_runtime(
+            self.default_max_runtime if max_runtime is None else max_runtime
+        )
 
-        while time.time() - start < max_runtime:
+        while True:
+            self._enforce_running_timeouts(runtime_budget)
             status = self.get_status()
 
             now = datetime.now().strftime("%H:%M:%S")
             elapsed = int(time.time() - start)
-            print(f"\n[{now}] Status (elapsed: {elapsed}s):")
-            print(f"  Running:   {len(status['running'])} {sorted(status['running'])}")
-            print(f"  Completed: {len(status['completed'])} {sorted(status['completed'])}")
-            print(f"  Failed:    {len(status['failed'])} {sorted(status['failed'])}")
+            self._stdout_write(
+                f"\n[{now}] Status (elapsed: {elapsed}s):\n"
+                f"  Running:   {len(status['running'])} {sorted(status['running'])}\n"
+                f"  Completed: {len(status['completed'])} {sorted(status['completed'])}\n"
+                f"  Failed:    {len(status['failed'])} {sorted(status['failed'])}\n"
+            )
 
             # Emit machine-readable JSONL heartbeat
             ws_summaries = []
@@ -609,14 +1112,7 @@ class ParallelOrchestrator:
                     ws_status = "failed"
                 else:
                     ws_status = "unknown"
-                ws_summaries.append(
-                    {
-                        "issue": ws.issue,
-                        "status": ws_status,
-                        "step": self._read_workstream_progress(ws),
-                        "elapsed_s": int(ws.runtime_seconds or 0),
-                    }
-                )
+                ws_summaries.append(self._workstream_summary(ws, ws_status))
             heartbeat = {
                 "type": "heartbeat",
                 "ts": time.time(),
@@ -645,20 +1141,6 @@ class ParallelOrchestrator:
 
             time.sleep(check_interval)
 
-        # Mark any still-running as timed out
-        for ws in self.workstreams:
-            proc = self._processes.get(ws.issue)
-            if proc and proc.poll() is None:
-                print(f"[{ws.issue}] Timed out after {max_runtime}s, terminating...")
-                proc.terminate()
-                try:
-                    proc.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                ws.exit_code = -1
-                ws.end_time = time.time()
-                self._cleanup_workstream_dir(ws)
-
     def report(self) -> str:
         """Generate final report."""
         lines = [
@@ -685,8 +1167,12 @@ class ParallelOrchestrator:
                     f"\n[{ws.issue}] {ws.description}",
                     f"  Branch:  {ws.branch}",
                     f"  Status:  {status}",
+                    f"  Lifecycle: {ws.lifecycle_state or 'pending'}",
                     f"  Runtime: {runtime}",
+                    f"  Checkpoint: {ws.checkpoint_id or 'n/a'}",
+                    f"  Worktree: {ws.worktree_path or 'n/a'}",
                     f"  Log:     {ws.log_file}",
+                    f"  Cleanup eligible: {ws.cleanup_eligible}",
                 ]
             )
 
@@ -790,14 +1276,7 @@ class ParallelOrchestrator:
     def cleanup_running(self) -> None:
         """Terminate all running workstreams."""
         for ws in self.workstreams:
-            proc = self._processes.get(ws.issue)
-            if proc and proc.poll() is None:
-                print(f"[{ws.issue}] Terminating PID {ws.pid}...")
-                proc.terminate()
-                try:
-                    proc.wait(timeout=10)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
+            self._interrupt_workstream(ws)
 
     def cleanup_merged(self, config_path: str, dry_run: bool = False) -> None:
         """Clean up workstreams whose PRs have been merged.
@@ -831,6 +1310,18 @@ class ParallelOrchestrator:
 
                     if pr_merged:
                         ws_dir = self.tmp_base / f"ws-{issue}"
+                        state = self._load_state(int(issue))
+                        cleanup_eligible = bool(
+                            state.get(
+                                "cleanup_eligible",
+                                self._derive_cleanup_eligible(
+                                    str(state.get("lifecycle_state", "failed_terminal"))
+                                ),
+                            )
+                        )
+                        if not cleanup_eligible:
+                            print(f"  [SKIP] ws-{issue} (preserved resumable state)")
+                            continue
                         if ws_dir.exists():
                             # Calculate size before deleting
                             dir_size = 0
@@ -865,7 +1356,14 @@ class ParallelOrchestrator:
             print("\nRun without --dry-run to actually delete these workstreams.")
 
 
-def run(config_path: str, mode: str = "recipe", recipe: str = "default-workflow") -> str:
+def run(
+    config_path: str,
+    mode: str = "recipe",
+    recipe: str = "default-workflow",
+    *,
+    max_runtime: int | None = None,
+    timeout_policy: str | None = None,
+) -> str:
     """Main entry point for the orchestrator.
 
     Args:
@@ -892,6 +1390,12 @@ def run(config_path: str, mode: str = "recipe", recipe: str = "default-workflow"
         print(f"WARNING: No git remote 'origin'; using local path: {repo_url}")
 
     orchestrator = ParallelOrchestrator(repo_url=repo_url, mode=mode)
+    run_max_runtime = orchestrator._resolve_max_runtime(
+        orchestrator.default_max_runtime if max_runtime is None else max_runtime
+    )
+    run_timeout_policy = orchestrator._resolve_timeout_policy(
+        timeout_policy or orchestrator.default_timeout_policy
+    )
     orchestrator.setup()
 
     for item in config:
@@ -901,6 +1405,8 @@ def run(config_path: str, mode: str = "recipe", recipe: str = "default-workflow"
             description=item.get("description", f"Issue #{item['issue']}"),
             task=item["task"],
             recipe=item.get("recipe", recipe),
+            max_runtime=item.get("max_runtime", run_max_runtime),
+            timeout_policy=item.get("timeout_policy", run_timeout_policy),
         )
 
     # Handle SIGINT gracefully
@@ -912,7 +1418,7 @@ def run(config_path: str, mode: str = "recipe", recipe: str = "default-workflow"
     signal.signal(signal.SIGINT, signal_handler)
 
     orchestrator.launch_all()
-    orchestrator.monitor()
+    orchestrator.monitor(max_runtime=run_max_runtime)
     return orchestrator.report()
 
 
@@ -962,6 +1468,17 @@ if __name__ == "__main__":
         action="store_true",
         help="Show what would be deleted without actually deleting (use with --cleanup)",
     )
+    parser.add_argument(
+        "--max-runtime",
+        type=int,
+        default=None,
+        help=f"Override the workstream runtime budget in seconds (default: {DEFAULT_MAX_RUNTIME})",
+    )
+    parser.add_argument(
+        "--timeout-policy",
+        default=None,
+        help=f"Timeout policy for active workstreams (default: {DEFAULT_TIMEOUT_POLICY})",
+    )
     args = parser.parse_args()
 
     if args.cleanup:
@@ -969,4 +1486,10 @@ if __name__ == "__main__":
     else:
         if args.dry_run:
             print("WARNING: --dry-run only works with --cleanup, ignoring")
-        run(args.config, mode=args.mode, recipe=args.recipe)
+        run(
+            args.config,
+            mode=args.mode,
+            recipe=args.recipe,
+            max_runtime=args.max_runtime,
+            timeout_policy=args.timeout_policy,
+        )
