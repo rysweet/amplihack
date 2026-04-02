@@ -248,7 +248,7 @@ The default-workflow has exactly **3 git-based checkpoints** across 23 steps:
 ```
 PHASE 1: SETUP
 ├─ setup-session → session_info
-├─ classify-and-decompose (bash) → decomposition_json
+├─ classify-and-decompose (agent) → decomposition_json
 ├─ parse-decomposition (bash) → task_type, workstream_count
 ├─ activate-workflow (bash) → workstream_count
 └─ materialize-force-single → force_single_workstream
