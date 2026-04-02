@@ -53,8 +53,8 @@ variable (direct Python imports, existing test suites, legacy configurations).
 
 ## Python API (knowledge builder)
 
-If you call the knowledge builder directly from Python, note that the
-`claude_cmd` parameter was renamed to `agent_cmd` in March 2026:
+If you call the knowledge builder directly from Python, note that newer code
+uses `agent_cmd` and older examples may still refer to `claude_cmd`:
 
 ```python
 # Old (deprecated)
