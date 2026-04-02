@@ -367,6 +367,29 @@ class TestGetCurrentSessionId:
                 # Should fall through to timestamp generation
                 assert len(result) >= 10
 
+    def test_sanitizes_path_traversal_in_env_var(self, tmp_path):
+        hook = _make_stop_hook(tmp_path)
+        with patch.dict(os.environ, {"CLAUDE_SESSION_ID": "../../etc/passwd"}):
+            result = hook._get_current_session_id()
+            assert ".." not in result
+            assert "/" not in result
+
+    def test_sanitizes_newline_injection_in_env_var(self, tmp_path):
+        hook = _make_stop_hook(tmp_path)
+        with patch.dict(os.environ, {"AMPLIHACK_SESSION_ID": "session\nX-Injected: evil"}):
+            result = hook._get_current_session_id()
+            assert "\n" not in result
+            assert ":" not in result
+
+    def test_sanitizes_path_traversal_in_logs_dir_name(self, tmp_path):
+        hook = _make_stop_hook(tmp_path)
+        # Create a directory whose name contains path traversal chars
+        malicious_dir = hook.log_dir / "session..evil"
+        malicious_dir.mkdir()
+        with patch.dict(os.environ, {}, clear=True):
+            result = hook._get_current_session_id()
+            assert ".." not in result
+
 
 # ============================================================================
 # _increment_lock_counter
