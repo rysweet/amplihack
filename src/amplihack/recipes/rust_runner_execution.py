@@ -12,6 +12,7 @@ import sys
 import tempfile
 import threading
 import time
+from collections import deque
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -608,8 +609,11 @@ def _run_rust_process(
 
 def _meaningful_stderr_tail(stderr: str) -> str:
     lines = stderr.strip().splitlines()
-    meaningful = [line for line in lines if not _is_progress_metadata_line(line)]
-    return "\n".join(meaningful[-5:]) if meaningful else "\n".join(lines[-5:])
+    meaningful: deque[str] = deque(maxlen=5)
+    for line in lines:
+        if not _is_progress_metadata_line(line):
+            meaningful.append(line)
+    return "\n".join(meaningful) if meaningful else "\n".join(lines[-5:])
 
 
 def _is_progress_metadata_line(line: str) -> bool:
@@ -618,7 +622,7 @@ def _is_progress_metadata_line(line: str) -> bool:
         return True
     if stripped.startswith(("▶", "✓", "⊘", "✗", "[agent]", _LEGACY_HEARTBEAT_PREFIX)):
         return True
-    if stripped.startswith((_STEP_TRANSITION_PREFIX, _LEGACY_STEP_TRANSITION_PREFIX)):
+    if stripped.startswith((_STEP_TRANSITION_PREFIX, _LEGACY_STEP_TRANSITION_PREFIX, _HEARTBEAT_PREFIX)):
         return True
     if stripped.startswith("{"):
         try:
@@ -629,8 +633,6 @@ def _is_progress_metadata_line(line: str) -> bool:
             return True
         if isinstance(payload.get("transition"), str) and payload["transition"].startswith("step_"):
             return True
-    if stripped.startswith(_HEARTBEAT_PREFIX):
-        return True
     return False
 
 
