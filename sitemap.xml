@@ -2149,6 +2149,10 @@
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/concepts/rust-runner-execution-architecture/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/concepts/settings-manager-vs-permanent-changes/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
@@ -2462,6 +2466,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/howto/configure-copilot-parity-control-plane/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/howto/configure-issue-classifier-workflow/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
@@ -2870,6 +2878,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/reference/resumable-workstream-timeouts/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/reference/rust-runner-execution/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
