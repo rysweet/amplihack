@@ -19,6 +19,9 @@ from datetime import datetime
 from pathlib import Path
 
 
+_SANITIZE_RE = re.compile(r"[^A-Za-z0-9_\-]")
+
+
 def _get_project_root() -> Path:
     """Get project root from CLAUDE_PROJECT_DIR or fallback to cwd."""
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
@@ -52,7 +55,7 @@ def _sanitize_session_id(session_id: str | None) -> str | None:
     """
     if session_id is None:
         return None
-    return re.sub(r"[^A-Za-z0-9_\-]", "_", session_id)
+    return _SANITIZE_RE.sub("_", session_id)
 
 
 def _get_session_id() -> str | None:

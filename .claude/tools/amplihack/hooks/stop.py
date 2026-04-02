@@ -53,6 +53,9 @@ DEFAULT_CONTINUATION_PROMPT = (
 )
 DEFAULT_LOCK_TTL_SECONDS = 24 * 60 * 60
 
+_SANITIZE_RE = re.compile(r"[^A-Za-z0-9_\-]")
+_TASK_SLUG_RE = re.compile(r"[^a-z0-9]+")
+
 
 class StopHook(HookProcessor):
     """Hook processor for stop events with lock support."""
@@ -489,7 +492,7 @@ class StopHook(HookProcessor):
         """
         if session_id is None:
             return None
-        return re.sub(r"[^A-Za-z0-9_\-]", "_", session_id)
+        return _SANITIZE_RE.sub("_", session_id)
 
     def _read_lock_metadata(self) -> dict[str, str]:
         """Parse key/value metadata from .lock_active.
@@ -983,9 +986,7 @@ class StopHook(HookProcessor):
             if "## Task Summary" in filled_template:
                 summary_section = filled_template.split("## Task Summary")[1].split("\n\n")[1]
                 first_sentence = summary_section.split(".")[0][:100]
-                import re
-
-                task_slug = re.sub(r"[^a-z0-9]+", "-", first_sentence.lower()).strip("-")
+                task_slug = _TASK_SLUG_RE.sub("-", first_sentence.lower()).strip("-")
                 task_slug = task_slug[:50]
         except Exception as e:
             self.log(f"Could not extract task slug from reflection, using 'session': {e}", "DEBUG")
