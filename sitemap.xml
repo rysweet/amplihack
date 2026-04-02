@@ -2893,6 +2893,10 @@
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/reference/workflow-issue-extraction/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/reference/workflow-publish-import-validation/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
@@ -2922,6 +2926,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/security/TOKEN_SANITIZATION_GUIDE/</loc>
+         <lastmod>2026-04-02</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/security/lock-session-id-sanitization/</loc>
          <lastmod>2026-04-02</lastmod>
     </url>
     <url>
