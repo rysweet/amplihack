@@ -10,6 +10,8 @@ into the auto-mode evaluation loop:
 
 from unittest.mock import MagicMock, Mock, patch
 
+import pytest
+
 from amplihack.launcher.auto_mode import AutoMode
 from amplihack.launcher.completion_signals import CompletionSignals
 from amplihack.launcher.completion_verifier import (
@@ -22,6 +24,13 @@ from amplihack.launcher.work_summary import (
     TodoState,
     WorkSummary,
 )
+
+
+@pytest.fixture(autouse=True)
+def disable_agent_memory():
+    """Keep evaluation tests out of the Kuzu-backed memory path."""
+    with patch("amplihack.launcher.agent_memory.AgentMemory.create", return_value=None):
+        yield
 
 
 class TestWorkSummaryPromptInjection:
@@ -414,6 +423,46 @@ class TestGracefulDegradation:
         # Should still work with TodoWrite only
         assert "3" in evaluation_prompt  # Task count
 
+    @patch("amplihack.launcher.auto_mode.WorkSummaryGenerator")
+    def test_evaluation_prompt_logs_summary_failure_as_warning(self, mock_generator_class):
+        """Summary-generation fallback should log at WARNING level."""
+        mock_generator = Mock()
+        mock_generator.generate.side_effect = Exception("Git not available")
+        mock_generator_class.return_value = mock_generator
+
+        auto_mode = AutoMode(task="Test task")
+        log_calls = []
+        auto_mode.log = lambda msg, level="INFO": log_calls.append((msg, level))
+
+        auto_mode._build_evaluation_prompt(Mock())
+
+        assert any(
+            level == "WARNING" and "Work summary generation failed" in msg
+            for msg, level in log_calls
+        )
+
+    @patch("amplihack.launcher.auto_mode.WorkSummaryGenerator")
+    def test_verification_fallback_logs_warning_level(self, mock_generator_class):
+        """Verification fallback should log at WARNING level before text-parse fallback."""
+        mock_generator = Mock()
+        mock_generator.generate.side_effect = Exception("Git not available")
+        mock_generator_class.return_value = mock_generator
+
+        auto_mode = AutoMode(task="Test task")
+        log_calls = []
+        auto_mode.log = lambda msg, level="INFO": log_calls.append((msg, level))
+
+        should_continue = auto_mode._should_continue_loop(
+            "Auto-Mode Evaluation: COMPLETE\n\nDone.",
+            Mock(),
+        )
+
+        assert should_continue is False
+        assert any(
+            level == "WARNING" and "Verification failed, falling back to text parsing" in msg
+            for msg, level in log_calls
+        )
+
 
 class TestAutoModeLoopIntegration:
     """Test end-to-end auto-mode loop with verification."""
@@ -475,7 +524,7 @@ class TestAutoModeLoopIntegration:
         mock_client.__aexit__.return_value = None
         mock_client_class.return_value = mock_client
 
-        auto_mode = AutoMode(task="Test task", max_iterations=10)
+        AutoMode(task="Test task", max_iterations=10)
 
         # Run auto-mode (would be async in real implementation)
         # This is a simplified test - real implementation would need async
@@ -611,7 +660,7 @@ class TestEvaluationDecisionLogging:
 
         evaluation_result = "Auto-Mode Evaluation: COMPLETE\n\nAll tasks done."
 
-        should_continue = auto_mode._should_continue_loop(evaluation_result, Mock())
+        auto_mode._should_continue_loop(evaluation_result, Mock())
 
         # Verify logging includes key details
         log_output = "\n".join(logged_messages)
@@ -713,3 +762,67 @@ class TestEvaluationDecisionLogging:
         # Should show disputed claim
         assert "Completion claim disputed" in log_output
         assert should_continue is True
+
+    @patch("amplihack.launcher.auto_mode.WorkSummaryGenerator")
+    @patch("amplihack.launcher.auto_mode.CompletionSignalDetector")
+    @patch("amplihack.launcher.auto_mode.CompletionVerifier")
+    def test_logs_omitted_discrepancy_count(
+        self, mock_verifier_class, mock_detector_class, mock_generator_class
+    ):
+        """Discrepancy truncation should explicitly log the omitted count."""
+        mock_generator = Mock()
+        mock_summary = WorkSummary(
+            todo_state=TodoState(total=5, completed=3, in_progress=1, pending=1),
+            git_state=GitState(
+                current_branch="feat/test",
+                has_uncommitted_changes=False,
+                commits_ahead=2,
+            ),
+            github_state=GitHubState(
+                pr_number=None, pr_state=None, ci_status=None, pr_mergeable=None
+            ),
+        )
+        mock_generator.generate.return_value = mock_summary
+        mock_generator_class.return_value = mock_generator
+
+        mock_detector = Mock()
+        mock_signals = CompletionSignals(
+            all_steps_complete=False,
+            pr_created=False,
+            ci_passing=False,
+            pr_mergeable=False,
+            has_commits=True,
+            no_uncommitted_changes=True,
+            completion_score=0.4,
+        )
+        mock_detector.detect.return_value = mock_signals
+        mock_detector_class.return_value = mock_detector
+
+        mock_verifier = Mock()
+        mock_verification = VerificationResult(
+            status=VerificationStatus.DISPUTED,
+            verified=False,
+            explanation="Several completion signals are still missing",
+            discrepancies=[
+                "PR not created",
+                "CI not passing",
+                "Mergeability unknown",
+                "Uncommitted changes remain",
+            ],
+        )
+        mock_verifier.verify.return_value = mock_verification
+        mock_verifier_class.return_value = mock_verifier
+
+        auto_mode = AutoMode(task="Test task")
+        log_calls = []
+        auto_mode.log = lambda msg, level="INFO": log_calls.append((msg, level))
+
+        should_continue = auto_mode._should_continue_loop("EVALUATION: COMPLETE", Mock())
+
+        assert should_continue is True
+        log_output = "\n".join(msg for msg, _ in log_calls)
+        assert "PR not created" in log_output
+        assert "CI not passing" in log_output
+        assert "Mergeability unknown" in log_output
+        assert "Uncommitted changes remain" not in log_output
+        assert "1 additional discrepancies omitted" in log_output

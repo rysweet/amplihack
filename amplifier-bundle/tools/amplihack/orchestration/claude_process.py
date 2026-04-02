@@ -235,7 +235,15 @@ class ClaudeProcess:
         else:
             binary_prefix = DELEGATE_COMMANDS[delegate]
 
-        cmd = [*binary_prefix, "--dangerously-skip-permissions", "-p", self.prompt]
+        # Select permission flags based on delegate type.
+        # Claude uses --dangerously-skip-permissions; Copilot uses --allow-all-tools.
+        # Unknown delegates (fallback) get Claude flags since they resolve to 'claude'.
+        if delegate == "amplihack copilot":
+            permission_flags = ["--allow-all-tools"]
+        else:
+            permission_flags = ["--dangerously-skip-permissions"]
+
+        cmd = [*binary_prefix, *permission_flags, "-p", self.prompt]
 
         if self.model:
             cmd.extend(["--model", self.model])
@@ -318,9 +326,8 @@ class ClaudeProcess:
                 except (BrokenPipeError, OSError):
                     # Process closed or PTY closed
                     break
-        except Exception:
-            # Silently handle any other exceptions
-            pass
+        except Exception as e:
+            self.log(f"Unexpected PTY stdin feeder error: {e}", level="WARNING")
 
     def _wait_for_completion(self) -> int:
         """Wait for process to complete with optional timeout.
@@ -359,6 +366,8 @@ class ClaudeProcess:
         if self._master_fd is not None:
             try:
                 os.close(self._master_fd)
-            except Exception:
+            except (OSError, ValueError):
                 pass
+            except Exception as e:
+                self.log(f"Unexpected PTY cleanup error: {e}", level="WARNING")
             self._master_fd = None

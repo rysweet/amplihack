@@ -53,6 +53,10 @@ from amplihack.launcher.work_summary import WorkSummaryGenerator
 
 # Security constants for content sanitization
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
+MAX_TURN_OUTPUT = 10 * 1024 * 1024  # 10MB per turn limit
+MAX_LOGGED_DISCREPANCIES = 3
+DEFAULT_MAX_TOTAL_API_CALLS = 50
+DEFAULT_MAX_SESSION_DURATION = 3600  # 1 hour max
 PROMPT_INJECTION_PATTERNS = [
     r"ignore\s+previous\s+instructions",
     r"disregard\s+all\s+prior",
@@ -78,9 +82,13 @@ def _sanitize_injected_content(content: str) -> str:
 
     # Truncate if too large
     if len(content.encode("utf-8")) > MAX_INJECTED_CONTENT_SIZE:
-        # Truncate to size limit with warning
-        content = content[: MAX_INJECTED_CONTENT_SIZE // 2]  # UTF-8 safe truncation
-        content += "\n\n[Content truncated due to size limit]"
+        truncation_notice = "\n\n[Content truncated due to size limit]"
+        max_content_bytes = max(
+            MAX_INJECTED_CONTENT_SIZE - len(truncation_notice.encode("utf-8")),
+            0,
+        )
+        truncated = content.encode("utf-8")[:max_content_bytes].decode("utf-8", errors="ignore")
+        content = truncated + truncation_notice
 
     # Remove prompt injection patterns
     content_lower = content.lower()
@@ -188,8 +196,10 @@ class AutoMode:
             self.memory = AgentMemory.create(agent_name=f"auto_{sdk}")
             if self.memory:
                 self.log("Memory system initialized")
-        except Exception:
-            pass  # Memory is optional
+        except (ImportError, AttributeError) as e:
+            self.log(f"Memory system unavailable: {e}", level="DEBUG")
+        except Exception as e:
+            self.log(f"Unexpected memory initialization error: {e}", level="WARNING")
 
         # Create directories for prompt injection feature
         self.append_dir = self.log_dir / "append"
@@ -206,8 +216,14 @@ class AutoMode:
 
         # Security: Session-level limits to prevent resource exhaustion
         self.total_api_calls = 0
-        self.max_total_api_calls = 50  # Max API calls per session
-        self.max_session_duration = 3600  # 1 hour max
+        self.max_total_api_calls = self._get_positive_int_env(
+            "AMPLIHACK_AUTO_MODE_MAX_TOTAL_API_CALLS",
+            DEFAULT_MAX_TOTAL_API_CALLS,
+        )
+        self.max_session_duration = self._get_positive_int_env(
+            "AMPLIHACK_AUTO_MODE_MAX_SESSION_DURATION_SECONDS",
+            DEFAULT_MAX_SESSION_DURATION,
+        )
         self.session_output_size = 0
         self.max_session_output = 50 * 1024 * 1024  # 50MB total session output
 
@@ -285,6 +301,30 @@ class AutoMode:
         with open(self.log_dir / "auto.log", "a", encoding="utf-8") as f:
             f.write(f"[{time.strftime('%H:%M:%S')}] [{level}] {msg}\n")
 
+    def _get_positive_int_env(self, env_name: str, default: int) -> int:
+        """Read a positive integer from the environment with explicit warning on fallback."""
+        raw_value = os.environ.get(env_name)
+        if raw_value is None or raw_value == "":
+            return default
+
+        try:
+            parsed = int(raw_value)
+        except ValueError:
+            self.log(
+                f"Invalid {env_name} value {raw_value!r}; using default {default}",
+                level="WARNING",
+            )
+            return default
+
+        if parsed <= 0:
+            self.log(
+                f"Invalid {env_name} value {raw_value!r}; using default {default}",
+                level="WARNING",
+            )
+            return default
+
+        return parsed
+
     def _format_elapsed(self, seconds: float) -> str:
         """Format elapsed time as Xm Ys or Xs.
 
@@ -354,7 +394,22 @@ class AutoMode:
             ]
         else:
             agent = os.environ.get("AMPLIHACK_AGENT_BINARY", self.sdk or "claude")
-            cmd = ["amplihack", agent, "--dangerously-skip-permissions", "--verbose", "-p", prompt]
+            if agent == "copilot":
+                cmd = ["amplihack", "copilot", "--allow-all-tools", "--add-dir", "/", "-p", prompt]
+            elif agent == "claude":
+                cmd = [
+                    "amplihack",
+                    agent,
+                    "--dangerously-skip-permissions",
+                    "--verbose",
+                    "-p",
+                    prompt,
+                ]
+            else:
+                raise RuntimeError(
+                    f"Unsupported agent binary '{agent}' in _run_sdk_subprocess(). "
+                    f"Set AMPLIHACK_AGENT_BINARY to 'claude' or 'copilot'."
+                )
 
         self.log(f"Running: {cmd[0]} ...")
 
@@ -440,12 +495,39 @@ class AutoMode:
         stderr_thread.start()
         stdin_thread.start()
 
-        # Wait for process to complete
-        process.wait()
+        # Apply the configured per-query timeout to subprocess-based SDK calls too.
+        query_timeout_seconds = getattr(self, "query_timeout_seconds", None)
+        timed_out = False
+        timeout_error = ""
+        try:
+            if query_timeout_seconds is None:
+                process.wait()
+            else:
+                process.wait(timeout=query_timeout_seconds)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            timeout_error = (
+                f"Subprocess turn timed out after {query_timeout_seconds:.1f}s. "
+                "Try reducing task complexity or increasing --query-timeout-minutes."
+            )
+            self.log(timeout_error, level="ERROR")
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.log("Subprocess did not exit after terminate(); killing", level="WARNING")
+                process.kill()
+                process.wait()
 
         # Wait for output threads to finish reading
-        stdout_thread.join()
-        stderr_thread.join()
+        join_timeout = 10.0 if timed_out else None
+        stdout_thread.join(timeout=join_timeout)
+        stderr_thread.join(timeout=join_timeout)
+        if timed_out:
+            if stdout_thread.is_alive():
+                self.log("stdout reader thread did not exit after timeout", level="WARNING")
+            if stderr_thread.is_alive():
+                self.log("stderr reader thread did not exit after timeout", level="WARNING")
         # stdin_thread is daemon, will terminate automatically
 
         # Combine captured output
@@ -459,6 +541,9 @@ class AutoMode:
         # Log stderr if present (FULL output per user requirement)
         if stderr_output:
             self.log(f"stderr ({len(stderr_output)} chars): {stderr_output}")
+
+        if timed_out:
+            return 1, stdout_output if stdout_output else timeout_error
 
         return process.returncode, stdout_output
 
@@ -548,7 +633,7 @@ Document your decisions and reasoning in comments/logs."""
 
         except Exception as e:
             # Graceful degradation
-            self.log(f"Warning: Work summary generation failed: {e}")
+            self.log(f"Warning: Work summary generation failed: {e}", level="WARNING")
             work_summary_text = "Work summary unavailable (git/GitHub tools may be missing)"
             signal_explanation = ""
 
@@ -659,8 +744,12 @@ Current Turn: {self.turn}/{self.max_turns}"""
                 self.log(f"⚠️  Completion claim disputed: {verification.explanation}")
                 if verification.discrepancies:
                     self.log("Missing signals:")
-                    for discrepancy in verification.discrepancies[:3]:  # Show top 3
+                    displayed_discrepancies = verification.discrepancies[:MAX_LOGGED_DISCREPANCIES]
+                    for discrepancy in displayed_discrepancies:
                         self.log(f"  - {discrepancy}")
+                    omitted_count = len(verification.discrepancies) - len(displayed_discrepancies)
+                    if omitted_count > 0:
+                        self.log(f"  ... {omitted_count} additional discrepancies omitted")
                 self.log("Continuing loop to complete remaining work...")
             elif not should_continue:
                 self.log("✓ Completion verified by concrete signals")
@@ -668,7 +757,10 @@ Current Turn: {self.turn}/{self.max_turns}"""
             return should_continue
 
         except Exception as e:
-            self.log(f"Warning: Verification failed, falling back to text parsing: {e}")
+            self.log(
+                f"Warning: Verification failed, falling back to text parsing: {e}",
+                level="WARNING",
+            )
             # Fallback to old behavior
             eval_lower = eval_result.lower()
             return "auto-mode evaluation: complete" not in eval_lower
@@ -777,11 +869,9 @@ Current Turn: {self.turn}/{self.max_turns}"""
             return self._run_sdk_subprocess(prompt)
 
         try:
-            print("\n[DEBUG] 🚀 START _run_turn_with_sdk", flush=True)
             self.log("Using Claude SDK (streaming mode)")
             output_lines = []
             turn_output_size = 0
-            MAX_TURN_OUTPUT = 10 * 1024 * 1024  # 10MB per turn limit
 
             # Capture user message for transcript
             self.message_capture.capture_user_message(prompt)
@@ -795,7 +885,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
             )
 
             # Stream response - messages are typed objects, not dicts
-            print("\n[DEBUG] 🔄 Starting async for message loop", flush=True)
+            self.log("Starting Claude SDK message loop", level="DEBUG")
 
             # Track turn start time for accurate timeout reporting
             turn_start_time = time.time()
@@ -808,14 +898,10 @@ Current Turn: {self.turn}/{self.max_turns}"""
             )
             async with timeout_ctx:
                 async for message in query(prompt=prompt, options=options):
-                    print("\n[DEBUG] 💬 Got a message from query()", flush=True)
                     # Handle different message types
                     if hasattr(message, "__class__"):
                         msg_type = message.__class__.__name__
-                        print(
-                            f"\n[DEBUG] 📨 Message type: {msg_type}", flush=True
-                        )  # Direct print to bypass log()
-                        self.log(f"📨 Received message type: {msg_type}", level="INFO")
+                        self.log(f"Received Claude SDK message type: {msg_type}", level="DEBUG")
 
                         if msg_type == "AssistantMessage":
                             # Capture assistant message for transcript
@@ -1558,7 +1644,6 @@ Objective:
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
                 self.turn = turn
-                turn_start_time = time.time()  # Track turn start time
 
                 # Check if fork needed before turn execution
                 if self.fork_manager.should_fork():

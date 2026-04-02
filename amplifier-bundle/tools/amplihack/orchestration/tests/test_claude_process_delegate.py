@@ -189,15 +189,29 @@ class TestBuildCommandUsesDelegate:
             f"_build_command() must include the prompt in the command. Got: {cmd}"
         )
 
-    def test_build_command_includes_permissions_flag(self, tmp_path):
-        """_build_command() must include --dangerously-skip-permissions flag."""
+    def test_build_command_includes_permissions_flag_for_claude(self, tmp_path):
+        """_build_command() must include --dangerously-skip-permissions for Claude delegate."""
         proc = make_process(tmp_path)
 
         with patch.dict(os.environ, {"AMPLIHACK_DELEGATE": "amplihack claude"}):
             cmd = proc._build_command()
 
         assert "--dangerously-skip-permissions" in cmd, (
-            f"_build_command() must include --dangerously-skip-permissions. Got: {cmd}"
+            f"_build_command() must include --dangerously-skip-permissions for Claude. Got: {cmd}"
+        )
+
+    def test_build_command_uses_allow_all_tools_for_copilot(self, tmp_path):
+        """_build_command() must use --allow-all-tools (not --dangerously-skip-permissions) for Copilot."""
+        proc = make_process(tmp_path)
+
+        with patch.dict(os.environ, {"AMPLIHACK_DELEGATE": "amplihack copilot"}):
+            cmd = proc._build_command()
+
+        assert "--allow-all-tools" in cmd, (
+            f"_build_command() must include --allow-all-tools for Copilot delegate. Got: {cmd}"
+        )
+        assert "--dangerously-skip-permissions" not in cmd, (
+            f"_build_command() must NOT include --dangerously-skip-permissions for Copilot. Got: {cmd}"
         )
 
 

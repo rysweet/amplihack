@@ -71,7 +71,7 @@ class TestRustRunnerEnvironment:
         assert env["CLAUDE_PROJECT_DIR"] == "/tmp/project-root"
         assert env["PYTHONPATH"] == "/tmp/project-root/src"
         assert env["RECIPE_RUNNER_RS_PATH"] == "/custom/bin/recipe-runner-rs"
-        assert "GITHUB_TOKEN" not in env
+        assert env["GITHUB_TOKEN"] == "secret-token"
         assert "AWS_SECRET_ACCESS_KEY" not in env
 
     @patch.dict(
@@ -97,6 +97,21 @@ class TestRustRunnerEnvironment:
 
 class TestNormalizeCopilotCliArgs:
     """Tests for nested Copilot compatibility argument rewriting."""
+
+    def test_strips_claude_only_flags(self):
+        args = [
+            "--dangerously-skip-permissions",
+            "--system-prompt",
+            "architect instructions",
+            "-p",
+            "user prompt",
+        ]
+
+        normalized = _normalize_copilot_cli_args(args)
+
+        assert "--dangerously-skip-permissions" not in normalized
+        assert normalized[:2] == ["--allow-all-tools", "--allow-all-paths"]
+        assert normalized[-2:] == ["-p", "architect instructions\n\nuser prompt"]
 
     def test_merges_system_prompt_into_single_prompt_and_injects_permissions(self):
         args = [

@@ -1,7 +1,7 @@
 ---
 title: "Copilot Parity Control Plane Reference"
 description: "Reference for the Copilot launcher wrapper contract, XPIA precedence, Rust runner discovery, and nested Copilot normalization."
-last_updated: 2026-03-24
+last_updated: 2026-04-02
 review_schedule: as-needed
 owner: amplihack
 doc_type: reference
@@ -15,14 +15,15 @@ The Copilot parity control plane gives GitHub Copilot CLI the same staged amplih
 
 ## Components
 
-| Component                          | Path                                            | Responsibility                                                                                                       |
-| ---------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Copilot launcher                   | `src/amplihack/launcher/copilot.py`             | Stages agents, hooks, commands, recipes, and generated wrappers before launching Copilot CLI                         |
-| Rust recipe runner bridge          | `src/amplihack/recipes/rust_runner.py`          | Discovers `recipe-runner-rs`, enforces version compatibility, builds subprocess environment, and parses JSON results |
-| Nested Copilot compatibility layer | `src/amplihack/recipes/rust_runner_copilot.py`  | Merges prompt fragments and injects permissive defaults only when explicit Copilot permission flags are absent       |
-| Canonical XPIA hook                | `.claude/tools/xpia/hooks/pre_tool_use.py`      | Fail-closed Bash policy evaluation backed by `xpia-defend`                                                           |
-| XPIA compatibility shim            | `.claude/tools/xpia/hooks/pre_tool_use_rust.py` | Delegates to `pre_tool_use.py` so both historical entrypoints behave identically                                     |
-| Generated wrapper                  | `.github/hooks/pre-tool-use`                    | Emits the single Copilot-facing permission payload after evaluating amplihack and XPIA outputs                       |
+| Component                          | Path                                               | Responsibility                                                                                                       |
+| ---------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Copilot launcher                   | `src/amplihack/launcher/copilot.py`                | Stages agents, hooks, commands, recipes, and generated wrappers before launching Copilot CLI                         |
+| Rust recipe runner bridge          | `src/amplihack/recipes/rust_runner.py`             | Discovers `recipe-runner-rs`, enforces version compatibility, builds subprocess environment, and parses JSON results |
+| Nested Copilot compatibility layer | `src/amplihack/recipes/rust_runner_copilot.py`     | Merges prompt fragments and injects permissive defaults only when explicit Copilot permission flags are absent       |
+| Smart-orchestrator classify step   | `amplifier-bundle/recipes/smart-orchestrator.yaml` | Case-switches on `AMPLIHACK_AGENT_BINARY` to omit Claude-only flags for Copilot/codex binaries                       |
+| Canonical XPIA hook                | `.claude/tools/xpia/hooks/pre_tool_use.py`         | Fail-closed Bash policy evaluation backed by `xpia-defend`                                                           |
+| XPIA compatibility shim            | `.claude/tools/xpia/hooks/pre_tool_use_rust.py`    | Delegates to `pre_tool_use.py` so both historical entrypoints behave identically                                     |
+| Generated wrapper                  | `.github/hooks/pre-tool-use`                       | Emits the single Copilot-facing permission payload after evaluating amplihack and XPIA outputs                       |
 
 ## Generated Copilot Hook Wrappers
 
@@ -129,6 +130,23 @@ The Rust runner must emit JSON on stdout. If stdout is unparseable:
 - non-zero exit codes become explicit runtime errors
 - signal termination is surfaced as a signal-specific error
 - empty or malformed stdout becomes an "unparseable output" error
+
+## Smart-Orchestrator Classify Step
+
+The `classify-and-decompose` step in `smart-orchestrator.yaml` uses a `bash`
+step type with a case-switch on `AMPLIHACK_AGENT_BINARY`:
+
+| Binary pattern         | Flags used                                                                       | Classifier constraint               |
+| ---------------------- | -------------------------------------------------------------------------------- | ----------------------------------- |
+| `*copilot*`, `*codex*` | `--allow-all-tools`                                                              | Injected into prompt text           |
+| `*` (default/claude)   | `--dangerously-skip-permissions`, `--disallowed-tools`, `--append-system-prompt` | Passed via `--append-system-prompt` |
+
+Both branches unset `CLAUDECODE` via `env -u CLAUDECODE` to prevent the
+subprocess from detecting a parent Claude Code session, which would alter
+agent behavior. Both branches deliver the prompt via `-p`.
+
+On failure, the step emits the binary name, exit code, and stderr content (or a
+diagnostic hint if stderr is empty) before propagating the exit code.
 
 ## Nested Copilot Normalization Rules
 
