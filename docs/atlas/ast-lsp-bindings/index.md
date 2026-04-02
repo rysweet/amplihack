@@ -51,7 +51,7 @@ Category: <strong>Structural</strong> | Generated: 2026-04-02T00:59:33.939222+00
         F22 --> F6
         F23 --> F7
         F24 --> F8
-    
+
         click F0 "../ast-lsp-bindings/" "View AST bindings"
     ```
 
@@ -75,10 +75,10 @@ Category: <strong>Structural</strong> | Generated: 2026-04-02T00:59:33.939222+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| Rectangle | Source file |
-| Arrow | Import dependency |
+| Symbol    | Meaning               |
+| --------- | --------------------- |
+| Rectangle | Source file           |
+| Arrow     | Import dependency     |
 | `refs: N` | Total reference count |
 
 </div>
@@ -94,7 +94,7 @@ Category: <strong>Structural</strong> | Generated: 2026-04-02T00:59:33.939222+00
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-    
+
     - **Total Definitions**: 15293
     - **Total Exports**: 2267
     - **Total Imports**: 16805
