@@ -1,0 +1,59 @@
+name: "Daily code metrics bounded required path"
+description: "Verify the daily-code-metrics workflow stays on the bounded no-install success path and compiles cleanly."
+version: "1.0.0"
+
+config:
+  timeout: 90000
+  retries: 0
+  parallel: false
+
+environment:
+  requires: []
+
+agents:
+  - name: "cli-agent"
+    type: "cli"
+    config:
+      workingDirectory: "."
+      defaultTimeout: 30000
+      executionMode: "spawn"
+      captureOutput: true
+      ioConfig:
+        encoding: "utf8"
+        handleInteractivePrompts: false
+      logConfig:
+        logCommands: true
+        logOutput: true
+        logLevel: "info"
+
+steps:
+  - name: "Run bounded daily metrics QA command"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: >-
+        command -v uv >/dev/null && command -v gh >/dev/null && PYTHONPATH=src uv run pytest tests/test_daily_code_metrics_workflow.py -q && gh aw compile daily-code-metrics --no-emit 2>&1 && echo DAILY_METRICS_COMPILE_OK && echo DAILY_METRICS_QA_OK
+    timeout: 90000
+
+  - name: "Verify daily metrics QA marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "DAILY_METRICS_QA_OK"
+    timeout: 10000
+
+  - name: "Verify clean compile output"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "DAILY_METRICS_COMPILE_OK"
+    timeout: 10000
+
+cleanup:
+  - name: "Capture CLI output"
+    agent: "cli-agent"
+    action: "capture_output"
+
+metadata:
+  tags: ["cli", "workflow", "daily-metrics", "regression", "issue-3968"]
+  priority: "high"

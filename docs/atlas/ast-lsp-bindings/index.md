@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-04-01T23:20:00Z
+Category: <strong>Structural</strong> | Generated: 2026-04-02T00:00:58.418684+00:00
 </div>
 
 ## Map
@@ -20,7 +20,7 @@ Category: <strong>Structural</strong> | Generated: 2026-04-01T23:20:00Z
     graph LR
         F0["models<br/>refs: 59"]
         F1["constants<br/>refs: 55"]
-        F2["retrieval_constants<br/>refs: 38"]
+        F2["retrieval_constants<br/>refs: 39"]
         F3["models<br/>refs: 38"]
         F4["types<br/>refs: 36"]
         F5["models<br/>refs: 30"]
@@ -51,47 +51,7 @@ Category: <strong>Structural</strong> | Generated: 2026-04-01T23:20:00Z
         F22 --> F6
         F23 --> F7
         F24 --> F8
-
-        %% goal_seeking mixin refactor (PR #3894)
-        subgraph goal_seeking["agents/goal_seeking"]
-            LA["learning_agent<br/>thin facade"]
-            IDM["intent_detector<br/>IntentDetectorMixin"]
-            TRM["temporal_reasoning<br/>TemporalReasoningMixin"]
-            CSM["code_synthesis<br/>CodeSynthesisMixin"]
-            KUM["knowledge_utils<br/>KnowledgeUtilsMixin"]
-            RSM["retrieval_strategies<br/>RetrievalStrategiesMixin"]
-            LIM["learning_ingestion<br/>LearningIngestionMixin"]
-            ASM["answer_synthesizer<br/>AnswerSynthesizerMixin"]
-            PU["prompt_utils<br/>_get_llm_completion"]
-        end
-        LA --> IDM
-        LA --> TRM
-        LA --> CSM
-        LA --> KUM
-        LA --> RSM
-        LA --> LIM
-        LA --> ASM
-        IDM --> PU
-        TRM --> PU
-        CSM --> PU
-        KUM --> PU
-        RSM --> PU
-        LIM --> PU
-        ASM --> PU
-        PU -.->|"sys.modules resolve"| LA
-
-        %% TLA+ trace-to-test pipeline (PR #3959)
-        subgraph eval_tla["eval/tla"]
-            TTT["trace_to_test<br/>TLC DOT → pytest"]
-        end
-
-        %% recipe runner execution tests (PR #4141, fixes #3963/#3978)
-        subgraph recipe_runner_tests["tests/recipes"]
-            TRE["test_rust_runner_execution<br/>_atomic_write_json, _progress_file_path,<br/>_recipe_log_path, read_progress_file"]
-        end
-        TRE --> F22
-        TRE -.->|"imports"| F0
-
+    
         click F0 "../ast-lsp-bindings/" "View AST bindings"
     ```
 
@@ -105,45 +65,45 @@ Category: <strong>Structural</strong> | Generated: 2026-04-01T23:20:00Z
 
     | Metric | Value |
     |--------|-------|
-    | Total definitions | 14806 |
-    | Total exports | 2264 |
-    | Total imports | 16551 |
-    | Potentially dead | 426 |
-    | Files with `__all__` | 426 |
+    | Total definitions | 15279 |
+    | Total exports | 2267 |
+    | Total imports | 16803 |
+    | Potentially dead | 434 |
+    | Files with `__all__` | 428 |
 
 ## Legend
 
 <div class="atlas-legend" markdown>
 
-| Symbol    | Meaning               |
-| --------- | --------------------- |
-| Rectangle | Source file           |
-| Arrow     | Import dependency     |
+| Symbol | Meaning |
+|--------|---------|
+| Rectangle | Source file |
+| Arrow | Import dependency |
 | `refs: N` | Total reference count |
 
 </div>
 
 ## Key Findings
 
-- 14806 total definitions across all files
-- 426 potentially dead definitions (2.9% of total)
-- 1936 files without `__all__` exports
+- 15279 total definitions across all files
+- 434 potentially dead definitions (2.8% of total)
+- 1974 files without `__all__` exports
 
 ## Detail
 
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-
-    - **Total Definitions**: 14806
-    - **Total Exports**: 2264
-    - **Total Imports**: 16551
-    - **Potentially Dead Count**: 426
-    - **Files With All**: 426
-    - **Files Without All**: 1936
+    
+    - **Total Definitions**: 15279
+    - **Total Exports**: 2267
+    - **Total Imports**: 16803
+    - **Potentially Dead Count**: 434
+    - **Files With All**: 428
+    - **Files Without All**: 1974
     - **Importlib Dynamic Imports**: 43
     - **Language Counts**:
-        - `python`: 14806
+        - `python`: 15279
 
 ## Cross-References
 
@@ -161,7 +121,3 @@ Category: <strong>Structural</strong> | Generated: 2026-04-01T23:20:00Z
 Source: `layer2_ast_bindings.json` | [Mermaid source](ast-lsp-bindings.mmd)
 
 </div>
-
-<!-- Atlas staleness reviewed: PR #4141 adds tests/recipes/test_rust_runner_execution.py
-     and tests/unit/workflows/test_issue_classifier_workflow.py. Symbol bindings updated
-     to include recipe_runner_tests subgraph with imports from rust_runner_execution. -->
