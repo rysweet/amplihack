@@ -202,7 +202,7 @@ class StopHook(HookProcessor):
                     # Fallback to _get_current_session_id() only if stem is unusable.
                     # Fix for Issue #2548: timestamp-based IDs changed each invocation,
                     # preventing _results_shown semaphore from being found on second stop.
-                    session_id = transcript_path.stem or self._get_current_session_id()
+                    session_id = self._sanitize_session_id(transcript_path.stem) or self._get_current_session_id()
 
                     # Create progress tracker (auto-detects verbosity and pirate mode from preferences)
                     progress_tracker = ProgressTracker(project_root=self.project_root)
@@ -595,12 +595,13 @@ class StopHook(HookProcessor):
             New count value
         """
         try:
+            safe_session_id = self._sanitize_session_id(session_id) or "unknown"
             counter_file = (
                 self.project_root
                 / ".claude"
                 / "runtime"
                 / "power-steering"
-                / session_id
+                / safe_session_id
                 / "session_count"
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
@@ -821,11 +822,11 @@ class StopHook(HookProcessor):
         # Try environment variable
         session_id = os.environ.get("AMPLIHACK_SESSION_ID")
         if session_id:
-            return session_id
+            return self._sanitize_session_id(session_id) or datetime.now().strftime("%Y%m%d_%H%M%S")
 
         session_id = os.environ.get("CLAUDE_SESSION_ID")
         if session_id:
-            return session_id
+            return self._sanitize_session_id(session_id) or datetime.now().strftime("%Y%m%d_%H%M%S")
 
         logs_dir = self.project_root / ".claude" / "runtime" / "logs"
         if logs_dir.exists():
@@ -833,7 +834,7 @@ class StopHook(HookProcessor):
                 sessions = [p for p in logs_dir.iterdir() if p.is_dir()]
                 sessions = sorted(sessions, key=lambda p: p.stat().st_mtime, reverse=True)
                 if sessions:
-                    return sessions[0].name
+                    return self._sanitize_session_id(sessions[0].name) or datetime.now().strftime("%Y%m%d_%H%M%S")
             except (OSError, PermissionError) as e:
                 self.log(
                     f"[CAUSE] Cannot access logs directory to detect session ID. [IMPACT] Will use timestamp-based ID instead. [ACTION] Check directory permissions. Error: {e}",
