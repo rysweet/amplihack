@@ -52,15 +52,16 @@ Raises `RuntimeError` on non-zero exit or JSON parse failure.
 ```python
 import shutil
 from amplihack.recipes.rust_runner_execution import execute_rust_command, build_rust_env
-from amplihack.recipes.rust_runner_binary import find_rust_binary
+from amplihack.recipes.rust_runner import find_rust_binary, _build_rust_env
 
 binary = find_rust_binary()
 cmd = [binary, "run", "--recipe", "my-recipe"]
+# _build_rust_env() is the pre-wired wrapper that supplies the correct wrapper_factory.
 result = execute_rust_command(
     cmd=cmd,
     name="my-recipe",
     progress=True,
-    env_builder=lambda: build_rust_env(wrapper_factory=shutil.which, which=shutil.which),
+    env_builder=_build_rust_env,
 )
 print(result.success, result.log_path)
 ```
@@ -86,7 +87,9 @@ progress_dir = Path(tempfile.gettempdir())
 path = progress_dir / "amplihack-progress-my_recipe-12345.json"
 info = read_progress_file(path)
 if info:
-    print(f"Step {info['current_step']}/{info['total_steps']}: {info['step_name']}")
+    total = info.get("total_steps") or 0  # 0 means unknown; Python layer always writes 0
+    step_label = f"{info['current_step']}" + (f"/{total}" if total else "")
+    print(f"Step {step_label}: {info.get('step_name', '')}")
 ```
 
 Returned dict fields (required fields are always present when the function returns non-`None`; optional fields may be absent):
@@ -97,11 +100,10 @@ Returned dict fields (required fields are always present when the function retur
 | `current_step` | `int` | ✓ | 1-based index of the running step |
 | `status` | `str` | ✓ | One of `running`, `completed`, `failed` |
 | `pid` | `int` | ✓ | PID of the recipe-runner-rs process |
-| `total_steps` | `int` | optional | Total step count |
+| `total_steps` | `int` | optional | Total step count; the Python streaming layer always writes `0` (unknown) — only a Rust binary that reports step totals will supply a non-zero value |
 | `step_name` | `str` | optional | Human-readable step label |
 | `elapsed_seconds` | `float` | optional | Seconds since recipe start |
 | `updated_at` | `float` | optional | Unix timestamp of last write |
-| `transition` | `str` | optional | Last step-transition type (`step_started`, `step_completed`, `step_failed`, `step_skipped`) |
 
 ---
 
@@ -142,7 +144,16 @@ def build_rust_env(
 
 Return a filtered environment dictionary suitable for passing to `subprocess.Popen`. Only variables on the `_ALLOWED_RUST_ENV_VARS` allowlist are included, preventing accidental secret leakage (e.g. `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`).
 
-Both parameters are keyword-only. Pass callables that locate binaries (e.g. `shutil.which`) or provide shim directories. If `AMPLIHACK_AGENT_BINARY` is not `"copilot"`, neither callable is invoked.
+Both parameters are keyword-only:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `wrapper_factory` | `Callable[[str], str]` | Takes the real `copilot` binary path and returns a path to a temporary directory containing a shim `copilot` script. Used to intercept nested `copilot` invocations inside the recipe. |
+| `which` | `Callable[..., str \| None]` | Locates the real `copilot` binary on `PATH` (pass `shutil.which`). |
+
+If `AMPLIHACK_AGENT_BINARY` is not `"copilot"`, neither callable is invoked.
+
+> **Note:** Most callers should use `rust_runner._build_rust_env()` directly — it is the pre-wired version that supplies the Copilot compatibility `wrapper_factory`. Call `build_rust_env()` directly only when you need a custom wrapper strategy.
 
 **Allowlisted variable families:**
 
@@ -168,15 +179,16 @@ Written to `/tmp/amplihack-progress-<recipe>-<pid>.json` after each step transit
 {
   "recipe_name": "smart-orchestrator",
   "current_step": 3,
-  "total_steps": 7,
+  "total_steps": 0,
   "step_name": "Run builder agent",
   "elapsed_seconds": 42.8,
   "status": "running",
   "pid": 98765,
-  "updated_at": 1743554401.5,
-  "transition": "step_started"
+  "updated_at": 1743554401.5
 }
 ```
+
+> **Note:** `total_steps` is always `0` when written by the Python streaming layer (the Rust binary does not report step totals). Treat `0` as "unknown".
 
 An optional workstream sidecar at `$AMPLIHACK_WORKSTREAM_PROGRESS_FILE` augments the main file with:
 

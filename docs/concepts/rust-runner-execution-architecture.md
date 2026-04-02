@@ -49,7 +49,7 @@ The execution layer lives in `rust_runner_execution.py`; the caller (`rust_runne
                         └───────────────────────────────────┘
 ```
 
-The output streaming function spawns **two daemon threads** — one per file descriptor — that drain output continuously. Neither thread blocks the main thread, which waits on `process.wait()`.
+The output streaming function spawns **two threads** — one per file descriptor — that drain output continuously. Neither thread blocks the main thread, which waits on `process.wait()`. Both threads are joined before the function returns, ensuring all output is captured even if the process exits quickly.
 
 Thread safety for log file writes is enforced by a single `threading.Lock` shared between both reader threads.
 
@@ -64,10 +64,10 @@ The Rust binary signals step transitions by printing Unicode markers to stderr:
 | `✗` (U+2717) | Step failed |
 | `⊘` (U+2298) | Step skipped |
 
-When a stderr line contains a recognized marker the streaming thread:
+When a stderr line starts with a recognized marker the streaming thread:
 
-1. Increments the step counter
-2. Calls `_write_progress_file()` with the new step metadata
+1. Increments the step counter (only for `▶` — other markers reuse the current step index)
+2. Calls `_write_progress_file()` with the new step metadata and status
 3. Calls `emit_step_transition()` to emit a JSONL marker to stderr
 
 ---
@@ -86,15 +86,16 @@ Written atomically after each step transition (see [Atomic File Writes](#atomic-
 {
   "recipe_name": "smart-orchestrator",
   "current_step": 2,
-  "total_steps": 7,
+  "total_steps": 0,
   "step_name": "Classify task type",
   "elapsed_seconds": 18.4,
   "status": "running",
   "pid": 55321,
-  "updated_at": 1743554400.0,
-  "transition": "step_completed"
+  "updated_at": 1743554400.0
 }
 ```
+
+> **Note:** `total_steps` is always `0` — the Python streaming layer does not know the total step count. Treat `0` as "unknown".
 
 ### Hot-path path caching
 
