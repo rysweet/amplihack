@@ -50,6 +50,7 @@ This skill delegates to the `tla-plus-expert` agent which has deep knowledge of:
 ## Integration with Existing Infrastructure
 
 The amplihack repo includes a TLA+ experiment runner at `src/amplihack/eval/tla_prompt_experiment.py` with:
+
 - Manifest-driven experiment matrix (models x prompt variants x repeats)
 - 6 heuristic scoring dimensions
 - Real TLC validation support
