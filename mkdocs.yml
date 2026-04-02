@@ -165,6 +165,7 @@ nav:
           - Overview: COPILOT_CLI.md
           - Tutorial: tutorials/copilot-parity-control-plane.md
           - How to Configure the Parity Control Plane: howto/configure-copilot-parity-control-plane.md
+          - Use Non-Claude Agent: howto/use-non-claude-agent.md
           - Parity Control Plane Design: concepts/copilot-parity-control-plane.md
           - Parity Control Plane Reference: reference/copilot-parity-control-plane.md
   - Guides:
@@ -222,6 +223,7 @@ nav:
       - Troubleshooting: troubleshooting/README.md
       - Code Review: CODE_REVIEW.md
       - Rust Runner Execution: reference/rust-runner-execution.md
+      - Workflow Issue Extraction: reference/workflow-issue-extraction.md
 
 # Plugins
 plugins:
