@@ -145,6 +145,9 @@ The normalizer removes and merges these flags into one final `-p` payload:
 
 Merged prompt parts are joined with a blank line.
 
+The normalizer also drops Claude-only `--dangerously-skip-permissions` because
+Copilot CLI does not accept it.
+
 ### Permission preservation
 
 The normalizer treats these as explicit tool-permission flags:
@@ -166,6 +169,11 @@ If no explicit tool or path permission appears, it prefixes the nested command w
 ```
 
 If explicit flags are already present, it preserves them and does not widen permissions.
+
+When a Claude-oriented nested launch passes `--disallowed-tools`, the normalizer
+removes that unsupported flag, treats it as an explicit no-tools decision, and
+adds a no-tools instruction to the merged prompt. That prevents the wrapper from
+re-introducing `--allow-all-tools` behind the caller's back.
 
 ## Environment Variables
 

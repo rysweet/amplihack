@@ -49,8 +49,26 @@ def main() -> int:
     if argv != ["--allow-tool=shell(git)", "--allow-path=/repo", "-p", expected_prompt]:
         raise RuntimeError(f"Unexpected normalized argv: {argv}")
 
+    blocked_command = [
+        str(wrapper),
+        "--dangerously-skip-permissions",
+        "--disallowed-tools=Bash,Write",
+        "-p",
+        "classify only",
+    ]
+    blocked_result = subprocess.run(blocked_command, check=True, capture_output=True, text=True)
+    blocked_argv = json.loads(blocked_result.stdout)
+    blocked_prompt = (
+        "Tool use is forbidden for this invocation. "
+        "Do not call any tools. Original disallowed tool list: Bash, Write."
+        "\n\nclassify only"
+    )
+    if blocked_argv != ["--allow-all-paths", "-p", blocked_prompt]:
+        raise RuntimeError(f"Unexpected blocked normalized argv: {blocked_argv}")
+
     print("PROMPT_COMPAT_OK")
     print("PERMISSION_COMPAT_OK")
+    print("CLAUDE_FLAG_COMPAT_OK")
     print(f"ARGS_JSON={json.dumps(argv)}")
     print("SMOKE_OK")
     return 0

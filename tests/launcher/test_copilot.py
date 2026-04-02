@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+import amplihack.launcher.copilot as copilot_module
 from amplihack.launcher.copilot import (
     check_copilot,
     check_for_update,
@@ -535,6 +536,11 @@ class TestStageDirectory:
 class TestGenerateCopilotInstructions:
     """Tests for copilot-instructions.md generation."""
 
+    @pytest.fixture(autouse=True)
+    def _isolate_workflow_context(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+        monkeypatch.setenv("AMPLIHACK_SESSION_DEPTH", "0")
+
     def test_generates_instructions_file(self, tmp_path):
         """Must create ~/.copilot/copilot-instructions.md."""
         copilot_home = tmp_path / "copilot"
@@ -652,6 +658,58 @@ name: DEFAULT_WORKFLOW
         assert "Standard development workflow" in content
         # Should not crash or include step count if file missing
         assert "DEFAULT_WORKFLOW" in content
+
+    def test_invalid_workflow_lock_pid_is_removed(self, tmp_path):
+        """Invalid workflow lock pids should be treated as stale and cleaned up."""
+        lock_dir = tmp_path / ".claude" / "runtime" / "locks"
+        lock_dir.mkdir(parents=True)
+        lock_path = lock_dir / ".workflow_active"
+        lock_path.write_text('{"pid": 0}')
+
+        assert copilot_module._is_workflow_active_for_copilot_context() is False
+        assert not lock_path.exists()
+
+    def test_permission_denied_pid_keeps_workflow_lock(self, tmp_path):
+        """EPERM from os.kill(pid, 0) should preserve the workflow-active semaphore."""
+        lock_dir = tmp_path / ".claude" / "runtime" / "locks"
+        lock_dir.mkdir(parents=True)
+        lock_path = lock_dir / ".workflow_active"
+        lock_path.write_text('{"pid": 1}')
+
+        with patch(
+            "amplihack.launcher.copilot.os.kill",
+            side_effect=PermissionError(1, "Operation not permitted"),
+        ):
+            assert copilot_module._is_workflow_active_for_copilot_context() is True
+
+        assert lock_path.exists()
+
+    def test_nested_session_depth_suppresses_workflow_context(self, monkeypatch, tmp_path):
+        """Nested recipe sessions should emit suppressed workflow instructions."""
+        monkeypatch.setenv("AMPLIHACK_SESSION_DEPTH", "1")
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+
+        generate_copilot_instructions(copilot_home)
+
+        content = (copilot_home / "copilot-instructions.md").read_text()
+        assert "recipe-managed workflow is already active" in content
+        assert 'Do NOT invoke `Skill(skill="dev-orchestrator")`' in content
+        assert "## Auto-routing prompt" not in content
+
+    def test_invalid_session_depth_is_treated_as_non_nested(self, monkeypatch, tmp_path):
+        """Malformed session depth values should fall back to non-nested behavior."""
+        monkeypatch.setenv("AMPLIHACK_SESSION_DEPTH", "garbage")
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+
+        assert copilot_module._is_nested_recipe_session() is False
+
+        generate_copilot_instructions(copilot_home)
+
+        content = (copilot_home / "copilot-instructions.md").read_text()
+        assert "DEFAULT_WORKFLOW" in content
+        assert "recipe-managed workflow is already active" not in content
 
 
 class TestEnableAwesomeCopilotMCPServer:

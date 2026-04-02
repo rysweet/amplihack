@@ -81,6 +81,9 @@ When `AMPLIHACK_AGENT_BINARY=copilot`, amplihack prepends a narrow wrapper to
 
 - rewrites `--system-prompt` and `--append-system-prompt` into one merged `-p`
   prompt for Copilot CLI
+- drops Claude-only `--dangerously-skip-permissions`
+- converts Claude-style `--disallowed-tools` into a no-tools prompt instruction
+  without reintroducing `--allow-all-tools`
 - preserves explicit Copilot permission flags when they are already present
 - injects broad Copilot permission defaults only when the nested launch did not
   provide explicit permission flags

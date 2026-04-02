@@ -154,6 +154,29 @@ class TestNormalizeCopilotCliArgs:
         assert "--deny-path=/secret" in normalized
         assert normalized[-2:] == ["-p", "check repo"]
 
+    def test_strips_claude_only_tool_flags_without_regranting_tool_access(self):
+        args = [
+            "--dangerously-skip-permissions",
+            "--disallowed-tools",
+            "Bash,Edit,Write",
+            "--append-system-prompt=classifier instructions",
+            "-p",
+            "user prompt",
+        ]
+
+        normalized = _normalize_copilot_cli_args(args)
+
+        assert "--dangerously-skip-permissions" not in normalized
+        assert "--disallowed-tools" not in normalized
+        assert "--allow-all-tools" not in normalized
+        assert normalized[0] == "--allow-all-paths"
+        assert normalized[-2] == "-p"
+        assert (
+            normalized[-1] == "Tool use is forbidden for this invocation. "
+            "Do not call any tools. Original disallowed tool list: Bash, Edit, Write."
+            "\n\nclassifier instructions\n\nuser prompt"
+        )
+
 
 class TestCopilotCompatWrapperSource:
     """Tests for generated nested Copilot wrapper source."""
