@@ -14,7 +14,11 @@ import pytest
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from amplihack.launcher.auto_mode import AutoMode
+from amplihack.launcher.auto_mode import (
+    MAX_INJECTED_CONTENT_SIZE,
+    AutoMode,
+    _sanitize_injected_content,
+)
 
 
 class TestAutoModeDirectoryCreation:
@@ -269,6 +273,35 @@ class TestCheckForNewInstructions:
         assert not md_file.exists(), "MD file should be moved"
         assert txt_file.exists(), "TXT file should remain"
         assert json_file.exists(), "JSON file should remain"
+
+
+class TestSanitizeInjectedContent:
+    """Test content sanitization helpers used by instruction injection."""
+
+    def test_truncation_uses_full_configured_byte_budget(self):
+        """Large injected content should use the full configured byte budget, not half of it."""
+        suffix = "\n\n[Content truncated due to size limit]"
+        payload = "a" * (MAX_INJECTED_CONTENT_SIZE + 100)
+
+        result = _sanitize_injected_content(payload)
+
+        assert result.endswith(suffix)
+        assert len(result.encode("utf-8")) == MAX_INJECTED_CONTENT_SIZE
+        assert len(result.removesuffix(suffix).encode("utf-8")) == (
+            MAX_INJECTED_CONTENT_SIZE - len(suffix.encode("utf-8"))
+        )
+
+    def test_truncation_preserves_valid_utf8(self):
+        """Multibyte content truncation should remain valid UTF-8."""
+        suffix = "\n\n[Content truncated due to size limit]"
+        payload = "😀" * ((MAX_INJECTED_CONTENT_SIZE // 4) + 100)
+
+        result = _sanitize_injected_content(payload)
+
+        encoded = result.encode("utf-8")
+        assert result.endswith(suffix)
+        assert len(encoded) <= MAX_INJECTED_CONTENT_SIZE
+        encoded.decode("utf-8")
 
 
 class TestCheckForNewInstructionsErrorHandling:

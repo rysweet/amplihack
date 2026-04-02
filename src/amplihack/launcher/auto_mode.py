@@ -78,9 +78,13 @@ def _sanitize_injected_content(content: str) -> str:
 
     # Truncate if too large
     if len(content.encode("utf-8")) > MAX_INJECTED_CONTENT_SIZE:
-        # Truncate to size limit with warning
-        content = content[: MAX_INJECTED_CONTENT_SIZE // 2]  # UTF-8 safe truncation
-        content += "\n\n[Content truncated due to size limit]"
+        truncation_notice = "\n\n[Content truncated due to size limit]"
+        max_content_bytes = max(
+            MAX_INJECTED_CONTENT_SIZE - len(truncation_notice.encode("utf-8")),
+            0,
+        )
+        truncated = content.encode("utf-8")[:max_content_bytes].decode("utf-8", errors="ignore")
+        content = truncated + truncation_notice
 
     # Remove prompt injection patterns
     content_lower = content.lower()
@@ -482,8 +486,14 @@ class AutoMode:
                 process.wait()
 
         # Wait for output threads to finish reading
-        stdout_thread.join()
-        stderr_thread.join()
+        join_timeout = 10.0 if timed_out else None
+        stdout_thread.join(timeout=join_timeout)
+        stderr_thread.join(timeout=join_timeout)
+        if timed_out:
+            if stdout_thread.is_alive():
+                self.log("stdout reader thread did not exit after timeout", level="WARNING")
+            if stderr_thread.is_alive():
+                self.log("stderr reader thread did not exit after timeout", level="WARNING")
         # stdin_thread is daemon, will terminate automatically
 
         # Combine captured output

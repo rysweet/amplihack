@@ -4,6 +4,7 @@ flags when AMPLIHACK_AGENT_BINARY=copilot."""
 from __future__ import annotations
 
 import os
+import subprocess
 from unittest.mock import patch
 
 import pytest
@@ -51,6 +52,40 @@ class _FakePopen:
 
     def terminate(self):
         pass
+
+
+class _TimeoutPopen(_FakePopen):
+    """Popen mock that times out on the first wait() call."""
+
+    def __init__(self, cmd, **kwargs):
+        super().__init__(cmd, **kwargs)
+        self._wait_count = 0
+
+    def wait(self, **kwargs):
+        _FakePopen.wait_calls.append(kwargs)
+        self._wait_count += 1
+        if self._wait_count == 1:
+            raise subprocess.TimeoutExpired(cmd="mock", timeout=kwargs.get("timeout"))
+        return 0
+
+    def kill(self):
+        pass
+
+
+class _FakeThread:
+    join_calls: list[float | None] = []
+
+    def __init__(self, *args, **kwargs):
+        self._alive = False
+
+    def start(self):
+        return None
+
+    def join(self, timeout=None):
+        _FakeThread.join_calls.append(timeout)
+
+    def is_alive(self):
+        return self._alive
 
 
 def _capture_cmd(mode, prompt: str = "hello", env_overrides: dict | None = None) -> list[str]:
@@ -114,3 +149,22 @@ class TestRunSdkSubprocessFlagIsolation:
         mode = _make_auto_mode(sdk="copilot")
         _capture_cmd(mode)
         assert _FakePopen.wait_calls == [{"timeout": 30.0}]
+
+    def test_subprocess_timeout_uses_bounded_reader_thread_joins(self):
+        """Timed-out subprocess path should not block forever waiting for reader threads."""
+        from amplihack.launcher import auto_mode as auto_mode_module
+
+        mode = _make_auto_mode(sdk="copilot")
+        _FakePopen.instances.clear()
+        _FakePopen.wait_calls.clear()
+        _FakeThread.join_calls.clear()
+
+        with (
+            patch("subprocess.Popen", _TimeoutPopen),
+            patch("threading.Thread", _FakeThread),
+            patch.object(auto_mode_module, "pty", None),
+        ):
+            mode._run_sdk_subprocess("hello")
+
+        assert _FakePopen.wait_calls == [{"timeout": 30.0}, {"timeout": 5}]
+        assert _FakeThread.join_calls == [10.0, 10.0]
