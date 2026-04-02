@@ -10,6 +10,7 @@ Stop Hook Protocol (https://docs.claude.com/en/docs/claude-code/hooks):
 
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -50,6 +51,10 @@ DEFAULT_CONTINUATION_PROMPT = (
     "look for any additional TODOs, next steps, or unfinished work and pursue it "
     "diligently in as many parallel tasks as you can"
 )
+DEFAULT_LOCK_TTL_SECONDS = 24 * 60 * 60
+
+_SANITIZE_RE = re.compile(r"[^A-Za-z0-9_\-]")
+_TASK_SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 
 class StopHook(HookProcessor):
@@ -58,6 +63,10 @@ class StopHook(HookProcessor):
     def __init__(self):
         super().__init__("stop")
         self.lock_flag = self.project_root / ".claude" / "runtime" / "locks" / ".lock_active"
+        self.lock_goal_file = self.project_root / ".claude" / "runtime" / "locks" / ".lock_goal"
+        self.lock_message_file = (
+            self.project_root / ".claude" / "runtime" / "locks" / ".lock_message"
+        )
         self.continuation_prompt_file = (
             self.project_root / ".claude" / "runtime" / "locks" / ".continuation_prompt"
         )
@@ -107,20 +116,36 @@ class StopHook(HookProcessor):
             return {"decision": "approve"}
 
         if lock_exists:
+            # Get session ID for per-session tracking
+            session_id = self._get_current_session_id()
+            recovery_reason, recovery_session_id = self._get_lock_recovery_reason(session_id)
+            if recovery_reason:
+                self.log(f"AUTO-UNLOCK: {recovery_reason}", "WARNING")
+                self.save_metric(
+                    "lock_auto_recovered",
+                    1,
+                    {"reason": recovery_reason, "session_id": recovery_session_id or session_id},
+                )
+                self._clear_lock_state(counter_session_id=recovery_session_id or session_id)
+                print(
+                    "\n⚠️  Lock mode was automatically disabled because the existing lock "
+                    f"state was invalid: {recovery_reason}. Use /amplihack:lock to re-enable.",
+                    file=sys.stderr,
+                )
+                self.log("=== STOP HOOK ENDED (decision: approve - lock recovered) ===")
+                return {"decision": "approve"}
+
             # Lock is active - block stop and continue working
             self.log("Lock is active - blocking stop to continue working")
             self.save_metric("lock_blocks", 1)
 
-            # Get session ID for per-session tracking
-            session_id = self._get_current_session_id()
-
             # Increment lock mode counter and check safety valve (fixes #2874)
             lock_count = self._increment_lock_counter(session_id)
+            max_iterations = self._max_lock_iterations()
 
             # Safety valve: After MAX_LOCK_ITERATIONS consecutive blocks,
             # auto-approve to prevent infinite loops where the agent has
             # nothing left to do but keeps getting blocked.
-            max_iterations = int(os.environ.get("AMPLIHACK_MAX_LOCK_ITERATIONS", "50"))
             if lock_count >= max_iterations:
                 self.log(
                     f"SAFETY VALVE: Lock mode hit {lock_count} iterations "
@@ -128,12 +153,7 @@ class StopHook(HookProcessor):
                     "WARNING",
                 )
                 self.save_metric("lock_safety_valve_triggered", 1)
-                # Remove lock file to prevent re-triggering on next stop
-                try:
-                    self.lock_flag.unlink()
-                    self.log("Lock file removed by safety valve")
-                except OSError as e:
-                    self.log(f"Could not remove lock file: {e}", "WARNING")
+                self._clear_lock_state(counter_session_id=session_id)
                 print(
                     f"\n⚠️  Lock mode safety valve triggered after {lock_count} iterations. "
                     "Lock has been automatically disabled. Use /amplihack:lock to re-enable.",
@@ -182,7 +202,7 @@ class StopHook(HookProcessor):
                     # Fallback to _get_current_session_id() only if stem is unusable.
                     # Fix for Issue #2548: timestamp-based IDs changed each invocation,
                     # preventing _results_shown semaphore from being found on second stop.
-                    session_id = transcript_path.stem or self._get_current_session_id()
+                    session_id = self._sanitize_session_id(transcript_path.stem) or self._get_current_session_id()
 
                     # Create progress tracker (auto-detects verbosity and pirate mode from preferences)
                     progress_tracker = ProgressTracker(project_root=self.project_root)
@@ -429,6 +449,137 @@ class StopHook(HookProcessor):
             self.log(f"Error reading custom prompt: {e} - using default", "WARNING")
             return DEFAULT_CONTINUATION_PROMPT
 
+    def _max_lock_iterations(self) -> int:
+        """Return the configured lock safety-valve threshold."""
+        raw_value = os.environ.get("AMPLIHACK_MAX_LOCK_ITERATIONS", "50")
+        try:
+            return max(1, int(raw_value))
+        except ValueError:
+            self.log(
+                f"Invalid AMPLIHACK_MAX_LOCK_ITERATIONS={raw_value!r}; using default 50",
+                "WARNING",
+            )
+            self.save_metric("lock_config_errors", 1)
+            return 50
+
+    def _lock_ttl_seconds(self) -> int:
+        """Return the maximum age for a lock file before auto-recovery."""
+        raw_value = os.environ.get("AMPLIHACK_LOCK_TTL_SECONDS", str(DEFAULT_LOCK_TTL_SECONDS))
+        try:
+            return max(1, int(raw_value))
+        except ValueError:
+            self.log(
+                f"Invalid AMPLIHACK_LOCK_TTL_SECONDS={raw_value!r}; using default 86400",
+                "WARNING",
+            )
+            self.save_metric("lock_config_errors", 1)
+            return DEFAULT_LOCK_TTL_SECONDS
+
+    @staticmethod
+    def _sanitize_session_id(session_id: str | None) -> str | None:
+        """Sanitize session_id to prevent path traversal and metadata injection.
+
+        Replaces any character that is not alphanumeric, hyphen, or underscore
+        with an underscore. This neutralizes ../../ path traversal, newline
+        injection, and other filesystem/shell metacharacters.
+
+        Args:
+            session_id: Raw session identifier, or None.
+
+        Returns:
+            Sanitized string safe for use as a filesystem path component,
+            or None if the input was None.
+        """
+        if session_id is None:
+            return None
+        return _SANITIZE_RE.sub("_", session_id)
+
+    def _read_lock_metadata(self) -> dict[str, str]:
+        """Parse key/value metadata from .lock_active.
+
+        Legacy lock files may be empty or contain arbitrary text; those remain valid
+        and fall back to filesystem timestamps for stale-lock detection.
+        """
+        try:
+            raw_content = self.lock_flag.read_text(encoding="utf-8").strip()
+        except (FileNotFoundError, PermissionError, OSError, UnicodeDecodeError):
+            return {}
+
+        metadata: dict[str, str] = {}
+        for line in raw_content.splitlines():
+            if ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            metadata[key.strip()] = value.strip()
+        return metadata
+
+    def _get_lock_recovery_reason(self, current_session_id: str) -> tuple[str | None, str | None]:
+        """Return an auto-recovery reason for stale or expired locks, if any."""
+        try:
+            stat_result = self.lock_flag.stat()
+        except (FileNotFoundError, PermissionError, OSError):
+            return None, None
+
+        metadata = self._read_lock_metadata()
+        owner_session_id = self._sanitize_session_id(metadata.get("session_id"))
+        if owner_session_id and owner_session_id != current_session_id:
+            return (
+                f"lock belongs to session {owner_session_id}, not the active session {current_session_id}",
+                owner_session_id,
+            )
+
+        lock_timestamp = stat_result.st_mtime
+        locked_at = metadata.get("locked_at")
+        if locked_at:
+            try:
+                lock_timestamp = datetime.fromisoformat(
+                    locked_at.replace("Z", "+00:00")
+                ).timestamp()
+            except ValueError:
+                self.log(
+                    f"Malformed lock timestamp {locked_at!r}; falling back to filesystem mtime",
+                    "WARNING",
+                )
+                self.save_metric("lock_metadata_parse_errors", 1)
+
+        age_seconds = max(0, int(datetime.now().timestamp() - lock_timestamp))
+        ttl_seconds = self._lock_ttl_seconds()
+        if age_seconds >= ttl_seconds:
+            return (f"lock is stale ({age_seconds}s old, ttl={ttl_seconds}s)", owner_session_id)
+
+        return None, owner_session_id
+
+    def _clear_lock_state(self, counter_session_id: str | None = None) -> None:
+        """Remove lock files and the relevant counter file.
+
+        Recovery paths should disable the entire lock state so the next stop check
+        starts clean instead of re-triggering on stale prompt/counter data.
+        """
+        for path in (
+            self.lock_flag,
+            self.lock_goal_file,
+            self.lock_message_file,
+            self.continuation_prompt_file,
+        ):
+            try:
+                path.unlink(missing_ok=True)
+            except OSError as e:
+                self.log(f"Could not remove lock state file {path}: {e}", "WARNING")
+
+        if counter_session_id:
+            counter_file = (
+                self.project_root
+                / ".claude"
+                / "runtime"
+                / "locks"
+                / counter_session_id
+                / "lock_invocations.txt"
+            )
+            try:
+                counter_file.unlink(missing_ok=True)
+            except OSError as e:
+                self.log(f"Could not remove lock counter {counter_file}: {e}", "WARNING")
+
     def _increment_power_steering_counter(self, session_id: str) -> int:
         """Increment power-steering invocation counter for statusline display.
 
@@ -444,12 +595,13 @@ class StopHook(HookProcessor):
             New count value
         """
         try:
+            safe_session_id = self._sanitize_session_id(session_id) or "unknown"
             counter_file = (
                 self.project_root
                 / ".claude"
                 / "runtime"
                 / "power-steering"
-                / session_id
+                / safe_session_id
                 / "session_count"
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
@@ -507,31 +659,45 @@ class StopHook(HookProcessor):
         Returns:
             New count value (for logging/metrics)
         """
+        max_iterations = self._max_lock_iterations()
         try:
+            safe_session_id = self._sanitize_session_id(session_id) or "unknown"
             counter_file = (
                 self.project_root
                 / ".claude"
                 / "runtime"
                 / "locks"
-                / session_id
+                / safe_session_id
                 / "lock_invocations.txt"
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
 
             # Initialize file if it doesn't exist
             if not counter_file.exists():
-                counter_file.write_text("0")
+                counter_file.write_text("0", encoding="utf-8")
 
             # Read-modify-write with file locking
-            with open(counter_file, "r+") as f:
+            with open(counter_file, "r+", encoding="utf-8") as f:
                 with acquire_file_lock(f, log=self.log) as locked:
                     # Read current count
-                    try:
-                        f.seek(0)
-                        content = f.read().strip()
-                        current_count = int(content) if content else 0
-                    except (ValueError, OSError):
+                    f.seek(0)
+                    content = f.read().strip()
+                    if not content:
                         current_count = 0
+                    elif not content.isdigit():
+                        self.log(
+                            f"Malformed lock counter for session {session_id}: {content!r}. "
+                            "Forcing safety valve recovery.",
+                            "WARNING",
+                        )
+                        self.save_metric("lock_counter_corruptions", 1)
+                        f.seek(0)
+                        f.truncate()
+                        f.write(str(max_iterations))
+                        f.flush()
+                        return max_iterations
+                    else:
+                        current_count = int(content)
 
                     # Increment
                     new_count = current_count + 1
@@ -550,9 +716,11 @@ class StopHook(HookProcessor):
                     return new_count
 
         except Exception as e:
-            # Fail-safe: Don't break hook if counter write fails
-            self.log(f"Failed to update lock counter: {e}", "DEBUG")
-            return 0
+            self.log(
+                f"Failed to update lock counter: {e}. Forcing safety valve recovery.", "WARNING"
+            )
+            self.save_metric("lock_counter_update_errors", 1)
+            return max_iterations
 
     def _should_run_power_steering(self) -> bool:
         """Check if power-steering should run based on config and environment.
@@ -643,17 +811,22 @@ class StopHook(HookProcessor):
         """Detect current session ID from environment or logs.
 
         Priority:
-        1. CLAUDE_SESSION_ID env var (if set by tooling)
-        2. Most recent session directory
-        3. Generate timestamp-based ID
+        1. AMPLIHACK_SESSION_ID env var (if set by tooling)
+        2. CLAUDE_SESSION_ID env var (if set by tooling)
+        3. Most recent session directory
+        4. Generate timestamp-based ID
 
         Returns:
             Session ID string
         """
         # Try environment variable
+        session_id = os.environ.get("AMPLIHACK_SESSION_ID")
+        if session_id:
+            return self._sanitize_session_id(session_id) or datetime.now().strftime("%Y%m%d_%H%M%S")
+
         session_id = os.environ.get("CLAUDE_SESSION_ID")
         if session_id:
-            return session_id
+            return self._sanitize_session_id(session_id) or datetime.now().strftime("%Y%m%d_%H%M%S")
 
         logs_dir = self.project_root / ".claude" / "runtime" / "logs"
         if logs_dir.exists():
@@ -661,7 +834,7 @@ class StopHook(HookProcessor):
                 sessions = [p for p in logs_dir.iterdir() if p.is_dir()]
                 sessions = sorted(sessions, key=lambda p: p.stat().st_mtime, reverse=True)
                 if sessions:
-                    return sessions[0].name
+                    return self._sanitize_session_id(sessions[0].name) or datetime.now().strftime("%Y%m%d_%H%M%S")
             except (OSError, PermissionError) as e:
                 self.log(
                     f"[CAUSE] Cannot access logs directory to detect session ID. [IMPACT] Will use timestamp-based ID instead. [ACTION] Check directory permissions. Error: {e}",
@@ -688,7 +861,10 @@ class StopHook(HookProcessor):
                 f"[CAUSE] Cannot import claude_reflection module. [IMPACT] Reflection functionality unavailable. [ACTION] Check if claude_reflection.py exists and is accessible. Error: {e}",
                 "WARNING",
             )
-            print(f"WARNING: claude_reflection not available - reflection disabled: {e}", file=sys.stderr)
+            print(
+                f"WARNING: claude_reflection not available - reflection disabled: {e}",
+                file=sys.stderr,
+            )
             self.save_metric("reflection_import_errors", 1)
             return None
 
@@ -811,9 +987,7 @@ class StopHook(HookProcessor):
             if "## Task Summary" in filled_template:
                 summary_section = filled_template.split("## Task Summary")[1].split("\n\n")[1]
                 first_sentence = summary_section.split(".")[0][:100]
-                import re
-
-                task_slug = re.sub(r"[^a-z0-9]+", "-", first_sentence.lower()).strip("-")
+                task_slug = _TASK_SLUG_RE.sub("-", first_sentence.lower()).strip("-")
                 task_slug = task_slug[:50]
         except Exception as e:
             self.log(f"Could not extract task slug from reflection, using 'session': {e}", "DEBUG")

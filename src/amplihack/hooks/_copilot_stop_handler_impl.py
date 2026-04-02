@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -13,7 +14,28 @@ from amplihack.utils.token_sanitizer import TokenSanitizer
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["get_copilot_continuation", "disable_lock_files", "_log_decision"]
+_SANITIZE_RE = re.compile(r"[^A-Za-z0-9_\-]")
+
+__all__ = ["get_copilot_continuation", "disable_lock_files", "_log_decision", "_sanitize_session_id"]
+
+
+def _sanitize_session_id(session_id: str | None) -> str | None:
+    """Sanitize session_id to prevent path traversal and metadata injection.
+
+    Mirrors the sanitization in lock_tool.py and stop.py so all consumers
+    apply the same transformation. Replaces any character that is not
+    alphanumeric, hyphen, or underscore with an underscore.
+
+    Args:
+        session_id: Raw session identifier, or None.
+
+    Returns:
+        Sanitized string safe for use as a filesystem path component,
+        or None if the input was None.
+    """
+    if session_id is None:
+        return None
+    return _SANITIZE_RE.sub("_", session_id)
 
 _COPILOT_LOG_DIR = ".claude/runtime/copilot-decisions"
 
@@ -114,7 +136,7 @@ def get_copilot_continuation(
 def disable_lock_files(project_root: Path, log_fn: Callable[..., object] = logger.info) -> None:
     """Remove lock and goal files to auto-disable lock mode."""
     lock_dir = project_root / ".claude" / "runtime" / "locks"
-    for name in (".lock_active", ".lock_goal"):
+    for name in (".lock_active", ".lock_goal", ".lock_message", ".continuation_prompt"):
         file_path = lock_dir / name
         try:
             file_path.unlink(missing_ok=True)

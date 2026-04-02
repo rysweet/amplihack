@@ -1,0 +1,68 @@
+name: "Lock recovery and issue extraction"
+description: "Verify stale lock recovery and mixed issue/PR extraction behavior from CLI-visible workflows."
+version: "1.0.0"
+
+config:
+  timeout: 120000
+  retries: 0
+  parallel: false
+
+environment:
+  requires: []
+
+agents:
+  - name: "cli-agent"
+    type: "cli"
+    config:
+      workingDirectory: "."
+      defaultTimeout: 30000
+      executionMode: "spawn"
+      captureOutput: true
+      ioConfig:
+        encoding: "utf8"
+        handleInteractivePrompts: false
+      logConfig:
+        logCommands: true
+        logOutput: true
+        logLevel: "info"
+
+steps:
+  - name: "Run stale lock recovery QA command"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: >-
+        PYTHONPATH=src uv run pytest tests/outside_in/test_stop_hook_safety_valve_e2e.py::TestSafetyValveE2EClaude::test_stale_lock_is_auto_disabled tests/outside_in/test_stop_hook_safety_valve_e2e.py::TestSafetyValveE2EClaude::test_corrupt_counter_triggers_recovery tests/test_lock_unlock.py::TestLockUnlockCommands::test_lock_tool_writes_session_metadata tests/test_lock_unlock.py::TestLockUnlockCommands::test_lock_tool_unlock_cleans_related_lock_state -q && echo LOCK_RECOVERY_QA_OK
+    timeout: 90000
+
+  - name: "Verify lock recovery marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "LOCK_RECOVERY_QA_OK"
+    timeout: 10000
+
+  - name: "Run issue extraction QA command"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: >-
+        PYTHONPATH=src:amplifier-bundle uv run pytest amplifier-bundle/tools/test_default_workflow_fixes.py -q && echo ISSUE_EXTRACTION_QA_OK
+    timeout: 90000
+
+  - name: "Verify issue extraction marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "ISSUE_EXTRACTION_QA_OK"
+    timeout: 10000
+
+cleanup:
+  - name: "Capture CLI output"
+    agent: "cli-agent"
+    action: "capture_output"
+
+metadata:
+  tags:
+    ["cli", "lock-mode", "workflow", "issue-extraction", "regression", "issue-3960", "issue-3983"]
+  priority: "high"

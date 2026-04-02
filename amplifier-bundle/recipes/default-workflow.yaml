@@ -380,22 +380,120 @@ steps:
       # FIX (issue #3022): Use safe heredoc capture instead of echo {{variable}} to
       # prevent shell metacharacter injection from issue body content.  Use head -1
       # instead of tail -1 so the canonical URL (first match) wins — not a trailing
-      # noise number captured via 2>&1 in step-03a.
+      # noise number captured via 2>&1 in step-03a.  Also scan task_description
+      # and PR metadata so mixed PR URLs, issue URLs, and #NNNN references resolve
+      # to the actual issue number instead of a related PR number.
       # EOFISSUECREATION delimiter is intentionally long/specific to prevent accidental
       # collision with issue body text that might contain common delimiters like "EOF".
       ISSUE_CREATION=$(cat <<'EOFISSUECREATION'
       {{issue_creation}}
       EOFISSUECREATION
       )
-      EXTRACTED=$(printf '%s' "$ISSUE_CREATION" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+      TASK_DESC=$(cat <<'EOFTASKDESC'
+      {{task_description}}
+      EOFTASKDESC
+      )
+      # Use a Python timeout wrapper instead of GNU `timeout` so local macOS runs
+      # do not silently skip issue resolution when coreutils is absent.
+      GH_TIMEOUT_SECONDS="${AMPLIHACK_WORKFLOW_GH_TIMEOUT_SECONDS:-60}"
+      gh_with_timeout() {
+        GH_TIMEOUT_SECONDS="$GH_TIMEOUT_SECONDS" python3 - "$@" <<'PY'
+      import os
+      import subprocess
+      import sys
+
+      raw_timeout = os.environ.get("GH_TIMEOUT_SECONDS", "60")
+      try:
+          timeout = int(raw_timeout)
+          if timeout <= 0:
+              raise ValueError("timeout must be positive")
+      except ValueError:
+          print(
+              f"WARNING: invalid AMPLIHACK_WORKFLOW_GH_TIMEOUT_SECONDS={raw_timeout!r}; using 60",
+              file=sys.stderr,
+          )
+          timeout = 60
+
+      cmd = sys.argv[1:]
+      if not cmd:
+          raise SystemExit(0)
+
+      try:
+          result = subprocess.run(
+              cmd,
+              capture_output=True,
+              text=True,
+              timeout=timeout,
+              check=False,
+          )
+      except subprocess.TimeoutExpired:
+          print(f"INFO: {' '.join(cmd[:3])} timed out after {timeout}s", file=sys.stderr)
+          raise SystemExit(0)
+      except OSError as exc:
+          print(f"INFO: could not run {cmd[0]}: {exc}", file=sys.stderr)
+          raise SystemExit(0)
+
+      if result.returncode != 0:
+          stderr = (result.stderr or "").strip()
+          if stderr:
+              print(
+                  f"INFO: {' '.join(cmd[:3])} returned {result.returncode}: {stderr}",
+                  file=sys.stderr,
+              )
+          raise SystemExit(0)
+
+      sys.stdout.write(result.stdout)
+      PY
+      }
+      EXTRACTED=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+
       if [ -z "$EXTRACTED" ]; then
+        PR_NUMBER=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'pull/[0-9]+' | grep -oE '[0-9]+' | head -1)
+        if [ -n "$PR_NUMBER" ]; then
+          echo "INFO: step-03b resolving linked issue from PR #$PR_NUMBER" >&2
+          EXTRACTED=$(gh_with_timeout gh pr view "$PR_NUMBER" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // ""')
+        fi
+      fi
+
+      if [ -z "$EXTRACTED" ]; then
+        REF_CANDIDATES=$(TASK_DESC="$TASK_DESC" python3 - <<'PY'
+      import os
+      import re
+
+      task = os.environ.get("TASK_DESC", "")
+      seen = set()
+      for match in re.finditer(r'(?<![A-Za-z0-9_/-])#([0-9]+)\b', task):
+          candidate = match.group(1)
+          if candidate not in seen:
+              print(candidate)
+              seen.add(candidate)
+      PY
+        )
+        if [ -n "$REF_CANDIDATES" ]; then
+          echo "INFO: step-03b resolving issue number from task_description references" >&2
+          while IFS= read -r candidate; do
+            [ -n "$candidate" ] || continue
+            CANDIDATE_URL=$(gh_with_timeout gh issue view "$candidate" --json url --jq '.url // ""')
+            case "$CANDIDATE_URL" in
+              */issues/*)
+                EXTRACTED="$candidate"
+                break
+                ;;
+            esac
+          done < <(printf '%s\n' "$REF_CANDIDATES")
+        fi
+      fi
+
+      case "$EXTRACTED" in
+        ''|*[!0-9]*)
         echo "ERROR: step-03b failed to extract issue number from issue_creation output." >&2
         echo "Raw issue_creation output was:" >&2
         printf '%s\n' "$ISSUE_CREATION" >&2
         echo "This means step-03a (create-issue) likely failed or returned unexpected output." >&2
         echo "Downstream steps (commit, PR) will fail without a valid issue number." >&2
         exit 1
-      fi
+        ;;
+      esac
       printf '%s' "$EXTRACTED"
     output: "issue_number"
 

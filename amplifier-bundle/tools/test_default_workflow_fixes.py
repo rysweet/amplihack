@@ -48,29 +48,139 @@ _BL001_FIXED_CMD = textwrap.dedent("""\
     {issue_creation}
     EOFISSUECREATION
     )
-    EXTRACTED=$(printf '%s' "$ISSUE_CREATION" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+    TASK_DESC=$(cat <<'EOFTASKDESC'
+    {task_description}
+    EOFTASKDESC
+    )
+    GH_TIMEOUT_SECONDS="${{AMPLIHACK_WORKFLOW_GH_TIMEOUT_SECONDS:-60}}"
+    gh_with_timeout() {{
+      GH_TIMEOUT_SECONDS="$GH_TIMEOUT_SECONDS" python3 - "$@" <<'PY'
+    import os
+    import subprocess
+    import sys
+
+    raw_timeout = os.environ.get("GH_TIMEOUT_SECONDS", "60")
+    try:
+        timeout = int(raw_timeout)
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
+    except ValueError:
+        print(
+            f"WARNING: invalid AMPLIHACK_WORKFLOW_GH_TIMEOUT_SECONDS={{raw_timeout!r}}; using 60",
+            file=sys.stderr,
+        )
+        timeout = 60
+
+    cmd = sys.argv[1:]
+    if not cmd:
+        raise SystemExit(0)
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"INFO: {{' '.join(cmd[:3])}} timed out after {{timeout}}s", file=sys.stderr)
+        raise SystemExit(0)
+    except OSError as exc:
+        print(f"INFO: could not run {{cmd[0]}}: {{exc}}", file=sys.stderr)
+        raise SystemExit(0)
+
+    if result.returncode != 0:
+        stderr = (result.stderr or "").strip()
+        if stderr:
+            print(
+                f"INFO: {{' '.join(cmd[:3])}} returned {{result.returncode}}: {{stderr}}",
+                file=sys.stderr,
+            )
+        raise SystemExit(0)
+
+    sys.stdout.write(result.stdout)
+    PY
+    }}
+    EXTRACTED=$(printf '%s\\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
     if [ -z "$EXTRACTED" ]; then
-      echo "ERROR: step-03b failed to extract issue number from issue_creation output." >&2
-      exit 1
+      PR_NUMBER=$(printf '%s\\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'pull/[0-9]+' | grep -oE '[0-9]+' | head -1)
+      if [ -n "$PR_NUMBER" ]; then
+        EXTRACTED=$(gh_with_timeout gh pr view "$PR_NUMBER" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // ""')
+      fi
     fi
+    if [ -z "$EXTRACTED" ]; then
+      REF_CANDIDATES=$(TASK_DESC="$TASK_DESC" python3 - <<'PY'
+    import os
+    import re
+
+    task = os.environ.get("TASK_DESC", "")
+    seen = set()
+    for match in re.finditer(r'(?<![A-Za-z0-9_/-])#([0-9]+)\\b', task):
+        candidate = match.group(1)
+        if candidate not in seen:
+            print(candidate)
+            seen.add(candidate)
+    PY
+    )
+      if [ -n "$REF_CANDIDATES" ]; then
+        while IFS= read -r candidate; do
+          [ -n "$candidate" ] || continue
+          CANDIDATE_URL=$(gh_with_timeout gh issue view "$candidate" --json url --jq '.url // ""')
+          case "$CANDIDATE_URL" in
+            */issues/*)
+              EXTRACTED="$candidate"
+              break
+              ;;
+          esac
+        done < <(printf '%s\\n' "$REF_CANDIDATES")
+      fi
+    fi
+    case "$EXTRACTED" in
+      ''|*[!0-9]*)
+        echo "ERROR: step-03b failed to extract issue number from issue_creation output." >&2
+        exit 1
+        ;;
+    esac
     printf '%s' "$EXTRACTED"
 """)
 
 
-def _run_extraction_fixed(issue_creation: str) -> str:
+def _run_extraction_fixed(
+    issue_creation: str,
+    task_description: str = "",
+    gh_mock: str | None = None,
+    extra_env: dict[str, str] | None = None,
+) -> str:
     """Run the FIXED BL-001 extraction bash snippet and return trimmed stdout.
 
     Raises RuntimeError if the script exits non-zero (e.g. empty extraction).
     """
-    script = _BL001_FIXED_CMD.format(issue_creation=issue_creation)
-    result = subprocess.run(
-        ["bash", "-c", script],
-        capture_output=True,
-        text=True,
+    script = _BL001_FIXED_CMD.format(
+        issue_creation=issue_creation,
+        task_description=task_description,
     )
-    if result.returncode != 0:
-        raise RuntimeError(f"Extraction failed (rc={result.returncode}): {result.stderr.strip()}")
-    return result.stdout.strip()
+    with tempfile.TemporaryDirectory(prefix="wf_step03b_") as tmpdir:
+        env = os.environ.copy()
+        if gh_mock is not None:
+            gh_path = Path(tmpdir) / "gh"
+            gh_path.write_text(gh_mock)
+            gh_path.chmod(0o755)
+            env["PATH"] = f"{tmpdir}:{env['PATH']}"
+        if extra_env:
+            env.update(extra_env)
+
+        result = subprocess.run(
+            ["bash", "-c", script],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Extraction failed (rc={result.returncode}): {result.stderr.strip()}"
+            )
+        return result.stdout.strip()
 
 
 def _run_extraction_buggy(issue_creation: str) -> str:
@@ -318,6 +428,83 @@ class TestExtractIssueNumber(unittest.TestCase):
         issue_creation = "https://github.com/org/repo/issues/999999\n"
         result = _run_extraction_fixed(issue_creation)
         self.assertEqual(result, "999999")
+
+    def test_extract_issue_number_uses_issue_url_from_task_description(self):
+        """A task_description issue URL must beat a PR URL in issue_creation output."""
+        issue_creation = "https://github.com/org/repo/pull/3975\n"
+        task_description = (
+            "Continue https://github.com/org/repo/issues/3969 after "
+            "https://github.com/org/repo/pull/3975 landed"
+        )
+        result = _run_extraction_fixed(issue_creation, task_description=task_description)
+        self.assertEqual(result, "3969")
+
+    def test_extract_issue_number_resolves_closing_issue_from_pr_url(self):
+        """When step-03 returns a PR URL, step-03b should resolve its linked issue."""
+        issue_creation = "https://github.com/org/repo/pull/3975\n"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "pr" && "$2" == "view" && "$3" == "3975" ]]; then
+              echo "3969"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(
+            issue_creation,
+            task_description="Resume PR #3975 follow-up work",
+            gh_mock=gh_mock,
+        )
+        self.assertEqual(result, "3969")
+
+    def test_extract_issue_number_rejects_nonpositive_timeout_override(self):
+        """Zero or negative timeout overrides must fall back to the default timeout."""
+        issue_creation = "https://github.com/org/repo/pull/3975\n"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "pr" && "$2" == "view" && "$3" == "3975" ]]; then
+              echo "3969"
+              exit 0
+            fi
+            exit 1
+        """)
+
+        for timeout_value in ["0", "-5"]:
+            with self.subTest(timeout_value=timeout_value):
+                result = _run_extraction_fixed(
+                    issue_creation,
+                    task_description="Resume PR #3975 follow-up work",
+                    gh_mock=gh_mock,
+                    extra_env={"AMPLIHACK_WORKFLOW_GH_TIMEOUT_SECONDS": timeout_value},
+                )
+                self.assertEqual(result, "3969")
+
+    def test_extract_issue_number_skips_pr_reference_and_selects_issue_reference(self):
+        """Mixed #NNNN references should choose the real issue, not the related PR."""
+        issue_creation = "https://github.com/org/repo/pull/3975\n"
+        task_description = "Resume #3975 recovery follow-up for issue #3969"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "pr" && "$2" == "view" ]]; then
+              echo ""
+              exit 0
+            fi
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3975" ]]; then
+              echo "https://github.com/org/repo/pull/3975"
+              exit 0
+            fi
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3969" ]]; then
+              echo "https://github.com/org/repo/issues/3969"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(
+            issue_creation,
+            task_description=task_description,
+            gh_mock=gh_mock,
+        )
+        self.assertEqual(result, "3969")
 
 
 # ===========================================================================
@@ -1089,6 +1276,166 @@ class TestStep16CreateDraftPR(unittest.TestCase):
 
 
 # ===========================================================================
+# ===========================================================================
+# TDD: 3-tier issue extraction edge cases (issue #3983)
+# Tests cover scenarios not addressed by existing BL-001 tests.
+# Some tests may fail if the YAML step-03b doesn't yet handle these cases.
+# ===========================================================================
+
+
+class TestStep03bThreeTierEdgeCases(unittest.TestCase):
+    """
+    Edge-case tests for the 3-tier issue extraction in step-03b.
+
+    Tier 1: Direct issues/<N> URL match (already tested in BL-001)
+    Tier 2: PR URL → gh pr view closingIssuesReferences → issue number
+    Tier 3: #N pattern in task_description → gh issue view verify
+
+    These tests focus on:
+    - Tier 2 fallback when closingIssuesReferences is empty → Tier 3
+    - Tier 3 rejects candidate with PR URL, selects next with issue URL
+    - Tier 1 wins over PR URL when both appear in same text
+    - Tier 2 gh failure falls through to Tier 3
+    """
+
+    def test_tier1_beats_pr_url_when_issue_url_also_present(self):
+        """
+        Tier 1 direct match: if both issues/<N> and pull/<N> appear in the same
+        text, the issues/<N> number must be returned (not the PR number).
+        This confirms Tier 1 takes priority.
+        """
+        issue_creation = (
+            "https://github.com/org/repo/pull/4000\n"
+            "https://github.com/org/repo/issues/3983\n"
+        )
+        result = _run_extraction_fixed(issue_creation)
+        self.assertEqual(result, "3983", "Tier 1 issues/ URL must beat PR URL")
+
+    def test_tier2_fallback_when_closing_issues_empty_uses_tier3(self):
+        """
+        Tier 2 fallback: PR URL present but closingIssuesReferences is empty.
+        step-03b must fall through to Tier 3 and pick up #3983 from task_description.
+        """
+        issue_creation = "https://github.com/org/repo/pull/4000\n"
+        task_description = "Resume work on issue #3983"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            # pr view returns empty closingIssuesReferences
+            if [[ "$1" == "pr" && "$2" == "view" ]]; then
+              echo ""
+              exit 0
+            fi
+            # issue view confirms #3983 is a real issue
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3983" ]]; then
+              echo "https://github.com/org/repo/issues/3983"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(issue_creation, task_description, gh_mock)
+        self.assertEqual(result, "3983", "Should fall through to Tier 3 and find #3983")
+
+    def test_tier3_skips_candidate_whose_gh_url_is_a_pr(self):
+        """
+        Tier 3 rejection: candidate #4000 resolves to a PR URL (*/pull/*) and
+        must be skipped; candidate #3983 resolves to issues/ URL and is selected.
+        """
+        issue_creation = ""
+        task_description = "Check #4000 and fix #3983"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "4000" ]]; then
+              echo "https://github.com/org/repo/pull/4000"
+              exit 0
+            fi
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3983" ]]; then
+              echo "https://github.com/org/repo/issues/3983"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(issue_creation, task_description, gh_mock)
+        self.assertEqual(result, "3983", "Tier 3 should skip PR candidate and select issue")
+
+    def test_tier3_skips_candidate_when_gh_fails(self):
+        """
+        Tier 3 resilience: if gh fails for one candidate, that candidate is
+        skipped; a subsequent candidate that succeeds is used.
+        """
+        issue_creation = ""
+        task_description = "Fix #9999 and close #3983"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "9999" ]]; then
+              echo ""  # gh returns empty URL (not a real issue)
+              exit 0
+            fi
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3983" ]]; then
+              echo "https://github.com/org/repo/issues/3983"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(issue_creation, task_description, gh_mock)
+        self.assertEqual(result, "3983", "Should skip empty-URL candidate and use next valid one")
+
+    def test_tier2_gh_command_failure_falls_through_to_tier3(self):
+        """
+        Tier 2 resilience: if gh pr view exits non-zero, step-03b must not
+        abort — it should fall through to Tier 3.
+        """
+        issue_creation = "https://github.com/org/repo/pull/4000\n"
+        task_description = "Resume issue #3983"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "pr" && "$2" == "view" ]]; then
+              echo "gh: error: not found" >&2
+              exit 1
+            fi
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3983" ]]; then
+              echo "https://github.com/org/repo/issues/3983"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(issue_creation, task_description, gh_mock)
+        self.assertEqual(result, "3983", "Tier 2 gh failure should fall through to Tier 3")
+
+    def test_tier3_deduplicates_repeated_candidates(self):
+        """
+        Tier 3 dedup: #3983 appears twice in task_description but gh is only
+        called once and result is still 3983.
+        """
+        issue_creation = ""
+        task_description = "Fix #3983 as mentioned in #3983"
+        gh_call_count = [0]
+
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "issue" && "$2" == "view" && "$3" == "3983" ]]; then
+              echo "https://github.com/org/repo/issues/3983"
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(issue_creation, task_description, gh_mock)
+        self.assertEqual(result, "3983")
+
+    def test_extraction_fails_when_all_tiers_exhausted(self):
+        """
+        When no tier yields a valid issue number, step-03b must exit 1.
+        Regression: before the fix, this returned empty string silently.
+        """
+        issue_creation = "No URLs here"
+        task_description = "Nothing to extract"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            exit 1
+        """)
+        with self.assertRaises(RuntimeError, msg="Should raise when no issue found"):
+            _run_extraction_fixed(issue_creation, task_description, gh_mock)
+
+
 # Entry point
 # ===========================================================================
 
