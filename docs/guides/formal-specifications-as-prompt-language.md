@@ -96,7 +96,6 @@ When both a formal spec and English description are present, the model must reco
 
 ### Caveats
 
-- Smoke matrix (1 repeat per condition) — variance not yet measured
 - Heuristic scoring is keyword-based, not semantic
 - GPT-5.4 timed out on `tla_only` and `tla_plus_refinement` conditions (infrastructure limit, not content issue)
 
@@ -411,8 +410,24 @@ The real power of TLA+ isn't just as a prompt language — it's that TLC can ver
 
 ## Reference
 
+### External resources
+
+- **[TLA+ Home Page](https://lamport.azurewebsites.net/tla/tla.html)** — Leslie Lamport's TLA+ resource site with learning materials, tools, and the TLA+ book
+- **[TLA+ Tools (TLC, TLAPS, PlusCal)](https://github.com/tlaplus/tlaplus)** — open-source model checker, proof system, and algorithm language
+- **[Learn TLA+](https://learntla.com/)** — interactive tutorial for getting started with TLA+ specifications
+- **[Cucumber / Gherkin Documentation](https://cucumber.io/docs/gherkin/)** — official Gherkin language reference (Given/When/Then syntax)
+- **[BDD Introduction (Cucumber)](https://cucumber.io/docs/bdd/)** — Behavior-Driven Development concepts and practices
+- **[Gherkin Reference](https://cucumber.io/docs/gherkin/reference/)** — complete keyword reference for .feature files
+
+### Project resources
+
 - **PATTERNS.md**: The [Formal Specification as Prompt](../claude/context/PATTERNS.md) pattern contains the summary evidence table and domain guidance.
 - **TLA+ experiment data**: `experiments/hive_mind/tla_prompt_language/`
 - **Gherkin experiment data**: `experiments/hive_mind/gherkin_v2_recipe_executor/`
 - **Evaluation code**: `src/amplihack/eval/gherkin_agent_evaluator.py` (agent consensus), `src/amplihack/eval/gherkin_prompt_experiment.py` (experiment runner)
-- **TLA+ expert references**: Demirbas, M. "TLA+ as Design Accelerator" (2026) — 8 industry case studies (AWS, MongoDB, Azure). LLMs violate 41.9% of liveness properties vs 8.3% of safety properties (SysMoBench) — always validate with TLC.
+
+### Research
+
+- Demirbas, M. "TLA+ as Design Accelerator" (2026) — 8 industry case studies (AWS, MongoDB, Azure)
+- SysMoBench — LLMs violate 41.9% of liveness properties vs 8.3% of safety properties; always validate with TLC
+- [Use of Formal Methods at Amazon Web Services](https://lamport.azurewebsites.net/tla/formal-methods-amazon.pdf) — how TLA+ is used in production at AWS (DynamoDB, S3, EBS)
