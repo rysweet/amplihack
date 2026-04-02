@@ -428,6 +428,6 @@ The real power of TLA+ isn't just as a prompt language — it's that TLC can ver
 
 ### Research
 
-- Demirbas, M. "TLA+ as Design Accelerator" (2026) — 8 industry case studies (AWS, MongoDB, Azure)
-- SysMoBench — LLMs violate 41.9% of liveness properties vs 8.3% of safety properties; always validate with TLC
+- [Demirbas, M. "Using TLA+ as a Design Accelerator"](https://muratbuffalo.blogspot.com/2024/03/using-tla-as-design-accelerator.html) — 8 industry case studies (AWS, MongoDB, Azure)
+- [SysMoBench: LLM Evaluation for Formal System Modeling](https://arxiv.org/abs/2503.03204) — LLMs violate 41.9% of liveness properties vs 8.3% of safety properties; always validate with TLC
 - [Use of Formal Methods at Amazon Web Services](https://lamport.azurewebsites.net/tla/formal-methods-amazon.pdf) — how TLA+ is used in production at AWS (DynamoDB, S3, EBS)
