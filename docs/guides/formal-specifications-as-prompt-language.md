@@ -277,6 +277,138 @@ The Gherkin scenarios are unambiguous about:
 
 An English description of the same requirements would likely leave at least one of these interactions ambiguous.
 
+## Tutorial: TLA+ Expert in Practice
+
+Here's how the tla-plus-expert skill works, using the actual hive mind distributed retrieval system as the example.
+
+### Scenario: Distributed retrieval with shard failures
+
+You're building a system where a question is dispatched to multiple retrieval agents (shards), results are merged, and the response must handle partial failures. The hard part isn't any single component — it's the interactions: What happens when some shards fail? Can the system complete with partial results? Is the merge deterministic regardless of response order?
+
+These are exactly the questions that English descriptions fumble but TLA+ makes precise.
+
+**Step 1**: Invoke the skill to write the spec.
+
+```
+/tla-plus-expert write a TLA+ spec for distributed retrieval: a question is dispatched to N agents,
+each returns facts or fails, results are merged deterministically, partial failures are allowed,
+total failure (no responses) is a distinct state
+```
+
+The tla-plus-expert agent produces a `.tla` specification. Here's the actual spec from the hive mind experiment (simplified for clarity):
+
+```tla
+---- MODULE DistributedRetrievalBestEffort ----
+EXTENDS FiniteSets, Naturals, Sequences
+
+CONSTANTS Agents, Questions, Facts, NullQuestion
+
+VARIABLES
+    activeAgents, originalQuestion, normalizedQuery,
+    shardResults, respondedAgents, failedAgents,
+    mergedResult, phase
+
+\* Phase transitions: idle -> dispatch -> complete | failed -> idle
+Init ==
+    /\ activeAgents \in SUBSET Agents
+    /\ activeAgents # {}
+    /\ phase = "idle"
+
+StartRequest(q, nq) ==
+    /\ phase = "idle"
+    /\ q \in Questions
+    /\ phase' = "dispatch"
+
+RecordShardSuccess(a, facts) ==
+    /\ phase = "dispatch"
+    /\ a \in activeAgents
+    /\ a \notin respondedAgents        \* Each agent responds at most once
+    /\ shardResults' = [shardResults EXCEPT ![a] = facts]
+    /\ respondedAgents' = respondedAgents \cup {a}
+
+RecordShardFailure(a) ==
+    /\ phase = "dispatch"
+    /\ a \in activeAgents
+    /\ a \notin respondedAgents
+    /\ failedAgents' = failedAgents \cup {a}
+    /\ shardResults' = [shardResults EXCEPT ![a] = {}]  \* Failed = empty
+
+\* Best-effort completion: allowed even with failures
+CompleteRequest ==
+    /\ phase = "dispatch"
+    /\ activeAgents \subseteq (respondedAgents \cup failedAgents)
+    /\ mergedResult' = CanonicalMerge       \* Deterministic merge
+    /\ phase' = "complete"
+
+\* Total failure: nobody responded at all
+FailRequest ==
+    /\ phase = "dispatch"
+    /\ respondedAgents = {}
+    /\ failedAgents = activeAgents
+    /\ phase' = "failed"
+```
+
+**Step 2**: Define the invariants — the properties that must always hold.
+
+This is where TLA+ earns its keep. These invariants are what English descriptions consistently miss:
+
+```tla
+\* The original question is never lost mid-request
+OriginalQuestionPreserved ==
+    phase \in {"dispatch", "complete", "failed"} =>
+      originalQuestion # NullQuestion
+
+\* Merged results come ONLY from actual responses, not garbage
+MergedFactsComeFromResponses ==
+    phase = "complete" =>
+      SeqToSet(mergedResult) = UNION {shardResults[a] : a \in respondedAgents}
+
+\* Same inputs produce same merge regardless of response order
+DeterministicMerge ==
+    phase = "complete" =>
+      mergedResult = CanonicalizeSet(RespondedFactsSet)
+
+\* Failed shards contribute nothing (not random data)
+FailedShardsContributeNothing ==
+    \A a \in failedAgents : shardResults[a] = {}
+
+\* Total failure ONLY when nobody responded
+FailOnlyWhenNoResponses ==
+    phase = "failed" => respondedAgents = {}
+```
+
+**Step 3**: Model-check with TLC to verify the spec is consistent.
+
+```bash
+/tla-plus-expert verify DistributedRetrievalBestEffort.tla with 2 agents, 1 question, 2 facts
+```
+
+TLC explores all possible interleavings: agent A succeeds then B fails, B fails then A succeeds, both succeed, both fail, timeouts, etc. The actual experiment explored **5,927 states** with **0 invariant violations** across 7 invariants.
+
+**Step 4**: Use the spec as the prompt for code generation.
+
+Pass the `.tla` file to the builder agent as the primary specification — no English description needed. The experiment showed this produces code that scores 0.86 on contract compliance, vs 0.57 with English-only.
+
+### Why this works
+
+The TLA+ spec makes five things explicit that English consistently misses:
+
+1. **"Each agent responds at most once"** — the `a \notin respondedAgents` guard. English descriptions rarely state this constraint explicitly, leading to code that doesn't deduplicate.
+
+2. **"Failed shards contribute empty, not garbage"** — `shardResults' = [shardResults EXCEPT ![a] = {}]`. English says "handle failures" but doesn't specify what the failure contribution looks like in the data structure.
+
+3. **"Merge is deterministic"** — `CanonicalizeSet` produces the same sequence regardless of response order. English says "merge results" but doesn't address ordering.
+
+4. **"Total failure is distinct from partial success"** — separate `FailRequest` and `CompleteRequest` actions with different phase transitions. English descriptions often conflate these.
+
+5. **"Completion requires all agents accounted for"** — `activeAgents \subseteq (respondedAgents \cup failedAgents)`. Without this, the system could "complete" while agents are still in flight.
+
+An English prompt describing the same system produced code that scored 0.57 — it consistently missed the deterministic merge invariant and the distinction between total failure and partial success.
+
+### When TLC catches bugs you wouldn't
+
+The real power of TLA+ isn't just as a prompt language — it's that TLC can verify your spec before you generate code. In the hive mind spec, TLC verified that no interleaving of agent responses can violate the merge determinism invariant. No amount of English description review would give you that confidence.
+
 ## Reference
 
 - **PATTERNS.md**: The [Formal Specification as Prompt](../claude/context/PATTERNS.md) pattern contains the summary evidence table and domain guidance.
