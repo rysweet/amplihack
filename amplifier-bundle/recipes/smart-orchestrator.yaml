@@ -4,7 +4,7 @@ description: |
   Classifies -> formulates goal -> decomposes into workstreams ->
   executes via recipe runner (single or parallel) -> goal-seeking
   reflection loop (3 rounds max, auto-mode pattern) -> summarizes.
-version: "1.5.0"
+version: "1.5.1"
 author: "Amplihack Team"
 tags: ["orchestration", "routing", "parallel", "auto-classify", "goal-seeking"]
 
@@ -131,12 +131,26 @@ steps:
       PROMPT=$(cat "$_PROMPT_FILE")
       _STDERR_FILE=$(mktemp)
       trap 'rm -f "$_PROMPT_FILE" "$_STDERR_FILE"' EXIT
+      # Build CLI invocation conditional on agent binary.
+      # Claude supports --dangerously-skip-permissions, --disallowed-tools, --append-system-prompt.
+      # Copilot/codex reject those flags; use --allow-all-tools and inject
+      # the classifier constraint into the prompt itself.
+      _CLASSIFIER_CONSTRAINT="SYSTEM CONSTRAINT: You are a task classifier. Output ONLY JSON. Do NOT invoke dev-orchestrator or any workflow. Do NOT use any tools."
       set +e
-      env -u CLAUDECODE "$AGENT_BIN" \
-        --dangerously-skip-permissions \
-        --disallowed-tools "Bash,Edit,Write,Read,Glob,Grep,Agent,Skill,NotebookEdit,WebFetch,WebSearch,TodoWrite" \
-        --append-system-prompt "You are a task classifier. Output ONLY JSON. Do NOT invoke dev-orchestrator or any workflow." \
-        -p "$PROMPT" 2>"$_STDERR_FILE"
+      case "$AGENT_BIN" in
+        *copilot*|*codex*)
+          env -u CLAUDECODE "$AGENT_BIN" \
+            --allow-all-tools \
+            -p "${_CLASSIFIER_CONSTRAINT} ${PROMPT}" 2>"$_STDERR_FILE"
+          ;;
+        *)
+          env -u CLAUDECODE "$AGENT_BIN" \
+            --dangerously-skip-permissions \
+            --disallowed-tools "Bash,Edit,Write,Read,Glob,Grep,Agent,Skill,NotebookEdit,WebFetch,WebSearch,TodoWrite" \
+            --append-system-prompt "You are a task classifier. Output ONLY JSON. Do NOT invoke dev-orchestrator or any workflow." \
+            -p "$PROMPT" 2>"$_STDERR_FILE"
+          ;;
+      esac
       _EXIT_CODE=$?
       set -e
       if [ "$_EXIT_CODE" -ne 0 ]; then
