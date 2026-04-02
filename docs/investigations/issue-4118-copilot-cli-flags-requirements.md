@@ -54,7 +54,7 @@ Already has Copilot-aware env handling (`AMPLIHACK_COPILOT_NESTED`). **ALREADY F
 - Changing the Copilot CLI itself or its flag surface
 - Adding new Copilot-specific equivalent flags
 - Modifying the Rust recipe runner binary
-- Changing `smart-orchestrator.yaml` recipe definition
+- ~~Changing `smart-orchestrator.yaml` recipe definition~~ (moved to in-scope: classify-and-decompose bash step was a root cause)
 - Fixing other Copilot compatibility issues beyond the three flagged issues
 
 ## Assumptions
