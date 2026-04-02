@@ -6,15 +6,12 @@ behaviour not yet implemented:
   - test_emit_step_transition_rejects_empty_step_name
       emit_step_transition() does not yet validate inputs.
 
-  - test_build_rust_env_forwards_gh_aw_github_token
-      GH_AW_GITHUB_TOKEN is not in _ALLOWED_RUST_ENV_VARS, so the Rust
-      subprocess silently loses the token needed to call the GitHub API.
-
-  - test_build_rust_env_forwards_github_token
-      GITHUB_TOKEN is similarly absent from the allowlist.
-
   - test_log_file_does_not_grow_unbounded
       No MAX_LOG_BYTES cap is implemented; the log grows without limit.
+
+Token forwarding (GH_AW_GITHUB_TOKEN, GITHUB_TOKEN) is now implemented —
+both variables are in _ALLOWED_RUST_ENV_VARS so the Rust subprocess receives
+the credentials it needs for GitHub API calls.
 """
 
 from __future__ import annotations
@@ -195,27 +192,22 @@ class TestBuildRustEnvSecretExclusion:
 
 
 # ---------------------------------------------------------------------------
-# build_rust_env — token forwarding (FAILING — tokens not in allowlist)
+# build_rust_env — token forwarding
 # ---------------------------------------------------------------------------
 
 
 class TestBuildRustEnvTokenForwarding:
-    """These tests specify DESIRED behaviour that is not yet implemented.
+    """GH_AW_GITHUB_TOKEN and GITHUB_TOKEN must be forwarded to the Rust subprocess.
 
     The Rust runner invokes the gh CLI and makes GitHub API calls; it therefore
-    needs at least one GitHub token.  Currently GH_AW_GITHUB_TOKEN and
-    GITHUB_TOKEN are absent from _ALLOWED_RUST_ENV_VARS, which means the
-    subprocess silently runs without GitHub credentials.
+    needs at least one GitHub token.  Both tokens are now in _ALLOWED_RUST_ENV_VARS.
+    GH_AW_GITHUB_TOKEN is the preferred scoped token; GITHUB_TOKEN is the fallback.
     """
 
     def _make_env(self, extras: dict[str, str]) -> dict[str, str]:
         with patch.dict(os.environ, extras, clear=False):
             return build_rust_env(wrapper_factory=_no_op_wrapper, which=lambda *a, **kw: None)
 
-    @pytest.mark.xfail(
-        reason="GH_AW_GITHUB_TOKEN is not in _ALLOWED_RUST_ENV_VARS (not yet implemented)",
-        strict=True,
-    )
     def test_forwards_gh_aw_github_token(self):
         """GH_AW_GITHUB_TOKEN must reach the Rust subprocess so gh CLI calls succeed."""
         env = self._make_env({"GH_AW_GITHUB_TOKEN": "ghs_preferred_token"})
@@ -223,10 +215,6 @@ class TestBuildRustEnvTokenForwarding:
             "GH_AW_GITHUB_TOKEN must be in the forwarded env; add it to _ALLOWED_RUST_ENV_VARS"
         )
 
-    @pytest.mark.xfail(
-        reason="GITHUB_TOKEN is not in _ALLOWED_RUST_ENV_VARS (not yet implemented)",
-        strict=True,
-    )
     def test_forwards_github_token_as_fallback(self):
         """GITHUB_TOKEN must be forwarded when GH_AW_GITHUB_TOKEN is absent."""
         env = self._make_env({"GITHUB_TOKEN": "ghs_fallback_token"})

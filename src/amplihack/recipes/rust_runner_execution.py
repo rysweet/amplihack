@@ -62,6 +62,10 @@ _ALLOWED_RUST_ENV_VARS = {
     "CLAUDE_PROJECT_DIR",
     "CURL_CA_BUNDLE",
     "FORCE_COLOR",
+    # Preferred scoped token for gh CLI calls inside the Rust runner.
+    "GH_AW_GITHUB_TOKEN",
+    # Fallback token; broader-scoped than GH_AW_GITHUB_TOKEN.
+    "GITHUB_TOKEN",
     "HOME",
     "HTTP_PROXY",
     "HTTPS_PROXY",
