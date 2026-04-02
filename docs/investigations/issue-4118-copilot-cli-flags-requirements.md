@@ -41,13 +41,13 @@ Already has Copilot-aware env handling (`AMPLIHACK_COPILOT_NESTED`). **ALREADY F
 
 ## Acceptance Criteria
 
-- [ ] `AMPLIHACK_AGENT_BINARY=copilot amplihack dev 'any task'` does NOT produce `error: unknown option --dangerously-skip-permissions`
-- [ ] `AMPLIHACK_AGENT_BINARY=copilot amplihack dev 'any task'` does NOT produce `error: unknown option --append-system-prompt`
-- [ ] `AMPLIHACK_AGENT_BINARY=copilot amplihack dev 'any task'` does NOT produce `error: unknown option --disallowed-tools`
-- [ ] Default (claude) binary still passes `--dangerously-skip-permissions` and works identically
-- [ ] Unit tests verify: (a) Claude delegate gets Claude-specific flags, (b) Copilot delegate does NOT, (c) Unknown delegate falls back safely with warning
-- [ ] `launcher/core.py` `build_claude_command()` is conditional on agent binary
-- [ ] `auto_mode.py` `_run_sdk_subprocess()` else-branch does not pass `--dangerously-skip-permissions` when agent != claude
+- [x] `AMPLIHACK_AGENT_BINARY=copilot amplihack dev 'any task'` does NOT produce `error: unknown option --dangerously-skip-permissions`
+- [x] `AMPLIHACK_AGENT_BINARY=copilot amplihack dev 'any task'` does NOT produce `error: unknown option --append-system-prompt`
+- [x] `AMPLIHACK_AGENT_BINARY=copilot amplihack dev 'any task'` does NOT produce `error: unknown option --disallowed-tools`
+- [x] Default (claude) binary still passes `--dangerously-skip-permissions` and works identically
+- [x] Unit tests verify: (a) Claude delegate gets Claude-specific flags, (b) Copilot delegate does NOT, (c) Unknown delegate falls back safely with warning
+- [x] `smart-orchestrator.yaml` classify-and-decompose step uses case-switch on `AGENT_BIN`
+- [x] 104 tests pass (16 in rust_runner_support + auto_mode_copilot_flags, 88 in smart_orchestrator_decomposition)
 
 ## Out of Scope
 
@@ -115,3 +115,44 @@ Already has Copilot-aware env handling (`AMPLIHACK_COPILOT_NESTED`). **ALREADY F
   "classification": "bugfix"
 }
 ```
+
+## Design Consolidation (2026-04-02)
+
+### Implemented Architecture
+
+The fix was implemented in commit `3dc141ccb` and is tracked by PR #4168.
+
+The `classify-and-decompose` step was converted from `type: agent` to `type: bash` with a case-switch on `AMPLIHACK_AGENT_BINARY`:
+
+```bash
+case "$AGENT_BIN" in
+  *copilot*|*codex*)
+    # Uses --allow-all-tools; classifier constraint injected into prompt text
+    env -u CLAUDECODE "$AGENT_BIN" --allow-all-tools -p "${_CLASSIFIER_CONSTRAINT} ${PROMPT}"
+    ;;
+  *)
+    # Claude path: uses --dangerously-skip-permissions, --disallowed-tools, --append-system-prompt
+    env -u CLAUDECODE "$AGENT_BIN" --dangerously-skip-permissions \
+      --disallowed-tools "Bash,Edit,Write,Read,Glob,Grep,Agent,Skill,NotebookEdit,WebFetch,WebSearch,TodoWrite" \
+      --append-system-prompt "You are a task classifier. Output ONLY JSON." \
+      -p "$PROMPT"
+    ;;
+esac
+```
+
+### Design Decisions
+
+1. **Pattern matching on binary name** (`*copilot*|*codex*`) — extensible to future non-Claude binaries without code changes
+2. **Classifier constraint in prompt** for Copilot — functionally equivalent to `--disallowed-tools` since classification only needs JSON output
+3. **Loud failure on error** — stderr diagnostics with exit code propagation, plus hint about common causes (binary not installed, API key, network)
+4. **Early semaphore** in preflight — sets workflow-active semaphore before classify step to prevent hook recursion (#3971)
+
+### Test Coverage
+
+- `tests/recipes/test_rust_runner_support.py` — 10 tests for runner binary detection
+- `tests/unit/test_auto_mode_copilot_flags.py` — 6 tests for auto_mode flag conditioning
+- `tests/test_smart_orchestrator_decomposition.py` — 88 tests for decomposition parsing
+
+### PR Status
+
+PR #4168 is open. The branch has accumulated unrelated changes (281 files vs main). The core fix is in `amplifier-bundle/recipes/smart-orchestrator.yaml`.

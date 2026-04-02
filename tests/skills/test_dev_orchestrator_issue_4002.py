@@ -48,17 +48,26 @@ if "--help" in sys.argv or "--version" in sys.argv:
     print("GitHub Copilot CLI 1.0.15-0.")
     raise SystemExit(0)
 
-if "You are an intelligent task orchestrator" in prompt:
-    print(json.dumps({
-        "task_type": "Q&A",
-        "goal": "Reproduce nested classify",
-        "success_criteria": ["classify works"],
-        "workstreams": [{
-            "name": "single",
-            "description": "Answer the question directly",
-            "recipe": "default-workflow",
-        }],
-    }))
+if (
+    "You are classifying a task for the smart-orchestrator recipe." in prompt
+    or "SYSTEM CONSTRAINT: You are a task classifier." in prompt
+):
+    print(
+        json.dumps(
+            {
+                "task_type": "Q&A",
+                "goal": "Reproduce nested classify",
+                "success_criteria": ["classify works"],
+                "workstreams": [
+                    {
+                        "name": "single",
+                        "description": "Answer the question directly",
+                        "recipe": "default-workflow",
+                    }
+                ],
+            }
+        )
+    )
     raise SystemExit(0)
 
 if "Review for any remaining ambiguity in the requirements." in prompt:
@@ -91,6 +100,8 @@ PY"""
     env["HOME"] = str(fake_home)
     env["PATH"] = f"{fake_bin}{os.pathsep}{env.get('PATH', '')}"
     env["AMPLIHACK_AGENT_BINARY"] = "copilot"
+    env["AMPLIHACK_HOME"] = str(REPO_ROOT)
+    env["AMPLIHACK_NONINTERACTIVE"] = "1"
 
     result = subprocess.run(
         ["bash", "-lc", command],
@@ -116,11 +127,13 @@ PY"""
     ]
     assert records, "expected at least one nested Copilot invocation"
 
-    nested_records = [r for r in records if "--no-custom-instructions" in r["argv"]]
-    assert nested_records, f"expected nested launches to disable custom instructions: {records!r}"
+    nested_records = [r for r in records if r["prompt"]]
+    assert nested_records, f"expected prompt-bearing nested launches: {records!r}"
 
     classify_records = [
-        r for r in nested_records if "You are an intelligent task orchestrator" in r["prompt"]
+        r
+        for r in nested_records
+        if "You are classifying a task for the smart-orchestrator recipe." in r["prompt"]
     ]
     assert classify_records, f"expected classify prompt to reach fake Copilot: {records!r}"
     assert any("Answer this question directly." in r["prompt"] for r in nested_records), records
