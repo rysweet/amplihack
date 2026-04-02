@@ -53,6 +53,10 @@ from amplihack.launcher.work_summary import WorkSummaryGenerator
 
 # Security constants for content sanitization
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
+MAX_TURN_OUTPUT = 10 * 1024 * 1024  # 10MB per turn limit
+MAX_LOGGED_DISCREPANCIES = 3
+DEFAULT_MAX_TOTAL_API_CALLS = 50
+DEFAULT_MAX_SESSION_DURATION = 3600  # 1 hour max
 PROMPT_INJECTION_PATTERNS = [
     r"ignore\s+previous\s+instructions",
     r"disregard\s+all\s+prior",
@@ -212,8 +216,14 @@ class AutoMode:
 
         # Security: Session-level limits to prevent resource exhaustion
         self.total_api_calls = 0
-        self.max_total_api_calls = 50  # Max API calls per session
-        self.max_session_duration = 3600  # 1 hour max
+        self.max_total_api_calls = self._get_positive_int_env(
+            "AMPLIHACK_AUTO_MODE_MAX_TOTAL_API_CALLS",
+            DEFAULT_MAX_TOTAL_API_CALLS,
+        )
+        self.max_session_duration = self._get_positive_int_env(
+            "AMPLIHACK_AUTO_MODE_MAX_SESSION_DURATION_SECONDS",
+            DEFAULT_MAX_SESSION_DURATION,
+        )
         self.session_output_size = 0
         self.max_session_output = 50 * 1024 * 1024  # 50MB total session output
 
@@ -290,6 +300,30 @@ class AutoMode:
         # Always write to file (including DEBUG)
         with open(self.log_dir / "auto.log", "a", encoding="utf-8") as f:
             f.write(f"[{time.strftime('%H:%M:%S')}] [{level}] {msg}\n")
+
+    def _get_positive_int_env(self, env_name: str, default: int) -> int:
+        """Read a positive integer from the environment with explicit warning on fallback."""
+        raw_value = os.environ.get(env_name)
+        if raw_value is None or raw_value == "":
+            return default
+
+        try:
+            parsed = int(raw_value)
+        except ValueError:
+            self.log(
+                f"Invalid {env_name} value {raw_value!r}; using default {default}",
+                level="WARNING",
+            )
+            return default
+
+        if parsed <= 0:
+            self.log(
+                f"Invalid {env_name} value {raw_value!r}; using default {default}",
+                level="WARNING",
+            )
+            return default
+
+        return parsed
 
     def _format_elapsed(self, seconds: float) -> str:
         """Format elapsed time as Xm Ys or Xs.
@@ -599,7 +633,7 @@ Document your decisions and reasoning in comments/logs."""
 
         except Exception as e:
             # Graceful degradation
-            self.log(f"Warning: Work summary generation failed: {e}")
+            self.log(f"Warning: Work summary generation failed: {e}", level="WARNING")
             work_summary_text = "Work summary unavailable (git/GitHub tools may be missing)"
             signal_explanation = ""
 
@@ -710,8 +744,12 @@ Current Turn: {self.turn}/{self.max_turns}"""
                 self.log(f"⚠️  Completion claim disputed: {verification.explanation}")
                 if verification.discrepancies:
                     self.log("Missing signals:")
-                    for discrepancy in verification.discrepancies[:3]:  # Show top 3
+                    displayed_discrepancies = verification.discrepancies[:MAX_LOGGED_DISCREPANCIES]
+                    for discrepancy in displayed_discrepancies:
                         self.log(f"  - {discrepancy}")
+                    omitted_count = len(verification.discrepancies) - len(displayed_discrepancies)
+                    if omitted_count > 0:
+                        self.log(f"  ... {omitted_count} additional discrepancies omitted")
                 self.log("Continuing loop to complete remaining work...")
             elif not should_continue:
                 self.log("✓ Completion verified by concrete signals")
@@ -719,7 +757,10 @@ Current Turn: {self.turn}/{self.max_turns}"""
             return should_continue
 
         except Exception as e:
-            self.log(f"Warning: Verification failed, falling back to text parsing: {e}")
+            self.log(
+                f"Warning: Verification failed, falling back to text parsing: {e}",
+                level="WARNING",
+            )
             # Fallback to old behavior
             eval_lower = eval_result.lower()
             return "auto-mode evaluation: complete" not in eval_lower
@@ -831,7 +872,6 @@ Current Turn: {self.turn}/{self.max_turns}"""
             self.log("Using Claude SDK (streaming mode)")
             output_lines = []
             turn_output_size = 0
-            MAX_TURN_OUTPUT = 10 * 1024 * 1024  # 10MB per turn limit
 
             # Capture user message for transcript
             self.message_capture.capture_user_message(prompt)
@@ -1604,7 +1644,6 @@ Objective:
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
                 self.turn = turn
-                turn_start_time = time.time()  # Track turn start time
 
                 # Check if fork needed before turn execution
                 if self.fork_manager.should_fork():

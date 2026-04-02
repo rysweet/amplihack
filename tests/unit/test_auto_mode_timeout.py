@@ -11,9 +11,11 @@ the feature is implemented.
 """
 
 import argparse
+import os
 import sys
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -21,6 +23,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from amplihack.launcher.auto_mode import AutoMode
+
+
+@pytest.fixture(autouse=True)
+def disable_agent_memory():
+    """Keep timeout-focused tests out of the Kuzu-backed memory path."""
+    with patch("amplihack.launcher.agent_memory.AgentMemory.create", return_value=None):
+        yield
 
 
 class TestDefaultTimeout:
@@ -152,6 +161,69 @@ class TestExplicitTimeout:
 
         assert auto_mode.query_timeout_seconds == 2700.0, (
             f"Explicit 45 minute timeout should be 2700s, got {auto_mode.query_timeout_seconds}"
+        )
+
+
+class TestSessionLimitOverrides:
+    """Test environment overrides for auto-mode session safety limits."""
+
+    @pytest.fixture
+    def temp_working_dir(self):
+        """Create temporary working directory for tests."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            yield Path(temp_dir)
+
+    def test_session_limit_env_overrides_are_applied(self, temp_working_dir):
+        """Configured env vars should override default session caps."""
+        with patch.dict(
+            os.environ,
+            {
+                "AMPLIHACK_AUTO_MODE_MAX_TOTAL_API_CALLS": "99",
+                "AMPLIHACK_AUTO_MODE_MAX_SESSION_DURATION_SECONDS": "7200",
+            },
+            clear=False,
+        ):
+            auto_mode = AutoMode(
+                sdk="claude",
+                prompt="Test prompt",
+                max_turns=5,
+                working_dir=temp_working_dir,
+            )
+
+        assert auto_mode.max_total_api_calls == 99
+        assert auto_mode.max_session_duration == 7200
+
+    def test_invalid_session_limit_env_values_warn_and_fall_back(self, temp_working_dir):
+        """Invalid env values should warn explicitly and use safe defaults."""
+        with (
+            patch.object(AutoMode, "log") as mock_log,
+            patch.dict(
+                os.environ,
+                {
+                    "AMPLIHACK_AUTO_MODE_MAX_TOTAL_API_CALLS": "bad",
+                    "AMPLIHACK_AUTO_MODE_MAX_SESSION_DURATION_SECONDS": "0",
+                },
+                clear=False,
+            ),
+        ):
+            auto_mode = AutoMode(
+                sdk="claude",
+                prompt="Test prompt",
+                max_turns=5,
+                working_dir=temp_working_dir,
+            )
+
+        assert auto_mode.max_total_api_calls == 50
+        assert auto_mode.max_session_duration == 3600
+        assert any(
+            "AMPLIHACK_AUTO_MODE_MAX_TOTAL_API_CALLS" in call.args[0]
+            and call.kwargs.get("level") == "WARNING"
+            for call in mock_log.call_args_list
+        )
+        assert any(
+            "AMPLIHACK_AUTO_MODE_MAX_SESSION_DURATION_SECONDS" in call.args[0]
+            and call.kwargs.get("level") == "WARNING"
+            for call in mock_log.call_args_list
         )
 
 
