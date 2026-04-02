@@ -326,9 +326,8 @@ class ClaudeProcess:
                 except (BrokenPipeError, OSError):
                     # Process closed or PTY closed
                     break
-        except Exception:
-            # Silently handle any other exceptions
-            pass
+        except Exception as e:
+            self.log(f"Unexpected PTY stdin feeder error: {e}", level="WARNING")
 
     def _wait_for_completion(self) -> int:
         """Wait for process to complete with optional timeout.
@@ -367,6 +366,8 @@ class ClaudeProcess:
         if self._master_fd is not None:
             try:
                 os.close(self._master_fd)
-            except Exception:
+            except (OSError, ValueError):
                 pass
+            except Exception as e:
+                self.log(f"Unexpected PTY cleanup error: {e}", level="WARNING")
             self._master_fd = None

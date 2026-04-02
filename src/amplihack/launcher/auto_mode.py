@@ -188,8 +188,10 @@ class AutoMode:
             self.memory = AgentMemory.create(agent_name=f"auto_{sdk}")
             if self.memory:
                 self.log("Memory system initialized")
-        except Exception:
-            pass  # Memory is optional
+        except (ImportError, AttributeError) as e:
+            self.log(f"Memory system unavailable: {e}", level="DEBUG")
+        except Exception as e:
+            self.log(f"Unexpected memory initialization error: {e}", level="WARNING")
 
         # Create directories for prompt injection feature
         self.append_dir = self.log_dir / "append"
@@ -455,8 +457,29 @@ class AutoMode:
         stderr_thread.start()
         stdin_thread.start()
 
-        # Wait for process to complete
-        process.wait()
+        # Apply the configured per-query timeout to subprocess-based SDK calls too.
+        query_timeout_seconds = getattr(self, "query_timeout_seconds", None)
+        timed_out = False
+        timeout_error = ""
+        try:
+            if query_timeout_seconds is None:
+                process.wait()
+            else:
+                process.wait(timeout=query_timeout_seconds)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            timeout_error = (
+                f"Subprocess turn timed out after {query_timeout_seconds:.1f}s. "
+                "Try reducing task complexity or increasing --query-timeout-minutes."
+            )
+            self.log(timeout_error, level="ERROR")
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.log("Subprocess did not exit after terminate(); killing", level="WARNING")
+                process.kill()
+                process.wait()
 
         # Wait for output threads to finish reading
         stdout_thread.join()
@@ -474,6 +497,9 @@ class AutoMode:
         # Log stderr if present (FULL output per user requirement)
         if stderr_output:
             self.log(f"stderr ({len(stderr_output)} chars): {stderr_output}")
+
+        if timed_out:
+            return 1, stdout_output if stdout_output else timeout_error
 
         return process.returncode, stdout_output
 
@@ -792,7 +818,6 @@ Current Turn: {self.turn}/{self.max_turns}"""
             return self._run_sdk_subprocess(prompt)
 
         try:
-            print("\n[DEBUG] 🚀 START _run_turn_with_sdk", flush=True)
             self.log("Using Claude SDK (streaming mode)")
             output_lines = []
             turn_output_size = 0
@@ -810,7 +835,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
             )
 
             # Stream response - messages are typed objects, not dicts
-            print("\n[DEBUG] 🔄 Starting async for message loop", flush=True)
+            self.log("Starting Claude SDK message loop", level="DEBUG")
 
             # Track turn start time for accurate timeout reporting
             turn_start_time = time.time()
@@ -823,14 +848,10 @@ Current Turn: {self.turn}/{self.max_turns}"""
             )
             async with timeout_ctx:
                 async for message in query(prompt=prompt, options=options):
-                    print("\n[DEBUG] 💬 Got a message from query()", flush=True)
                     # Handle different message types
                     if hasattr(message, "__class__"):
                         msg_type = message.__class__.__name__
-                        print(
-                            f"\n[DEBUG] 📨 Message type: {msg_type}", flush=True
-                        )  # Direct print to bypass log()
-                        self.log(f"📨 Received message type: {msg_type}", level="INFO")
+                        self.log(f"Received Claude SDK message type: {msg_type}", level="DEBUG")
 
                         if msg_type == "AssistantMessage":
                             # Capture assistant message for transcript

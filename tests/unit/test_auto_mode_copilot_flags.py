@@ -18,20 +18,27 @@ def _make_auto_mode(sdk: str = "claude"):
     obj.prompt = "test"
     obj.working_dir = "/tmp"
     obj.stream_output = False
+    obj.query_timeout_seconds = 30.0
     obj.log = lambda msg, level="INFO": None  # stub out logging
     return obj
+
+
+class _FakeStream:
+    def readline(self):
+        return ""
 
 
 class _FakePopen:
     """Minimal Popen mock that captures the command."""
 
     instances: list[list[str]] = []
+    wait_calls: list[dict[str, float]] = []
 
     def __init__(self, cmd, **_kw):
         _FakePopen.instances.append(list(cmd))
         self.returncode = 0
-        self.stdout = iter([])
-        self.stderr = iter([])
+        self.stdout = _FakeStream()
+        self.stderr = _FakeStream()
         self.stdin = None
         self.pid = 1
 
@@ -39,6 +46,7 @@ class _FakePopen:
         return 0
 
     def wait(self, **_kw):
+        _FakePopen.wait_calls.append(_kw)
         return 0
 
     def terminate(self):
@@ -48,6 +56,7 @@ class _FakePopen:
 def _capture_cmd(mode, prompt: str = "hello", env_overrides: dict | None = None) -> list[str]:
     """Run _run_sdk_subprocess and return the captured command list."""
     _FakePopen.instances.clear()
+    _FakePopen.wait_calls.clear()
     env = env_overrides or {}
     with patch("subprocess.Popen", _FakePopen), patch.dict(os.environ, env, clear=False):
         if "AMPLIHACK_AGENT_BINARY" not in env:
@@ -99,3 +108,9 @@ class TestRunSdkSubprocessFlagIsolation:
         mode = _make_auto_mode(sdk="claude")
         cmd = _capture_cmd(mode, env_overrides={})
         assert "--dangerously-skip-permissions" in cmd
+
+    def test_subprocess_wait_uses_query_timeout(self):
+        """Subprocess path must honor query_timeout_seconds instead of waiting forever."""
+        mode = _make_auto_mode(sdk="copilot")
+        _capture_cmd(mode)
+        assert _FakePopen.wait_calls == [{"timeout": 30.0}]
