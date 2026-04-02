@@ -198,11 +198,11 @@ Gherkin scenarios map directly to test cases. TLA+ invariants map to property as
 
 ### Agents (delegated by other agents)
 
-| Agent                                                                        | Type        | Role                                                                              |
-| ---------------------------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------- |
-| [gherkin-expert](../claude/agents/amplihack/specialized/gherkin-expert.md)   | Specialized | Writes Gherkin scenarios, applies BDD patterns, domain modeling through scenarios |
-| [tla-plus-expert](../claude/agents/amplihack/specialized/tla-plus-expert.md) | Specialized | Writes TLA+ specs, model checking, applies Demirbas's 7 mental models             |
-| [prompt-writer](../claude/agents/amplihack/specialized/prompt-writer.md)     | Specialized | Tri-path judgment: decides when to use English, Gherkin, or TLA+                  |
+| Agent                                                                    | Type        | Role                                                                              |
+| ------------------------------------------------------------------------ | ----------- | --------------------------------------------------------------------------------- |
+| gherkin-expert                                                           | Specialized | Writes Gherkin scenarios, applies BDD patterns, domain modeling through scenarios |
+| tla-plus-expert                                                          | Specialized | Writes TLA+ specs, model checking, applies Demirbas's 7 mental models             |
+| [prompt-writer](../claude/agents/amplihack/specialized/prompt-writer.md) | Specialized | Tri-path judgment: decides when to use English, Gherkin, or TLA+                  |
 
 ## Tutorial: Gherkin Expert in Practice
 
