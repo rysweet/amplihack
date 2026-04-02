@@ -121,3 +121,7 @@ Category: <strong>Structural</strong> | Generated: 2026-04-02T00:59:33.939222+00
 Source: `layer2_ast_bindings.json` | [Mermaid source](ast-lsp-bindings.mmd)
 
 </div>
+
+<!-- Atlas staleness reviewed: PR #4154 adds launcher.py (workstream entrypoint
+     importing amplihack.recipes.run_recipe_by_name); workstream_launcher node
+     added to mermaid + dot diagrams. -->

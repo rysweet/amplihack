@@ -33,4 +33,11 @@ graph LR
     F23 --> F7
     F24 --> F8
 
+
+    %% workstream launcher (PR #4154, follow-up #3978/#3963)
+    subgraph workstream_launcher["launcher.py"]
+        WL["launcher<br/>run_recipe_by_name"]
+    end
+    WL -.->|"imports"| F22
+
     click F0 "../ast-lsp-bindings/" "View AST bindings"
