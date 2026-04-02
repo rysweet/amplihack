@@ -354,7 +354,22 @@ class AutoMode:
             ]
         else:
             agent = os.environ.get("AMPLIHACK_AGENT_BINARY", self.sdk or "claude")
-            cmd = ["amplihack", agent, "--dangerously-skip-permissions", "--verbose", "-p", prompt]
+            if agent == "copilot":
+                cmd = ["amplihack", "copilot", "--allow-all-tools", "--add-dir", "/", "-p", prompt]
+            elif agent == "claude":
+                cmd = [
+                    "amplihack",
+                    agent,
+                    "--dangerously-skip-permissions",
+                    "--verbose",
+                    "-p",
+                    prompt,
+                ]
+            else:
+                raise RuntimeError(
+                    f"Unsupported agent binary '{agent}' in _run_sdk_subprocess(). "
+                    f"Set AMPLIHACK_AGENT_BINARY to 'claude' or 'copilot'."
+                )
 
         self.log(f"Running: {cmd[0]} ...")
 
