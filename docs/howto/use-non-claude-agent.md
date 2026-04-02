@@ -113,13 +113,10 @@ If the classify step fails (non-zero exit), the recipe prints the agent binary
 name, exit code, and stderr to help diagnose the issue. Common causes include
 the binary not being installed, a missing API key, or network problems.
 
-**Fix history:** Issues #4118, #4108, #4107 — resolved in commit `3dc141ccb`.
-
 ## See Also
 
 - [Dev-Orchestrator Tutorial](../tutorials/dev-orchestrator-tutorial.md#execution-modes)
 - [Tutorial: Enable the Copilot parity control plane](../tutorials/copilot-parity-control-plane.md)
 - [How to Configure the Copilot Parity Control Plane](./configure-copilot-parity-control-plane.md)
 - [Copilot Parity Control Plane Reference](../reference/copilot-parity-control-plane.md)
-- [Recent Fixes: Copilot CLI Flag Compatibility](../recipes/RECENT_FIXES_MARCH_2026.md#classify-and-decompose-cli-flags-conditional-on-agent-binary-issues-4118-4108-4107)
-- [Recent Fixes: Agent-Agnostic Binary Selection](../recipes/RECENT_FIXES_MARCH_2026.md#agent-agnostic-binary-selection-pr-3174)
+- [Recent Fixes March 2026](../recipes/RECENT_FIXES_MARCH_2026.md#agent-agnostic-binary-selection-pr-3174)

@@ -148,8 +148,6 @@ agent behavior. Both branches deliver the prompt via `-p`.
 On failure, the step emits the binary name, exit code, and stderr content (or a
 diagnostic hint if stderr is empty) before propagating the exit code.
 
-**Fixed in:** commit `3dc141ccb` (issues #4118, #4108, #4107).
-
 ## Nested Copilot Normalization Rules
 
 The compatibility layer normalizes nested Copilot launches created by the Rust recipe runner.
