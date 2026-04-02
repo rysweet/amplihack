@@ -431,3 +431,33 @@ The real power of TLA+ isn't just as a prompt language — it's that TLC can ver
 - [Demirbas, M. "Using TLA+ as a Design Accelerator"](https://muratbuffalo.blogspot.com/2024/03/using-tla-as-design-accelerator.html) — 8 industry case studies (AWS, MongoDB, Azure)
 - [SysMoBench: LLM Evaluation for Formal System Modeling](https://arxiv.org/abs/2503.03204) — LLMs violate 41.9% of liveness properties vs 8.3% of safety properties; always validate with TLC
 - [Use of Formal Methods at Amazon Web Services](https://lamport.azurewebsites.net/tla/formal-methods-amazon.pdf) — how TLA+ is used in production at AWS (DynamoDB, S3, EBS)
+
+## Potential Follow-ups
+
+### Increase statistical power
+
+The current Gherkin experiment uses N=3 repeats per condition. Confidence intervals overlap across all variants, meaning we can't statistically distinguish them. Running N=10 would tighten the CIs enough to determine whether `gherkin_only` is genuinely better than `english` or whether we're observing noise. The infrastructure supports this — change `full_repeats` in `manifest.json` and re-run.
+
+### Investigate why hybrid prompts degrade
+
+Both experiments show that adding English to a formal spec makes results worse. This is counterintuitive. Is it because the model tries to reconcile conflicting representations? Does the degradation depend on whether the English _paraphrases_ or _supplements_ the spec? A targeted experiment varying the relationship between the English and spec content could turn this from an observation into an actionable design principle for prompt engineering.
+
+### Execute generated code against the reference test suite
+
+Agent consensus scoring is better than regex, but the ground truth is: does the generated code actually work? The Gherkin experiment includes `reference/test_recipe_step_executor.py` with 34 passing tests. Running each generated artifact against those tests would give real pass/fail per feature — not LLM opinion. This would also calibrate whether the evaluator agents are accurate (do they agree with the tests?).
+
+### Broader model coverage
+
+GPT-5.4 timed out on every condition due to copilot SDK infrastructure issues. Fixing that would give cross-model data. The TLA+ experiment showed both Claude and GPT converge to 0.86 with formal specs — a stronger finding than single-model results. Testing with Sonnet (faster, cheaper) would show whether the spec-vs-english gap holds across capability levels.
+
+### Automate the spec-to-test pipeline
+
+`trace_to_test.py` exists for converting TLA+ model-checker traces into pytest cases, but isn't integrated into the default workflow. For Gherkin, the scenario-to-test mapping is still manual. Automating both paths — TLC traces become pytest cases, Gherkin scenarios become pytest cases — would make formal specs directly executable rather than just prompt engineering artifacts. This closes the loop: spec drives code generation _and_ test generation from the same source of truth.
+
+### Measure evaluator inter-rater reliability
+
+The 3 evaluator agents sometimes disagree (split votes). We don't yet know if these disagreements are random noise or systematic. Measuring inter-rater reliability (Cohen's kappa or Fleiss' kappa across agents) and calibrating against human judgment on a small sample would tell us how much to trust the consensus scores — and whether 3 agents is enough or we need 5.
+
+### Instrument the workflow feedback loop
+
+The prompt-writer, architect, and tester agents now have formal spec awareness, but we don't know if they actually use it or if it improves outcomes in real development tasks. Instrumenting the prompt-writer to log when it recommends TLA+ vs Gherkin vs English, and tracking whether downstream code quality improves on those tasks, would measure the production value of these experiments — not just the lab results.
