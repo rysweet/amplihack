@@ -20,22 +20,20 @@ import io
 import json
 import os
 import sys
-import textwrap
-from pathlib import Path
+import tempfile
 from unittest.mock import patch
 
 import pytest
 
 from amplihack.recipes.rust_runner_execution import (
-    _ALLOWED_RUST_ENV_VARS,
     build_rust_env,
     emit_step_transition,
 )
 
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
 
 def _capture_stderr(fn, *args, **kwargs):
     """Run *fn* and return whatever it wrote to sys.stderr as a string."""
@@ -46,22 +44,26 @@ def _capture_stderr(fn, *args, **kwargs):
 
 
 def _no_op_wrapper(real_path: str) -> str:
-    """Stub wrapper_factory that does nothing and returns a temp dir."""
-    import tempfile
+    """Stub wrapper_factory that returns a temp dir (cleaned up by OS on exit)."""
     return tempfile.mkdtemp(prefix="compat-")
+
+
+def _make_env(extras: dict[str, str]) -> dict[str, str]:
+    """Patch os.environ with *extras* and return the env dict from build_rust_env."""
+    with patch.dict(os.environ, extras, clear=False):
+        return build_rust_env(wrapper_factory=_no_op_wrapper, which=lambda *a, **kw: None)
 
 
 # ---------------------------------------------------------------------------
 # emit_step_transition — basic contract (should PASS with current impl)
 # ---------------------------------------------------------------------------
 
-
 class TestEmitStepTransitionContract:
     """emit_step_transition must write a single valid JSONL object to stderr."""
 
     def test_writes_exactly_one_line_to_stderr(self):
         output = _capture_stderr(emit_step_transition, "build", "start")
-        lines = [line for line in output.splitlines() if line.strip()]
+        lines = [l for l in output.splitlines() if l.strip()]
         assert len(lines) == 1, f"Expected 1 line, got {len(lines)}: {output!r}"
 
     def test_output_is_valid_json(self):
@@ -119,7 +121,6 @@ class TestEmitStepTransitionContract:
 # emit_step_transition — input validation (FAILING — not yet implemented)
 # ---------------------------------------------------------------------------
 
-
 class TestEmitStepTransitionValidation:
     """These tests specify DESIRED behaviour that is not yet implemented.
 
@@ -158,28 +159,23 @@ class TestEmitStepTransitionValidation:
 # build_rust_env — env allowlist (PASSING — basic secret exclusion)
 # ---------------------------------------------------------------------------
 
-
 class TestBuildRustEnvSecretExclusion:
     """build_rust_env must NEVER forward secret variables to the subprocess."""
 
-    def _make_env(self, extras: dict[str, str]) -> dict[str, str]:
-        with patch.dict(os.environ, extras, clear=False):
-            return build_rust_env(wrapper_factory=_no_op_wrapper, which=lambda *a, **kw: None)
-
     def test_excludes_anthropic_api_key(self):
-        env = self._make_env({"ANTHROPIC_API_KEY": "sk-ant-secret"})
+        env = _make_env({"ANTHROPIC_API_KEY": "sk-ant-secret"})
         assert "ANTHROPIC_API_KEY" not in env, (
             "ANTHROPIC_API_KEY must never be forwarded to the Rust subprocess"
         )
 
     def test_excludes_gh_token(self):
-        env = self._make_env({"GH_TOKEN": "ghp_secret"})
+        env = _make_env({"GH_TOKEN": "ghp_secret"})
         assert "GH_TOKEN" not in env, (
             "GH_TOKEN must never be forwarded to the Rust subprocess"
         )
 
     def test_excludes_gh_aw_github_mcp_server_token(self):
-        env = self._make_env({"GH_AW_GITHUB_MCP_SERVER_TOKEN": "ghs_mcp_secret"})
+        env = _make_env({"GH_AW_GITHUB_MCP_SERVER_TOKEN": "ghs_mcp_secret"})
         assert "GH_AW_GITHUB_MCP_SERVER_TOKEN" not in env
 
     def test_excludes_aws_secret_access_key(self):
@@ -195,7 +191,6 @@ class TestBuildRustEnvSecretExclusion:
 # build_rust_env — token forwarding
 # ---------------------------------------------------------------------------
 
-
 class TestBuildRustEnvTokenForwarding:
     """GH_AW_GITHUB_TOKEN and GITHUB_TOKEN must be forwarded to the Rust subprocess.
 
@@ -204,20 +199,16 @@ class TestBuildRustEnvTokenForwarding:
     GH_AW_GITHUB_TOKEN is the preferred scoped token; GITHUB_TOKEN is the fallback.
     """
 
-    def _make_env(self, extras: dict[str, str]) -> dict[str, str]:
-        with patch.dict(os.environ, extras, clear=False):
-            return build_rust_env(wrapper_factory=_no_op_wrapper, which=lambda *a, **kw: None)
-
     def test_forwards_gh_aw_github_token(self):
         """GH_AW_GITHUB_TOKEN must reach the Rust subprocess so gh CLI calls succeed."""
-        env = self._make_env({"GH_AW_GITHUB_TOKEN": "ghs_preferred_token"})
+        env = _make_env({"GH_AW_GITHUB_TOKEN": "ghs_preferred_token"})
         assert "GH_AW_GITHUB_TOKEN" in env, (
             "GH_AW_GITHUB_TOKEN must be in the forwarded env; add it to _ALLOWED_RUST_ENV_VARS"
         )
 
     def test_forwards_github_token_as_fallback(self):
         """GITHUB_TOKEN must be forwarded when GH_AW_GITHUB_TOKEN is absent."""
-        env = self._make_env({"GITHUB_TOKEN": "ghs_fallback_token"})
+        env = _make_env({"GITHUB_TOKEN": "ghs_fallback_token"})
         assert "GITHUB_TOKEN" in env, (
             "GITHUB_TOKEN must be in the forwarded env; add it to _ALLOWED_RUST_ENV_VARS"
         )
@@ -226,7 +217,6 @@ class TestBuildRustEnvTokenForwarding:
 # ---------------------------------------------------------------------------
 # build_rust_env — safe vars that MUST be forwarded (PASSING)
 # ---------------------------------------------------------------------------
-
 
 class TestBuildRustEnvSafeVarForwarding:
     """Variables in _ALLOWED_RUST_ENV_VARS must be present when set in the parent env."""
@@ -243,20 +233,17 @@ class TestBuildRustEnvSafeVarForwarding:
         ],
     )
     def test_allowed_var_is_forwarded(self, key, value):
-        with patch.dict(os.environ, {key: value}, clear=False):
-            env = build_rust_env(wrapper_factory=_no_op_wrapper, which=lambda *a, **kw: None)
+        env = _make_env({key: value})
         assert env.get(key) == value, f"{key} must be forwarded to Rust subprocess"
 
     def test_returns_dict_not_none(self):
-        with patch.dict(os.environ, {}, clear=False):
-            env = build_rust_env(wrapper_factory=_no_op_wrapper, which=lambda *a, **kw: None)
+        env = _make_env({})
         assert isinstance(env, dict)
 
 
 # ---------------------------------------------------------------------------
 # Log file size cap (FAILING — MAX_LOG_BYTES not yet implemented)
 # ---------------------------------------------------------------------------
-
 
 class TestLogFileSizeCap:
     """The log file written during progress-mode execution must be bounded.
@@ -271,7 +258,7 @@ class TestLogFileSizeCap:
     )
     def test_max_log_bytes_constant_exists(self):
         """A MAX_LOG_BYTES sentinel must be importable from the module."""
-        import amplihack.recipes.rust_runner_execution as m
+        import amplihack.recipes.rust_runner_execution as m  # noqa: PLC0415
 
         assert hasattr(m, "MAX_LOG_BYTES"), (
             "Define MAX_LOG_BYTES (e.g. 10 * 1024 * 1024) to cap log file growth"
@@ -284,9 +271,8 @@ class TestLogFileSizeCap:
     )
     def test_write_progress_mode_does_not_exceed_max_log_bytes(self, tmp_path):
         """Simulated large output must not produce a log file larger than MAX_LOG_BYTES."""
-        import subprocess
-
-        import amplihack.recipes.rust_runner_execution as m
+        import amplihack.recipes.rust_runner_execution as m  # noqa: PLC0415
+        import subprocess  # noqa: PLC0415
 
         huge_line = "x" * 1024 + "\n"
         # Simulate a process that produces 12 MB of stdout (above any sensible cap).
