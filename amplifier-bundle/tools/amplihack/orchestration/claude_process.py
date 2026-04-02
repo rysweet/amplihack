@@ -235,7 +235,15 @@ class ClaudeProcess:
         else:
             binary_prefix = DELEGATE_COMMANDS[delegate]
 
-        cmd = [*binary_prefix, "--dangerously-skip-permissions", "-p", self.prompt]
+        # Select permission flags based on delegate type.
+        # Claude uses --dangerously-skip-permissions; Copilot uses --allow-all-tools.
+        # Unknown delegates (fallback) get Claude flags since they resolve to 'claude'.
+        if delegate == "amplihack copilot":
+            permission_flags = ["--allow-all-tools"]
+        else:
+            permission_flags = ["--dangerously-skip-permissions"]
+
+        cmd = [*binary_prefix, *permission_flags, "-p", self.prompt]
 
         if self.model:
             cmd.extend(["--model", self.model])

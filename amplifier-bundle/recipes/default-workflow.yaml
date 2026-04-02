@@ -208,6 +208,19 @@ steps:
       }
       ```
 
+      ## Internal Recipe Step Constraints
+
+      This is an internal child-agent step inside the parent workflow.
+
+      - Do NOT invoke `/dev`
+      - Do NOT call `Skill(skill="dev-orchestrator")`
+      - Do NOT call `run_recipe_by_name(...)`
+      - Do NOT report on recipe runner progress
+      - Do NOT ask the user for clarification
+      - Do NOT return workflow narration or status text
+
+      Return ONLY the JSON object above.
+
       Use your best judgment to work autonomously. Pass explicit requirements to ALL subsequent agents.
     output: "clarified_requirements"
     parse_json: true

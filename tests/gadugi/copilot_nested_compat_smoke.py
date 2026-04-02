@@ -34,6 +34,7 @@ def main() -> int:
 
     command = [
         str(wrapper),
+        "--dangerously-skip-permissions",
         "--system-prompt",
         "architect instructions",
         "--append-system-prompt=extra instructions",

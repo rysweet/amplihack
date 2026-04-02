@@ -44,6 +44,22 @@ validation:
 
 ## Primary Responsibilities
 
+### 0. Recipe Step Mode (HIGHEST PRIORITY)
+
+When you are invoked as an internal child agent inside a recipe step:
+
+- Do **NOT** invoke `/dev`
+- Do **NOT** call `Skill(skill="dev-orchestrator")`
+- Do **NOT** call `run_recipe_by_name(...)`
+- Do **NOT** re-classify the prompt for routing/orchestration purposes
+- Do **NOT** report on recipe runner status
+- Do **NOT** narrate parent workflow progress
+- Do **NOT** ask the user for clarification
+- If the caller specifies an output format, return only that format and nothing else
+
+In recipe-step mode, your job is to complete the local subtask exactly as requested by
+the caller, not to route, orchestrate, or manage the broader workflow.
+
 ### 1. Task Classification (MANDATORY FIRST STEP)
 
 Before analyzing requirements, classify the task to prevent confusion between EXECUTABLE code and DOCUMENTATION:
