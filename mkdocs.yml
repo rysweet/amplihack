@@ -151,6 +151,8 @@ nav:
           - PDF: claude/skills/pdf/SKILL.md
           - Oxidizer: claude/skills/oxidizer-workflow/SKILL.md
           - WorkIQ WSL: claude/skills/workiq-wsl/SKILL.md
+          - Gherkin Expert: claude/skills/gherkin-expert/SKILL.md
+          - TLA+ Expert: claude/skills/tla-plus-expert/SKILL.md
   - Tools:
       - Scenarios Overview: claude/scenarios/README.md
       - Analyze Codebase: claude/scenarios/analyze-codebase/README.md
@@ -162,6 +164,8 @@ nav:
           - How to Configure the Parity Control Plane: howto/configure-copilot-parity-control-plane.md
           - Parity Control Plane Design: concepts/copilot-parity-control-plane.md
           - Parity Control Plane Reference: reference/copilot-parity-control-plane.md
+  - Guides:
+      - Formal Specifications as Prompt Language: guides/formal-specifications-as-prompt-language.md
   - Advanced Topics:
       - Development Guide: DEVELOPING_AMPLIHACK.md
       - Hive Mind:
