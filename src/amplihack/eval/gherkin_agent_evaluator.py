@@ -179,7 +179,23 @@ def _extract_vote(raw: dict[str, Any], agent_id: str, persona: str) -> AgentVote
 
 
 def _has_anthropic_api_key() -> bool:
-    """Check if direct Anthropic API access is available."""
+    """Check if direct Anthropic API access is available and not disabled.
+
+    Returns False when:
+    - ANTHROPIC_API_KEY is unset or empty, OR
+    - ANTHROPIC_DISABLED=true (explicit opt-out)
+
+    Controlling env-vars:
+        ANTHROPIC_API_KEY:   Required API credential.
+        ANTHROPIC_DISABLED:  Set to ``true`` to disable even when key is present.
+    """
+    if os.environ.get("ANTHROPIC_DISABLED", "").strip().lower() == "true":
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "Anthropic API disabled (ANTHROPIC_DISABLED=true); "
+            "gherkin evaluator will use the CLI (claude Code) path instead."
+        )
+        return False
     return bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 
