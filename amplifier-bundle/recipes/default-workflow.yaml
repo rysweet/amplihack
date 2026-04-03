@@ -1888,6 +1888,19 @@ steps:
       GIT_PROVIDER=$(detect_git_provider)
 
       CURRENT_BRANCH=$(git branch --show-current)
+      # SECURITY: Validate CURRENT_BRANCH contains only safe ref characters before use in
+      # --source-branch arguments. git enforces ref-format rules but an empty result
+      # (detached HEAD) or an exotic name could cause CLI argument confusion.
+      if [ -z "$CURRENT_BRANCH" ]; then
+        echo "ERROR: Cannot determine current branch (detached HEAD?). Checkout a branch first." >&2
+        exit 1
+      fi
+      case "$CURRENT_BRANCH" in
+        *[^a-zA-Z0-9/_.-]*)
+          echo "ERROR: Branch name contains unsafe characters: $CURRENT_BRANCH" >&2
+          exit 1
+          ;;
+      esac
       ISSUE_NUM="{{issue_number}}"
 
       # SECURITY: Validate ISSUE_NUM is numeric before interpolating into shell expressions
