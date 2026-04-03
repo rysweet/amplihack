@@ -384,6 +384,10 @@ steps:
           echo "ERROR: Failed to create ADO work item (az boards work-item create returned empty)" >&2
           exit 1
         fi
+        # SECURITY: Validate az output is numeric before use — guards against unexpected az output
+        case "$NEW_ITEM_ID" in
+          ''|*[!0-9]*) echo "ERROR: ADO work item ID is not numeric: $NEW_ITEM_ID" >&2; exit 1 ;;
+        esac
         echo "INFO: Created ADO work item #$NEW_ITEM_ID" >&2
         # Emit URL-like path that step-03b can extract the numeric ID from
         printf '_workitems/edit/%s\n' "$NEW_ITEM_ID"
@@ -1879,8 +1883,11 @@ steps:
           exit 1
       fi
 
-      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
-      TASK_DESC=$(cat <<EOFTASKDESC
+      # FIX (#3045/#3076/#3117): heredoc capture — prevents echo metacharacter injection.
+      # SECURITY FIX: quoted delimiter (<<'EOF') prevents bash from expanding $() / backticks
+      # in template-substituted content. {{variable}} substitution is performed by the recipe
+      # runner before bash executes, so quoted delimiters are safe and correct here.
+      TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
       )
@@ -1888,7 +1895,7 @@ steps:
       PR_TITLE="${TASK_DESC//$'\n'/ }"
       PR_TITLE="${PR_TITLE//$'\r'/ }"
       PR_TITLE="${PR_TITLE:0:200}"
-      PR_DESIGN=$(cat <<EOFDESIGN
+      PR_DESIGN=$(cat <<'EOFDESIGN'
       {{design_spec}}
       EOFDESIGN
       )

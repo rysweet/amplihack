@@ -10,7 +10,7 @@ Replace the sections below with information about your project.
 
 ---
 
-## Project: issue-4194-use-the-merge-ready-skillprocess-on-pr-3952-and-an
+## Project: amplihack-pm
 
 ## Overview
 
@@ -29,6 +29,7 @@ Development framework for Claude Code, GitHub Copilot CLI, and Microsoft Amplifi
 - **Language**: Python
 - **Language**: JavaScript/TypeScript
 - **Language**: Rust
+- **Language**: Go
 - **Framework**: [Main framework if applicable]
 - **Database**: [Database system if applicable]
 
