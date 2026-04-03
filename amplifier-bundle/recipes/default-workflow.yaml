@@ -2427,39 +2427,29 @@ steps:
     output: "zero_bs_check"
 
   - id: "step-19d-verification-gate"
-    type: "bash"
-    command: |
-      # ARG_MAX guard: large template variables (philosophy_check, patterns_check)
-      # are captured via heredoc and truncated to 1 KB summaries.  Echoing them
-      # raw caused ARG_MAX overflow — see #3366 / b1f87112b.
-      PHIL_CHECK=$(cat <<'EOFPHILCHECK'
-      {{philosophy_check}}
-      EOFPHILCHECK
-      )
-      PAT_CHECK=$(cat <<'EOFPATCHECK'
-      {{patterns_check}}
-      EOFPATCHECK
-      )
-      PHIL_SUMMARY=$(printf '%.1024s' "$PHIL_CHECK")
-      PAT_SUMMARY=$(printf '%.1024s' "$PAT_CHECK")
+    agent: "amplihack:reviewer"
+    working_dir: "{{worktree_setup.worktree_path}}"
+    prompt: |
+      # Step 19d: Verification Gate — Confirm All Reviews Complete
 
-      echo "=== STEP 19 VERIFICATION GATE ==="
-      echo ""
-      echo "Before proceeding, verify ALL of the following:"
-      echo ""
-      echo "  ✓ Did I invoke the REVIEWER agent for philosophy check?"
-      echo "  ✓ Did I invoke the PATTERNS agent?"
-      echo "  ✓ Did I complete the zero-BS verification?"
-      echo "  ✓ Did I check for Forbidden Pattern violations?"
-      echo "  ✓ Are all findings documented?"
-      echo "  ✓ Any issues found have been addressed?"
-      echo ""
-      echo "Philosophy check (first 1KB): $PHIL_SUMMARY"
-      echo "Patterns check (first 1KB): $PAT_SUMMARY"
-      echo ""
-      echo "If any verification fails, STOP and complete the missing step."
-      echo ""
-      echo "=== GATE PASSED - Proceed to Step 20 ==="
+      You are the final gate before proceeding to cleanup and PR creation.
+      Review the outputs from the prior review steps and confirm all checks passed.
+
+      **Philosophy Check results:** {{philosophy_check}}
+
+      **Patterns Check results:** {{patterns_check}}
+
+      Verify ALL of the following:
+      - [ ] Philosophy check was completed (step-19a output above is non-empty)
+      - [ ] Patterns check was completed (step-19b output above is non-empty)
+      - [ ] Zero-BS verification ran (step-19c)
+      - [ ] All findings have been addressed or explicitly accepted
+      - [ ] No Forbidden Pattern violations remain unresolved
+
+      If any review step was skipped or shows unresolved violations, STOP and
+      report what is missing. Otherwise confirm the gate passes.
+
+      **Output:** GATE_PASSED or GATE_BLOCKED with specific reasons.
     output: "step_19_gate_status"
 
   # ==========================================================================
