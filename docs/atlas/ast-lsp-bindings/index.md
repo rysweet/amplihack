@@ -90,15 +90,6 @@ Category: <strong>Structural</strong> | Generated: 2026-04-03T03:10:00.000000+00
 - 1979 files without `__all__` exports
 - `recipes/rust_runner.py` now binds `resolve_asset_path()` plus dynamic `session_tree.py` / `dev_intent_router.py` symbols to complete smart-orchestrator teardown in Python rather than late bash
 
-## Recent Delta
-
-- Refreshed layer coverage for `src/amplihack/recipes/rust_runner.py`
-- Captured the new teardown path:
-  - `rust_runner.py` imports `amplihack.runtime_assets.resolve_asset_path()`
-  - `rust_runner.py` dynamically loads `amplifier-bundle/tools/session_tree.py` and calls `complete_session()`
-  - `rust_runner.py` dynamically loads `.claude/tools/amplihack/hooks/dev_intent_router.py` and calls `clear_workflow_active()`
-- This atlas refresh addresses the `Atlas PR Impact Check` staleness triggered by the rust-runner smart-orchestrator teardown hardening
-
 ## Detail
 
 ??? info "Full data (click to expand)"

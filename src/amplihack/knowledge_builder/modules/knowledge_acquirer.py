@@ -1,13 +1,18 @@
 """Knowledge acquirer using web search."""
 
+import logging
 import subprocess
 
 from amplihack.knowledge_builder.kb_types import Question
 from amplihack.knowledge_builder.modules._agent_flags import permission_flag_for_agent_cmd
 
+logger = logging.getLogger(__name__)
+
 
 class KnowledgeAcquirer:
     """Acquires knowledge by answering questions via web search."""
+
+    SUBPROCESS_TIMEOUT_SECONDS = 120
 
     def __init__(self, agent_cmd: str = "claude"):
         """Initialize knowledge acquirer.
@@ -43,14 +48,29 @@ Requirements:
   - [url3]"""
 
         permission_flag = permission_flag_for_agent_cmd(self.agent_cmd)
-        result = subprocess.run(
-            [self.agent_cmd, permission_flag, "-p", prompt],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                [self.agent_cmd, permission_flag, "-p", prompt],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=self.SUBPROCESS_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning(
+                "Knowledge acquisition timed out after %s seconds for %r",
+                self.SUBPROCESS_TIMEOUT_SECONDS,
+                question.text,
+            )
+            return f"Unable to answer: {question.text}", []
 
         if result.returncode != 0:
+            logger.warning(
+                "Knowledge acquisition failed for %r with code %s: %s",
+                question.text,
+                result.returncode,
+                result.stderr.strip() or "no stderr captured",
+            )
             return f"Unable to answer: {question.text}", []
 
         # Parse output

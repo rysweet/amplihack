@@ -1,6 +1,9 @@
 """Unit tests for Knowledge Builder modules."""
 
+import subprocess
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from amplihack.knowledge_builder.kb_types import KnowledgeGraph, KnowledgeTriplet, Question
 from amplihack.knowledge_builder.modules._agent_flags import permission_flag_for_agent_cmd
@@ -43,6 +46,30 @@ class TestQuestionGenerator:
         assert len(questions) == 3
         assert all(q.depth == 1 for q in questions)
         assert all(q.parent_index == 0 for q in questions)
+
+    @patch("subprocess.run")
+    def test_generate_initial_questions_timeout_raises(self, mock_run):
+        """Initial question generation should fail loudly on timeouts."""
+        mock_run.side_effect = subprocess.TimeoutExpired(
+            cmd=["copilot"], timeout=QuestionGenerator.SUBPROCESS_TIMEOUT_SECONDS
+        )
+
+        gen = QuestionGenerator(agent_cmd="claude")
+        with pytest.raises(RuntimeError, match="timed out"):
+            gen.generate_initial_questions("Test Topic")
+
+    @patch("subprocess.run")
+    def test_generate_socratic_questions_logs_failure(self, mock_run, caplog):
+        """Socratic failures should be visible even when the caller continues."""
+        mock_run.return_value = MagicMock(returncode=1, stderr="boom")
+
+        gen = QuestionGenerator(agent_cmd="claude")
+        parent = Question(text="Parent question?", depth=0, parent_index=None)
+        with caplog.at_level("WARNING"):
+            questions = gen.generate_socratic_questions(parent, 0)
+
+        assert questions == []
+        assert "Socratic question generation failed" in caplog.text
 
     @patch("subprocess.run")
     def test_max_depth_limit(self, mock_run):
@@ -113,6 +140,38 @@ class TestQuestionGenerator:
         assert permission_flag_for_agent_cmd("/usr/local/bin/claude") == (
             "--dangerously-skip-permissions"
         )
+
+    def test_generate_all_questions_logs_depth_two_limit(self, caplog):
+        """Depth-2 truncation should be visible in logs."""
+        gen = QuestionGenerator(agent_cmd="claude")
+
+        initial_questions = [
+            Question(text=f"Question {i}?", depth=0, parent_index=None) for i in range(10)
+        ]
+
+        def fake_generate_socratic_questions(parent_question, parent_index):
+            if parent_question.depth >= 2:
+                return []
+            return [
+                Question(
+                    text=f"{parent_question.text} follow-up {i}",
+                    depth=parent_question.depth + 1,
+                    parent_index=parent_index,
+                )
+                for i in range(3)
+            ]
+
+        with (
+            patch.object(gen, "generate_initial_questions", return_value=initial_questions),
+            patch.object(
+                gen, "generate_socratic_questions", side_effect=fake_generate_socratic_questions
+            ),
+            caplog.at_level("INFO"),
+        ):
+            questions = gen.generate_all_questions("Test Topic")
+
+        assert len(questions) == 130
+        assert "Limiting depth-2 parent questions from 90 to 47" in caplog.text
 
     @patch("subprocess.run")
     def test_claude_generate_initial_questions_keeps_dangerous_flag(self, mock_run):
@@ -203,16 +262,34 @@ class TestKnowledgeAcquirer:
         assert len(sources) == 0
 
     @patch("subprocess.run")
-    def test_answer_question_failure(self, mock_run):
+    def test_answer_question_failure(self, mock_run, caplog):
         """Test handling of failed answer attempt."""
         mock_run.return_value = MagicMock(returncode=1, stderr="Error")
 
         acq = KnowledgeAcquirer(agent_cmd="claude")
         question = Question(text="What?", depth=0, parent_index=None)
-        answer, sources = acq.answer_question(question, "Topic")
+        with caplog.at_level("WARNING"):
+            answer, sources = acq.answer_question(question, "Topic")
 
         assert answer.startswith("Unable to answer")
         assert len(sources) == 0
+        assert "Knowledge acquisition failed" in caplog.text
+
+    @patch("subprocess.run")
+    def test_answer_question_timeout_logs_warning(self, mock_run, caplog):
+        """Timeouts should be logged before returning the user-visible fallback."""
+        mock_run.side_effect = subprocess.TimeoutExpired(
+            cmd=["claude"], timeout=KnowledgeAcquirer.SUBPROCESS_TIMEOUT_SECONDS
+        )
+
+        acq = KnowledgeAcquirer(agent_cmd="claude")
+        question = Question(text="What?", depth=0, parent_index=None)
+        with caplog.at_level("WARNING"):
+            answer, sources = acq.answer_question(question, "Topic")
+
+        assert answer.startswith("Unable to answer")
+        assert len(sources) == 0
+        assert "Knowledge acquisition timed out" in caplog.text
 
 
 class TestArtifactGenerator:

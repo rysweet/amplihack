@@ -1,13 +1,19 @@
 """Question generator using Socratic method."""
 
+import logging
 import subprocess
 
 from amplihack.knowledge_builder.kb_types import Question
 from amplihack.knowledge_builder.modules._agent_flags import permission_flag_for_agent_cmd
 
+logger = logging.getLogger(__name__)
+
 
 class QuestionGenerator:
     """Generates questions using Socratic method (3 levels deep)."""
+
+    SUBPROCESS_TIMEOUT_SECONDS = 120
+    DEPTH_TWO_PARENT_LIMIT = 47
 
     def __init__(self, agent_cmd: str = "claude"):
         """Initialize question generator.
@@ -36,15 +42,22 @@ Requirements:
 - No additional commentary"""
 
         permission_flag = permission_flag_for_agent_cmd(self.agent_cmd)
-        result = subprocess.run(
-            [self.agent_cmd, permission_flag, "-p", prompt],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                [self.agent_cmd, permission_flag, "-p", prompt],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=self.SUBPROCESS_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                f"Question generation timed out after {self.SUBPROCESS_TIMEOUT_SECONDS} seconds"
+            ) from exc
 
         if result.returncode != 0:
-            raise RuntimeError(f"Failed to generate questions: {result.stderr}")
+            stderr = result.stderr.strip() or "no stderr captured"
+            raise RuntimeError(f"Failed to generate questions: {stderr}")
 
         # Parse output into questions
         questions = []
@@ -94,15 +107,29 @@ Requirements:
 - No additional commentary"""
 
         permission_flag = permission_flag_for_agent_cmd(self.agent_cmd)
-        result = subprocess.run(
-            [self.agent_cmd, permission_flag, "-p", prompt],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                [self.agent_cmd, permission_flag, "-p", prompt],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=self.SUBPROCESS_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning(
+                "Socratic question generation timed out after %s seconds for %r",
+                self.SUBPROCESS_TIMEOUT_SECONDS,
+                parent_question.text,
+            )
+            return []
 
         if result.returncode != 0:
-            # Non-fatal - return empty list
+            logger.warning(
+                "Socratic question generation failed for %r with code %s: %s",
+                parent_question.text,
+                result.returncode,
+                result.stderr.strip() or "no stderr captured",
+            )
             return []
 
         # Parse output into questions
@@ -125,13 +152,13 @@ Requirements:
         return questions[:3]  # Ensure exactly 3
 
     def generate_all_questions(self, topic: str) -> list[Question]:
-        """Generate complete question tree (270 total questions).
+        """Generate complete question tree (up to 271 total questions).
 
         Structure:
         - 10 initial questions (depth 0)
         - 30 questions at depth 1 (3 per initial question)
         - 90 questions at depth 2 (3 per depth-1 question)
-        - 140 questions at depth 3 (3 per depth-2 question, but limited to first 50)
+        - 141 questions at depth 3 (3 per depth-2 question, but limited to first 47)
 
         Args:
             topic: Topic to explore
@@ -156,9 +183,14 @@ Requirements:
             # Find all questions at current depth
             parent_questions = [q for q in all_questions if q.depth == depth]
 
-            # Limit to first 50 questions at depth 2 to keep total ~270
-            if depth == 2:
-                parent_questions = parent_questions[:47]  # 47 * 3 = 141, total ~271
+            # Limit depth-2 parents so the generated tree stays bounded and predictable.
+            if depth == 2 and len(parent_questions) > self.DEPTH_TWO_PARENT_LIMIT:
+                logger.info(
+                    "Limiting depth-2 parent questions from %s to %s to cap tree size",
+                    len(parent_questions),
+                    self.DEPTH_TWO_PARENT_LIMIT,
+                )
+                parent_questions = parent_questions[: self.DEPTH_TWO_PARENT_LIMIT]
 
             for parent_idx, parent_q in enumerate(parent_questions):
                 # Calculate actual parent index in all_questions
