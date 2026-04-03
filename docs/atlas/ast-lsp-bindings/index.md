@@ -75,10 +75,10 @@ Category: <strong>Structural</strong> | Generated: 2026-04-02T21:54:01.250193+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| Rectangle | Source file |
-| Arrow | Import dependency |
+| Symbol    | Meaning               |
+| --------- | --------------------- |
+| Rectangle | Source file           |
+| Arrow     | Import dependency     |
 | `refs: N` | Total reference count |
 
 </div>
