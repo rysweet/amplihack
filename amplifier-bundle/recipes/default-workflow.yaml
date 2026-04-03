@@ -30,11 +30,10 @@ tags: ["development", "feature", "bugfix", "refactoring", "standard", "full-work
 #   - Modular Design: Clean module boundaries enforced through workflow
 #
 # Usage:
-#   amplifier recipes execute default-workflow.yaml --context '{
-#     "task_description": "Add user profile page",
-#     "requirements": "Display name, email, avatar; allow editing",
-#     "repo_path": "/path/to/repo"
-#   }'
+#   amplihack recipe run default-workflow \
+#     -c task_description="Add user profile page" \
+#     -c requirements="Display name, email, avatar; allow editing" \
+#     -c repo_path="/path/to/repo"
 
 recursion:
   max_depth: 6
@@ -157,7 +156,7 @@ steps:
     type: "bash"
     condition: "not resume_checkpoint"
     command: |
-      cd {{repo_path}} && \
+      cd "{{repo_path}}" && \
       echo "=== Step 1: Preparing Workspace ===" && \
       echo "" && \
       echo "Current directory: $(pwd)" && \
@@ -264,6 +263,7 @@ steps:
       4. Potential conflicts or considerations
 
       Use glob and grep to explore the codebase. Avoid web searches.
+    timeout: 600
     output: "codebase_analysis"
 
   - id: "step-02c-resolve-ambiguity"
@@ -288,6 +288,7 @@ steps:
       - Proceed with confidence
 
       Output final, unambiguous requirements ready for design phase.
+    timeout: 300
     output: "final_requirements"
 
   # ==========================================================================
@@ -595,7 +596,7 @@ steps:
         echo "ERROR: repo_path '{{repo_path}}' does not exist or is not a directory" >&2
         exit 1
       fi
-      cd {{repo_path}}
+      cd "{{repo_path}}"
 
       echo "=== Step 4: Creating Worktree and Branch ===" >&2
       echo "" >&2
@@ -2120,7 +2121,10 @@ steps:
     command: |
       echo "=== Step 17a: Step 13 Compliance Verification ===" && \
       echo "" && \
-      GATE_OUTPUT={{local_testing_gate}} && \
+      GATE_OUTPUT=$(cat <<EOFGATE
+      {{local_testing_gate}}
+      EOFGATE
+      ) && \
       if [ -z "$GATE_OUTPUT" ] || [ "$GATE_OUTPUT" = "''" ]; then \
         echo "COMPLIANCE FAILURE: Step 13 (outside-in testing) produced no output." && \
         echo "" && \
@@ -2240,16 +2244,38 @@ steps:
     command: |
       echo "=== STEP 17 VERIFICATION GATE ===" && \
       echo "" && \
-      echo "Before proceeding, verify ALL of the following:" && \
-      echo "" && \
-      echo "  ✓ Did I invoke the REVIEWER agent? → Yes (output captured)" && \
-      echo "  ✓ Did I invoke the SECURITY agent? → Yes (output captured)" && \
-      echo "  ✓ Did I invoke the PHILOSOPHY-GUARDIAN agent? → Yes (output captured)" && \
-      echo "  ✓ Did I check for FORBIDDEN PATTERN violations? → Yes" && \
-      echo "  ✓ Are all three reviews POSTED to the PR as comments?" && \
-      echo "  ✓ All blocking issues have been addressed?" && \
-      echo "" && \
-      echo "If any verification fails, STOP and complete the missing step." && \
+      GATE_FAIL=0 && \
+      PR_REVIEW=$(cat <<EOFPR
+      {{pr_review}}
+      EOFPR
+      ) && \
+      PR_SEC=$(cat <<EOFSEC
+      {{pr_security_review}}
+      EOFSEC
+      ) && \
+      PR_PHIL=$(cat <<EOFPHIL
+      {{pr_philosophy_review}}
+      EOFPHIL
+      ) && \
+      BLOCKING=$(cat <<EOFBLOCK
+      {{blocking_issues_addressed}}
+      EOFBLOCK
+      ) && \
+      if [ -z "$PR_REVIEW" ] || [ "$PR_REVIEW" = "''" ]; then \
+        echo "GATE FAIL: step-17b (reviewer) produced no output — re-run it." >&2 && GATE_FAIL=1 ; \
+      else echo "  ✓ Reviewer agent output captured" ; fi && \
+      if [ -z "$PR_SEC" ] || [ "$PR_SEC" = "''" ]; then \
+        echo "GATE FAIL: step-17c (security) produced no output — re-run it." >&2 && GATE_FAIL=1 ; \
+      else echo "  ✓ Security agent output captured" ; fi && \
+      if [ -z "$PR_PHIL" ] || [ "$PR_PHIL" = "''" ]; then \
+        echo "GATE FAIL: step-17d (philosophy-guardian) produced no output — re-run it." >&2 && GATE_FAIL=1 ; \
+      else echo "  ✓ Philosophy-Guardian agent output captured" ; fi && \
+      if [ -z "$BLOCKING" ] || [ "$BLOCKING" = "''" ]; then \
+        echo "GATE FAIL: step-17e (blocking issues) produced no output — re-run it." >&2 && GATE_FAIL=1 ; \
+      else echo "  ✓ Blocking-issues addressed output captured" ; fi && \
+      if [ "$GATE_FAIL" -ne 0 ]; then \
+        echo "" && echo "One or more Step 17 sub-steps are incomplete. STOP and complete them before proceeding." >&2 && exit 1 ; \
+      fi && \
       echo "" && \
       echo "=== GATE PASSED - Proceed to Step 18 ==="
     output: "step_17_gate_status"
@@ -2303,7 +2329,7 @@ steps:
     type: "bash"
     command: |
       set -euo pipefail
-      cd {{worktree_setup.worktree_path}}
+      cd "{{worktree_setup.worktree_path}}"
       echo "=== Pushing Review Feedback Changes ==="
       git add -A
       if [ -n "$(git diff --cached --name-only)" ]; then
@@ -2318,7 +2344,7 @@ steps:
       fi
       if git remote get-url origin >/dev/null 2>&1; then
         if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then
-          git pull --rebase 2>/dev/null && git push
+          git pull --rebase && git push
         else
           echo "WARNING: Nothing to push - branch is up to date with remote"
         fi
@@ -2347,14 +2373,38 @@ steps:
     command: |
       echo "=== STEP 18 VERIFICATION GATE ===" && \
       echo "" && \
-      echo "Before proceeding, verify ALL of the following:" && \
-      echo "" && \
-      echo "  ✓ Did I address EVERY feedback comment (not just some)?" && \
-      echo "  ✓ Did I respond to each comment on the PR?" && \
-      echo "  ✓ Did I use the builder agent for implementation changes?" && \
-      echo "  ✓ Are all tests still passing?" && \
-      echo "" && \
-      echo "If any verification fails, STOP and complete the missing step." && \
+      GATE_FAIL=0 && \
+      FB_ANALYSIS=$(cat <<EOFFA
+      {{feedback_analysis}}
+      EOFFA
+      ) && \
+      FB_CHANGES=$(cat <<EOFFC
+      {{pr_feedback_changes}}
+      EOFFC
+      ) && \
+      FB_PUSH=$(cat <<EOFFP
+      {{feedback_push_result}}
+      EOFFP
+      ) && \
+      COMMENTS=$(cat <<EOFCR
+      {{comment_responses}}
+      EOFCR
+      ) && \
+      if [ -z "$FB_ANALYSIS" ] || [ "$FB_ANALYSIS" = "''" ]; then \
+        echo "GATE FAIL: step-18a (analyze-feedback) produced no output — re-run it." >&2 && GATE_FAIL=1 ; \
+      else echo "  ✓ Feedback analysis captured" ; fi && \
+      if [ -z "$FB_CHANGES" ] || [ "$FB_CHANGES" = "''" ]; then \
+        echo "GATE FAIL: step-18b (implement-feedback) produced no output — re-run it." >&2 && GATE_FAIL=1 ; \
+      else echo "  ✓ Feedback implementation captured" ; fi && \
+      if [ -z "$FB_PUSH" ] || [ "$FB_PUSH" = "''" ]; then \
+        echo "GATE FAIL: step-18c (push-feedback-changes) produced no output — re-run it." >&2 && GATE_FAIL=1 ; \
+      else echo "  ✓ Feedback push result captured" ; fi && \
+      if [ -z "$COMMENTS" ] || [ "$COMMENTS" = "''" ]; then \
+        echo "GATE FAIL: step-18d (respond-to-comments) produced no output — re-run it." >&2 && GATE_FAIL=1 ; \
+      else echo "  ✓ Comment responses captured" ; fi && \
+      if [ "$GATE_FAIL" -ne 0 ]; then \
+        echo "" && echo "One or more Step 18 sub-steps are incomplete. STOP and complete them before proceeding." >&2 && exit 1 ; \
+      fi && \
       echo "" && \
       echo "=== GATE PASSED - Proceed to Step 19 ==="
     output: "step_18_gate_status"
@@ -2405,7 +2455,7 @@ steps:
     type: "bash"
     command: |
       echo "=== ZERO-BS VERIFICATION ===" && \
-      cd {{worktree_setup.worktree_path}} && \
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "" && \
       echo "Scanning for Zero-BS violations..." && \
       echo "" && \
@@ -2491,12 +2541,12 @@ steps:
     type: "bash"
     command: |
       set -euo pipefail
-      cd {{worktree_setup.worktree_path}}
+      cd "{{worktree_setup.worktree_path}}"
       echo "=== Pushing Cleanup Changes ==="
       git add -A
       git diff --cached --quiet || git commit -m "final cleanup pass"
       if git remote get-url origin >/dev/null 2>&1; then
-        git pull --rebase 2>/dev/null && git push
+        git pull --rebase && git push
       else
         echo "INFO: No remote configured — skipping push" >&2
       fi
@@ -2583,7 +2633,7 @@ steps:
     type: "bash"
     command: |
       set -euo pipefail
-      cd {{worktree_setup.worktree_path}}
+      cd "{{worktree_setup.worktree_path}}"
       PR_URL="{{pr_url}}"
       echo "=== Step 21: Converting PR to Ready ==="
       echo ""
@@ -2604,10 +2654,10 @@ steps:
 
       Ready for merge approval."
       # Guard: skip gh pr commands when no pr_url (no-remote or local-only workflow)
-      [ -n "$PR_URL" ] && gh pr ready || echo "INFO: No pr_url — skipping PR ready" >&2
+      if [ -n "$PR_URL" ]; then gh pr ready; else echo "INFO: No pr_url — skipping PR ready" >&2; fi
       echo ""
       echo "--- Adding Ready Comment ---"
-      [ -n "$PR_URL" ] && gh pr comment --body "$PR_BODY" || echo "INFO: No pr_url — skipping PR comment" >&2
+      if [ -n "$PR_URL" ]; then gh pr comment --body "$PR_BODY"; else echo "INFO: No pr_url — skipping PR comment" >&2; fi
       echo ""
       echo "=== PR Marked Ready ==="
     output: "pr_ready_result"
@@ -2619,7 +2669,7 @@ steps:
     agent: "amplihack:ci-diagnostic-workflow"
     working_dir: "{{worktree_setup.worktree_path}}"
     prompt: |
-      # Step 21: Ensure PR is Mergeable (TASK COMPLETION POINT)
+      # Step 22: Ensure PR is Mergeable (TASK COMPLETION POINT)
 
       **PR URL:** {{pr_url}}
       **Repository Worktree:** {{worktree_setup.worktree_path}}
@@ -2679,7 +2729,7 @@ steps:
       echo ""
       PR_URL="{{pr_url}}"
       # Guard: skip gh pr view when no pr_url (no-remote or local-only workflow)
-      [ -n "$PR_URL" ] && gh pr view --json state,mergeable,reviews,statusCheckRollup || echo "INFO: No pr_url — skipping PR status check" >&2
+      if [ -n "$PR_URL" ]; then gh pr view --json state,mergeable,reviews,statusCheckRollup; else echo "INFO: No pr_url — skipping PR status check" >&2; fi
       echo ""
       TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
@@ -2716,7 +2766,7 @@ steps:
       import json, os
       print(json.dumps({
           "workflow": "default-workflow",
-          "version": "2.0.0",
+          "version": "2.2.0",
           "task": os.environ.get("TASK_VAL", ""),
           "issue_number": os.environ.get("ISSUE_VAL", ""),
           "pr_url": os.environ.get("PR_VAL", ""),

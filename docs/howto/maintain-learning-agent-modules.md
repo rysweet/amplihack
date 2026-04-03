@@ -26,16 +26,16 @@ This guide shows how to change the refactored `LearningAgent` without rebuilding
 
 Pick the destination before touching code.
 
-| If you are changing... | Edit... |
-| --- | --- |
-| question classification or routing metadata | `intent_detector.py` |
-| temporal parsing or transition chain logic | `temporal_reasoning.py` |
-| generated Python for temporal lookups | `code_synthesis.py` |
-| arithmetic helpers or fact validation | `knowledge_utils.py` |
-| batch extraction or storage | `learning_ingestion.py` |
-| which facts are retrieved | `retrieval_strategies.py` |
-| final answer wording or completeness scoring | `answer_synthesizer.py` |
-| construction, lifecycle, or compatibility wiring | `learning_agent.py` |
+| If you are changing...                           | Edit...                   |
+| ------------------------------------------------ | ------------------------- |
+| question classification or routing metadata      | `intent_detector.py`      |
+| temporal parsing or transition chain logic       | `temporal_reasoning.py`   |
+| generated Python for temporal lookups            | `code_synthesis.py`       |
+| arithmetic helpers or fact validation            | `knowledge_utils.py`      |
+| batch extraction or storage                      | `learning_ingestion.py`   |
+| which facts are retrieved                        | `retrieval_strategies.py` |
+| final answer wording or completeness scoring     | `answer_synthesizer.py`   |
+| construction, lifecycle, or compatibility wiring | `learning_agent.py`       |
 
 If more than one row applies, start with the lowest-level module and keep the facade changes minimal.
 
@@ -101,15 +101,15 @@ Also preserve these compatibility expectations:
 
 Put the test next to the responsibility you changed.
 
-| Change type | Test file |
-| --- | --- |
-| constructor or lifecycle | `test_learning_agent_core.py` |
-| ingestion or storage | `test_learning_agent_ingestion.py` |
-| retrieval logic | `test_learning_agent_retrieval.py` |
-| temporal or generated-code logic | `test_learning_agent_temporal.py` |
-| intent or arithmetic behavior | `test_math_intent.py` |
-| answer refinement behavior | `test_agentic_answer_mode.py` |
-| top-level agent compatibility | `test_goal_seeking_agent.py` |
+| Change type                      | Test file                          |
+| -------------------------------- | ---------------------------------- |
+| constructor or lifecycle         | `test_learning_agent_core.py`      |
+| ingestion or storage             | `test_learning_agent_ingestion.py` |
+| retrieval logic                  | `test_learning_agent_retrieval.py` |
+| temporal or generated-code logic | `test_learning_agent_temporal.py`  |
+| intent or arithmetic behavior    | `test_math_intent.py`              |
+| answer refinement behavior       | `test_agentic_answer_mode.py`      |
+| top-level agent compatibility    | `test_goal_seeking_agent.py`       |
 
 ## 6. Run focused validation
 

@@ -22,8 +22,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
-import sys
 import tempfile
 import time
 from pathlib import Path
@@ -179,9 +177,7 @@ def run_eval(
                     "learn_elapsed_s": round(learn_elapsed, 2),
                     "learn_throughput": round(turns / learn_elapsed, 1) if learn_elapsed > 0 else 0,
                     "questions": q_results,
-                    "avg_score": round(
-                        sum(r["score"] for r in q_results) / len(q_results), 3
-                    )
+                    "avg_score": round(sum(r["score"] for r in q_results) / len(q_results), 3)
                     if q_results
                     else 0.0,
                 }
@@ -195,9 +191,7 @@ def run_eval(
         "repeats": repeats,
         "results": all_results,
         "aggregate": {
-            "avg_score": round(
-                sum(r["avg_score"] for r in all_results) / len(all_results), 3
-            )
+            "avg_score": round(sum(r["avg_score"] for r in all_results) / len(all_results), 3)
             if all_results
             else 0.0,
             "avg_learn_throughput": round(

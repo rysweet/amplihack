@@ -49,16 +49,16 @@ The compatibility rules are strict:
 
 The refactor centers on eight named modules. These are the contributor-facing ownership boundaries.
 
-| Module | Responsibility | Typical reasons to edit it |
-| --- | --- | --- |
-| `learning_agent.py` | Thin facade, construction, action registration, lifecycle, retry helpers | Constructor behavior, shared state, public method delegation |
-| `learning_ingestion.py` | Content ingestion, fact extraction, batching, storage | Learning flow, source labels, summary concept maps |
-| `answer_synthesizer.py` | LLM answer synthesis and completeness evaluation | Prompt assembly, final answer wording, gap-filling refinement |
-| `retrieval_strategies.py` | Retrieval planning and retrieval implementations | Entity lookup, concept lookup, aggregation retrieval, fallbacks |
-| `intent_detector.py` | Query intent classification | Intent labels, routing metadata, math/temporal flags |
-| `temporal_reasoning.py` | Temporal state tracking and transition chains | Change-over-time questions, direct temporal lookups |
-| `code_synthesis.py` | LLM-driven code generation for hard temporal calculations | Generated Python snippets and temporal index computation |
-| `knowledge_utils.py` | Shared helpers for arithmetic, entity handling, fact validation | Math precomputation, knowledge explanations, fact verification |
+| Module                    | Responsibility                                                           | Typical reasons to edit it                                      |
+| ------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| `learning_agent.py`       | Thin facade, construction, action registration, lifecycle, retry helpers | Constructor behavior, shared state, public method delegation    |
+| `learning_ingestion.py`   | Content ingestion, fact extraction, batching, storage                    | Learning flow, source labels, summary concept maps              |
+| `answer_synthesizer.py`   | LLM answer synthesis and completeness evaluation                         | Prompt assembly, final answer wording, gap-filling refinement   |
+| `retrieval_strategies.py` | Retrieval planning and retrieval implementations                         | Entity lookup, concept lookup, aggregation retrieval, fallbacks |
+| `intent_detector.py`      | Query intent classification                                              | Intent labels, routing metadata, math/temporal flags            |
+| `temporal_reasoning.py`   | Temporal state tracking and transition chains                            | Change-over-time questions, direct temporal lookups             |
+| `code_synthesis.py`       | LLM-driven code generation for hard temporal calculations                | Generated Python snippets and temporal index computation        |
+| `knowledge_utils.py`      | Shared helpers for arithmetic, entity handling, fact validation          | Math precomputation, knowledge explanations, fact verification  |
 
 Private helper files may exist when needed to keep the main ownership modules reviewable. Those helpers support the eight modules above; they do not replace them as contributor entry points.
 
@@ -78,7 +78,7 @@ class LearningAgent(
 ):
 ```
 
-This preserves all `self.*` references without changing method signatures.  Every method still accesses `self.memory`, `self.model`, and other instance attributes directly through inheritance — no adapters, no parameter threading, no new state objects.
+This preserves all `self.*` references without changing method signatures. Every method still accesses `self.memory`, `self.model`, and other instance attributes directly through inheritance — no adapters, no parameter threading, no new state objects.
 
 A shared `prompt_utils.py` helper provides `_get_llm_completion()` which resolves `_llm_completion` from the `learning_agent` module namespace at runtime. This ensures that test monkeypatching of `learning_agent._llm_completion` propagates to all mixin modules correctly.
 
@@ -103,7 +103,7 @@ This keeps the internal modules focused on behavior, not lifecycle.
 
 ## Dependency direction
 
-With mixin inheritance, `learning_agent.py` imports all seven mixin modules.  The mixin modules themselves import only from shared utilities (`prompt_utils`, `retrieval_constants`, `similarity`, `prompts`, `action_executor`) — never from each other or from `learning_agent.py`.
+With mixin inheritance, `learning_agent.py` imports all seven mixin modules. The mixin modules themselves import only from shared utilities (`prompt_utils`, `retrieval_constants`, `similarity`, `prompts`, `action_executor`) — never from each other or from `learning_agent.py`.
 
 At runtime, all methods resolve `self.*` through the MRO, so behavior flows naturally without cross-module imports.
 
@@ -174,12 +174,12 @@ That means the refactor preserves the existing design rule: agentic mode should 
 
 The old `test_learning_agent.py` monolith is replaced by module-aligned test files:
 
-| Test file | Primary scope |
-| --- | --- |
-| `tests/agents/goal_seeking/test_learning_agent_core.py` | facade construction, retry helpers, lifecycle |
-| `tests/agents/goal_seeking/test_learning_agent_ingestion.py` | batch prep, storage, source labels, temporal metadata |
-| `tests/agents/goal_seeking/test_learning_agent_retrieval.py` | retrieval strategies, aggregation, fallbacks |
-| `tests/agents/goal_seeking/test_learning_agent_temporal.py` | temporal parsing, transition chains, generated temporal code |
+| Test file                                                    | Primary scope                                                |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| `tests/agents/goal_seeking/test_learning_agent_core.py`      | facade construction, retry helpers, lifecycle                |
+| `tests/agents/goal_seeking/test_learning_agent_ingestion.py` | batch prep, storage, source labels, temporal metadata        |
+| `tests/agents/goal_seeking/test_learning_agent_retrieval.py` | retrieval strategies, aggregation, fallbacks                 |
+| `tests/agents/goal_seeking/test_learning_agent_temporal.py`  | temporal parsing, transition chains, generated temporal code |
 
 The existing broader behavior tests remain in place:
 

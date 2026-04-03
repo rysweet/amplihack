@@ -16,7 +16,12 @@ logger = logging.getLogger(__name__)
 
 _SANITIZE_RE = re.compile(r"[^A-Za-z0-9_\-]")
 
-__all__ = ["get_copilot_continuation", "disable_lock_files", "_log_decision", "_sanitize_session_id"]
+__all__ = [
+    "get_copilot_continuation",
+    "disable_lock_files",
+    "_log_decision",
+    "_sanitize_session_id",
+]
 
 
 def _sanitize_session_id(session_id: str | None) -> str | None:
@@ -36,6 +41,7 @@ def _sanitize_session_id(session_id: str | None) -> str | None:
     if session_id is None:
         return None
     return _SANITIZE_RE.sub("_", session_id)
+
 
 _COPILOT_LOG_DIR = ".claude/runtime/copilot-decisions"
 

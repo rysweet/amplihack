@@ -14,6 +14,9 @@ try:
     from .export_on_compact_integration import ExportOnCompactIntegration
 
     __all__ = ["ClaudeTranscriptBuilder", "CodexTranscriptsBuilder", "ExportOnCompactIntegration"]
-except ImportError as e:
-    print(f"WARNING: export_on_compact_integration not available - ExportOnCompactIntegration disabled", file=sys.stderr)
+except ImportError:
+    print(
+        "WARNING: export_on_compact_integration not available - ExportOnCompactIntegration disabled",
+        file=sys.stderr,
+    )
     __all__ = ["ClaudeTranscriptBuilder", "CodexTranscriptsBuilder"]

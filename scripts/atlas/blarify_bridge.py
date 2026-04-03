@@ -57,15 +57,26 @@ class BlarifyBridge:
         Returns:
             self, for chaining.
         """
-        from amplihack.vendor.blarify.project_file_explorer import ProjectFilesIterator
         from amplihack.vendor.blarify.code_references.hybrid_resolver import HybridReferenceResolver
+        from amplihack.vendor.blarify.project_file_explorer import ProjectFilesIterator
         from amplihack.vendor.blarify.project_graph_creator import ProjectGraphCreator
 
         # Skip common non-source directories
         names_to_skip = [
-            "node_modules", "__pycache__", ".git", ".venv", "venv",
-            ".tox", ".mypy_cache", ".pytest_cache", "target", "dist",
-            "build", ".next", ".nuxt", "vendor",
+            "node_modules",
+            "__pycache__",
+            ".git",
+            ".venv",
+            "venv",
+            ".tox",
+            ".mypy_cache",
+            ".pytest_cache",
+            "target",
+            "dist",
+            "build",
+            ".next",
+            ".nuxt",
+            "vendor",
         ]
 
         iterator = ProjectFilesIterator(
@@ -144,8 +155,15 @@ class BlarifyBridge:
             raise RuntimeError("Call build() before get_relationships()")
 
         # Use raw relationship objects for richer node info
-        code_ref_types = {"CALLS", "IMPORTS", "INSTANTIATES", "USES", "INHERITS",
-                          "TYPES", "ASSIGNS"}
+        code_ref_types = {
+            "CALLS",
+            "IMPORTS",
+            "INSTANTIATES",
+            "USES",
+            "INHERITS",
+            "TYPES",
+            "ASSIGNS",
+        }
         results = []
 
         for rel in self.graph.get_relationships_from_nodes():
@@ -154,9 +172,13 @@ class BlarifyBridge:
             end = rel.end_node
             entry = {
                 "type": rel_type,
-                "source_file": start.path.replace("file://", "") if start.path.startswith("file://") else start.path,
+                "source_file": start.path.replace("file://", "")
+                if start.path.startswith("file://")
+                else start.path,
                 "source_name": start.name,
-                "target_file": end.path.replace("file://", "") if end.path.startswith("file://") else end.path,
+                "target_file": end.path.replace("file://", "")
+                if end.path.startswith("file://")
+                else end.path,
                 "target_name": end.name,
             }
             if rel.start_line is not None:
@@ -170,9 +192,13 @@ class BlarifyBridge:
             end = rel.end_node
             entry = {
                 "type": rel_type,
-                "source_file": start.path.replace("file://", "") if start.path.startswith("file://") else start.path,
+                "source_file": start.path.replace("file://", "")
+                if start.path.startswith("file://")
+                else start.path,
                 "source_name": start.name,
-                "target_file": end.path.replace("file://", "") if end.path.startswith("file://") else end.path,
+                "target_file": end.path.replace("file://", "")
+                if end.path.startswith("file://")
+                else end.path,
                 "target_name": end.name,
             }
             if rel.start_line is not None:
@@ -221,7 +247,8 @@ class BlarifyBridge:
                 "source_name": r["source_name"],
                 "target_name": r["target_name"],
             }
-            for r in rels if r["type"] == "IMPORTS"
+            for r in rels
+            if r["type"] == "IMPORTS"
         ]
 
     def get_relationship_summary(self) -> dict[str, int]:
@@ -281,17 +308,19 @@ class BlarifyBridge:
         defs = self.get_all_definitions()
         out = []
         for d in defs:
-            out.append({
-                "file": d["file"],
-                "name": d["name"],
-                "type": d["type"],
-                "lineno": d["lineno"],
-                "is_private": d["is_private"],
-                "is_exported": d.get("is_exported", False),
-                "references": [],
-                "reference_count": 0,
-                "language": d["language"],
-            })
+            out.append(
+                {
+                    "file": d["file"],
+                    "name": d["name"],
+                    "type": d["type"],
+                    "lineno": d["lineno"],
+                    "is_private": d["is_private"],
+                    "is_exported": d.get("is_exported", False),
+                    "references": [],
+                    "reference_count": 0,
+                    "language": d["language"],
+                }
+            )
         return out
 
     # ------------------------------------------------------------------
@@ -368,6 +397,7 @@ if __name__ == "__main__":
 
     # Count by language
     from collections import Counter
+
     langs = Counter(d["language"] for d in defs)
     for lang, count in langs.most_common():
         print(f"  {lang}: {count}")
@@ -379,7 +409,7 @@ if __name__ == "__main__":
 
     # File counts
     file_stats = bridge.get_file_count_by_language()
-    print(f"\nFiles by language:")
+    print("\nFiles by language:")
     for lang, count in sorted(file_stats.items(), key=lambda x: -x[1]):
         print(f"  {lang}: {count}")
 

@@ -21,7 +21,6 @@ from amplihack.settings import (
     ensure_settings_json,
     update_hook_paths,
 )
-from amplihack import RUST_HOOK_MAP
 
 # =============================================================================
 # UNIT TESTS (60% - ~24 lines)
@@ -204,17 +203,7 @@ class TestHookSystemOwnership:
         # Pre-populate settings with a xpia hook whose path contains "amplihack"
         # (because it's under ~/.amplihack/.claude/tools/xpia/hooks/)
         xpia_cmd = str(xpia_hooks_dir / "stop.py")
-        settings = {
-            "hooks": {
-                "Stop": [
-                    {
-                        "hooks": [
-                            {"type": "command", "command": xpia_cmd}
-                        ]
-                    }
-                ]
-            }
-        }
+        settings = {"hooks": {"Stop": [{"hooks": [{"type": "command", "command": xpia_cmd}]}]}}
 
         # Now update with amplihack hooks — should NOT match the xpia entry
         hooks = [{"type": "Stop", "file": "stop.py"}]
@@ -222,9 +211,7 @@ class TestHookSystemOwnership:
 
         # Should now have TWO entries: original xpia + new amplihack
         all_commands = [
-            h.get("command", "")
-            for cfg in settings["hooks"]["Stop"]
-            for h in cfg.get("hooks", [])
+            h.get("command", "") for cfg in settings["hooks"]["Stop"] for h in cfg.get("hooks", [])
         ]
         assert len(all_commands) == 2, (
             f"Expected 2 hook entries (xpia + amplihack), got {len(all_commands)}: {all_commands}"

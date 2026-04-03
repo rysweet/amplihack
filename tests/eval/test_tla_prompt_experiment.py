@@ -97,7 +97,9 @@ def test_materialize_condition_packets_writes_prompt_spec_and_metadata(tmp_path)
     packets = materialize_condition_packets(tmp_path, smoke=True, manifest=manifest)
     assert len(packets) == 8
 
-    first_packet = next(packet for packet in packets if packet.condition.prompt_variant_id == "tla_plus_refinement")
+    first_packet = next(
+        packet for packet in packets if packet.condition.prompt_variant_id == "tla_plus_refinement"
+    )
     packet_dir = tmp_path / first_packet.condition.condition_id
     prompt_text = (packet_dir / "prompt.md").read_text()
     spec_text = (packet_dir / "DistributedRetrievalContract.tla").read_text()
@@ -223,7 +225,12 @@ def test_build_tlc_command_prefers_native_tlc_binary():
         tlc_bin="/tmp/tlc",
     )
     assert runner_kind == "tlc"
-    assert command == ["/tmp/tlc", "-config", "DistributedRetrievalContract.cfg", "DistributedRetrievalContract"]
+    assert command == [
+        "/tmp/tlc",
+        "-config",
+        "DistributedRetrievalContract.cfg",
+        "DistributedRetrievalContract",
+    ]
 
 
 def test_build_tlc_command_falls_back_to_java_and_jar(monkeypatch):
@@ -475,7 +482,9 @@ def test_generate_condition_artifact_live_mode_uses_runtime_factory(tmp_path, mo
     assert "Do not read, write, or modify repository files." in kwargs["instructions"]
 
 
-def test_generate_condition_artifact_live_mode_normalizes_claude_runtime_model(tmp_path, monkeypatch):
+def test_generate_condition_artifact_live_mode_normalizes_claude_runtime_model(
+    tmp_path, monkeypatch
+):
     manifest = load_default_experiment_manifest()
     condition = manifest.expand_matrix(smoke=True)[0]
     bundle = manifest.load_prompt_bundle(condition.prompt_variant_id)
@@ -484,7 +493,9 @@ def test_generate_condition_artifact_live_mode_normalizes_claude_runtime_model(t
     class DummyRuntime:
         async def run(self, prompt: str) -> SimpleNamespace:
             captured["prompt"] = prompt
-            return SimpleNamespace(response="generated retrieval contract artifact", goal_achieved=True)
+            return SimpleNamespace(
+                response="generated retrieval contract artifact", goal_achieved=True
+            )
 
         def close(self) -> None:
             captured["closed"] = True

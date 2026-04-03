@@ -14,8 +14,6 @@ import threading
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 
 class TestBinarySearchPathsNotCached:
     """_binary_search_paths() must return fresh values, not stale cached ones."""
@@ -128,9 +126,7 @@ class TestDiscoveryDynamicEnv:
         home_a = tmp_path / "home_a"
         recipe_dir_a = home_a / "amplifier-bundle" / "recipes"
         recipe_dir_a.mkdir(parents=True)
-        (recipe_dir_a / "only-in-a.yaml").write_text(
-            "name: only-in-a\nsteps: []\n"
-        )
+        (recipe_dir_a / "only-in-a.yaml").write_text("name: only-in-a\nsteps: []\n")
 
         home_b = tmp_path / "home_b"
         recipe_dir_b = home_b / "amplifier-bundle" / "recipes"

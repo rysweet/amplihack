@@ -15,29 +15,29 @@
 
 ## Condition Table
 
-| Condition | Model | SDK | Prompt | Status | Heuristic Baseline | Heuristic Invariant | Heuristic Proof | Heuristic Local | Heuristic Progress | Heuristic Coverage |
-|-----------|-------|-----|--------|--------|--------------------|---------------------|-----------------|-----------------|--------------------|--------------------|
-| claude_opus_4_6__english__r1 | claude-opus-4.6 | claude | english | completed | 0.4286 | 0.5 | 0.0 | 0.0 | 0.0 | 0.2857 |
-| claude_opus_4_6__tla_only__r1 | claude-opus-4.6 | claude | tla_only | completed | 0.8571 | 0.75 | 1.0 | 1.0 | 1.0 | 0.8571 |
-| claude_opus_4_6__tla_plus_english__r1 | claude-opus-4.6 | claude | tla_plus_english | completed | 0.4286 | 0.5 | 1.0 | 0.0 | 0.0 | 0.4286 |
-| claude_opus_4_6__tla_plus_refinement__r1 | claude-opus-4.6 | claude | tla_plus_refinement | completed | 0.8571 | 0.75 | 1.0 | 1.0 | 1.0 | 0.8571 |
-| gpt_5_4__english__r1 | gpt-5.4 | copilot | english | completed | 0.7143 | 0.75 | 0.0 | 0.0 | 1.0 | 0.5714 |
-| gpt_5_4__tla_only__r1 | gpt-5.4 | copilot | tla_only | failed | -- | -- | -- | -- | -- | -- |
-| gpt_5_4__tla_plus_english__r1 | gpt-5.4 | copilot | tla_plus_english | completed | 0.5714 | 0.5 | 1.0 | 0.0 | 1.0 | 0.5714 |
-| gpt_5_4__tla_plus_refinement__r1 | gpt-5.4 | copilot | tla_plus_refinement | failed | -- | -- | -- | -- | -- | -- |
+| Condition                                | Model           | SDK     | Prompt              | Status    | Heuristic Baseline | Heuristic Invariant | Heuristic Proof | Heuristic Local | Heuristic Progress | Heuristic Coverage |
+| ---------------------------------------- | --------------- | ------- | ------------------- | --------- | ------------------ | ------------------- | --------------- | --------------- | ------------------ | ------------------ |
+| claude_opus_4_6**english**r1             | claude-opus-4.6 | claude  | english             | completed | 0.4286             | 0.5                 | 0.0             | 0.0             | 0.0                | 0.2857             |
+| claude_opus_4_6**tla_only**r1            | claude-opus-4.6 | claude  | tla_only            | completed | 0.8571             | 0.75                | 1.0             | 1.0             | 1.0                | 0.8571             |
+| claude_opus_4_6**tla_plus_english**r1    | claude-opus-4.6 | claude  | tla_plus_english    | completed | 0.4286             | 0.5                 | 1.0             | 0.0             | 0.0                | 0.4286             |
+| claude_opus_4_6**tla_plus_refinement**r1 | claude-opus-4.6 | claude  | tla_plus_refinement | completed | 0.8571             | 0.75                | 1.0             | 1.0             | 1.0                | 0.8571             |
+| gpt_5_4**english**r1                     | gpt-5.4         | copilot | english             | completed | 0.7143             | 0.75                | 0.0             | 0.0             | 1.0                | 0.5714             |
+| gpt_5_4**tla_only**r1                    | gpt-5.4         | copilot | tla_only            | failed    | --                 | --                  | --              | --              | --                 | --                 |
+| gpt_5_4**tla_plus_english**r1            | gpt-5.4         | copilot | tla_plus_english    | completed | 0.5714             | 0.5                 | 1.0             | 0.0             | 1.0                | 0.5714             |
+| gpt_5_4**tla_plus_refinement**r1         | gpt-5.4         | copilot | tla_plus_refinement | failed    | --                 | --                  | --              | --              | --                 | --                 |
 
 ## Artifacts
 
-| Condition | Generated Artifact | Evaluation | Raw Response |
-|-----------|--------------------|------------|--------------|
-| claude_opus_4_6__english__r1 | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6__english__r1/generated_artifact.md | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6__english__r1/evaluation.json | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6__english__r1/raw_response.txt |
-| claude_opus_4_6__tla_only__r1 | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6__tla_only__r1/generated_artifact.md | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6__tla_only__r1/evaluation.json | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6__tla_only__r1/raw_response.txt |
-| claude_opus_4_6__tla_plus_english__r1 | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6__tla_plus_english__r1/generated_artifact.md | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6__tla_plus_english__r1/evaluation.json | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6__tla_plus_english__r1/raw_response.txt |
-| claude_opus_4_6__tla_plus_refinement__r1 | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6__tla_plus_refinement__r1/generated_artifact.md | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6__tla_plus_refinement__r1/evaluation.json | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6__tla_plus_refinement__r1/raw_response.txt |
-| gpt_5_4__english__r1 | /tmp/tla-experiment-live.pQjsmw/gpt_5_4__english__r1/generated_artifact.md | /tmp/tla-experiment-live.pQjsmw/gpt_5_4__english__r1/evaluation.json | /tmp/tla-experiment-live.pQjsmw/gpt_5_4__english__r1/raw_response.txt |
-| gpt_5_4__tla_only__r1 | -- | -- | /tmp/tla-experiment-live.pQjsmw/gpt_5_4__tla_only__r1/raw_response.txt |
-| gpt_5_4__tla_plus_english__r1 | /tmp/tla-experiment-live.pQjsmw/gpt_5_4__tla_plus_english__r1/generated_artifact.md | /tmp/tla-experiment-live.pQjsmw/gpt_5_4__tla_plus_english__r1/evaluation.json | /tmp/tla-experiment-live.pQjsmw/gpt_5_4__tla_plus_english__r1/raw_response.txt |
-| gpt_5_4__tla_plus_refinement__r1 | -- | -- | /tmp/tla-experiment-live.pQjsmw/gpt_5_4__tla_plus_refinement__r1/raw_response.txt |
+| Condition                                | Generated Artifact                                                                             | Evaluation                                                                               | Raw Response                                                                              |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| claude_opus_4_6**english**r1             | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6**english**r1/generated_artifact.md             | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6**english**r1/evaluation.json             | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6**english**r1/raw_response.txt             |
+| claude_opus_4_6**tla_only**r1            | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6**tla_only**r1/generated_artifact.md            | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6**tla_only**r1/evaluation.json            | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6**tla_only**r1/raw_response.txt            |
+| claude_opus_4_6**tla_plus_english**r1    | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6**tla_plus_english**r1/generated_artifact.md    | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6**tla_plus_english**r1/evaluation.json    | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6**tla_plus_english**r1/raw_response.txt    |
+| claude_opus_4_6**tla_plus_refinement**r1 | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6**tla_plus_refinement**r1/generated_artifact.md | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6**tla_plus_refinement**r1/evaluation.json | /tmp/tla-experiment-live.pQjsmw/claude_opus_4_6**tla_plus_refinement**r1/raw_response.txt |
+| gpt_5_4**english**r1                     | /tmp/tla-experiment-live.pQjsmw/gpt_5_4**english**r1/generated_artifact.md                     | /tmp/tla-experiment-live.pQjsmw/gpt_5_4**english**r1/evaluation.json                     | /tmp/tla-experiment-live.pQjsmw/gpt_5_4**english**r1/raw_response.txt                     |
+| gpt_5_4**tla_only**r1                    | --                                                                                             | --                                                                                       | /tmp/tla-experiment-live.pQjsmw/gpt_5_4**tla_only**r1/raw_response.txt                    |
+| gpt_5_4**tla_plus_english**r1            | /tmp/tla-experiment-live.pQjsmw/gpt_5_4**tla_plus_english**r1/generated_artifact.md            | /tmp/tla-experiment-live.pQjsmw/gpt_5_4**tla_plus_english**r1/evaluation.json            | /tmp/tla-experiment-live.pQjsmw/gpt_5_4**tla_plus_english**r1/raw_response.txt            |
+| gpt_5_4**tla_plus_refinement**r1         | --                                                                                             | --                                                                                       | /tmp/tla-experiment-live.pQjsmw/gpt_5_4**tla_plus_refinement**r1/raw_response.txt         |
 
 ## TLC Validation
 
@@ -47,8 +47,8 @@
 
 ## Failures
 
-- `gpt_5_4__tla_only__r1`: Live generation failed for gpt_5_4__tla_only__r1: Agent execution timed out.; runtime_error=timeout
-- `gpt_5_4__tla_plus_refinement__r1`: Live generation failed for gpt_5_4__tla_plus_refinement__r1: Agent execution timed out.; runtime_error=timeout
+- `gpt_5_4__tla_only__r1`: Live generation failed for gpt_5_4**tla_only**r1: Agent execution timed out.; runtime_error=timeout
+- `gpt_5_4__tla_plus_refinement__r1`: Live generation failed for gpt_5_4**tla_plus_refinement**r1: Agent execution timed out.; runtime_error=timeout
 
 ## Notes
 

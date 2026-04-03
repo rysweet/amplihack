@@ -29,7 +29,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:55.503214+00
         cli->>dep_check: return_value: check_sdk_dep
         cli-->>CLI: result
         CLI-->>User: exit code
-    
+
         participant ci_workflow
         User->>CLI: iterate-fixes
         CLI->>ci_workflow: iterate-fixes()
@@ -39,7 +39,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:55.503214+00
         ci_workflow->>ci_workflow: subprocess: run_command
         ci_workflow-->>CLI: result
         CLI-->>User: exit code
-    
+
         User->>CLI: iterate-fixes
         CLI->>ci_workflow: iterate-fixes()
         ci_workflow->>ci_status: subprocess: get_current_branch
@@ -47,7 +47,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:55.503214+00
         ci_workflow->>ci_workflow: subprocess: run_command
         ci_workflow-->>CLI: result
         CLI-->>User: exit code
-    
+
         User->>CLI: iterate-fixes
         CLI->>ci_workflow: iterate-fixes()
         ci_workflow->>ci_status: subprocess: get_current_branch
@@ -55,7 +55,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:55.503214+00
         ci_workflow->>ci_workflow: subprocess: run_command
         ci_workflow-->>CLI: result
         CLI-->>User: exit code
-    
+
         User->>CLI: show
         CLI->>cli: show()
         cli->>cli: return_value: get_config_path
@@ -112,12 +112,12 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:55.503214+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol | Meaning |
-|--------|---------|
-| Actor | User |
-| Participant | Module/component |
-| Solid arrow | Synchronous call |
-| Dashed arrow | Response/return |
+| Symbol       | Meaning          |
+| ------------ | ---------------- |
+| Actor        | User             |
+| Participant  | Module/component |
+| Solid arrow  | Synchronous call |
+| Dashed arrow | Response/return  |
 
 </div>
 
@@ -131,7 +131,7 @@ Category: <strong>Behavioral</strong> | Generated: 2026-03-24T16:58:55.503214+00
 ??? info "Full data (click to expand)"
 
     **Summary metrics:**
-    
+
     - **Total Journeys**: 478
     - **Cli Journeys**: 171
     - **Http Journeys**: 33

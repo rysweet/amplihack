@@ -24,6 +24,7 @@ Generates rich GitHub activity reports across all authenticated `gh` accounts.
 ## Invocation
 
 The user triggers this skill with phrases like:
+
 - `/gh-work-report` (default: last 7 days)
 - `/gh-work-report show me the last 30 days`
 - `generate a github work report for the last 90 days`

@@ -13,9 +13,9 @@ def _default_package_recipe_dirs() -> list[str]:
     """Return bundled recipe directories visible to Python discovery."""
     try:
         from amplihack.recipes.discovery import (
-            _get_amplihack_home_bundle_dir,
             _PACKAGE_BUNDLE_DIR,
             _REPO_ROOT_BUNDLE_DIR,
+            _get_amplihack_home_bundle_dir,
         )
 
         amplihack_home_bundle = _get_amplihack_home_bundle_dir()

@@ -27,11 +27,11 @@ The refactor preserves the existing public API while moving implementation detai
 
 ## Compatibility imports
 
-| Import | Status | Notes |
-| --- | --- | --- |
-| `from amplihack.agents.goal_seeking.learning_agent import LearningAgent` | Primary compatibility path | Stable import path for direct callers |
-| `from amplihack.agents.goal_seeking import LearningAgent` | Supported for backward compatibility | Import works even though `LearningAgent` is not added to `__all__` |
-| `from amplihack.agents.goal_seeking import GoalSeekingAgent` | Preferred public entry point | `GoalSeekingAgent` delegates learning and answering work to `LearningAgent` |
+| Import                                                                   | Status                               | Notes                                                                       |
+| ------------------------------------------------------------------------ | ------------------------------------ | --------------------------------------------------------------------------- |
+| `from amplihack.agents.goal_seeking.learning_agent import LearningAgent` | Primary compatibility path           | Stable import path for direct callers                                       |
+| `from amplihack.agents.goal_seeking import LearningAgent`                | Supported for backward compatibility | Import works even though `LearningAgent` is not added to `__all__`          |
+| `from amplihack.agents.goal_seeking import GoalSeekingAgent`             | Preferred public entry point         | `GoalSeekingAgent` delegates learning and answering work to `LearningAgent` |
 
 ## Constructor
 
@@ -48,14 +48,14 @@ LearningAgent(
 
 ### Constructor parameters
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `agent_name` | `str` | `"learning_agent"` | Memory namespace and runtime identity |
-| `model` | `str \| None` | `None` | Explicit LLM model override |
-| `storage_path` | `Path \| None` | `None` | Custom memory storage location |
-| `use_hierarchical` | `bool` | `False` | Use cognitive or hierarchical memory adapters instead of the flat retriever |
-| `prompt_variant` | `int \| None` | `None` | Load a synthesis prompt variant instead of the default prompt |
-| `**kwargs` | `Any` | - | Reserved compatibility surface for callers and wrappers |
+| Parameter          | Type           | Default            | Description                                                                 |
+| ------------------ | -------------- | ------------------ | --------------------------------------------------------------------------- |
+| `agent_name`       | `str`          | `"learning_agent"` | Memory namespace and runtime identity                                       |
+| `model`            | `str \| None`  | `None`             | Explicit LLM model override                                                 |
+| `storage_path`     | `Path \| None` | `None`             | Custom memory storage location                                              |
+| `use_hierarchical` | `bool`         | `False`            | Use cognitive or hierarchical memory adapters instead of the flat retriever |
+| `prompt_variant`   | `int \| None`  | `None`             | Load a synthesis prompt variant instead of the default prompt               |
+| `**kwargs`         | `Any`          | -                  | Reserved compatibility surface for callers and wrappers                     |
 
 ## Public methods
 
@@ -69,11 +69,11 @@ Extracts facts from content, attaches source and temporal metadata, stores the r
 
 **Returns**
 
-| Key | Meaning |
-| --- | --- |
+| Key               | Meaning                                    |
+| ----------------- | ------------------------------------------ |
 | `facts_extracted` | Number of facts extracted from the content |
-| `facts_stored` | Number of facts written to memory |
-| `content_summary` | Short summary of the learned content |
+| `facts_stored`    | Number of facts written to memory          |
+| `content_summary` | Short summary of the learned content       |
 
 ### `answer_question`
 
@@ -97,13 +97,13 @@ Runs the standard answer pipeline:
 
 **Parameters**
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| `question` | `str` | required | Question to answer |
-| `question_level` | `str` | `"L1"` | Difficulty hint for prompt selection and synthesis style |
-| `return_trace` | `bool` | `False` | Return a `ReasoningTrace` alongside the answer |
-| `_skip_qanda_store` | `bool` | `False` | Internal flag used to skip writing Q and A history facts |
-| `_force_simple` | `bool` | `False` | Internal flag used to force exhaustive simple retrieval in fallback cases |
+| Parameter           | Type   | Default  | Description                                                               |
+| ------------------- | ------ | -------- | ------------------------------------------------------------------------- |
+| `question`          | `str`  | required | Question to answer                                                        |
+| `question_level`    | `str`  | `"L1"`   | Difficulty hint for prompt selection and synthesis style                  |
+| `return_trace`      | `bool` | `False`  | Return a `ReasoningTrace` alongside the answer                            |
+| `_skip_qanda_store` | `bool` | `False`  | Internal flag used to skip writing Q and A history facts                  |
+| `_force_simple`     | `bool` | `False`  | Internal flag used to force exhaustive simple retrieval in fallback cases |
 
 ### `answer_question_agentic`
 
@@ -146,16 +146,16 @@ Closes the underlying memory backend and releases agent resources.
 
 The eight primary files are the stable ownership boundaries for the refactor.
 
-| File | Owns |
-| --- | --- |
-| `learning_agent.py` | constructor, shared state, lifecycle, retry helpers, public delegation |
-| `learning_ingestion.py` | ingestion pipeline, fact batch preparation, source labels, summary storage |
-| `answer_synthesizer.py` | answer synthesis, completeness evaluation, prompt assembly |
-| `retrieval_strategies.py` | retrieval selection, simple/entity/concept/aggregation strategies |
-| `intent_detector.py` | intent classification and routing metadata |
-| `temporal_reasoning.py` | transition chains, temporal lookups, temporal parsing |
-| `code_synthesis.py` | generated Python for hard temporal reasoning cases |
-| `knowledge_utils.py` | arithmetic validation, knowledge explanation, fact verification helpers |
+| File                      | Owns                                                                       |
+| ------------------------- | -------------------------------------------------------------------------- |
+| `learning_agent.py`       | constructor, shared state, lifecycle, retry helpers, public delegation     |
+| `learning_ingestion.py`   | ingestion pipeline, fact batch preparation, source labels, summary storage |
+| `answer_synthesizer.py`   | answer synthesis, completeness evaluation, prompt assembly                 |
+| `retrieval_strategies.py` | retrieval selection, simple/entity/concept/aggregation strategies          |
+| `intent_detector.py`      | intent classification and routing metadata                                 |
+| `temporal_reasoning.py`   | transition chains, temporal lookups, temporal parsing                      |
+| `code_synthesis.py`       | generated Python for hard temporal reasoning cases                         |
+| `knowledge_utils.py`      | arithmetic validation, knowledge explanation, fact verification helpers    |
 
 ## Expected method placement
 
@@ -228,16 +228,16 @@ The refactor keeps these methods with their owning modules.
 
 The facade still registers the same high-level actions on `ActionExecutor`.
 
-| Action | Backing behavior |
-| --- | --- |
-| `read_content` | content ingestion input helper |
-| `search_memory` | memory lookup through the active backend |
-| `synthesize_answer` | LLM synthesis via `answer_synthesizer.py` |
-| `calculate` | deterministic arithmetic helper |
-| `code_generation` | temporal code generation via `code_synthesis.py` |
-| `explain_knowledge` | topic explanation helper |
-| `find_knowledge_gaps` | knowledge gap analysis |
-| `verify_fact` | fact validation against stored knowledge |
+| Action                | Backing behavior                                 |
+| --------------------- | ------------------------------------------------ |
+| `read_content`        | content ingestion input helper                   |
+| `search_memory`       | memory lookup through the active backend         |
+| `synthesize_answer`   | LLM synthesis via `answer_synthesizer.py`        |
+| `calculate`           | deterministic arithmetic helper                  |
+| `code_generation`     | temporal code generation via `code_synthesis.py` |
+| `explain_knowledge`   | topic explanation helper                         |
+| `find_knowledge_gaps` | knowledge gap analysis                           |
+| `verify_fact`         | fact validation against stored knowledge         |
 
 ## Configuration surface
 
@@ -245,17 +245,17 @@ The refactor does not add new runtime configuration. It preserves the existing k
 
 ### Constructor-driven configuration
 
-| Knob | Scope | Effect |
-| --- | --- | --- |
-| `model` | extraction and synthesis | Chooses the LLM used for prompts and completions |
-| `storage_path` | memory backend | Changes where memory data is stored |
-| `use_hierarchical` | memory backend | Selects `CognitiveAdapter` or `FlatRetrieverAdapter` when available |
-| `prompt_variant` | synthesis | Loads a variant prompt for eval or experimentation |
+| Knob               | Scope                    | Effect                                                              |
+| ------------------ | ------------------------ | ------------------------------------------------------------------- |
+| `model`            | extraction and synthesis | Chooses the LLM used for prompts and completions                    |
+| `storage_path`     | memory backend           | Changes where memory data is stored                                 |
+| `use_hierarchical` | memory backend           | Selects `CognitiveAdapter` or `FlatRetrieverAdapter` when available |
+| `prompt_variant`   | synthesis                | Loads a variant prompt for eval or experimentation                  |
 
 ### Environment variables
 
-| Variable | Used when | Effect |
-| --- | --- | --- |
+| Variable     | Used when          | Effect                              |
+| ------------ | ------------------ | ----------------------------------- |
 | `EVAL_MODEL` | `model` is omitted | Provides the default LLM model name |
 
 No new environment variables are introduced by the module split.
@@ -271,15 +271,15 @@ These files stay private implementation details. Callers should continue to targ
 
 ## Test layout
 
-| Test file | Scope |
-| --- | --- |
-| `test_learning_agent_core.py` | constructor, retry, lifecycle |
-| `test_learning_agent_ingestion.py` | ingestion and storage |
-| `test_learning_agent_retrieval.py` | retrieval strategies and fallbacks |
-| `test_learning_agent_temporal.py` | temporal reasoning and code synthesis |
-| `test_math_intent.py` | math and intent behavior |
-| `test_agentic_answer_mode.py` | answer refinement behavior |
-| `test_goal_seeking_agent.py` | higher-level agent compatibility |
+| Test file                          | Scope                                 |
+| ---------------------------------- | ------------------------------------- |
+| `test_learning_agent_core.py`      | constructor, retry, lifecycle         |
+| `test_learning_agent_ingestion.py` | ingestion and storage                 |
+| `test_learning_agent_retrieval.py` | retrieval strategies and fallbacks    |
+| `test_learning_agent_temporal.py`  | temporal reasoning and code synthesis |
+| `test_math_intent.py`              | math and intent behavior              |
+| `test_agentic_answer_mode.py`      | answer refinement behavior            |
+| `test_goal_seeking_agent.py`       | higher-level agent compatibility      |
 
 ## Validation commands
 

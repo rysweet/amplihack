@@ -39,10 +39,10 @@ permissions:
   pull-requests: read
 ```
 
-| Permission | Reason |
-|------------|--------|
-| `contents: read` | Read repository files for context |
-| `issues: read` | Fetch issue metadata and existing labels |
+| Permission            | Reason                                          |
+| --------------------- | ----------------------------------------------- |
+| `contents: read`      | Read repository files for context               |
+| `issues: read`        | Fetch issue metadata and existing labels        |
 | `pull-requests: read` | Detect cross-references from issues to open PRs |
 
 The top-level `permissions: {}` block denies all other permissions by default. Do **not** broaden the job permissions unless you add a step that genuinely requires it.
@@ -80,11 +80,11 @@ timeout-minutes: 10
 strict: true
 ```
 
-| Field | Description |
-|-------|-------------|
-| `engine` | AI engine to use (`claude` is the only supported value) |
-| `timeout-minutes` | Per-job cap. Must be ≥ 10. |
-| `strict` | When `true`, no output from the agent is a failure; the job does not silently succeed |
+| Field             | Description                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| `engine`          | AI engine to use (`claude` is the only supported value)                               |
+| `timeout-minutes` | Per-job cap. Must be ≥ 10.                                                            |
+| `strict`          | When `true`, no output from the agent is a failure; the job does not silently succeed |
 
 After editing, [recompile the lock file](#recompiling-the-lock-file) before committing.
 
@@ -191,12 +191,12 @@ pytest tests/unit/workflows/test_issue_classifier_workflow.py -v
 
 Tests cover:
 
-| Test | What it checks |
-|------|---------------|
-| `test_timeout_budget` | `timeout-minutes` in source ≥ 10 |
+| Test                        | What it checks                                    |
+| --------------------------- | ------------------------------------------------- |
+| `test_timeout_budget`       | `timeout-minutes` in source ≥ 10                  |
 | `test_permissions_presence` | All three required permissions declared in source |
-| `test_lockfile_sync` | Lock file `timeout-minutes` matches source |
-| `test_lockfile_permissions` | Lock file grants same permissions as source |
+| `test_lockfile_sync`        | Lock file `timeout-minutes` matches source        |
+| `test_lockfile_permissions` | Lock file grants same permissions as source       |
 
 All four tests must pass before merging any change to the workflow files.
 

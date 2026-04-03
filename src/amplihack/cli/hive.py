@@ -244,8 +244,7 @@ def _start_azure(hive_name: str, config: dict[str, Any], args: argparse.Namespac
     deploy_script = _find_deploy_script()
     if deploy_script is None:
         print(
-            "Error: deploy/azure_hive/deploy.sh not found. "
-            "Run from the amplihack repo root.",
+            "Error: deploy/azure_hive/deploy.sh not found. Run from the amplihack repo root.",
             file=sys.stderr,
         )
         return 1
@@ -291,7 +290,7 @@ def cmd_status(args: argparse.Namespace) -> int:
             status = "stopped"
             facts = "-"
             pid = pid or "-"
-        print(f"{agent_name:<20} {status:<12} {str(pid):<10} {str(facts):<10}")
+        print(f"{agent_name:<20} {status:<12} {pid!s:<10} {facts!s:<10}")
 
     return 0
 
@@ -351,9 +350,15 @@ def _find_entrypoint() -> str:
     """Find agent_entrypoint.py in the deploy directory or package."""
     candidates = [
         # Installed as part of the package
-        Path(__file__).parent.parent.parent.parent / "deploy" / "azure_hive" / "agent_entrypoint.py",
+        Path(__file__).parent.parent.parent.parent
+        / "deploy"
+        / "azure_hive"
+        / "agent_entrypoint.py",
         # Development: repo root
-        Path(__file__).parent.parent.parent.parent.parent / "deploy" / "azure_hive" / "agent_entrypoint.py",
+        Path(__file__).parent.parent.parent.parent.parent
+        / "deploy"
+        / "azure_hive"
+        / "agent_entrypoint.py",
     ]
     for candidate in candidates:
         if candidate.exists():
@@ -391,9 +396,7 @@ except Exception as e:
     logger.exception("Agent %s failed: %s", agent_name, e)
     sys.exit(1)
 '''
-    tmp = tempfile.NamedTemporaryFile(
-        suffix="_agent_entrypoint.py", delete=False, mode="w"
-    )
+    tmp = tempfile.NamedTemporaryFile(suffix="_agent_entrypoint.py", delete=False, mode="w")
     tmp.write(script)
     tmp.close()
     return tmp.name
@@ -437,15 +440,21 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Event transport (default: local)",
     )
     p_create.add_argument(
-        "--connection-string", dest="connection_string", default="",
+        "--connection-string",
+        dest="connection_string",
+        default="",
         help="Connection string for Azure Service Bus or Redis URL",
     )
     p_create.add_argument(
-        "--storage-path", dest="storage_path", default="",
+        "--storage-path",
+        dest="storage_path",
+        default="",
         help="Storage path for agent data",
     )
     p_create.add_argument(
-        "--shard-backend", dest="shard_backend", default="memory",
+        "--shard-backend",
+        dest="shard_backend",
+        default="memory",
         choices=["memory", "kuzu"],
         help="Graph store backend (default: memory)",
     )
@@ -456,7 +465,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p_add.add_argument("--agent-name", dest="agent_name", required=True, help="Agent name")
     p_add.add_argument("--prompt", required=True, help="Agent system prompt")
     p_add.add_argument(
-        "--kuzu-db", dest="kuzu_db", default=None,
+        "--kuzu-db",
+        dest="kuzu_db",
+        default=None,
         help="Path to existing Kuzu database to mount",
     )
 

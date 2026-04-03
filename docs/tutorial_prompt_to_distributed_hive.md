@@ -7,10 +7,10 @@ run today.
 
 **Real Azure resources used in this tutorial:**
 
-| Resource | Name |
-| --- | --- |
-| Resource Group | `hive-mind-rg` |
-| Container Registry | `hivacrhivemind` |
+| Resource              | Name                    |
+| --------------------- | ----------------------- |
+| Resource Group        | `hive-mind-rg`          |
+| Container Registry    | `hivacrhivemind`        |
 | Service Bus Namespace | `hive-sb-dj2qo2w7vu5zi` |
 
 ---
@@ -56,6 +56,7 @@ mem = Memory("security-analyst-1")
 ```
 
 Under the hood this resolves to:
+
 - `topology = "single"` (no network)
 - `backend = "cognitive"` (Kuzu graph DB)
 - `storage_path = ~/.amplihack/agents/security-analyst-1/`
@@ -320,15 +321,15 @@ spec:
     - id: soc-agent-0
       domain: security
       group: group-0
-      prompt_variant: 4               # Expert: full domain context
-      kuzu_db_path: /data/soc-0/kuzu  # Persistent Kuzu DB (Azure Files)
+      prompt_variant: 4 # Expert: full domain context
+      kuzu_db_path: /data/soc-0/kuzu # Persistent Kuzu DB (Azure Files)
       env:
         AGENT_ROLE: "SOC Tier 1 analyst — triage and initial investigation"
 
     - id: soc-agent-1
       domain: security
       group: group-0
-      prompt_variant: 5               # Expert + multi-step reasoning
+      prompt_variant: 5 # Expert + multi-step reasoning
       kuzu_db_path: /data/soc-1/kuzu
       env:
         AGENT_ROLE: "SOC Tier 2 analyst — deep forensics and root cause"
@@ -336,7 +337,7 @@ spec:
     - id: infra-agent-0
       domain: infrastructure
       group: group-1
-      prompt_variant: 3               # Structured answers
+      prompt_variant: 3 # Structured answers
       kuzu_db_path: /data/infra-0/kuzu
       env:
         AGENT_ROLE: "Infrastructure engineer — server state and capacity"
@@ -344,7 +345,7 @@ spec:
     - id: adversarial-agent
       domain: adversarial
       group: group-1
-      prompt_variant: 1               # Minimal — injects noise for testing
+      prompt_variant: 1 # Minimal — injects noise for testing
       kuzu_db_path: /data/adversary/kuzu
       env:
         AGENT_ROLE: "Adversarial agent — injects false facts for consensus testing"
@@ -370,13 +371,13 @@ controller.close()
 
 **Prompt variants:**
 
-| Variant | Style | Use Case |
-| --- | --- | --- |
-| 1 | Minimal | Testing, adversarial agents |
-| 2 | Basic | Simple recall tasks |
-| 3 | Structured | Explicit answer dimensions |
-| 4 | Detailed | Full domain context |
-| 5 | Expert | Multi-step reasoning, memory organization |
+| Variant | Style      | Use Case                                  |
+| ------- | ---------- | ----------------------------------------- |
+| 1       | Minimal    | Testing, adversarial agents               |
+| 2       | Basic      | Simple recall tasks                       |
+| 3       | Structured | Explicit answer dimensions                |
+| 4       | Detailed   | Full domain context                       |
+| 5       | Expert     | Multi-step reasoning, memory organization |
 
 ---
 
@@ -398,15 +399,15 @@ bash experiments/hive_mind/deploy_azure_hive.sh
 
 **What gets provisioned in `hive-mind-rg`:**
 
-| Resource | Name | Details |
-| --- | --- | --- |
-| Resource Group | `hive-mind-rg` | `eastus` |
-| Container Registry | `hivacrhivemind` | Basic SKU, admin enabled |
-| Service Bus | `hive-sb-dj2qo2w7vu5zi` | Standard SKU, `hive-events` topic |
-| Storage Account | Azure Files | `agent-databases` share, Kuzu persistence |
-| Container Apps Env | `hive-mind-env` | Consumption tier |
-| Container Apps | 100 agent containers | 2.0 CPU / 4.0 GiB each |
-| Log Analytics | `hive-logs-*` | Centralized logging |
+| Resource           | Name                    | Details                                   |
+| ------------------ | ----------------------- | ----------------------------------------- |
+| Resource Group     | `hive-mind-rg`          | `eastus`                                  |
+| Container Registry | `hivacrhivemind`        | Basic SKU, admin enabled                  |
+| Service Bus        | `hive-sb-dj2qo2w7vu5zi` | Standard SKU, `hive-events` topic         |
+| Storage Account    | Azure Files             | `agent-databases` share, Kuzu persistence |
+| Container Apps Env | `hive-mind-env`         | Consumption tier                          |
+| Container Apps     | 100 agent containers    | 2.0 CPU / 4.0 GiB each                    |
+| Log Analytics      | `hive-logs-*`           | Centralized logging                       |
 
 **Manual Azure CLI commands for custom deployments:**
 
@@ -686,18 +687,18 @@ python -m amplihack_eval.run \
 
 ## Summary
 
-| Step | What You Did | Key API |
-| --- | --- | --- |
-| 1 | Wrote an agent prompt | Plain text / Python string |
-| 2 | Created local memory (zero config) | `Memory("agent-name")` |
-| 3 | Stored and retrieved facts locally | `mem.remember()`, `mem.recall()` |
-| 4 | Connected two agents via shared hive | `DistributedHiveGraph` + `shared_hive=` |
-| 5 | Configured for distributed via YAML/env | `memory.yaml`, `AMPLIHACK_MEMORY_*` |
-| 6 | Declared hive topology | `amplihack-hive create`, `hive-config.yaml` |
-| 7 | Added agents with prompts and Kuzu DBs | `HiveController.from_yaml()` |
-| 8 | Deployed 100 agents to Azure | `deploy_azure_hive.sh`, `az containerapp` |
-| 9 | Monitored and managed deployment | `az containerapp logs`, Service Bus metrics |
-| 10 | Fed content and verified cross-agent recall | `/learn`, `/query` HTTP endpoints |
+| Step | What You Did                                | Key API                                     |
+| ---- | ------------------------------------------- | ------------------------------------------- |
+| 1    | Wrote an agent prompt                       | Plain text / Python string                  |
+| 2    | Created local memory (zero config)          | `Memory("agent-name")`                      |
+| 3    | Stored and retrieved facts locally          | `mem.remember()`, `mem.recall()`            |
+| 4    | Connected two agents via shared hive        | `DistributedHiveGraph` + `shared_hive=`     |
+| 5    | Configured for distributed via YAML/env     | `memory.yaml`, `AMPLIHACK_MEMORY_*`         |
+| 6    | Declared hive topology                      | `amplihack-hive create`, `hive-config.yaml` |
+| 7    | Added agents with prompts and Kuzu DBs      | `HiveController.from_yaml()`                |
+| 8    | Deployed 100 agents to Azure                | `deploy_azure_hive.sh`, `az containerapp`   |
+| 9    | Monitored and managed deployment            | `az containerapp logs`, Service Bus metrics |
+| 10   | Fed content and verified cross-agent recall | `/learn`, `/query` HTTP endpoints           |
 
 ## Azure Resources Quick Reference
 

@@ -40,7 +40,10 @@ def test_fallback_message_on_timeout() -> bool:
 def test_fallback_to_directory_copy() -> bool:
     """The timeout handler must call _fallback_to_directory_copy."""
     source = CLI_PATH.read_text()
-    if '_fallback_to_directory_copy(\n                                "Plugin install timed out"' not in source:
+    if (
+        '_fallback_to_directory_copy(\n                                "Plugin install timed out"'
+        not in source
+    ):
         # Looser check
         if "_fallback_to_directory_copy" not in source or "Plugin install timed out" not in source:
             print("FAIL: timeout does not trigger directory copy fallback")

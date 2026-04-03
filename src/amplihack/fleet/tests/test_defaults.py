@@ -16,7 +16,6 @@ import pytest
 
 from amplihack.fleet._defaults import get_azlin_path
 
-
 # ---------------------------------------------------------------------------
 # get_azlin_path
 # ---------------------------------------------------------------------------
@@ -42,7 +41,9 @@ class TestGetAzlinPath:
     @patch("amplihack.fleet._defaults.os.access", return_value=False)
     @patch("amplihack.fleet._defaults.os.path.isfile", return_value=False)
     @patch("amplihack.fleet._defaults.shutil.which", return_value=None)
-    def test_get_azlin_path_raises_when_missing(self, mock_which, mock_isfile, mock_access, monkeypatch):
+    def test_get_azlin_path_raises_when_missing(
+        self, mock_which, mock_isfile, mock_access, monkeypatch
+    ):
         """Raises ValueError with helpful message when azlin cannot be found."""
         monkeypatch.delenv("AZLIN_PATH", raising=False)
         with pytest.raises(ValueError, match="azlin not found"):
@@ -51,7 +52,9 @@ class TestGetAzlinPath:
     @patch("amplihack.fleet._defaults.os.access", return_value=False)
     @patch("amplihack.fleet._defaults.os.path.isfile", return_value=False)
     @patch("amplihack.fleet._defaults.shutil.which", return_value=None)
-    def test_get_azlin_path_error_message_includes_install_hint(self, mock_which, mock_isfile, mock_access, monkeypatch):
+    def test_get_azlin_path_error_message_includes_install_hint(
+        self, mock_which, mock_isfile, mock_access, monkeypatch
+    ):
         """Error message includes AZLIN_PATH instructions."""
         monkeypatch.delenv("AZLIN_PATH", raising=False)
         with pytest.raises(ValueError, match="AZLIN_PATH"):

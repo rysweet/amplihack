@@ -375,4 +375,3 @@ class LearningIngestionMixin:
             logger.debug("Temporal metadata detection failed: %s", e)
 
         return {"source_date": "", "temporal_order": "", "temporal_index": 0}
-

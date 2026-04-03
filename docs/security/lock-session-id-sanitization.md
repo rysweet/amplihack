@@ -11,7 +11,7 @@ lock-file metadata, preventing path-traversal and metadata-injection attacks.
 - [Problem Solved](#problem-solved)
 - [Sanitization Rules](#sanitization-rules)
 - [API Reference](#api-reference)
-  - [_sanitize_session_id](#_sanitize_session_id)
+  - [\_sanitize_session_id](#_sanitize_session_id)
 - [Where Sanitization Is Applied](#where-sanitization-is-applied)
 - [Security Invariants](#security-invariants)
 - [Error Handling and Fallback](#error-handling-and-fallback)
@@ -24,12 +24,12 @@ lock-file metadata, preventing path-traversal and metadata-injection attacks.
 
 The lock tool stores the current `AMPLIHACK_SESSION_ID` in lock-file metadata
 so that a stop hook can distinguish its own lock from a stale lock left by a
-crashed session.  Two attack surfaces existed:
+crashed session. Two attack surfaces existed:
 
-| Attack | Mechanism | Example payload |
-|--------|-----------|-----------------|
-| **Path traversal** | `session_id` used as a directory name when constructing the counter path | `../../etc/cron.d/evil` |
-| **Metadata injection** | `session_id` written verbatim as a value in the key-value lock file | `myid\nsession_id=attacker_value` |
+| Attack                 | Mechanism                                                                | Example payload                   |
+| ---------------------- | ------------------------------------------------------------------------ | --------------------------------- |
+| **Path traversal**     | `session_id` used as a directory name when constructing the counter path | `../../etc/cron.d/evil`           |
+| **Metadata injection** | `session_id` written verbatim as a value in the key-value lock file      | `myid\nsession_id=attacker_value` |
 
 Both attack surfaces are now closed by a single sanitization helper applied on
 every write path and validated on every read path.
@@ -70,8 +70,8 @@ from amplihack.tools.lock_tool import _sanitize_session_id
 safe_id = _sanitize_session_id(raw_session_id)
 ```
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
+| Parameter    | Type          | Description                                                 |
+| ------------ | ------------- | ----------------------------------------------------------- |
 | `session_id` | `str \| None` | Raw value from `AMPLIHACK_SESSION_ID` or lock-file metadata |
 
 **Returns**: `str` — sanitized identifier, guaranteed to contain only
@@ -100,22 +100,22 @@ the sanitization was introduced mid-flight.
 
 ### `lock_tool.py` (canonical — two copies kept in sync)
 
-| Function | Action |
-|----------|--------|
-| `create_lock()` | Sanitizes `session_id` before writing `session_id=<value>` into lock metadata |
+| Function               | Action                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| `create_lock()`        | Sanitizes `session_id` before writing `session_id=<value>` into lock metadata         |
 | `read_lock_metadata()` | Rejects any value containing `/` or `..`; returns `None` to trigger TTL-only recovery |
 
 ### `stop.py` (stop hook)
 
-| Function | Action |
-|----------|--------|
-| `_increment_lock_counter()` | Sanitizes `session_id` before constructing the counter directory path |
+| Function                      | Action                                                                                        |
+| ----------------------------- | --------------------------------------------------------------------------------------------- |
+| `_increment_lock_counter()`   | Sanitizes `session_id` before constructing the counter directory path                         |
 | `_get_lock_recovery_reason()` | Sanitizes both the stored and live session IDs before comparing; rejects malformed stored IDs |
 
 ### `_copilot_stop_handler_impl.py` (Python package mirror)
 
 Mirrors the same sanitization as `stop.py` so that Python package consumers
-and standalone hook consumers behave identically.  Any change to either file
+and standalone hook consumers behave identically. Any change to either file
 must be reflected in the other.
 
 ---
@@ -161,7 +161,7 @@ The following invariants must never be broken:
 ```
 
 If the stored `session_id` is rejected on read, the lock tool falls back to
-TTL-based stale-lock detection.  The lock is not silently ignored — it is still
+TTL-based stale-lock detection. The lock is not silently ignored — it is still
 subject to the configured `AMPLIHACK_LOCK_TTL_SECONDS`.
 
 ---
@@ -170,12 +170,12 @@ subject to the configured `AMPLIHACK_LOCK_TTL_SECONDS`.
 
 Tests covering the sanitization are spread across four files:
 
-| File | What it tests |
-|------|---------------|
-| `tests/test_lock_unlock.py` | Path-traversal and newline-injection inputs to `create_lock()`; read-path rejection of `/` and `..` values |
+| File                                                             | What it tests                                                                                                                                    |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `tests/test_lock_unlock.py`                                      | Path-traversal and newline-injection inputs to `create_lock()`; read-path rejection of `/` and `..` values                                       |
 | `.claude/tools/amplihack/hooks/tests/test_stop_state_machine.py` | `_increment_lock_counter()` path construction with adversarial session IDs; `_get_lock_recovery_reason()` metadata comparison after sanitization |
-| `tests/hooks/test_copilot_stop_handler.py` | Mirror parity: identical sanitization behaviour in `_copilot_stop_handler_impl.py` |
-| `tests/outside_in/test_stop_hook_safety_valve_e2e.py` | End-to-end: adversarial `AMPLIHACK_SESSION_ID` does not escape the session counter directory |
+| `tests/hooks/test_copilot_stop_handler.py`                       | Mirror parity: identical sanitization behaviour in `_copilot_stop_handler_impl.py`                                                               |
+| `tests/outside_in/test_stop_hook_safety_valve_e2e.py`            | End-to-end: adversarial `AMPLIHACK_SESSION_ID` does not escape the session counter directory                                                     |
 
 Run all sanitization-related tests:
 
@@ -206,11 +206,11 @@ pytest tests/test_lock_unlock.py \
 
 **Metadata**
 
-| Field | Value |
-|-------|-------|
-| Status | Planned / PR #4143 |
-| Issues | #3960, #3983 |
-| PR | #4143 |
+| Field         | Value                                                           |
+| ------------- | --------------------------------------------------------------- |
+| Status        | Planned / PR #4143                                              |
+| Issues        | #3960, #3983                                                    |
+| PR            | #4143                                                           |
 | Files changed | `lock_tool.py` (×2), `stop.py`, `_copilot_stop_handler_impl.py` |
-| Python | 3.8+ |
-| Dependencies | `re` (stdlib only) |
+| Python        | 3.8+                                                            |
+| Dependencies  | `re` (stdlib only)                                              |

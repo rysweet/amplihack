@@ -1,7 +1,7 @@
 # Tutorial: Workflow Execution Guardrails
 
-**Time to Complete**: 15 minutes  
-**Skill Level**: Intermediate  
+**Time to Complete**: 15 minutes
+**Skill Level**: Intermediate
 **Prerequisites**: A writable clone of `amplihack`, `gh auth status` working for `rysweet`, and permission to create draft workflow artifacts in a test branch or disposable clone.
 
 This tutorial walks through the finished issue 107 workflow contract: one canonical execution root, exact GitHub identity enforcement, and observer-only stall detection.

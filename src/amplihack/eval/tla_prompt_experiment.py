@@ -23,7 +23,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Self
 
@@ -182,22 +182,14 @@ class PromptBundle:
     def combined_text(self) -> str:
         sections = [self.prompt_text.rstrip()]
         if self.append_spec:
-            sections.append(
-                "## Formal specification\n\n"
-                "```tla\n"
-                f"{self.spec_text.rstrip()}\n"
-                "```"
-            )
+            sections.append(f"## Formal specification\n\n```tla\n{self.spec_text.rstrip()}\n```")
         if self.append_refinement:
             if self.refinement_text is None:
                 raise ValueError(
                     f"Prompt variant {self.variant_id!r} requested refinement guidance "
                     "but no refinement asset was loaded."
                 )
-            sections.append(
-                "## Refinement guidance\n\n"
-                f"{self.refinement_text.rstrip()}"
-            )
+            sections.append(f"## Refinement guidance\n\n{self.refinement_text.rstrip()}")
         return "\n\n".join(section for section in sections if section) + "\n"
 
 
@@ -218,9 +210,7 @@ class ExperimentCondition:
 
     @property
     def condition_id(self) -> str:
-        return (
-            f"{_slug(self.model_id)}__{_slug(self.prompt_variant_id)}__r{self.repeat_index}"
-        )
+        return f"{_slug(self.model_id)}__{_slug(self.prompt_variant_id)}__r{self.repeat_index}"
 
     def to_dict(self) -> dict[str, Any]:
         data = {
@@ -407,9 +397,7 @@ class ExperimentSummaryReport:
             "total_conditions": self.total_conditions,
             "completed_conditions": self.completed_conditions,
             "failed_conditions": self.failed_conditions,
-            "metric_summary": {
-                key: value.to_dict() for key, value in self.metric_summary.items()
-            },
+            "metric_summary": {key: value.to_dict() for key, value in self.metric_summary.items()},
             "by_prompt_variant": {
                 key: {metric: summary.to_dict() for metric, summary in value.items()}
                 for key, value in self.by_prompt_variant.items()
@@ -604,7 +592,9 @@ class ExperimentManifest:
 
     def resolve_asset_path(self, relative_path: str) -> Path:
         if self._base_dir is None:
-            raise ValueError("Manifest base directory is unknown; load from a file or pass base_dir")
+            raise ValueError(
+                "Manifest base directory is unknown; load from a file or pass base_dir"
+            )
         return self._base_dir / relative_path
 
     def get_prompt_variant(self, variant_id: str) -> PromptVariantAsset:
@@ -1353,7 +1343,7 @@ def generate_experiment_markdown_report(
                 "",
                 f"- Runner: `{tlc['runner_kind']}`",
                 f"- Return code: `{tlc['returncode']}`",
-                f"- Command: `{ ' '.join(tlc['command']) }`",
+                f"- Command: `{' '.join(tlc['command'])}`",
             ]
         )
     failed = [item for item in results if item.status == "failed"]
@@ -1475,7 +1465,7 @@ def run_tla_prompt_experiment(
         experiment_id=resolved_manifest.experiment_id,
         matrix_mode="smoke" if smoke else "full",
         output_dir=str(output_dir),
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        generated_at=datetime.now(UTC).isoformat(),
         total_conditions=len(results),
         completed_conditions=sum(1 for item in results if item.status == "completed"),
         failed_conditions=sum(1 for item in results if item.status == "failed"),
@@ -1484,7 +1474,9 @@ def run_tla_prompt_experiment(
         tlc_validation=shared_tlc_result.to_dict() if shared_tlc_result else None,
     )
     output_root = Path(output_dir)
-    (output_root / "experiment_report.json").write_text(json.dumps(report.to_dict(), indent=2) + "\n")
+    (output_root / "experiment_report.json").write_text(
+        json.dumps(report.to_dict(), indent=2) + "\n"
+    )
     generate_experiment_markdown_report(report, results, output_root / "experiment_report.md")
     return report
 
@@ -1593,7 +1585,9 @@ def main(argv: list[str] | None = None) -> int:
         result_files = sorted(args.summarize_results.glob("*/run_result.json"))
         if not result_files:
             raise SystemExit("No run_result.json files found under the given directory")
-        summary = summarize_condition_results([load_condition_result(path) for path in result_files])
+        summary = summarize_condition_results(
+            [load_condition_result(path) for path in result_files]
+        )
         print(json.dumps(summary.to_dict(), indent=2))
         return 0
     if args.materialize_dir:

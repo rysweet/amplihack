@@ -92,6 +92,7 @@ Run `scripts/generate_daily_status.py` to produce a cross-project status report.
 ## Scripts
 
 Orchestrator owns these scripts:
+
 - `scripts/manage_state.py` — Basic .pm/ state operations (init, add, update, list)
 - `scripts/generate_top5.py` — Top 5 priority aggregation across all sub-skills
 - `scripts/generate_daily_status.py` — AI-powered daily status report generation

@@ -37,7 +37,6 @@ Run:
 """
 
 import os
-import re
 import subprocess
 import tempfile
 import textwrap
@@ -80,7 +79,7 @@ def _extract_step_command(yaml_path: Path, step_id: str) -> str:
 
         if not in_command:
             if stripped.startswith("command:"):
-                inline = stripped[len("command:"):].strip()
+                inline = stripped[len("command:") :].strip()
                 if inline and inline != "|":
                     return inline.strip("\"'")
                 in_command = True
@@ -153,6 +152,7 @@ def _run_step03(
 # Static YAML analysis tests (no subprocess required — fast)
 # ---------------------------------------------------------------------------
 
+
 class TestStep03YAMLStaticAnalysis(unittest.TestCase):
     """
     Verify the guard patterns are textually present in step-03-create-issue
@@ -166,82 +166,104 @@ class TestStep03YAMLStaticAnalysis(unittest.TestCase):
 
     def test_guard1_bash_regex_pattern_present(self):
         """Guard 1 must use bash =~ to extract #NNNN from task_description."""
-        self.assertIn(r"\#([0-9]+)", self.cmd,
-            "Guard 1 bash regex \\#([0-9]+) must be present in step-03 command")
+        self.assertIn(
+            r"\#([0-9]+)",
+            self.cmd,
+            "Guard 1 bash regex \\#([0-9]+) must be present in step-03 command",
+        )
 
     def test_guard1_bash_rematch_used(self):
         """Guard 1 must capture the issue number via BASH_REMATCH."""
-        self.assertIn("BASH_REMATCH", self.cmd,
-            "Guard 1 must use BASH_REMATCH to capture extracted issue number")
+        self.assertIn(
+            "BASH_REMATCH",
+            self.cmd,
+            "Guard 1 must use BASH_REMATCH to capture extracted issue number",
+        )
 
     def test_guard1_numeric_defense_in_depth(self):
         """Guard 1 must validate the extracted number is purely numeric with ^[0-9]+$."""
-        self.assertIn("^[0-9]+$", self.cmd,
-            "Guard 1 must contain defense-in-depth numeric validation: ^[0-9]+$")
+        self.assertIn(
+            "^[0-9]+$",
+            self.cmd,
+            "Guard 1 must contain defense-in-depth numeric validation: ^[0-9]+$",
+        )
 
     def test_guard1_timeout_present(self):
         """Guard 1 must call `timeout 60 gh issue view` to prevent hangs."""
-        self.assertIn("timeout 60", self.cmd,
-            "Guard 1 must use 'timeout 60' when calling gh issue view")
+        self.assertIn(
+            "timeout 60", self.cmd, "Guard 1 must use 'timeout 60' when calling gh issue view"
+        )
 
     def test_guard1_uses_gh_issue_view(self):
         """Guard 1 must call gh issue view to resolve the referenced issue."""
-        self.assertIn("gh issue view", self.cmd,
-            "Guard 1 must call 'gh issue view' to verify the referenced issue")
+        self.assertIn(
+            "gh issue view",
+            self.cmd,
+            "Guard 1 must call 'gh issue view' to verify the referenced issue",
+        )
 
     def test_guard1_suppresses_gh_stderr(self):
         """Guard 1 must suppress gh stderr (2>/dev/null) so errors fall through silently."""
         # The guard uses 2>/dev/null so network/auth failures fall through quietly
-        self.assertIn("2>/dev/null", self.cmd,
-            "Guard 1 gh call must suppress stderr with 2>/dev/null")
+        self.assertIn(
+            "2>/dev/null", self.cmd, "Guard 1 gh call must suppress stderr with 2>/dev/null"
+        )
 
     def test_guard2_title_search_present(self):
         """Guard 2 must call gh issue list with --search."""
-        self.assertIn("gh issue list", self.cmd,
-            "Guard 2 must call 'gh issue list' to search for existing issues")
-        self.assertIn("--search", self.cmd,
-            "Guard 2 must use '--search' flag with gh issue list")
+        self.assertIn(
+            "gh issue list",
+            self.cmd,
+            "Guard 2 must call 'gh issue list' to search for existing issues",
+        )
+        self.assertIn("--search", self.cmd, "Guard 2 must use '--search' flag with gh issue list")
 
     def test_guard2_limits_search_to_100_chars(self):
         """Guard 2 must truncate the search query to the first 100 characters."""
-        self.assertIn(":0:100", self.cmd,
-            "Guard 2 must truncate ISSUE_TITLE search query to 100 chars with :0:100")
+        self.assertIn(
+            ":0:100",
+            self.cmd,
+            "Guard 2 must truncate ISSUE_TITLE search query to 100 chars with :0:100",
+        )
 
     def test_guard2_searches_open_issues_only(self):
         """Guard 2 must restrict search to open issues with --state open."""
-        self.assertIn("--state open", self.cmd,
-            "Guard 2 must use '--state open' to avoid matching closed issues")
+        self.assertIn(
+            "--state open",
+            self.cmd,
+            "Guard 2 must use '--state open' to avoid matching closed issues",
+        )
 
     def test_title_built_without_external_tr_or_cut(self):
         """ISSUE_TITLE must use bash string substitution, not external tr or cut."""
         # Doc contract: bash builtins replace tr|cut pipeline
-        self.assertNotIn(" tr ", self.cmd,
-            "ISSUE_TITLE must not use external 'tr' command")
-        self.assertNotIn(" cut ", self.cmd,
-            "ISSUE_TITLE must not use external 'cut' command")
+        self.assertNotIn(" tr ", self.cmd, "ISSUE_TITLE must not use external 'tr' command")
+        self.assertNotIn(" cut ", self.cmd, "ISSUE_TITLE must not use external 'cut' command")
 
     def test_issue_body_built_with_printf(self):
         """Issue body must be assembled with printf, not a heredoc."""
         # Doc: "issue body is assembled with printf"
         # The create section must have printf for the body
-        self.assertIn("printf", self.cmd,
-            "Issue body must be assembled with printf (not a heredoc)")
+        self.assertIn(
+            "printf", self.cmd, "Issue body must be assembled with printf (not a heredoc)"
+        )
 
     def test_task_description_captured_with_heredoc(self):
         """task_description must be captured via heredoc (prevents injection)."""
         # Quoted heredoc <<EOFTASKDESC prevents shell expansion
-        self.assertIn("EOFTASKDESC", self.cmd,
-            "task_description must be captured via heredoc (<<EOFTASKDESC)")
+        self.assertIn(
+            "EOFTASKDESC", self.cmd, "task_description must be captured via heredoc (<<EOFTASKDESC)"
+        )
 
     def test_set_euo_pipefail_present(self):
         """step-03 must start with set -euo pipefail."""
-        self.assertIn("set -euo pipefail", self.cmd,
-            "step-03 must start with 'set -euo pipefail'")
+        self.assertIn("set -euo pipefail", self.cmd, "step-03 must start with 'set -euo pipefail'")
 
 
 # ---------------------------------------------------------------------------
 # Dynamic execution tests — Guard 1 (Reference Guard)
 # ---------------------------------------------------------------------------
+
 
 class TestStep03Guard1ReferenceGuard(unittest.TestCase):
     """
@@ -270,12 +292,21 @@ class TestStep03Guard1ReferenceGuard(unittest.TestCase):
             task_description="Fix login timeout bug in #4194",
             gh_script=gh_mock,
         )
-        self.assertEqual(result.returncode, 0,
-            f"Guard 1 must exit 0 when referenced issue exists. stderr={result.stderr!r}")
-        self.assertIn("https://github.com/org/repo/issues/4194", result.stdout,
-            "Guard 1 must output the existing issue URL")
-        self.assertNotIn("UNEXPECTED", result.stderr,
-            "Guard 1 must not call gh issue create when reusing existing issue")
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"Guard 1 must exit 0 when referenced issue exists. stderr={result.stderr!r}",
+        )
+        self.assertIn(
+            "https://github.com/org/repo/issues/4194",
+            result.stdout,
+            "Guard 1 must output the existing issue URL",
+        )
+        self.assertNotIn(
+            "UNEXPECTED",
+            result.stderr,
+            "Guard 1 must not call gh issue create when reusing existing issue",
+        )
 
     def test_guard1_outputs_info_log_when_reusing(self):
         """Guard 1 must log INFO: task_description references issue #NNNN to stderr."""
@@ -290,8 +321,9 @@ class TestStep03Guard1ReferenceGuard(unittest.TestCase):
             task_description="Implements feature for #4194",
             gh_script=gh_mock,
         )
-        self.assertIn("4194", result.stderr,
-            "Guard 1 must log the referenced issue number to stderr")
+        self.assertIn(
+            "4194", result.stderr, "Guard 1 must log the referenced issue number to stderr"
+        )
 
     def test_guard1_falls_through_when_referenced_issue_not_found(self):
         """
@@ -324,11 +356,15 @@ class TestStep03Guard1ReferenceGuard(unittest.TestCase):
             gh_script=gh_mock,
         )
         # The step should reach the create path — exit 0 from gh issue create
-        self.assertEqual(result.returncode, 0,
-            f"Step must still exit 0 after guard 1 falls through. stderr={result.stderr!r}")
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"Step must still exit 0 after guard 1 falls through. stderr={result.stderr!r}",
+        )
         # Must warn about not-found issue
-        self.assertIn("9999", result.stderr,
-            "Guard 1 must log the issue number it tried to resolve")
+        self.assertIn(
+            "9999", result.stderr, "Guard 1 must log the issue number it tried to resolve"
+        )
 
     def test_guard1_skips_when_no_issue_reference_in_task_description(self):
         """
@@ -352,14 +388,20 @@ class TestStep03Guard1ReferenceGuard(unittest.TestCase):
             task_description="Fix login timeout — no issue reference here",
             gh_script=gh_mock,
         )
-        self.assertEqual(result.returncode, 0,
-            f"Step must exit 0 when no reference in task_description. stderr={result.stderr!r}")
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"Step must exit 0 when no reference in task_description. stderr={result.stderr!r}",
+        )
         # gh issue view must NOT have been called (no reference to resolve)
-        self.assertNotIn("verifying it exists", result.stderr,
-            "Guard 1 must not trigger when task_description has no #NNNN")
+        self.assertNotIn(
+            "verifying it exists",
+            result.stderr,
+            "Guard 1 must not trigger when task_description has no #NNNN",
+        )
 
     def test_guard1_validates_numeric_before_gh_call(self):
-        """
+        r"""
         Defense-in-depth: if extracted REF_ISSUE_NUM somehow contains non-numeric
         chars, Guard 1 must skip the gh call and warn to stderr.
 
@@ -372,8 +414,11 @@ class TestStep03Guard1ReferenceGuard(unittest.TestCase):
         # A dynamic test would require injecting a non-numeric BASH_REMATCH, which
         # is not possible from outside the script.  Assert the pattern is in the YAML.
         cmd = _extract_step_command(_WORKFLOW_YAML, "step-03-create-issue")
-        self.assertIn("^[0-9]+$", cmd,
-            "Defense-in-depth: ^[0-9]+$ validation must be present before gh issue view call")
+        self.assertIn(
+            "^[0-9]+$",
+            cmd,
+            "Defense-in-depth: ^[0-9]+$ validation must be present before gh issue view call",
+        )
 
     def test_guard1_falls_through_on_gh_error(self):
         """
@@ -403,8 +448,11 @@ class TestStep03Guard1ReferenceGuard(unittest.TestCase):
             gh_script=gh_mock,
         )
         # Should still succeed (fell through to create)
-        self.assertEqual(result.returncode, 0,
-            f"Step must exit 0 even when guard 1 gh call fails. stderr={result.stderr!r}")
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"Step must exit 0 even when guard 1 gh call fails. stderr={result.stderr!r}",
+        )
 
     def test_guard1_uses_first_issue_reference_only(self):
         """
@@ -427,17 +475,27 @@ class TestStep03Guard1ReferenceGuard(unittest.TestCase):
             task_description="Fix bug in #100 and also related to #200",
             gh_script=gh_mock,
         )
-        self.assertEqual(result.returncode, 0,
-            f"Guard 1 must exit 0 on first reference. stderr={result.stderr!r}")
-        self.assertIn("issues/100", result.stdout,
-            "Guard 1 must use the FIRST #NNNN reference, not subsequent ones")
-        self.assertNotIn("WRONG", result.stderr,
-            "Guard 1 must not try the second reference when the first succeeds")
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"Guard 1 must exit 0 on first reference. stderr={result.stderr!r}",
+        )
+        self.assertIn(
+            "issues/100",
+            result.stdout,
+            "Guard 1 must use the FIRST #NNNN reference, not subsequent ones",
+        )
+        self.assertNotIn(
+            "WRONG",
+            result.stderr,
+            "Guard 1 must not try the second reference when the first succeeds",
+        )
 
 
 # ---------------------------------------------------------------------------
 # Dynamic execution tests — Guard 2 (Title Search Guard)
 # ---------------------------------------------------------------------------
+
 
 class TestStep03Guard2TitleSearchGuard(unittest.TestCase):
     """
@@ -465,12 +523,19 @@ class TestStep03Guard2TitleSearchGuard(unittest.TestCase):
             task_description="Improve user authentication flow",
             gh_script=gh_mock,
         )
-        self.assertEqual(result.returncode, 0,
-            f"Guard 2 must exit 0 when matching issue found. stderr={result.stderr!r}")
-        self.assertIn("issues/2000", result.stdout,
-            "Guard 2 must output the matching open issue URL")
-        self.assertNotIn("UNEXPECTED", result.stderr,
-            "Guard 2 must not call gh issue create when reusing existing issue")
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"Guard 2 must exit 0 when matching issue found. stderr={result.stderr!r}",
+        )
+        self.assertIn(
+            "issues/2000", result.stdout, "Guard 2 must output the matching open issue URL"
+        )
+        self.assertNotIn(
+            "UNEXPECTED",
+            result.stderr,
+            "Guard 2 must not call gh issue create when reusing existing issue",
+        )
 
     def test_guard2_falls_through_when_no_matching_issue(self):
         """
@@ -492,10 +557,12 @@ class TestStep03Guard2TitleSearchGuard(unittest.TestCase):
             task_description="Brand new task with no prior issue",
             gh_script=gh_mock,
         )
-        self.assertEqual(result.returncode, 0,
-            f"Step must exit 0 when guard 2 falls through to create. stderr={result.stderr!r}")
-        self.assertIn("3000", result.stdout,
-            "Step must output the newly created issue URL")
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"Step must exit 0 when guard 2 falls through to create. stderr={result.stderr!r}",
+        )
+        self.assertIn("3000", result.stdout, "Step must output the newly created issue URL")
 
     def test_guard2_falls_through_on_gh_failure(self):
         """
@@ -518,8 +585,11 @@ class TestStep03Guard2TitleSearchGuard(unittest.TestCase):
             task_description="Task where gh list fails",
             gh_script=gh_mock,
         )
-        self.assertEqual(result.returncode, 0,
-            f"Step must exit 0 even when guard 2 gh list fails. stderr={result.stderr!r}")
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"Step must exit 0 even when guard 2 gh list fails. stderr={result.stderr!r}",
+        )
 
     def test_guard2_logs_search_info(self):
         """Guard 2 must log 'Searching open issues' to stderr."""
@@ -539,8 +609,11 @@ class TestStep03Guard2TitleSearchGuard(unittest.TestCase):
             task_description="Some new task",
             gh_script=gh_mock,
         )
-        self.assertIn("Searching open issues", result.stderr,
-            "Guard 2 must log 'Searching open issues' to stderr when it runs")
+        self.assertIn(
+            "Searching open issues",
+            result.stderr,
+            "Guard 2 must log 'Searching open issues' to stderr when it runs",
+        )
 
     def test_guard2_logs_found_existing_issue(self):
         """Guard 2 must log 'Found existing open issue' to stderr when reusing."""
@@ -555,8 +628,11 @@ class TestStep03Guard2TitleSearchGuard(unittest.TestCase):
             task_description="Some existing task",
             gh_script=gh_mock,
         )
-        self.assertIn("Found existing open issue", result.stderr,
-            "Guard 2 must log 'Found existing open issue matching title' when reusing")
+        self.assertIn(
+            "Found existing open issue",
+            result.stderr,
+            "Guard 2 must log 'Found existing open issue matching title' when reusing",
+        )
 
     def test_guard2_title_truncated_to_100_chars_in_search(self):
         """
@@ -566,13 +642,15 @@ class TestStep03Guard2TitleSearchGuard(unittest.TestCase):
         # We can't easily inspect the exact argument passed to the mock gh
         # without argument logging — instead assert YAML static property.
         cmd = _extract_step_command(_WORKFLOW_YAML, "step-03-create-issue")
-        self.assertIn(":0:100", cmd,
-            "Guard 2 must truncate search query to 100 chars (ISSUE_TITLE:0:100)")
+        self.assertIn(
+            ":0:100", cmd, "Guard 2 must truncate search query to 100 chars (ISSUE_TITLE:0:100)"
+        )
 
 
 # ---------------------------------------------------------------------------
 # Dynamic execution tests — Fallback (Create New Issue)
 # ---------------------------------------------------------------------------
+
 
 class TestStep03FallbackCreate(unittest.TestCase):
     """
@@ -598,10 +676,12 @@ class TestStep03FallbackCreate(unittest.TestCase):
             final_requirements="Must implement X and Y",
             gh_script=gh_mock,
         )
-        self.assertEqual(result.returncode, 0,
-            f"Fallback create must exit 0. stderr={result.stderr!r}")
-        self.assertIn("9900", result.stdout,
-            "Fallback must output the new issue URL from gh issue create")
+        self.assertEqual(
+            result.returncode, 0, f"Fallback create must exit 0. stderr={result.stderr!r}"
+        )
+        self.assertIn(
+            "9900", result.stdout, "Fallback must output the new issue URL from gh issue create"
+        )
 
     def test_fallback_includes_task_description_in_body(self):
         """Fallback create: issue body must include the task_description content."""
@@ -638,21 +718,24 @@ class TestStep03FallbackCreate(unittest.TestCase):
             self.assertEqual(result.returncode, 0)
             body_content = Path(body_file).read_text()
             # The --body argument must be passed to gh issue create
-            self.assertIn("--body", body_content,
-                "Fallback create must pass --body to gh issue create")
+            self.assertIn(
+                "--body", body_content, "Fallback create must pass --body to gh issue create"
+            )
         finally:
             os.unlink(body_file)
 
     def test_fallback_uses_workflow_label(self):
         """Fallback create must apply the 'workflow:default' label."""
         cmd = _extract_step_command(_WORKFLOW_YAML, "step-03-create-issue")
-        self.assertIn("workflow:default", cmd,
-            "Fallback create must apply the 'workflow:default' label")
+        self.assertIn(
+            "workflow:default", cmd, "Fallback create must apply the 'workflow:default' label"
+        )
 
 
 # ---------------------------------------------------------------------------
 # Security / injection safety tests
 # ---------------------------------------------------------------------------
+
 
 class TestStep03SecurityInjectionSafety(unittest.TestCase):
     """
@@ -681,8 +764,9 @@ class TestStep03SecurityInjectionSafety(unittest.TestCase):
             task_description=f"Fix `touch {sentinel}` now",
             gh_script=gh_mock,
         )
-        self.assertFalse(os.path.exists(sentinel),
-            "Backtick injection in task_description must not be executed")
+        self.assertFalse(
+            os.path.exists(sentinel), "Backtick injection in task_description must not be executed"
+        )
 
     def test_dollar_paren_in_task_description_not_executed(self):
         """
@@ -704,8 +788,10 @@ class TestStep03SecurityInjectionSafety(unittest.TestCase):
             task_description=f"Fix $(touch {sentinel}) now",
             gh_script=gh_mock,
         )
-        self.assertFalse(os.path.exists(sentinel),
-            "$(command) injection in task_description must not be executed")
+        self.assertFalse(
+            os.path.exists(sentinel),
+            "$(command) injection in task_description must not be executed",
+        )
 
     def test_newline_in_task_description_handled_safely(self):
         """
@@ -723,8 +809,11 @@ class TestStep03SecurityInjectionSafety(unittest.TestCase):
             task_description="Line one\nLine two\nLine three",
             gh_script=gh_mock,
         )
-        self.assertEqual(result.returncode, 0,
-            f"Newlines in task_description must not break the step. stderr={result.stderr!r}")
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"Newlines in task_description must not break the step. stderr={result.stderr!r}",
+        )
 
     def test_heredoc_delimiter_in_task_description_handled(self):
         """
@@ -737,13 +826,17 @@ class TestStep03SecurityInjectionSafety(unittest.TestCase):
         """
         cmd = _extract_step_command(_WORKFLOW_YAML, "step-03-create-issue")
         # Delimiter must be specific enough that normal text won't match it
-        self.assertIn("EOFTASKDESC", cmd,
-            "task_description heredoc must use the specific 'EOFTASKDESC' delimiter")
+        self.assertIn(
+            "EOFTASKDESC",
+            cmd,
+            "task_description heredoc must use the specific 'EOFTASKDESC' delimiter",
+        )
 
 
 # ---------------------------------------------------------------------------
 # Priority ordering test: Guard 1 wins over Guard 2
 # ---------------------------------------------------------------------------
+
 
 class TestStep03GuardPriority(unittest.TestCase):
     """
@@ -773,10 +866,12 @@ class TestStep03GuardPriority(unittest.TestCase):
             gh_script=gh_mock,
         )
         self.assertEqual(result.returncode, 0)
-        self.assertIn("issues/4194", result.stdout,
-            "Guard 1 result must be in stdout when it exits first")
-        self.assertNotIn("GUARD2_CALLED", result.stderr,
-            "Guard 2 must NOT run when Guard 1 exits successfully")
+        self.assertIn(
+            "issues/4194", result.stdout, "Guard 1 result must be in stdout when it exits first"
+        )
+        self.assertNotIn(
+            "GUARD2_CALLED", result.stderr, "Guard 2 must NOT run when Guard 1 exits successfully"
+        )
 
     def test_guard2_runs_when_guard1_falls_through(self):
         """
@@ -804,10 +899,12 @@ class TestStep03GuardPriority(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0)
         # Step-03 logs "Searching open issues" when guard 2 runs
-        self.assertIn("Searching open issues", result.stderr,
-            "Guard 2 must log 'Searching open issues' when it runs after guard 1 falls through")
-        self.assertIn("issues/8888", result.stdout,
-            "Guard 2 result must be in stdout")
+        self.assertIn(
+            "Searching open issues",
+            result.stderr,
+            "Guard 2 must log 'Searching open issues' when it runs after guard 1 falls through",
+        )
+        self.assertIn("issues/8888", result.stdout, "Guard 2 result must be in stdout")
 
 
 if __name__ == "__main__":

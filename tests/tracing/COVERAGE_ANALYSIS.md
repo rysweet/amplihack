@@ -194,13 +194,13 @@ All credential types sanitized:
 
 ### By Module
 
-| Module            | Tests | Percentage | Priority |
-| ----------------- | ----- | ---------- | -------- |
-| TraceLogger       | 40    | 32%        | HIGH     |
-| BinaryManager     | 32    | 26%        | HIGH     |
-| Integration       | 19    | 15%        | MEDIUM   |
-| Prerequisites     | 18    | 14%        | MEDIUM   |
-| E2E               | 16    | 13%        | MEDIUM   |
+| Module        | Tests | Percentage | Priority |
+| ------------- | ----- | ---------- | -------- |
+| TraceLogger   | 40    | 32%        | HIGH     |
+| BinaryManager | 32    | 26%        | HIGH     |
+| Integration   | 19    | 15%        | MEDIUM   |
+| Prerequisites | 18    | 14%        | MEDIUM   |
+| E2E           | 16    | 13%        | MEDIUM   |
 
 ### By Requirement Category
 

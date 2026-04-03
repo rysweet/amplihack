@@ -655,4 +655,3 @@ class KnowledgeUtilsMixin:
             "contradicting_facts": [],
             "reasoning": "Verification failed due to an internal error.",
         }
-

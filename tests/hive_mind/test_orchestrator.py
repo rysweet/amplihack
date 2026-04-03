@@ -84,7 +84,9 @@ def test_default_policy_blocks_low_confidence() -> None:
 
 def test_default_policy_blocks_retracted() -> None:
     policy = DefaultPromotionPolicy(promote_threshold=0.1)
-    fact = HiveFact(fact_id="f1", content="test", concept="test", confidence=0.9, status="retracted")
+    fact = HiveFact(
+        fact_id="f1", content="test", concept="test", confidence=0.9, status="retracted"
+    )
     assert not policy.should_promote(fact, "agent_a")
 
 
@@ -109,7 +111,9 @@ def test_default_policy_broadcast_threshold() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_store_and_promote_returns_promoted_true(orch: HiveMindOrchestrator, hive: InMemoryHiveGraph) -> None:
+def test_store_and_promote_returns_promoted_true(
+    orch: HiveMindOrchestrator, hive: InMemoryHiveGraph
+) -> None:
     result = orch.store_and_promote("Biology", "DNA stores genetic information", 0.9)
     assert result["promoted"] is True
     assert result["fact_id"]
@@ -126,7 +130,9 @@ def test_store_and_promote_publishes_event(orch: HiveMindOrchestrator, bus: Loca
     assert any(e.event_type == "FACT_PROMOTED" for e in events)
 
 
-def test_store_and_promote_low_confidence_not_promoted(orch: HiveMindOrchestrator, hive: InMemoryHiveGraph) -> None:
+def test_store_and_promote_low_confidence_not_promoted(
+    orch: HiveMindOrchestrator, hive: InMemoryHiveGraph
+) -> None:
     # Default promote_threshold is DEFAULT_CONFIDENCE_GATE (0.3); use 0.0
     result = orch.store_and_promote("Science", "Very uncertain claim", 0.0)
     assert result["promoted"] is False
@@ -145,7 +151,9 @@ def test_store_and_promote_with_custom_policy(hive: InMemoryHiveGraph, bus: Loca
     assert result["promoted"] is False
 
 
-def test_store_and_promote_confidence_clamped(orch: HiveMindOrchestrator, hive: InMemoryHiveGraph) -> None:
+def test_store_and_promote_confidence_clamped(
+    orch: HiveMindOrchestrator, hive: InMemoryHiveGraph
+) -> None:
     # Confidence above 1.0 should be clamped
     result = orch.store_and_promote("Test", "Clamped fact", 2.5)
     assert result["promoted"] is True
@@ -241,7 +249,9 @@ def test_process_event_rejects_empty_content(orch: HiveMindOrchestrator) -> None
     assert result["incorporated"] is False
 
 
-def test_process_event_applies_confidence_discount(orch: HiveMindOrchestrator, hive: InMemoryHiveGraph) -> None:
+def test_process_event_applies_confidence_discount(
+    orch: HiveMindOrchestrator, hive: InMemoryHiveGraph
+) -> None:
     event = make_event(
         event_type="FACT_PROMOTED",
         source_agent="agent_b",

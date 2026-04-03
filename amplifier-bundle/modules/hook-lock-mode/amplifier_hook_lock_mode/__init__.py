@@ -84,7 +84,14 @@ class LockModeHook(Hook):
             goal = "Continue working on the current task until complete."
 
         # Load directive template from file — keeps prompts out of code
-        prompt_file = _get_project_root() / "src" / "amplihack" / "fleet" / "prompts" / "lock_mode_directive.prompt"
+        prompt_file = (
+            _get_project_root()
+            / "src"
+            / "amplihack"
+            / "fleet"
+            / "prompts"
+            / "lock_mode_directive.prompt"
+        )
         try:
             directive = prompt_file.read_text(encoding="utf-8").strip().format(goal=goal)
         except (FileNotFoundError, OSError):

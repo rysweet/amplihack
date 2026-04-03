@@ -163,7 +163,9 @@ done
             if result.returncode != 0:
                 logger.warning(
                     "read_all_sessions command failed for %s (rc=%d): %s",
-                    vm_name, result.returncode, result.stderr[:200] if result.stderr else "",
+                    vm_name,
+                    result.returncode,
+                    result.stderr[:200] if result.stderr else "",
                 )
                 return []
 

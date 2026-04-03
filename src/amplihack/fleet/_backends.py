@@ -87,11 +87,13 @@ class CopilotBackend:
             response_parts: list[str] = []
             done = asyncio.Event()
 
-            session = await client.create_session({
-                "model": self.model,
-                "system_message": {"content": system_prompt},
-                "on_permission_request": PermissionHandler.approve_all,
-            })
+            session = await client.create_session(
+                {
+                    "model": self.model,
+                    "system_message": {"content": system_prompt},
+                    "on_permission_request": PermissionHandler.approve_all,
+                }
+            )
 
             def on_event(event):
                 etype = event.type.value if hasattr(event.type, "value") else str(event.type)
@@ -109,6 +111,7 @@ class CopilotBackend:
                 await asyncio.wait_for(done.wait(), timeout=SUBPROCESS_TIMEOUT_SECONDS)
             except TimeoutError:
                 import logging as _logging
+
                 _logging.getLogger(__name__).warning(
                     "Copilot session timed out after %ds", SUBPROCESS_TIMEOUT_SECONDS
                 )

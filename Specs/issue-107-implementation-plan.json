@@ -35,9 +35,7 @@
       "name": "Execution root validation helper",
       "action": "create",
       "purpose": "Centralize path computation, canonicalization, trust checks, and safe worktree/branch setup.",
-      "primary_files": [
-        "amplifier-bundle/tools/setup_execution_root.py"
-      ],
+      "primary_files": ["amplifier-bundle/tools/setup_execution_root.py"],
       "planned_changes": [
         "Create a shared helper that computes and emits structured execution-root metadata.",
         "Reject `/tmp/amplihack-rs-npx-wrapper*` paths.",

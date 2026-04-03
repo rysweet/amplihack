@@ -57,12 +57,12 @@ Thread safety for log file writes is enforced by a single `threading.Lock` share
 
 The Rust binary signals step transitions by printing Unicode markers to stderr:
 
-| Marker | Event |
-|--------|-------|
-| `▶` (U+25B6) | Step started |
+| Marker       | Event          |
+| ------------ | -------------- |
+| `▶` (U+25B6) | Step started   |
 | `✓` (U+2713) | Step completed |
-| `✗` (U+2717) | Step failed |
-| `⊘` (U+2298) | Step skipped |
+| `✗` (U+2717) | Step failed    |
+| `⊘` (U+2298) | Step skipped   |
 
 When a stderr line starts with a recognized marker the streaming thread:
 
@@ -187,10 +187,10 @@ Applied before the recipe name is used in any file path. Ensures the sanitized n
 
 When the recipe runner executes inside a workstream (e.g., spawned by the hive-mind orchestrator), the orchestrator sets two environment variables:
 
-| Variable | Content |
-|----------|---------|
-| `AMPLIHACK_WORKSTREAM_PROGRESS_FILE` | Path for the per-workstream progress sidecar |
-| `AMPLIHACK_WORKSTREAM_STATE_FILE` | Path to workstream state JSON (contains `issue`, `checkpoint_id`, `worktree_path`) |
+| Variable                             | Content                                                                            |
+| ------------------------------------ | ---------------------------------------------------------------------------------- |
+| `AMPLIHACK_WORKSTREAM_PROGRESS_FILE` | Path for the per-workstream progress sidecar                                       |
+| `AMPLIHACK_WORKSTREAM_STATE_FILE`    | Path to workstream state JSON (contains `issue`, `checkpoint_id`, `worktree_path`) |
 
 The execution layer reads the state file (with mtime+size invalidation caching via `_WORKSTREAM_STATE_CACHE`) and writes the sidecar alongside the main progress file. The orchestrator polls the sidecar instead of the main file so it can correlate progress across concurrent workstreams without PID knowledge.
 

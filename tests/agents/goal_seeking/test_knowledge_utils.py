@@ -127,14 +127,13 @@ class TestKnowledgeUtils:
     # --- _is_apt_attribution_question ---
 
     def test_is_apt_attribution_question_true(self):
-        assert LearningAgent._is_apt_attribution_question(
-            "Which APT group is this attributed to?"
-        ) is True
+        assert (
+            LearningAgent._is_apt_attribution_question("Which APT group is this attributed to?")
+            is True
+        )
 
     def test_is_apt_attribution_question_false(self):
-        assert LearningAgent._is_apt_attribution_question(
-            "What is the weather?"
-        ) is False
+        assert LearningAgent._is_apt_attribution_question("What is the weather?") is False
 
     # --- _validate_arithmetic ---
 
@@ -181,9 +180,7 @@ class TestKnowledgeUtils:
 
     @pytest.mark.asyncio
     async def test_explain_knowledge_returns_error_on_exception(self, agent):
-        agent._simple_retrieval = MagicMock(
-            return_value=[{"outcome": "some fact"}]
-        )
+        agent._simple_retrieval = MagicMock(return_value=[{"outcome": "some fact"}])
         with patch(
             "amplihack.agents.goal_seeking.learning_agent._llm_completion",
             new_callable=AsyncMock,
@@ -255,9 +252,7 @@ class TestKnowledgeUtils:
 
     @pytest.mark.asyncio
     async def test_verify_fact_fallback_on_llm_error(self, agent):
-        agent._simple_retrieval = MagicMock(
-            return_value=[{"outcome": "some fact"}]
-        )
+        agent._simple_retrieval = MagicMock(return_value=[{"outcome": "some fact"}])
         with patch(
             "amplihack.agents.goal_seeking.learning_agent._llm_completion",
             new_callable=AsyncMock,

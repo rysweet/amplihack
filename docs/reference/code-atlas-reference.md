@@ -13,16 +13,16 @@ Complete reference for all flags, layer IDs, output files, schemas, and error co
 
 ## Invocation Flags
 
-| Flag                  | Type      | Default             | Description                                             |
-| --------------------- | --------- | ------------------- | ------------------------------------------------------- |
-| `codebase_path`       | string    | `.`                 | Root directory to analyze                               |
-| `layers`              | int[]     | `[1,2,3,4,5,6,7,8]`| Which layers to build                                   |
-| `journeys`            | Journey[] | `[]`                | Named user journeys (see journey schema)                |
-| `output_dir`          | string    | `docs/atlas`        | Where to write atlas output                             |
-| `diagram_formats`     | string[]  | `["mermaid","dot"]` | Output formats: `mermaid`, `dot`, or `both`             |
-| `bug_hunt`            | boolean   | `true`              | Run all three passes after building                     |
-| `publish`             | boolean   | `false`             | Trigger GitHub Pages publication                        |
-| `--density-threshold` | string    | `nodes=50,edges=100`| Override density guard thresholds (integers 1–10,000)   |
+| Flag                  | Type      | Default              | Description                                           |
+| --------------------- | --------- | -------------------- | ----------------------------------------------------- |
+| `codebase_path`       | string    | `.`                  | Root directory to analyze                             |
+| `layers`              | int[]     | `[1,2,3,4,5,6,7,8]`  | Which layers to build                                 |
+| `journeys`            | Journey[] | `[]`                 | Named user journeys (see journey schema)              |
+| `output_dir`          | string    | `docs/atlas`         | Where to write atlas output                           |
+| `diagram_formats`     | string[]  | `["mermaid","dot"]`  | Output formats: `mermaid`, `dot`, or `both`           |
+| `bug_hunt`            | boolean   | `true`               | Run all three passes after building                   |
+| `publish`             | boolean   | `false`              | Trigger GitHub Pages publication                      |
+| `--density-threshold` | string    | `nodes=50,edges=100` | Override density guard thresholds (integers 1–10,000) |
 
 ### Invocation Examples
 
@@ -56,16 +56,16 @@ Complete reference for all flags, layer IDs, output files, schemas, and error co
 
 ## Layer IDs
 
-| Layer | Name                          | Content                                                          |
-| ----- | ----------------------------- | ---------------------------------------------------------------- |
-| 1     | Runtime Topology              | Services, containers, ports, inter-service connections           |
-| 2     | Compile-time Dependencies     | Package imports, module boundaries, external library versions    |
-| 3     | API Contracts                  | All routes, handlers, DTOs, middleware chains                    |
-| 4     | Data Flow                     | DTO-to-storage chain, transformation steps                       |
-| 5     | User Journey Scenarios        | Named end-to-end paths as sequence diagrams                      |
-| 6     | Exhaustive Inventory          | Tables: services, env vars, data stores, external deps           |
-| 7     | Service Component Architecture| Per-service module/package diagrams; internal coupling mapping   |
-| 8     | AST+LSP Symbol Bindings       | Cross-file references, dead code, interface mismatches           |
+| Layer | Name                           | Content                                                        |
+| ----- | ------------------------------ | -------------------------------------------------------------- |
+| 1     | Runtime Topology               | Services, containers, ports, inter-service connections         |
+| 2     | Compile-time Dependencies      | Package imports, module boundaries, external library versions  |
+| 3     | API Contracts                  | All routes, handlers, DTOs, middleware chains                  |
+| 4     | Data Flow                      | DTO-to-storage chain, transformation steps                     |
+| 5     | User Journey Scenarios         | Named end-to-end paths as sequence diagrams                    |
+| 6     | Exhaustive Inventory           | Tables: services, env vars, data stores, external deps         |
+| 7     | Service Component Architecture | Per-service module/package diagrams; internal coupling mapping |
+| 8     | AST+LSP Symbol Bindings        | Cross-file references, dead code, interface mismatches         |
 
 ---
 
@@ -133,17 +133,17 @@ docs/atlas/
 
 ## Staleness Trigger Table
 
-| File Pattern                                                                                                  | Layer(s) Affected | Rebuild Command                   |
-| ------------------------------------------------------------------------------------------------------------- | ----------------- | --------------------------------- |
-| `docker-compose*.yml`, `k8s/**/*.yaml`, `kubernetes/**/*.yaml`, `helm/**/*.yaml`                              | 1                 | `/code-atlas rebuild layer1`      |
-| `go.mod`, `package.json`, `*.csproj`, `Cargo.toml`, `requirements*.txt`, `pyproject.toml`                     | 2                 | `/code-atlas rebuild layer2`      |
-| `*route*.ts`, `*route*.go`, `*controller*.go`, `*controller*.ts`, `*views*.py`, `*router*.ts`, `*handler*.go` | 3                 | `/code-atlas rebuild layer3`      |
-| `*dto*.ts`, `*schema*.py`, `*_request.go`, `*_response.go`, `*types*.ts`, `*model*.go`                        | 4                 | `/code-atlas rebuild layer4`      |
-| `*page*.tsx`, `*page*.ts`, `cmd/**/*.go`, `cli/**/*.py`                                                       | 5                 | `/code-atlas rebuild layer5`      |
-| `.env.example`, `services/*/README.md`, `apps/*/README.md`                                                    | 6                 | `/code-atlas rebuild layer6`      |
-| `**/__init__.py`, `**/package.json` (workspace), `**/*.mod`                                                   | 7                 | `/code-atlas rebuild layer7`      |
-| `**/*.py`, `**/*.ts`, `**/*.go`, `**/*.cs`, `**/*.rs` (any source)                                            | 8                 | `/code-atlas rebuild layer8`      |
-| Any of the above                                                                                              | All               | `/code-atlas rebuild all`         |
+| File Pattern                                                                                                  | Layer(s) Affected | Rebuild Command              |
+| ------------------------------------------------------------------------------------------------------------- | ----------------- | ---------------------------- |
+| `docker-compose*.yml`, `k8s/**/*.yaml`, `kubernetes/**/*.yaml`, `helm/**/*.yaml`                              | 1                 | `/code-atlas rebuild layer1` |
+| `go.mod`, `package.json`, `*.csproj`, `Cargo.toml`, `requirements*.txt`, `pyproject.toml`                     | 2                 | `/code-atlas rebuild layer2` |
+| `*route*.ts`, `*route*.go`, `*controller*.go`, `*controller*.ts`, `*views*.py`, `*router*.ts`, `*handler*.go` | 3                 | `/code-atlas rebuild layer3` |
+| `*dto*.ts`, `*schema*.py`, `*_request.go`, `*_response.go`, `*types*.ts`, `*model*.go`                        | 4                 | `/code-atlas rebuild layer4` |
+| `*page*.tsx`, `*page*.ts`, `cmd/**/*.go`, `cli/**/*.py`                                                       | 5                 | `/code-atlas rebuild layer5` |
+| `.env.example`, `services/*/README.md`, `apps/*/README.md`                                                    | 6                 | `/code-atlas rebuild layer6` |
+| `**/__init__.py`, `**/package.json` (workspace), `**/*.mod`                                                   | 7                 | `/code-atlas rebuild layer7` |
+| `**/*.py`, `**/*.ts`, `**/*.go`, `**/*.cs`, `**/*.rs` (any source)                                            | 8                 | `/code-atlas rebuild layer8` |
+| Any of the above                                                                                              | All               | `/code-atlas rebuild all`    |
 
 ---
 
@@ -162,18 +162,18 @@ journeys:
 
 ```typescript
 interface BugReport {
-  id: string;           // Slug: "route-dto-mismatch-order-customerid"
-  title: string;        // One sentence
+  id: string; // Slug: "route-dto-mismatch-order-customerid"
+  title: string; // One sentence
   severity: "critical" | "major" | "minor" | "info";
-  pass: 1 | 2 | 3;     // Bug-hunt pass that found this (v1.1.0: added 3)
-  layers_involved: (1|2|3|4|5|6|7|8)[];  // v1.1.0: extended to 8 layers
+  pass: 1 | 2 | 3; // Bug-hunt pass that found this (v1.1.0: added 3)
+  layers_involved: (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8)[]; // v1.1.0: extended to 8 layers
   evidence: Evidence[];
   recommendation: string;
 }
 
 interface Evidence {
   type: "code-quote" | "layer-reference" | "diagram-annotation";
-  file: string;  // Relative path from codebase root — NEVER absolute (SEC-16)
+  file: string; // Relative path from codebase root — NEVER absolute (SEC-16)
   line?: number;
   content: string; // Quoted code or layer data (credentials redacted per SEC-09)
 }
@@ -181,35 +181,35 @@ interface Evidence {
 
 **Pass semantics:**
 
-| Pass | Name | Description |
-|------|------|-------------|
-| 1 | Comprehensive Build + Hunt | Structural contradictions found during atlas construction |
-| 2 | Fresh-Eyes Cross-Check | Independent re-examination without Pass 1 anchoring |
-| 3 | Scenario Deep-Dive | Per-journey traces; also produces `JourneyVerdict` objects |
+| Pass | Name                       | Description                                                |
+| ---- | -------------------------- | ---------------------------------------------------------- |
+| 1    | Comprehensive Build + Hunt | Structural contradictions found during atlas construction  |
+| 2    | Fresh-Eyes Cross-Check     | Independent re-examination without Pass 1 anchoring        |
+| 3    | Scenario Deep-Dive         | Per-journey traces; also produces `JourneyVerdict` objects |
 
 ## JourneyVerdict Format (Pass 3)
 
 ```typescript
 interface JourneyVerdict {
-  journey_name: string;                           // Matches a Layer 5 journey name
+  journey_name: string; // Matches a Layer 5 journey name
   verdict: "PASS" | "FAIL" | "NEEDS_ATTENTION";
   criteria: VerdictCriterion[];
-  rationale: string;  // Required one paragraph
+  rationale: string; // Required one paragraph
 }
 
 interface VerdictCriterion {
   criterion: string;
   status: "pass" | "fail" | "attention";
-  evidence: string;  // "file:line" (relative) or "no evidence found"
+  evidence: string; // "file:line" (relative) or "no evidence found"
 }
 ```
 
 **Verdict levels:**
 
-| Verdict | Condition |
-|---------|-----------|
-| `PASS` | All criteria: `pass` |
-| `FAIL` | ≥1 criterion: `fail` |
+| Verdict           | Condition                               |
+| ----------------- | --------------------------------------- |
+| `PASS`            | All criteria: `pass`                    |
+| `FAIL`            | ≥1 criterion: `fail`                    |
 | `NEEDS_ATTENTION` | ≥1 criterion: `attention`; none: `fail` |
 
 ## Density Threshold Configuration
@@ -280,19 +280,19 @@ Only `a`, `b`, or `c` are accepted (SEC-14). Selecting `c` emits `DENSITY_THRESH
 
 ## Error Codes
 
-| Code                        | Layer   | Meaning                                             | Fallback                                |
-| --------------------------- | ------- | --------------------------------------------------- | --------------------------------------- |
-| `LAYER_SOURCE_NOT_FOUND`    | Any     | No source files matched for this layer              | Layer skipped; build continues          |
-| `DELEGATION_FAILED`         | Any     | Sub-skill/agent returned invalid output             | `analyzer` agent used instead           |
-| `DOT_RENDER_FAILED`         | 1–5     | Graphviz not installed or DOT syntax invalid        | Mermaid-only output                     |
-| `SVG_TOO_LARGE`             | Any     | mmdc produced SVG exceeding 5MB                     | SVG skipped; source file kept           |
-| `PUBLISH_FAILED`            | publish | GitHub Pages push failed                            | Output written locally only             |
-| `JOURNEY_UNDER_MINIMUM`     | 5       | Fewer than 3 journeys derived                       | Build continues with available journeys |
-| `INCOMPLETE_INVENTORY`      | 6       | Required inventory columns missing                  | Partial table written with warning      |
-| `FILE_TOO_LARGE`            | Any     | File exceeds 10MB size limit                        | File skipped (SEC-08)                   |
-| `DENSITY_THRESHOLD_EXCEEDED`| density | User selected table via density prompt (option c)   | Table written; SkillError logged        |
-| `LAYER7_SOURCE_NOT_FOUND`   | 7       | No intra-service structure discoverable             | Layer 7 skipped for that service        |
-| `LAYER8_LSP_UNAVAILABLE`    | 8       | LSP tooling not found                               | Static-approximation mode used          |
+| Code                         | Layer   | Meaning                                           | Fallback                                |
+| ---------------------------- | ------- | ------------------------------------------------- | --------------------------------------- |
+| `LAYER_SOURCE_NOT_FOUND`     | Any     | No source files matched for this layer            | Layer skipped; build continues          |
+| `DELEGATION_FAILED`          | Any     | Sub-skill/agent returned invalid output           | `analyzer` agent used instead           |
+| `DOT_RENDER_FAILED`          | 1–5     | Graphviz not installed or DOT syntax invalid      | Mermaid-only output                     |
+| `SVG_TOO_LARGE`              | Any     | mmdc produced SVG exceeding 5MB                   | SVG skipped; source file kept           |
+| `PUBLISH_FAILED`             | publish | GitHub Pages push failed                          | Output written locally only             |
+| `JOURNEY_UNDER_MINIMUM`      | 5       | Fewer than 3 journeys derived                     | Build continues with available journeys |
+| `INCOMPLETE_INVENTORY`       | 6       | Required inventory columns missing                | Partial table written with warning      |
+| `FILE_TOO_LARGE`             | Any     | File exceeds 10MB size limit                      | File skipped (SEC-08)                   |
+| `DENSITY_THRESHOLD_EXCEEDED` | density | User selected table via density prompt (option c) | Table written; SkillError logged        |
+| `LAYER7_SOURCE_NOT_FOUND`    | 7       | No intra-service structure discoverable           | Layer 7 skipped for that service        |
+| `LAYER8_LSP_UNAVAILABLE`     | 8       | LSP tooling not found                             | Static-approximation mode used          |
 
 ---
 

@@ -25,13 +25,13 @@ from amplihack.recipes.models import RecipeResult, StepResult, RecipeStatus
 
 ## Attributes
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `recipe_name` | `str` | The name of the recipe that was run (e.g. `"default-workflow"`). |
-| `status` | `RecipeStatus` | Overall outcome: `SUCCESS`, `FAILURE`, or `PARTIAL`. |
-| `step_results` | `list[StepResult]` | Ordered list of results, one per step that executed. |
-| `duration_seconds` | `float` | Wall-clock time from recipe start to finish. |
-| `error` | `str \| None` | Human-readable error message if `status` is `FAILURE`. `None` on success. |
+| Attribute          | Type               | Description                                                               |
+| ------------------ | ------------------ | ------------------------------------------------------------------------- |
+| `recipe_name`      | `str`              | The name of the recipe that was run (e.g. `"default-workflow"`).          |
+| `status`           | `RecipeStatus`     | Overall outcome: `SUCCESS`, `FAILURE`, or `PARTIAL`.                      |
+| `step_results`     | `list[StepResult]` | Ordered list of results, one per step that executed.                      |
+| `duration_seconds` | `float`            | Wall-clock time from recipe start to finish.                              |
+| `error`            | `str \| None`      | Human-readable error message if `status` is `FAILURE`. `None` on success. |
 
 ---
 
@@ -57,6 +57,7 @@ print(str(failed_result))
 ```
 
 The summary includes:
+
 - The recipe name as written in the recipe YAML file
 - The overall `STATUS` in uppercase
 - The count of steps that **completed** (not the total steps defined in the recipe)

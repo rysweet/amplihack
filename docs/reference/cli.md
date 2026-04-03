@@ -49,25 +49,25 @@ The version string comes from the `__version__` attribute in `amplihack/__init__
 
 ## Subcommands
 
-| Subcommand   | Description                                                                      |
-| ------------ | -------------------------------------------------------------------------------- |
-| `version`    | Show amplihack version.                                                          |
-| `install`    | Install amplihack agents and tools to `~/.claude`.                               |
-| `uninstall`  | Remove amplihack agents and tools from `~/.claude`.                              |
-| `update`     | Update amplihack, delegating to the Rust CLI when one is installed.              |
-| `claude`     | Launch Claude Code. Preferred explicit launcher in user-facing docs.             |
+| Subcommand   | Description                                                                                 |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| `version`    | Show amplihack version.                                                                     |
+| `install`    | Install amplihack agents and tools to `~/.claude`.                                          |
+| `uninstall`  | Remove amplihack agents and tools from `~/.claude`.                                         |
+| `update`     | Update amplihack, delegating to the Rust CLI when one is installed.                         |
+| `claude`     | Launch Claude Code. Preferred explicit launcher in user-facing docs.                        |
 | `launch`     | Compatibility alias for `claude`; `amplihack` with no subcommand also launches Claude Code. |
-| `RustyClawd` | Launch RustyClawd (Rust implementation).                                         |
-| `copilot`    | Launch GitHub Copilot CLI.                                                       |
-| `codex`      | Launch OpenAI Codex CLI.                                                         |
-| `amplifier`  | Launch Microsoft Amplifier with amplihack bundle.                                |
-| `uvx-help`   | Get help with UVX deployment.                                                    |
-| `plugin`     | Install, uninstall, and list amplihack plugins.                                  |
-| `memory`     | Manage the amplihack memory backend.                                             |
-| `new`        | Generate a new goal-seeking agent.                                               |
-| `recipe`     | Run, list, validate, and inspect workflow recipes.                               |
-| `mode`       | Claude installation mode commands.                                               |
-| `fleet`      | Manage coding agents across VMs.                                                 |
+| `RustyClawd` | Launch RustyClawd (Rust implementation).                                                    |
+| `copilot`    | Launch GitHub Copilot CLI.                                                                  |
+| `codex`      | Launch OpenAI Codex CLI.                                                                    |
+| `amplifier`  | Launch Microsoft Amplifier with amplihack bundle.                                           |
+| `uvx-help`   | Get help with UVX deployment.                                                               |
+| `plugin`     | Install, uninstall, and list amplihack plugins.                                             |
+| `memory`     | Manage the amplihack memory backend.                                                        |
+| `new`        | Generate a new goal-seeking agent.                                                          |
+| `recipe`     | Run, list, validate, and inspect workflow recipes.                                          |
+| `mode`       | Claude installation mode commands.                                                          |
+| `fleet`      | Manage coding agents across VMs.                                                            |
 
 See the documentation for each subcommand:
 

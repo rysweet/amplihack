@@ -57,8 +57,6 @@ def _load_prompt(name: str, **kwargs: str) -> str:
     return render_prompt(name, **kwargs)
 
 
-
-
 class LearningAgent(
     IntentDetectorMixin,
     TemporalReasoningMixin,
@@ -95,7 +93,6 @@ class LearningAgent(
         ... )
         >>> print(answer)  # LLM-synthesized answer from stored facts
     """
-
 
     _TRANSIENT_LLM_ERROR_TYPES = (
         ConnectionError,
@@ -302,4 +299,3 @@ class LearningAgent(
     def close(self) -> None:
         """Close agent and release resources."""
         self.memory.close()
-

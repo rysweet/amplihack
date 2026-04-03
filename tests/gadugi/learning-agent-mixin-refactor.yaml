@@ -39,7 +39,7 @@ steps:
     agent: "cli-agent"
     action: "execute_command"
     params:
-      command: "python3 -c \"from pathlib import Path; base = Path('src/amplihack/agents/goal_seeking'); modules = ['intent_detector.py', 'temporal_reasoning.py', 'code_synthesis.py', 'knowledge_utils.py', 'retrieval_strategies.py', 'learning_ingestion.py', 'answer_synthesizer.py', 'prompt_utils.py']; missing = [m for m in modules if not (base / m).exists()]; assert not missing, f'Missing: {missing}'; print(f'PASS: all {len(modules)} mixin modules exist')\""
+      command: 'python3 -c "from pathlib import Path; base = Path(''src/amplihack/agents/goal_seeking''); modules = [''intent_detector.py'', ''temporal_reasoning.py'', ''code_synthesis.py'', ''knowledge_utils.py'', ''retrieval_strategies.py'', ''learning_ingestion.py'', ''answer_synthesizer.py'', ''prompt_utils.py'']; missing = [m for m in modules if not (base / m).exists()]; assert not missing, f''Missing: {missing}''; print(f''PASS: all {len(modules)} mixin modules exist'')"'
     timeout: 10000
 
   - name: "Verify mixin modules exist marker"
@@ -54,7 +54,7 @@ steps:
     agent: "cli-agent"
     action: "execute_command"
     params:
-      command: "PYTHONPATH=src python3 -c \"from amplihack.agents.goal_seeking.learning_agent import LearningAgent; mro_names = [c.__name__ for c in LearningAgent.__mro__]; expected = ['IntentDetectorMixin', 'TemporalReasoningMixin', 'CodeSynthesisMixin', 'KnowledgeUtilsMixin', 'RetrievalStrategiesMixin', 'LearningIngestionMixin', 'AnswerSynthesizerMixin']; missing = [m for m in expected if m not in mro_names]; assert not missing, f'Missing from MRO: {missing}'; print(f'PASS: LearningAgent inherits all {len(expected)} mixins')\""
+      command: 'PYTHONPATH=src python3 -c "from amplihack.agents.goal_seeking.learning_agent import LearningAgent; mro_names = [c.__name__ for c in LearningAgent.__mro__]; expected = [''IntentDetectorMixin'', ''TemporalReasoningMixin'', ''CodeSynthesisMixin'', ''KnowledgeUtilsMixin'', ''RetrievalStrategiesMixin'', ''LearningIngestionMixin'', ''AnswerSynthesizerMixin'']; missing = [m for m in expected if m not in mro_names]; assert not missing, f''Missing from MRO: {missing}''; print(f''PASS: LearningAgent inherits all {len(expected)} mixins'')"'
     timeout: 15000
 
   - name: "Verify MRO marker"
@@ -69,7 +69,7 @@ steps:
     agent: "cli-agent"
     action: "execute_command"
     params:
-      command: "PYTHONPATH=src python3 -c \"from amplihack.agents.goal_seeking.learning_agent import LearningAgent; public_api = ['learn_from_content', 'answer_question', 'answer_question_agentic', 'get_memory_stats', 'flush_memory', 'close']; missing = [m for m in public_api if not hasattr(LearningAgent, m)]; assert not missing, f'Missing public API: {missing}'; print(f'PASS: all {len(public_api)} public API methods present')\""
+      command: 'PYTHONPATH=src python3 -c "from amplihack.agents.goal_seeking.learning_agent import LearningAgent; public_api = [''learn_from_content'', ''answer_question'', ''answer_question_agentic'', ''get_memory_stats'', ''flush_memory'', ''close'']; missing = [m for m in public_api if not hasattr(LearningAgent, m)]; assert not missing, f''Missing public API: {missing}''; print(f''PASS: all {len(public_api)} public API methods present'')"'
     timeout: 15000
 
   - name: "Verify public API marker"
@@ -84,7 +84,7 @@ steps:
     agent: "cli-agent"
     action: "execute_command"
     params:
-      command: "PYTHONPATH=src python3 -c \"import amplihack.agents.goal_seeking.learning_agent as la_mod; from amplihack.agents.goal_seeking.prompt_utils import _get_llm_completion; fn = _get_llm_completion(); assert fn is la_mod._llm_completion, 'Dynamic resolution failed'; print('PASS: _get_llm_completion resolves to learning_agent._llm_completion')\""
+      command: 'PYTHONPATH=src python3 -c "import amplihack.agents.goal_seeking.learning_agent as la_mod; from amplihack.agents.goal_seeking.prompt_utils import _get_llm_completion; fn = _get_llm_completion(); assert fn is la_mod._llm_completion, ''Dynamic resolution failed''; print(''PASS: _get_llm_completion resolves to learning_agent._llm_completion'')"'
     timeout: 15000
 
   - name: "Verify prompt_utils marker"
@@ -99,7 +99,7 @@ steps:
     agent: "cli-agent"
     action: "execute_command"
     params:
-      command: "python3 -c \"lines = len(open('src/amplihack/agents/goal_seeking/learning_agent.py').readlines()); assert lines < 400, f'learning_agent.py is {lines} lines (expected < 400)'; print(f'PASS: learning_agent.py is {lines} lines (thin orchestrator)')\""
+      command: 'python3 -c "lines = len(open(''src/amplihack/agents/goal_seeking/learning_agent.py'').readlines()); assert lines < 400, f''learning_agent.py is {lines} lines (expected < 400)''; print(f''PASS: learning_agent.py is {lines} lines (thin orchestrator)'')"'
     timeout: 10000
 
   - name: "Verify thin orchestrator marker"

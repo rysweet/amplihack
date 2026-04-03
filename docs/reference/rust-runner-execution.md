@@ -36,12 +36,12 @@ def execute_rust_command(
 
 Run a compiled `recipe-runner-rs` command and return a fully typed [`RecipeResult`](./recipe-result.md).
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `cmd` | `list[str]` | Argument list (first element is the binary path). Never passed through a shell. |
-| `name` | `str` | Recipe name, used for progress-file paths and log file naming. |
-| `progress` | `bool` | When `True`, creates a per-recipe log file, writes progress JSON after each step marker, and prints the log path to stderr for live `tail -f`. |
-| `env_builder` | `Callable[[], dict[str, str]]` | Zero-argument callable that returns the subprocess environment. Use [`build_rust_env`](#build_rust_env) unless you have a custom requirement. |
+| Parameter     | Type                           | Description                                                                                                                                    |
+| ------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cmd`         | `list[str]`                    | Argument list (first element is the binary path). Never passed through a shell.                                                                |
+| `name`        | `str`                          | Recipe name, used for progress-file paths and log file naming.                                                                                 |
+| `progress`    | `bool`                         | When `True`, creates a per-recipe log file, writes progress JSON after each step marker, and prints the log path to stderr for live `tail -f`. |
+| `env_builder` | `Callable[[], dict[str, str]]` | Zero-argument callable that returns the subprocess environment. Use [`build_rust_env`](#build_rust_env) unless you have a custom requirement.  |
 
 Returns a [`RecipeResult`](./recipe-result.md) with `success`, `step_results`, `context`, and `log_path`.
 
@@ -94,16 +94,16 @@ if info:
 
 Returned dict fields (required fields are always present when the function returns non-`None`; optional fields may be absent):
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `recipe_name` | `str` | ✓ | Sanitized recipe name |
-| `current_step` | `int` | ✓ | 1-based index of the running step |
-| `status` | `str` | ✓ | One of `running`, `completed`, `failed` |
-| `pid` | `int` | ✓ | PID of the recipe-runner-rs process |
-| `total_steps` | `int` | optional | Total step count; the Python streaming layer always writes `0` (unknown) — only a Rust binary that reports step totals will supply a non-zero value |
-| `step_name` | `str` | optional | Human-readable step label |
-| `elapsed_seconds` | `float` | optional | Seconds since recipe start |
-| `updated_at` | `float` | optional | Unix timestamp of last write |
+| Field             | Type    | Required | Description                                                                                                                                         |
+| ----------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `recipe_name`     | `str`   | ✓        | Sanitized recipe name                                                                                                                               |
+| `current_step`    | `int`   | ✓        | 1-based index of the running step                                                                                                                   |
+| `status`          | `str`   | ✓        | One of `running`, `completed`, `failed`                                                                                                             |
+| `pid`             | `int`   | ✓        | PID of the recipe-runner-rs process                                                                                                                 |
+| `total_steps`     | `int`   | optional | Total step count; the Python streaming layer always writes `0` (unknown) — only a Rust binary that reports step totals will supply a non-zero value |
+| `step_name`       | `str`   | optional | Human-readable step label                                                                                                                           |
+| `elapsed_seconds` | `float` | optional | Seconds since recipe start                                                                                                                          |
+| `updated_at`      | `float` | optional | Unix timestamp of last write                                                                                                                        |
 
 ---
 
@@ -115,17 +115,17 @@ def emit_step_transition(step_name: str, status: str) -> None:
 
 Write a machine-readable JSONL step-transition event to **stderr** with immediate flush.
 
-| Parameter | Values |
-|-----------|--------|
+| Parameter   | Values                                        |
+| ----------- | --------------------------------------------- |
 | `step_name` | Arbitrary label matching the recipe step name |
-| `status` | `"start"` · `"done"` · `"fail"` · `"skip"` |
+| `status`    | `"start"` · `"done"` · `"fail"` · `"skip"`    |
 
 This function is called automatically by the streaming layer; only call it directly from custom step implementations that execute outside the Rust binary (e.g., Python pre/post-hooks).
 
 **Output format:**
 
 ```json
-{"type":"step_transition","step":"validate-inputs","status":"start","ts":1743554401.12}
+{ "type": "step_transition", "step": "validate-inputs", "status": "start", "ts": 1743554401.12 }
 ```
 
 **Filtering:** Parent processes suppress these lines from user-visible output via `_STEP_TRANSITION_PREFIX` detection.
@@ -146,10 +146,10 @@ Return a filtered environment dictionary suitable for passing to `subprocess.Pop
 
 Both parameters are keyword-only:
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `wrapper_factory` | `Callable[[str], str]` | Takes the real `copilot` binary path and returns a path to a temporary directory containing a shim `copilot` script. Used to intercept nested `copilot` invocations inside the recipe. |
-| `which` | `Callable[..., str \| None]` | Locates the real `copilot` binary on `PATH` (pass `shutil.which`). |
+| Parameter         | Type                         | Description                                                                                                                                                                            |
+| ----------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wrapper_factory` | `Callable[[str], str]`       | Takes the real `copilot` binary path and returns a path to a temporary directory containing a shim `copilot` script. Used to intercept nested `copilot` invocations inside the recipe. |
+| `which`           | `Callable[..., str \| None]` | Locates the real `copilot` binary on `PATH` (pass `shutil.which`).                                                                                                                     |
 
 If `AMPLIHACK_AGENT_BINARY` is not `"copilot"`, neither callable is invoked.
 
@@ -157,15 +157,15 @@ If `AMPLIHACK_AGENT_BINARY` is not `"copilot"`, neither callable is invoked.
 
 **Allowlisted variable families:**
 
-| Family | Examples |
-|--------|---------|
-| `AMPLIHACK_*` | `AMPLIHACK_HOME`, `AMPLIHACK_SESSION_ID`, `AMPLIHACK_RECIPE_LOG` |
-| Path & shell | `PATH`, `HOME`, `SHELL`, `USER` |
-| Proxy | `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY` (case-insensitive) |
-| TLS / CA bundles | `SSL_CERT_FILE`, `CURL_CA_BUNDLE`, `REQUESTS_CA_BUNDLE` |
-| Locale | `LANG`, `LC_ALL`, `LC_CTYPE` |
-| Temp dirs | `TMPDIR`, `TMP`, `TEMP` |
-| Runtime | `PYTHONPATH`, `RECIPE_RUNNER_RS_PATH`, `CLAUDE_PROJECT_DIR` |
+| Family           | Examples                                                         |
+| ---------------- | ---------------------------------------------------------------- |
+| `AMPLIHACK_*`    | `AMPLIHACK_HOME`, `AMPLIHACK_SESSION_ID`, `AMPLIHACK_RECIPE_LOG` |
+| Path & shell     | `PATH`, `HOME`, `SHELL`, `USER`                                  |
+| Proxy            | `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY` (case-insensitive)       |
+| TLS / CA bundles | `SSL_CERT_FILE`, `CURL_CA_BUNDLE`, `REQUESTS_CA_BUNDLE`          |
+| Locale           | `LANG`, `LC_ALL`, `LC_CTYPE`                                     |
+| Temp dirs        | `TMPDIR`, `TMP`, `TEMP`                                          |
+| Runtime          | `PYTHONPATH`, `RECIPE_RUNNER_RS_PATH`, `CLAUDE_PROJECT_DIR`      |
 
 ---
 
@@ -224,24 +224,24 @@ Heartbeat pings from long-running steps use a separate type:
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `AMPLIHACK_RECIPE_LOG` | Set automatically to the log file path when `progress=True`. Child processes can append to this file. |
-| `AMPLIHACK_WORKSTREAM_PROGRESS_FILE` | Optional path for the workstream progress sidecar. Set by the workstream orchestrator. |
-| `AMPLIHACK_WORKSTREAM_STATE_FILE` | Optional path to a workstream state JSON file read for issue/checkpoint context. |
+| Variable                             | Description                                                                                           |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `AMPLIHACK_RECIPE_LOG`               | Set automatically to the log file path when `progress=True`. Child processes can append to this file. |
+| `AMPLIHACK_WORKSTREAM_PROGRESS_FILE` | Optional path for the workstream progress sidecar. Set by the workstream orchestrator.                |
+| `AMPLIHACK_WORKSTREAM_STATE_FILE`    | Optional path to a workstream state JSON file read for issue/checkpoint context.                      |
 
 ---
 
 ## Security Model
 
-| Property | Mechanism |
-|----------|-----------|
-| No shell injection | `subprocess.Popen` always receives a `list[str]`; `shell=False` is the default |
-| Symlink-safe file creation | Progress and log files opened with `O_NOFOLLOW | O_CREAT`; mode `0o600` |
-| Atomic writes | Progress JSON written via `tempfile.NamedTemporaryFile` + `os.replace()`; readers never see partial files |
-| Path traversal prevention | `_validate_path_within_tmpdir()` rejects any resolved path outside `tempfile.gettempdir()` |
-| Minimal env surface | `build_rust_env()` allowlist excludes all credential variables |
-| Recipe name sanitization | Recipe names reduced to `[a-zA-Z0-9_]`, capped at 64 characters before use in file paths |
+| Property                   | Mechanism                                                                                                 |
+| -------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------- |
+| No shell injection         | `subprocess.Popen` always receives a `list[str]`; `shell=False` is the default                            |
+| Symlink-safe file creation | Progress and log files opened with `O_NOFOLLOW                                                            | O_CREAT`; mode `0o600` |
+| Atomic writes              | Progress JSON written via `tempfile.NamedTemporaryFile` + `os.replace()`; readers never see partial files |
+| Path traversal prevention  | `_validate_path_within_tmpdir()` rejects any resolved path outside `tempfile.gettempdir()`                |
+| Minimal env surface        | `build_rust_env()` allowlist excludes all credential variables                                            |
+| Recipe name sanitization   | Recipe names reduced to `[a-zA-Z0-9_]`, capped at 64 characters before use in file paths                  |
 
 ---
 
@@ -249,21 +249,21 @@ Heartbeat pings from long-running steps use a separate type:
 
 These functions are implementation details; do not call them directly.
 
-| Function | Purpose |
-|----------|---------|
-| `_validate_path_within_tmpdir(path)` | Raises `ValueError` if `path.resolve()` escapes `tempfile.gettempdir()` |
-| `_atomic_write_json(path, payload)` | Write JSON payload atomically; falls back to direct write on cross-device rename errors |
-| `_progress_file_path(recipe_name, pid)` | Returns `/tmp/amplihack-progress-<sanitized>-<pid>.json` |
-| `_recipe_log_path(recipe_name, pid)` | Returns `/tmp/amplihack-recipe-<sanitized>-<pid>.log` |
-| `_stream_process_output(process)` | Basic stdout/stderr drain (no progress tracking) |
-| `_stream_process_output_with_progress(process, recipe_name, log_file_path)` | Thread-based drain with step-marker detection and log tee |
-| `_run_rust_process(cmd, progress, env, recipe_name)` | Spawn process, select streaming mode, return `(stdout, stderr, returncode, log_path)` |
-| `_meaningful_stderr_tail(stderr)` | Last 5 lines of stderr after filtering metadata lines |
-| `_is_progress_metadata_line(line)` | Returns `True` for step-transition and heartbeat JSONL lines |
-| `_raise_process_failure(stderr, returncode)` | Raise `RuntimeError` with signal name or trimmed stderr |
-| `_parse_rust_response(stdout, stderr, returncode, name)` | JSON parse with structured error fallback |
-| `_validate_rust_response_payload(data, name)` | Assert contract: `success` (bool), `step_results` (list), `context` (dict) |
-| `_build_step_results(step_results_data)` | Convert raw JSON list to `list[StepResult]` |
+| Function                                                                    | Purpose                                                                                 |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `_validate_path_within_tmpdir(path)`                                        | Raises `ValueError` if `path.resolve()` escapes `tempfile.gettempdir()`                 |
+| `_atomic_write_json(path, payload)`                                         | Write JSON payload atomically; falls back to direct write on cross-device rename errors |
+| `_progress_file_path(recipe_name, pid)`                                     | Returns `/tmp/amplihack-progress-<sanitized>-<pid>.json`                                |
+| `_recipe_log_path(recipe_name, pid)`                                        | Returns `/tmp/amplihack-recipe-<sanitized>-<pid>.log`                                   |
+| `_stream_process_output(process)`                                           | Basic stdout/stderr drain (no progress tracking)                                        |
+| `_stream_process_output_with_progress(process, recipe_name, log_file_path)` | Thread-based drain with step-marker detection and log tee                               |
+| `_run_rust_process(cmd, progress, env, recipe_name)`                        | Spawn process, select streaming mode, return `(stdout, stderr, returncode, log_path)`   |
+| `_meaningful_stderr_tail(stderr)`                                           | Last 5 lines of stderr after filtering metadata lines                                   |
+| `_is_progress_metadata_line(line)`                                          | Returns `True` for step-transition and heartbeat JSONL lines                            |
+| `_raise_process_failure(stderr, returncode)`                                | Raise `RuntimeError` with signal name or trimmed stderr                                 |
+| `_parse_rust_response(stdout, stderr, returncode, name)`                    | JSON parse with structured error fallback                                               |
+| `_validate_rust_response_payload(data, name)`                               | Assert contract: `success` (bool), `step_results` (list), `context` (dict)              |
+| `_build_step_results(step_results_data)`                                    | Convert raw JSON list to `list[StepResult]`                                             |
 
 ---
 

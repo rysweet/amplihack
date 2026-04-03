@@ -7,7 +7,7 @@ and answer_question_agentic entry points.
 import shutil
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -57,9 +57,7 @@ class TestAnswerSynthesizer:
             new_callable=AsyncMock,
             return_value='{"is_complete": true}',
         ):
-            result = await agent._evaluate_answer_completeness(
-                "What is X?", "X is a variable."
-            )
+            result = await agent._evaluate_answer_completeness("What is X?", "X is a variable.")
         assert result["is_complete"] is True
 
     @pytest.mark.asyncio
@@ -69,9 +67,7 @@ class TestAnswerSynthesizer:
             new_callable=AsyncMock,
             return_value='{"is_complete": false, "gaps": ["need more detail on X"]}',
         ):
-            result = await agent._evaluate_answer_completeness(
-                "What is X?", "X is something."
-            )
+            result = await agent._evaluate_answer_completeness("What is X?", "X is something.")
         assert result["is_complete"] is False
         assert "need more detail" in result["gaps"][0]
 
@@ -83,9 +79,7 @@ class TestAnswerSynthesizer:
             new_callable=AsyncMock,
             side_effect=RuntimeError("LLM timeout"),
         ):
-            result = await agent._evaluate_answer_completeness(
-                "What is X?", "Short answer."
-            )
+            result = await agent._evaluate_answer_completeness("What is X?", "Short answer.")
         assert result["is_complete"] is False
         assert "evaluation_failed" in result["gaps"]
 
@@ -96,9 +90,7 @@ class TestAnswerSynthesizer:
             new_callable=AsyncMock,
             return_value="not valid json at all",
         ):
-            result = await agent._evaluate_answer_completeness(
-                "What is X?", "Short answer."
-            )
+            result = await agent._evaluate_answer_completeness("What is X?", "Short answer.")
         # JSON parse error returns complete=True (non-critical parse path)
         assert result["is_complete"] is True
 
@@ -109,7 +101,5 @@ class TestAnswerSynthesizer:
             new_callable=AsyncMock,
             return_value='```json\n{"is_complete": false, "gaps": ["missing context"]}\n```',
         ):
-            result = await agent._evaluate_answer_completeness(
-                "What is X?", "Short."
-            )
+            result = await agent._evaluate_answer_completeness("What is X?", "Short.")
         assert result["is_complete"] is False

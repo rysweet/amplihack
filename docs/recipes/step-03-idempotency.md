@@ -7,7 +7,7 @@ after an interruption, retrying a failed step, or running in a loop), the step
 uses two idempotency guards to detect and reuse an existing issue instead of
 creating a duplicate.
 
-**Added in:** PR #3952 (merged 2026-04-03)  
+**Added in:** PR #3952 (merged 2026-04-03)
 **Pattern source:** `step-16-create-draft-pr` idempotency guards (#3324)
 
 ---
@@ -127,28 +127,28 @@ All diagnostic output goes to **stderr** and is not captured by the recipe
 runner's output pipeline. You can view it in the recipe's verbose log or by
 redirecting stderr.
 
-| Message | When |
-|---|---|
-| `INFO: task_description references issue #N — verifying it exists` | Guard 1 extracted a reference |
-| `INFO: Reusing existing issue #N — skipping creation` | Guard 1 matched and reused |
-| `WARN: Referenced issue #N not found — will search or create` | Guard 1 fell through |
-| `INFO: Searching open issues for similar title` | Guard 2 running |
-| `INFO: Found existing open issue matching title — skipping creation` | Guard 2 matched and reused |
-| `INFO: No matching open issue found — proceeding to create` | Guard 2 fell through |
+| Message                                                                      | When                             |
+| ---------------------------------------------------------------------------- | -------------------------------- |
+| `INFO: task_description references issue #N — verifying it exists`           | Guard 1 extracted a reference    |
+| `INFO: Reusing existing issue #N — skipping creation`                        | Guard 1 matched and reused       |
+| `WARN: Referenced issue #N not found — will search or create`                | Guard 1 fell through             |
+| `INFO: Searching open issues for similar title`                              | Guard 2 running                  |
+| `INFO: Found existing open issue matching title — skipping creation`         | Guard 2 matched and reused       |
+| `INFO: No matching open issue found — proceeding to create`                  | Guard 2 fell through             |
 | `WARN: Extracted issue reference is not numeric: <value> — skipping guard 1` | Guard 1 rejected an unsafe value |
 
 ---
 
 ## Error Handling
 
-| Failure mode | Behavior |
-|---|---|
-| `gh issue view` times out (> 60 s) | `timeout` returns exit 124; `\|\| echo ''` catches it; guard falls through |
-| `gh issue view` returns HTTP error | `2>/dev/null` suppresses noise; `\|\| echo ''` falls through |
-| `gh issue list --search` times out | Same as above |
-| `gh issue list --search` returns empty | Empty string; guard falls through to creation |
-| `gh` not authenticated | `2>/dev/null` and `\|\| echo ''` suppress; both guards fall through; creation proceeds normally (or fails with a clear auth error) |
-| Non-numeric issue reference extracted | Explicit `^[0-9]+$` validation skips guard 1 with a `WARN` message |
+| Failure mode                           | Behavior                                                                                                                           |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `gh issue view` times out (> 60 s)     | `timeout` returns exit 124; `\|\| echo ''` catches it; guard falls through                                                         |
+| `gh issue view` returns HTTP error     | `2>/dev/null` suppresses noise; `\|\| echo ''` falls through                                                                       |
+| `gh issue list --search` times out     | Same as above                                                                                                                      |
+| `gh issue list --search` returns empty | Empty string; guard falls through to creation                                                                                      |
+| `gh` not authenticated                 | `2>/dev/null` and `\|\| echo ''` suppress; both guards fall through; creation proceeds normally (or fails with a clear auth error) |
+| Non-numeric issue reference extracted  | Explicit `^[0-9]+$` validation skips guard 1 with a `WARN` message                                                                 |
 
 The step uses `set -euo pipefail`. All expected-failure exit paths use
 `|| echo ''` or `|| true` so the script does not abort unexpectedly.
@@ -159,12 +159,12 @@ The step uses `set -euo pipefail`. All expected-failure exit paths use
 
 ### Command Injection Prevention
 
-| Attack vector | Mitigation |
-|---|---|
-| `#NNNN` in `task_description` contains shell metacharacters | Bash regex `[[ =~ \#([0-9]+) ]]` captures only `[0-9]+`; `BASH_REMATCH[1]` contains only digits |
-| Captured number contains semicolons, pipes, or other characters | Explicit `^[0-9]+$` validation rejects anything non-numeric before it reaches `gh issue view "$REF_ISSUE_NUM"` |
-| Long or special-character title passed to `gh issue list --search` | Double-quoted variable `"$SEARCH_QUERY"` prevents shell word-splitting; `gh` CLI handles API-level escaping |
-| Template injection via `task_description` or `final_requirements` | Both are captured via unquoted heredoc (`<<EOFTASKDESC`) into bash variables (`TASK_DESC`, `ISSUE_REQS`). The issue body is assembled with `printf` using double-quoted variable expansions — no `eval`, no unquoted expansion |
+| Attack vector                                                      | Mitigation                                                                                                                                                                                                                     |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `#NNNN` in `task_description` contains shell metacharacters        | Bash regex `[[ =~ \#([0-9]+) ]]` captures only `[0-9]+`; `BASH_REMATCH[1]` contains only digits                                                                                                                                |
+| Captured number contains semicolons, pipes, or other characters    | Explicit `^[0-9]+$` validation rejects anything non-numeric before it reaches `gh issue view "$REF_ISSUE_NUM"`                                                                                                                 |
+| Long or special-character title passed to `gh issue list --search` | Double-quoted variable `"$SEARCH_QUERY"` prevents shell word-splitting; `gh` CLI handles API-level escaping                                                                                                                    |
+| Template injection via `task_description` or `final_requirements`  | Both are captured via unquoted heredoc (`<<EOFTASKDESC`) into bash variables (`TASK_DESC`, `ISSUE_REQS`). The issue body is assembled with `printf` using double-quoted variable expansions — no `eval`, no unquoted expansion |
 
 ### Trusted Inputs
 
@@ -205,12 +205,14 @@ task_description = "Fix login timeout bug described in #4194"
 ```
 
 **Step-03 output (stderr):**
+
 ```
 INFO: task_description references issue #4194 — verifying it exists
 INFO: Reusing existing issue #4194 — skipping creation
 ```
 
 **Step-03 output (stdout):**
+
 ```
 https://github.com/myorg/myrepo/issues/4194
 ```
@@ -229,12 +231,14 @@ has the same `task_description` but no `#NNNN` reference.
 **Guard 2 search query:** `Add user profile page` (under 100 chars, no truncation)
 
 **Step-03 output (stderr):**
+
 ```
 INFO: Searching open issues for similar title
 INFO: Found existing open issue matching title — skipping creation
 ```
 
 **Step-03 output (stdout):**
+
 ```
 https://github.com/myorg/myrepo/issues/4200
 ```
@@ -246,12 +250,14 @@ https://github.com/myorg/myrepo/issues/4200
 No prior issues match. Both guards fall through; a new issue is created.
 
 **Step-03 output (stderr):**
+
 ```
 INFO: Searching open issues for similar title
 INFO: No matching open issue found — proceeding to create
 ```
 
 **Step-03 output (stdout):**
+
 ```
 https://github.com/myorg/myrepo/issues/4201
 ```
@@ -289,20 +295,20 @@ gadugi-test validate tests/gadugi/step-03-issue-creation-idempotency.yaml
 
 **Coverage (20 scenarios):**
 
-| Area | Scenarios |
-|---|---|
-| Guard 1: `#NNNN` extraction | S11, S12 |
-| Guard 1: numeric validation / injection prevention | S13 |
-| Guard 2: title truncation | S14, S15 |
-| Output URL compatibility with step-03b | S16 |
-| Both guards exit 0 on reuse | S10 |
-| Guard ordering (1 before 2, creation last) | S17 |
-| API failure fallthrough (`\|\| echo ''`) | S20 |
-| `timeout 60` wrappers | S7 |
-| Stderr routing | S8 |
-| `set -euo pipefail` | S19 |
-| Pattern provenance (step-16 reference) | S18 |
-| YAML structure grep checks | S1–S9 |
+| Area                                               | Scenarios |
+| -------------------------------------------------- | --------- |
+| Guard 1: `#NNNN` extraction                        | S11, S12  |
+| Guard 1: numeric validation / injection prevention | S13       |
+| Guard 2: title truncation                          | S14, S15  |
+| Output URL compatibility with step-03b             | S16       |
+| Both guards exit 0 on reuse                        | S10       |
+| Guard ordering (1 before 2, creation last)         | S17       |
+| API failure fallthrough (`\|\| echo ''`)           | S20       |
+| `timeout 60` wrappers                              | S7        |
+| Stderr routing                                     | S8        |
+| `set -euo pipefail`                                | S19       |
+| Pattern provenance (step-16 reference)             | S18       |
+| YAML structure grep checks                         | S1–S9     |
 
 ---
 

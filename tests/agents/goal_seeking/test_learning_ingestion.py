@@ -61,7 +61,12 @@ class TestLearningIngestion:
     # --- _build_store_fact_kwargs ---
 
     def test_build_store_fact_kwargs_basic(self, agent):
-        fact = {"context": "Science", "fact": "Water boils at 100C", "confidence": 0.9, "tags": ["chemistry"]}
+        fact = {
+            "context": "Science",
+            "fact": "Water boils at 100C",
+            "confidence": 0.9,
+            "tags": ["chemistry"],
+        }
         result = agent._build_store_fact_kwargs(fact, {}, "article1")
         assert result["context"] == "Science"
         assert result["fact"] == "Water boils at 100C"
@@ -145,9 +150,7 @@ class TestLearningIngestion:
             side_effect=RuntimeError("LLM error"),
         ):
             # Should not raise
-            await agent._store_summary_concept_map(
-                "content", [{"context": "A", "fact": "B"}]
-            )
+            await agent._store_summary_concept_map("content", [{"context": "A", "fact": "B"}])
         agent.memory.store_fact.assert_not_called()
 
     # --- prepare_fact_batch ---

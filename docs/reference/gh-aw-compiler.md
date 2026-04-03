@@ -35,9 +35,9 @@ Compiles a workflow file and returns a list of `Diagnostic` objects.
 
 **Parameters**:
 
-| Parameter | Type | Description |
-|---|---|---|
-| `content` | `str` | Full text of the `.md` workflow file |
+| Parameter  | Type  | Description                                             |
+| ---------- | ----- | ------------------------------------------------------- |
+| `content`  | `str` | Full text of the `.md` workflow file                    |
 | `filename` | `str` | Filename for diagnostic messages (default: `"<input>"`) |
 
 **Returns**: `list[Diagnostic]` — may be empty (no errors).
@@ -112,24 +112,24 @@ When a required field is missing, the error message includes format examples:
 
 ## Valid Frontmatter Fields
 
-| Field | Required | Type | Description |
-|---|---|---|---|
-| `name` | Yes | string | Workflow display name |
-| `on` | Yes | trigger map | GitHub Actions trigger configuration |
-| `engine` | Yes | string | Execution engine: `claude`, `bash`, `node`, `python` |
-| `description` | No | string | Human-readable description |
-| `timeout-minutes` | No | integer | Maximum runtime in minutes |
-| `strict` | No | boolean | Enable strict validation mode |
-| `jobs` | No | map | Job definitions |
-| `permissions` | No | map | GitHub token permissions |
-| `if` | No | expression | Conditional execution |
-| `imports` | No | list | File imports |
-| `outputs` | No | map | Workflow outputs |
-| `safe-outputs` | No | boolean | Enable safe outputs mode |
-| `skip-if-match` | No | expression | Skip condition |
-| `bash` | No | string | Inline bash command |
-| `tools` | No | list | Tool configurations |
-| `tracker-id` | No | string | External issue tracker reference |
+| Field             | Required | Type        | Description                                          |
+| ----------------- | -------- | ----------- | ---------------------------------------------------- |
+| `name`            | Yes      | string      | Workflow display name                                |
+| `on`              | Yes      | trigger map | GitHub Actions trigger configuration                 |
+| `engine`          | Yes      | string      | Execution engine: `claude`, `bash`, `node`, `python` |
+| `description`     | No       | string      | Human-readable description                           |
+| `timeout-minutes` | No       | integer     | Maximum runtime in minutes                           |
+| `strict`          | No       | boolean     | Enable strict validation mode                        |
+| `jobs`            | No       | map         | Job definitions                                      |
+| `permissions`     | No       | map         | GitHub token permissions                             |
+| `if`              | No       | expression  | Conditional execution                                |
+| `imports`         | No       | list        | File imports                                         |
+| `outputs`         | No       | map         | Workflow outputs                                     |
+| `safe-outputs`    | No       | boolean     | Enable safe outputs mode                             |
+| `skip-if-match`   | No       | expression  | Skip condition                                       |
+| `bash`            | No       | string      | Inline bash command                                  |
+| `tools`           | No       | list        | Tool configurations                                  |
+| `tracker-id`      | No       | string      | External issue tracker reference                     |
 
 ## See Also
 

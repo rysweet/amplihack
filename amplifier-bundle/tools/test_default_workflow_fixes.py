@@ -1305,8 +1305,7 @@ class TestStep03bThreeTierEdgeCases(unittest.TestCase):
         This confirms Tier 1 takes priority.
         """
         issue_creation = (
-            "https://github.com/org/repo/pull/4000\n"
-            "https://github.com/org/repo/issues/3983\n"
+            "https://github.com/org/repo/pull/4000\nhttps://github.com/org/repo/issues/3983\n"
         )
         result = _run_extraction_fixed(issue_creation)
         self.assertEqual(result, "3983", "Tier 1 issues/ URL must beat PR URL")

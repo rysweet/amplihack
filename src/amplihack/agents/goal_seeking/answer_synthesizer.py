@@ -1272,4 +1272,3 @@ class AnswerSynthesizerMixin:
         except Exception as e:
             logger.error("LLM synthesis failed: %s", e)
             return "I was unable to synthesize an answer due to an internal error."
-

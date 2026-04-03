@@ -9,27 +9,27 @@ This document defines the security controls that every implementation contributi
 
 ## Control Summary
 
-| Control | Severity | Area                                        | Status   |
-| ------- | -------- | ------------------------------------------- | -------- |
-| SEC-01  | CRITICAL | Secret redaction — env var values           | Required |
-| SEC-02  | CRITICAL | Path traversal prevention                   | Required |
-| SEC-03  | HIGH     | XSS prevention — label sanitization         | Required |
-| SEC-04  | HIGH     | Safe config/manifest parsing                | Required |
-| SEC-05  | HIGH     | Output confinement to `docs/atlas/`         | Required |
-| SEC-06  | HIGH     | Shell injection prevention                  | Required |
-| SEC-07  | MEDIUM   | Symlink attack prevention                   | Required |
-| SEC-08  | MEDIUM   | Large file DoS prevention                   | Required |
-| SEC-09  | CRITICAL | Credential redaction in bug reports + L8 output | Required |
+| Control | Severity | Area                                              | Status   |
+| ------- | -------- | ------------------------------------------------- | -------- |
+| SEC-01  | CRITICAL | Secret redaction — env var values                 | Required |
+| SEC-02  | CRITICAL | Path traversal prevention                         | Required |
+| SEC-03  | HIGH     | XSS prevention — label sanitization               | Required |
+| SEC-04  | HIGH     | Safe config/manifest parsing                      | Required |
+| SEC-05  | HIGH     | Output confinement to `docs/atlas/`               | Required |
+| SEC-06  | HIGH     | Shell injection prevention                        | Required |
+| SEC-07  | MEDIUM   | Symlink attack prevention                         | Required |
+| SEC-08  | MEDIUM   | Large file DoS prevention                         | Required |
+| SEC-09  | CRITICAL | Credential redaction in bug reports + L8 output   | Required |
 | SEC-10  | HIGH     | DOT/Mermaid injection prevention (+ experiments/) | Required |
-| SEC-11  | HIGH     | Layer 7 service name sanitization           | Required |
-| SEC-12  | HIGH     | Layer 8 LSP output sanitization             | Required |
-| SEC-13  | HIGH     | Density threshold parameter validation      | Required |
-| SEC-14  | MEDIUM   | Density prompt — accept only valid choices  | Required |
-| SEC-15  | CRITICAL | Credential redaction in all Layer 8 outputs | Required |
-| SEC-16  | MEDIUM   | Relative-path enforcement in evidence fields | Required |
-| SEC-17  | HIGH     | Recipe YAML parameter injection prevention  | Required |
-| SEC-18  | LOW      | Experiment filename date/layer validation   | Required |
-| SEC-19  | HIGH     | Git push output credential sanitization     | Required |
+| SEC-11  | HIGH     | Layer 7 service name sanitization                 | Required |
+| SEC-12  | HIGH     | Layer 8 LSP output sanitization                   | Required |
+| SEC-13  | HIGH     | Density threshold parameter validation            | Required |
+| SEC-14  | MEDIUM   | Density prompt — accept only valid choices        | Required |
+| SEC-15  | CRITICAL | Credential redaction in all Layer 8 outputs       | Required |
+| SEC-16  | MEDIUM   | Relative-path enforcement in evidence fields      | Required |
+| SEC-17  | HIGH     | Recipe YAML parameter injection prevention        | Required |
+| SEC-18  | LOW      | Experiment filename date/layer validation         | Required |
+| SEC-19  | HIGH     | Git push output credential sanitization           | Required |
 
 ---
 
@@ -368,13 +368,13 @@ def sanitise_lsp_output(report: dict, codebase_path: str) -> dict:
 
 **Rejected values:**
 
-| Value | Reason |
-|-------|--------|
-| `0` | Disables guard via spam; not a meaningful threshold |
-| Negative numbers | Invalid; makes no semantic sense |
-| Non-integers | Parameter type violation |
-| `> 10,000` | Effectively disables guard for any real codebase |
-| `null`, `undefined`, empty | Reverts to defaults (no error) |
+| Value                      | Reason                                              |
+| -------------------------- | --------------------------------------------------- |
+| `0`                        | Disables guard via spam; not a meaningful threshold |
+| Negative numbers           | Invalid; makes no semantic sense                    |
+| Non-integers               | Parameter type violation                            |
+| `> 10,000`                 | Effectively disables guard for any real codebase    |
+| `null`, `undefined`, empty | Reverts to defaults (no error)                      |
 
 ```python
 def validate_density_threshold(nodes: any, edges: any) -> tuple[int, int]:

@@ -88,4 +88,3 @@ class IntentDetectorMixin:
             "math_type": "none",
             "reasoning": "default",
         }
-

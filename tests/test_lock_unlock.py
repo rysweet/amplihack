@@ -562,9 +562,11 @@ class TestSessionIdSanitization:
         assert "../../etc/shadow" not in content, (
             "Raw path-traversal session_id must not appear in lock metadata"
         )
-        assert "/" not in content.split("session_id:")[-1].split("\n")[0] if "session_id:" in content else True, (
-            "Sanitized session_id must not contain slashes"
-        )
+        assert (
+            "/" not in content.split("session_id:")[-1].split("\n")[0]
+            if "session_id:" in content
+            else True
+        ), "Sanitized session_id must not contain slashes"
 
     def test_create_lock_sanitizes_newline_in_metadata(self, tmp_path, monkeypatch):
         """create_lock() must prevent newline injection in lock metadata."""

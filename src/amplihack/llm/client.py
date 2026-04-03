@@ -15,7 +15,6 @@ import asyncio
 import os
 import sys
 from pathlib import Path
-from typing import Any
 
 # --- Claude Agent SDK ---------------------------------------------------------
 
