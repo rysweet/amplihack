@@ -1,6 +1,6 @@
-# Recipe Resilience: Branch Sanitization & Sub-Recipe Recovery
+# Recipe Resilience: Branch Sanitization, Sub-Recipe Recovery & Issue Idempotency
 
-This document describes two resilience improvements to the amplihack recipe runner:
+This document describes three resilience improvements to the amplihack recipe runner:
 
 1. **Branch Name Sanitization** (Issue #2952) — `default-workflow` step 4 now
    produces valid git branch names from any `task_description`, including
@@ -8,6 +8,9 @@ This document describes two resilience improvements to the amplihack recipe runn
 2. **Sub-Recipe Agentic Recovery** (Issue #2953) — when a sub-recipe step fails,
    the runner invokes an agent recovery step before raising a hard error, giving
    the workflow a chance to self-heal.
+3. **step-03 Issue Idempotency Guards** (PR #3952) — `step-03-create-issue` now
+   detects and reuses an existing GitHub issue instead of creating a duplicate on
+   workflow re-runs.
 
 ---
 
@@ -282,4 +285,63 @@ Expected output:
 
 ```
 37 passed in ...s
+```
+
+---
+
+## Issue Idempotency Guards (PR #3952)
+
+### Problem
+
+`step-03-create-issue` ran `gh issue create` unconditionally on every workflow
+execution. Workflow re-runs and retries (e.g., resuming after an interruption,
+retrying a failed step, or running in a loop) created duplicate GitHub issues for
+the same task, cluttering repositories with near-identical open issues.
+
+### Solution: Two-Guard Deduplication Pipeline
+
+The step now runs three checks in priority order:
+
+| Priority | Guard | Trigger | Action |
+|----------|-------|---------|--------|
+| 1 | **Reference Guard** | `task_description` contains `#NNNN` | `gh issue view <N>` — reuse if found |
+| 2 | **Title Search Guard** | Always | `gh issue list --search <title>` — reuse if match found |
+| 3 | **Create** (fallback) | Both guards miss | `gh issue create` (original behavior) |
+
+Both guards output the issue URL in `issues/NNNN` format for step-03b compatibility
+and route diagnostics to stderr. A 60-second timeout wrapper prevents hangs on
+slow API calls.
+
+The pattern mirrors `step-16-create-draft-pr` idempotency guards added in PR #3324.
+
+### Security Consideration
+
+Guard 1 extracts `#NNNN` using bash regex (`[[ =~ \#([0-9]+) ]]`) and validates
+the extracted value is purely numeric (`^[0-9]+$`) before passing it to `gh issue
+view`. This defense-in-depth prevents injection via crafted `task_description`
+values that contain non-numeric issue-like tokens.
+
+### Impact
+
+Workflows can now be safely re-run, retried, or resumed without creating duplicate
+issues. The first run creates the issue; all subsequent runs reuse it.
+
+### Tests
+
+35 regression tests in `amplifier-bundle/tools/test_step03_create_issue_idempotency.py`
+cover both guards, security validation, fallback path, and YAML structure assertions.
+Full documentation: [`docs/recipes/step-03-idempotency.md`](recipes/step-03-idempotency.md)
+
+Run with:
+
+```bash
+python3 -m unittest amplifier-bundle/tools/test_step03_create_issue_idempotency.py -v
+```
+
+Expected output:
+
+```
+Ran 35 tests in ...s
+
+OK
 ```

@@ -78,6 +78,10 @@ Complete documentation for using the Recipe Runner:
 - **[Recipe CLI Reference](../reference/recipe-cli-reference.md)** - Complete command-line reference with all options and exit codes
 - **[Recipe CLI Examples](cli-examples.md)** - Real-world usage scenarios (development, testing, CI/CD, team workflows)
 
+### Resilience & Idempotency
+
+- **[step-03-create-issue: Idempotency Guards](step-03-idempotency.md)** - How duplicate issue creation is prevented on workflow re-runs (PR #3952)
+
 ## Why It Exists
 
 Models frequently skip workflow steps when enforcement is purely prompt-based. A markdown file that says "you MUST follow all 22 steps" still relies on the model choosing to comply. The Recipe Runner moves enforcement from prompts to compiled code — a deterministic loop iterates over each step and calls the agent SDK, so the model never decides which step to run next.
