@@ -164,7 +164,7 @@ The step uses `set -euo pipefail`. All expected-failure exit paths use
 | `#NNNN` in `task_description` contains shell metacharacters | Bash regex `[[ =~ \#([0-9]+) ]]` captures only `[0-9]+`; `BASH_REMATCH[1]` contains only digits |
 | Captured number contains semicolons, pipes, or other characters | Explicit `^[0-9]+$` validation rejects anything non-numeric before it reaches `gh issue view "$REF_ISSUE_NUM"` |
 | Long or special-character title passed to `gh issue list --search` | Double-quoted variable `"$SEARCH_QUERY"` prevents shell word-splitting; `gh` CLI handles API-level escaping |
-| Template injection via `task_description` or `final_requirements` | Both are captured via unquoted heredoc (`<<EOFTASKDESC`), then used only in double-quoted bash variables — no `eval` or unquoted expansion |
+| Template injection via `task_description` or `final_requirements` | Both are captured via unquoted heredoc (`<<EOFTASKDESC`) into bash variables (`TASK_DESC`, `ISSUE_REQS`). The issue body is assembled with `printf` using double-quoted variable expansions — no `eval`, no unquoted expansion |
 
 ### Trusted Inputs
 
