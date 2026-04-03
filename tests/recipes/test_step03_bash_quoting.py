@@ -20,6 +20,11 @@ Verifies:
    single quotes.
 10. The GitHub path uses ``--search "$SEARCH_QUERY"`` (double-quoted) without
     additional escaping, as gh CLI handles it safely.
+11. SEARCH_QUERY (GitHub path) does NOT apply the SQL single-quote escaping —
+    gh CLI accepts raw title text and its own quoting rules differ from WIQL.
+12. The SEARCH_TITLE replacement expression is exactly the 2-char form at the
+    byte level: ``${SEARCH_TITLE//\\'\\'/\\'\\'}`` — validated by direct string
+    containment, not just regex absence.
 """
 
 from __future__ import annotations
@@ -279,4 +284,87 @@ printf '%s\n' "$WIQL"
         # Verify the query structure is intact
         assert output.startswith("SELECT [System.Id]"), (
             f"WIQL query structure corrupted: {output!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 7: GitHub path uses double-quoted --search (point 10 in docstring)
+# ---------------------------------------------------------------------------
+
+
+class TestGitHubSearchPath:
+    def test_github_search_uses_double_quoted_arg(self, step_command: str) -> None:
+        """GitHub path must use double-quoted --search "$SEARCH_QUERY", not single-quoted."""
+        assert '--search "$SEARCH_QUERY"' in step_command, (
+            'GitHub path must use double-quoted --search "$SEARCH_QUERY" — '
+            "gh CLI handles shell-special chars in the search string safely. "
+            "Single-quoting would prevent variable expansion."
+        )
+
+    def test_search_query_has_no_sql_escaping(self, step_command: str) -> None:
+        """SEARCH_QUERY (GitHub path) must NOT apply the SQL single-quote escaping.
+
+        gh CLI does not require ADO-style SQL escaping; the raw title is correct.
+        Applying ``//\\'/'\\''\\''`` to SEARCH_QUERY would corrupt the query.
+        """
+        # Find SEARCH_QUERY assignment block in the command
+        # It should set SEARCH_QUERY from ISSUE_TITLE truncation only, no quote replacement
+        lines = step_command.splitlines()
+        search_query_lines = [
+            line for line in lines if "SEARCH_QUERY" in line and "SEARCH_TITLE" not in line
+        ]
+        # Verify none of the SEARCH_QUERY lines apply the SQL-escaping pattern
+        for line in search_query_lines:
+            assert "//\\'/\\'\\'\"" not in line and r"//\'/\'\'" not in line, (
+                f"SEARCH_QUERY must not apply SQL single-quote escaping.\n"
+                f"Offending line: {line!r}\n"
+                "GitHub's --search uses a different query language — raw text is correct."
+            )
+
+    def test_github_path_search_query_set_from_issue_title(self, step_command: str) -> None:
+        """SEARCH_QUERY must be derived from ISSUE_TITLE with truncation only."""
+        assert 'SEARCH_QUERY="${ISSUE_TITLE:0:100}"' in step_command, (
+            'SEARCH_QUERY must be set as SEARCH_QUERY="${ISSUE_TITLE:0:100}" '
+            "(truncated to 100 chars, no SQL escaping)"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Test 8: Exact byte-level check for SEARCH_TITLE replacement (point 12)
+# ---------------------------------------------------------------------------
+
+
+class TestSearchTitleExactPattern:
+    def test_search_title_replacement_exact_2char_literal(self, step_command: str) -> None:
+        r"""The SEARCH_TITLE line must contain the exact 2-char replacement literal.
+
+        The correct bash parameter expansion is:
+            SEARCH_TITLE="${SEARCH_TITLE//\'/\'\'}"
+
+        Byte-level: the replacement part is backslash-quote backslash-quote
+        (2 output chars: two single-quotes '' in the result).
+        The buggy 3-char form would be: backslash-quote backslash-quote backslash-quote
+        which produces ''' (three single-quotes) in the result.
+        """
+        # The exact literal that MUST appear in the command
+        correct_literal_notrim = r"""SEARCH_TITLE="${SEARCH_TITLE//\'/\'\'}" """.strip()
+        assert correct_literal_notrim in step_command, (
+            f"Exact 2-char replacement literal not found.\n"
+            f"Expected to find: {correct_literal_notrim!r}\n"
+            "This is the canonical fix for issue #4206. "
+            "The buggy form was: SEARCH_TITLE=\"${SEARCH_TITLE//\\'/\\'\\''}\""
+        )
+
+    def test_search_title_replacement_absent_3char_literal(self, step_command: str) -> None:
+        r"""The 3-char buggy replacement literal must NOT appear anywhere.
+
+        The buggy form ``${SEARCH_TITLE//\'/\'\'\'}`` is the root cause of #4206.
+        It produces ''' (three quotes) instead of '' (two quotes).
+        """
+        # Three consecutive escaped-quote patterns in the replacement position
+        buggy_literal = r"${SEARCH_TITLE//\'/\'\'\'}"
+        assert buggy_literal not in step_command, (
+            f"Buggy 3-char replacement found: {buggy_literal!r}\n"
+            "This is the root cause of issue #4206. "
+            r"Fix: change \'\'\' → \'\' (remove the trailing backslash-quote)"
         )
