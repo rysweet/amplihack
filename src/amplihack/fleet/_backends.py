@@ -38,6 +38,24 @@ class ConfigurationError(RuntimeError):
     """Raised when a backend is unavailable due to missing or disabled configuration."""
 
 
+class _SecretValue:
+    """Wraps a sensitive string so it never appears in repr() or str()."""
+
+    __slots__ = ("_value",)
+
+    def __init__(self, value: str) -> None:
+        self._value = value
+
+    def get_secret_value(self) -> str:
+        return self._value
+
+    def __repr__(self) -> str:  # noqa: D401
+        return "**********"
+
+    def __str__(self) -> str:
+        return "**********"
+
+
 class LLMBackend(Protocol):
     """Protocol for LLM backends."""
 
@@ -72,13 +90,13 @@ class AnthropicBackend:
             raise ConfigurationError(msg)
 
         self.model = model
-        self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        self._api_key = _SecretValue(api_key or os.environ.get("ANTHROPIC_API_KEY", ""))
         self.max_tokens = max_tokens
 
     def complete(self, system_prompt: str, user_prompt: str) -> str:
         import anthropic
 
-        client = anthropic.Anthropic(api_key=self.api_key)
+        client = anthropic.Anthropic(api_key=self._api_key.get_secret_value())
         # Anthropic API requires streaming when max_tokens is high enough
         # that the request could exceed 10 minutes.
         with client.messages.stream(

@@ -30,22 +30,28 @@ class TestAnthropicBackend:
     """Tests for AnthropicBackend."""
 
     def test_init_with_explicit_api_key(self):
-        """Explicit api_key is stored directly."""
+        """Explicit api_key is stored as a protected value."""
         backend = AnthropicBackend(api_key="sk-test-123")
-        assert backend.api_key == "sk-test-123"
+        assert backend._api_key.get_secret_value() == "sk-test-123"
 
     def test_init_from_env(self, monkeypatch):
         """Falls back to ANTHROPIC_API_KEY env var."""
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-env-456")
         backend = AnthropicBackend()
-        assert backend.api_key == "sk-env-456"
+        assert backend._api_key.get_secret_value() == "sk-env-456"
 
     def test_init_no_key_stores_empty(self, monkeypatch):
         """No key available stores empty string (fails at call time)."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         monkeypatch.delenv("ANTHROPIC_DISABLED", raising=False)
         backend = AnthropicBackend()
-        assert backend.api_key == ""
+        assert backend._api_key.get_secret_value() == ""
+
+    def test_api_key_masked_in_repr(self):
+        """API key must not appear in repr() or str() to prevent log leaks."""
+        backend = AnthropicBackend(api_key="sk-secret-key")
+        assert "sk-secret-key" not in repr(backend._api_key)
+        assert "sk-secret-key" not in str(backend._api_key)
 
     def test_disabled_flag_raises_configuration_error(self, monkeypatch):
         """ANTHROPIC_DISABLED=true raises ConfigurationError at init."""
