@@ -8,6 +8,7 @@ execution fails immediately with a clear error.
 from __future__ import annotations
 
 import contextlib
+import importlib.util
 import json
 import logging
 import os
@@ -437,6 +438,14 @@ def _find_rust_binary() -> str:
     if Path(binary).exists():
         _check_binary_permissions(binary)
     if not check_runner_version(binary):
+        if os.environ.get("RECIPE_RUNNER_AUTO_UPDATE", "1") != "0":
+            logger.info("recipe-runner-rs version mismatch — attempting auto-update")
+            if runner_binary.ensure_rust_recipe_runner():
+                binary = find_rust_binary() or binary
+                if Path(binary).exists():
+                    _check_binary_permissions(binary)
+                if check_runner_version(binary):
+                    return binary
         raise_for_runner_version(binary)
     return binary
 
@@ -937,6 +946,121 @@ def _emit_recipe_source_diagnostic(requested_name: str, resolved_target: str) ->
     print(f"Selected recipe source: {selected}", file=sys.stderr, flush=True)
 
 
+def _is_smart_orchestrator_target(requested_name: str, resolved_target: str) -> bool:
+    """Return True when the requested recipe resolves to smart-orchestrator."""
+    if requested_name == "smart-orchestrator":
+        return True
+    candidate = Path(resolved_target)
+    return candidate.name == "smart-orchestrator.yaml"
+
+
+def _load_module_from_file(path: Path, module_name: str) -> Any:
+    """Import a Python module from an explicit filesystem path."""
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not create import spec for {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _clear_smart_orchestrator_workflow_active() -> str:
+    """Clear the workflow-active semaphore used by smart-orchestrator hooks."""
+    from amplihack.runtime_assets import resolve_asset_path
+
+    hooks_dir = resolve_asset_path("hooks-dir")
+    module = _load_module_from_file(
+        hooks_dir / "dev_intent_router.py",
+        f"dev_intent_router_{os.getpid()}",
+    )
+    clear_workflow_active = getattr(module, "clear_workflow_active", None)
+    if not callable(clear_workflow_active):
+        raise AttributeError("dev_intent_router.clear_workflow_active is not callable")
+    clear_workflow_active()
+    return "workflow-active semaphore cleared"
+
+
+def _parse_smart_orchestrator_session_info(session_info: Any) -> tuple[str, str, str]:
+    """Return ``(session_id, tree_id, status)`` from smart-orchestrator context."""
+    if isinstance(session_info, dict):
+        data = session_info
+    elif isinstance(session_info, str):
+        text = session_info.strip()
+        if not text:
+            return "", "", ""
+        data = json.loads(text)
+    else:
+        raise TypeError("session_info must be a JSON string or mapping")
+
+    if not isinstance(data, dict):
+        raise ValueError("session_info must decode to a JSON object")
+
+    session_id = str(data.get("session_id", "")).strip()
+    tree_id = str(data.get("tree_id", "")).strip()
+    status = str(data.get("status", "")).strip()
+    return session_id, tree_id, status
+
+
+def _complete_smart_orchestrator_session(session_info: Any) -> str:
+    """Complete the smart-orchestrator session in the session tree."""
+    from amplihack.runtime_assets import resolve_asset_path
+
+    session_id, tree_id, status = _parse_smart_orchestrator_session_info(session_info)
+    if not session_id or status != "ok":
+        return f"No session to complete (status: {status or 'empty'})"
+
+    session_tree_path = resolve_asset_path("session-tree-path")
+    module = _load_module_from_file(session_tree_path, f"session_tree_{os.getpid()}")
+    complete_session = getattr(module, "complete_session", None)
+    if not callable(complete_session):
+        raise AttributeError("session_tree.complete_session is not callable")
+    complete_session(session_id, tree_id or None)
+    if tree_id:
+        return f"Session {session_id} completed in tree {tree_id}"
+    return f"Session {session_id} completed"
+
+
+def _best_effort_clear_smart_orchestrator_workflow_active() -> str | None:
+    """Clear the smart-orchestrator semaphore without failing the recipe call."""
+    try:
+        return _clear_smart_orchestrator_workflow_active()
+    except (AttributeError, FileNotFoundError, ImportError, OSError, ValueError) as exc:
+        logger.warning("Could not clear smart-orchestrator workflow semaphore: %s", exc)
+        return None
+
+
+def _best_effort_complete_smart_orchestrator_session(session_info: Any) -> str | None:
+    """Complete the session tree entry without failing the recipe call."""
+    try:
+        return _complete_smart_orchestrator_session(session_info)
+    except (
+        AttributeError,
+        FileNotFoundError,
+        ImportError,
+        OSError,
+        TimeoutError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
+        logger.warning("Could not complete smart-orchestrator session: %s", exc)
+        return None
+
+
+def _postprocess_smart_orchestrator_result(result: RecipeResult, *, dry_run: bool) -> None:
+    """Run deterministic Python teardown for smart-orchestrator results."""
+    if dry_run:
+        return
+
+    messages = [
+        _best_effort_clear_smart_orchestrator_workflow_active(),
+        _best_effort_complete_smart_orchestrator_session(result.context.get("session_info", "")),
+    ]
+    rendered = [message for message in messages if message]
+    if rendered:
+        result.context["session_complete_status"] = "; ".join(rendered)
+
+
 def run_recipe_via_rust(
     name: str,
     user_context: dict[str, Any] | None = None,
@@ -981,6 +1105,7 @@ def run_recipe_via_rust(
         recipe_dirs=effective_recipe_dirs,
         working_dir=working_dir,
     )
+    smart_orchestrator_target = _is_smart_orchestrator_target(name, resolved_name)
     if progress or emit_startup_banner:
         _emit_recipe_source_diagnostic(name, resolved_name)
 
@@ -1010,12 +1135,21 @@ def run_recipe_via_rust(
                 _redact_command_for_log(cmd),
             )
         with _project_dir_context(resolved_working_dir):
-            return _execute_rust_command(
-                cmd,
-                name=name,
-                progress=progress,
-                emit_startup_banner=emit_startup_banner,
-            )
+            try:
+                result = _execute_rust_command(
+                    cmd,
+                    name=name,
+                    progress=progress,
+                    emit_startup_banner=emit_startup_banner,
+                )
+            except Exception:
+                if smart_orchestrator_target and not dry_run:
+                    _best_effort_clear_smart_orchestrator_workflow_active()
+                raise
     finally:
         # R6: securely overwrite-then-delete spill files.
         _secure_delete_spill_dir(tmp_dir)
+
+    if smart_orchestrator_target:
+        _postprocess_smart_orchestrator_result(result, dry_run=dry_run)
+    return result

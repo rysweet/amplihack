@@ -29,8 +29,17 @@ graph LR
     F27["output_validator<br/>refs: 17"]
     F28["models<br/>refs: 16"]
     F29["models<br/>refs: 16"]
+    F30["rust_runner<br/>smart-orchestrator teardown"]
+    F31["runtime_assets<br/>resolve_asset_path"]
+    F32["session_tree.py<br/>complete_session"]
+    F33["dev_intent_router.py<br/>clear_workflow_active"]
     F22 --> F6
     F23 --> F7
     F24 --> F8
+    F30 --> F31
+    F30 --> F32
+    F30 --> F33
+    F31 --> F32
+    F31 --> F33
 
     click F0 "../ast-lsp-bindings/" "View AST bindings"

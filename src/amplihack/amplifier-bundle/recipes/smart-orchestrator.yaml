@@ -4,13 +4,15 @@ description: |
   Classifies -> formulates goal -> decomposes into workstreams ->
   executes via recipe runner (single or parallel) -> goal-seeking
   reflection loop (3 rounds max, auto-mode pattern) -> summarizes.
-version: "1.4.0"
+version: "1.5.1"
 author: "Amplihack Team"
 tags: ["orchestration", "routing", "parallel", "auto-classify", "goal-seeking"]
 
 context:
   task_description: ""
   repo_path: "."
+  max_runtime: ""
+  timeout_policy: ""
   decomposition_json: ""
   session_id: ""
   tree_id: ""
@@ -28,38 +30,95 @@ context:
   summary: ""
   session_complete_status: ""
   force_single_workstream: "false" # set to "true" to prevent parallel decomposition
+  adaptive_recipe: "" # set by detect-execution-gap when routing fails
+  infra_error_details: "" # diagnostic info for infrastructure failures
+
+context_validation:
+  task_description: "nonempty"
+  repo_path: "git_repo"
 
 steps:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Phase 0: Pre-flight Validation
+  # ─────────────────────────────────────────────────────────────────────────
+  - id: "preflight-validation"
+    type: "bash"
+    command: |
+      ERRORS=""
+      REPO="{{repo_path}}"
+      TASK="{{task_description}}"
+      if [ -z "$TASK" ]; then
+        ERRORS="${ERRORS}\n  ✗ task_description is empty"
+      fi
+      if [ ! -d "$REPO" ]; then
+        ERRORS="${ERRORS}\n  ✗ repo_path '$REPO' does not exist"
+      elif ! git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1; then
+        ERRORS="${ERRORS}\n  ✗ repo_path '$REPO' is not a git repository"
+      fi
+      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
+      if [ -z "$HELPER_PATH" ] || [ ! -f "$HELPER_PATH" ]; then
+        ERRORS="${ERRORS}\n  ✗ Cannot find orch_helper.py — set AMPLIHACK_HOME to a valid amplihack root"
+      fi
+      if ! command -v recipe-runner-rs >/dev/null 2>&1 && [ ! -f "$HOME/.cargo/bin/recipe-runner-rs" ]; then
+        ERRORS="${ERRORS}\n  ✗ recipe-runner-rs not found (run: cargo install --git https://github.com/rysweet/amplihack-recipe-runner)"
+      fi
+      if [ -n "$ERRORS" ]; then
+        echo "=== SMART-ORCHESTRATOR PRE-FLIGHT FAILED ===" >&2
+        printf "%b\n" "$ERRORS" >&2
+        echo "Restart: run_recipe_by_name('smart-orchestrator', user_context={'task_description': '...', 'repo_path': '...'}, progress=True)" >&2
+        exit 1
+      fi
+      # Set workflow-active semaphore EARLY so that nested agent steps
+      # (classify-and-decompose) don't get routing/classification hook
+      # injections that cause infinite recursion (fix #3971).
+      HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir 2>/dev/null || true)"
+      if [ -n "$HOOKS_DIR" ]; then
+        # Pass $PPID (recipe-runner-rs) so the semaphore PID survives the
+        # ephemeral bash step and is still alive when hooks check liveness.
+        python3 - "$HOOKS_DIR" "$PPID" <<'__AMPLIHACK_SEMAPHORE_PY__' 2>/dev/null || true
+      import sys; sys.path.insert(0, sys.argv[1])
+      try:
+          from dev_intent_router import set_workflow_active
+          set_workflow_active('pending', 0, pid=int(sys.argv[2]))
+      except Exception:
+          pass
+      __AMPLIHACK_SEMAPHORE_PY__
+      fi
+      echo "=== Pre-flight passed ==="
+    output: "preflight_status"
+
   # ─────────────────────────────────────────────────────────────────────────
   # Phase 1: Classify & Decompose
   # ─────────────────────────────────────────────────────────────────────────
 
+  # classify-and-decompose: Use a bash step that calls claude directly with
+  # --disallowed-tools to prevent the model from making tool calls.
+  # Without this, the model returns JSON then continues into implementation,
+  # making hundreds of tool calls and never returning (#3971).
   - id: "classify-and-decompose"
-    type: "agent"
-    agent: "amplihack:core:architect"
-    prompt: |
-      === [RECIPE PROGRESS] Step: classify-and-decompose ===
+    type: "bash"
+    command: |
+      AGENT_BIN="${AMPLIHACK_AGENT_BINARY:-claude}"
+      _PROMPT_FILE=$(mktemp)
+      trap 'rm -f "$_PROMPT_FILE"' EXIT
+      cat > "$_PROMPT_FILE" <<'__AMPLIHACK_CLASSIFY_EOF__'
+      You are classifying a task for the smart-orchestrator recipe.
+      Return ONLY a JSON object. Do NOT use tools. Do NOT implement anything.
 
-      You are an intelligent task orchestrator. Analyze this request and produce a
-      structured orchestration plan.
+      REQUEST: {{task_description}}
 
-      **REQUEST**: {{task_description}}
-
-      Output:
+      Classify and decompose:
       1. task_type: Q&A | Operations | Investigation | Development
       2. goal: clear 1-sentence goal
       3. success_criteria: numbered list of verifiable criteria
       4. workstreams: array of independent parallel units
          - 1 workstream for cohesive/sequential tasks
          - 2-5 for CLEARLY INDEPENDENT components
-           e.g. "build webui + api" -> 2 workstreams
-                "investigate X then implement Y" -> 2 workstreams
          - recipe: "default-workflow" (dev) | "investigation-workflow" (research)
 
-      **Decomposition override**: {{force_single_workstream}} — if "true", use exactly 1 workstream regardless of task structure.
+      Decomposition override: {{force_single_workstream}} — if "true", use exactly 1 workstream.
 
-      **Output exactly this JSON**:
-      ```json
+      Output exactly this JSON (no markdown fences, no explanation):
       {
         "task_type": "Development",
         "goal": "One sentence goal",
@@ -68,7 +127,43 @@ steps:
           {"name": "slug", "description": "full task", "recipe": "default-workflow"}
         ]
       }
-      ```
+      __AMPLIHACK_CLASSIFY_EOF__
+      PROMPT=$(cat "$_PROMPT_FILE")
+      _STDERR_FILE=$(mktemp)
+      trap 'rm -f "$_PROMPT_FILE" "$_STDERR_FILE"' EXIT
+      # Build CLI invocation conditional on agent binary.
+      # Claude supports --dangerously-skip-permissions, --disallowed-tools, --append-system-prompt.
+      # Copilot/codex reject those flags; use --allow-all-tools and inject
+      # the classifier constraint into the prompt itself.
+      _CLASSIFIER_CONSTRAINT="SYSTEM CONSTRAINT: You are a task classifier. Output ONLY JSON. Do NOT invoke dev-orchestrator or any workflow. Do NOT use any tools."
+      set +e
+      case "$AGENT_BIN" in
+        *copilot*|*codex*)
+          env -u CLAUDECODE "$AGENT_BIN" \
+            --allow-all-tools \
+            -p "${_CLASSIFIER_CONSTRAINT} ${PROMPT}" 2>"$_STDERR_FILE"
+          ;;
+        *)
+          env -u CLAUDECODE "$AGENT_BIN" \
+            --dangerously-skip-permissions \
+            --disallowed-tools "Bash,Edit,Write,Read,Glob,Grep,Agent,Skill,NotebookEdit,WebFetch,WebSearch,TodoWrite" \
+            --append-system-prompt "You are a task classifier. Output ONLY JSON. Do NOT invoke dev-orchestrator or any workflow." \
+            -p "$PROMPT" 2>"$_STDERR_FILE"
+          ;;
+      esac
+      _EXIT_CODE=$?
+      set -e
+      if [ "$_EXIT_CODE" -ne 0 ]; then
+        _STDERR_CONTENT=$(cat "$_STDERR_FILE" 2>/dev/null || true)
+        echo "classify-and-decompose: $AGENT_BIN exited $_EXIT_CODE" >&2
+        if [ -n "$_STDERR_CONTENT" ]; then
+          echo "stderr: $_STDERR_CONTENT" >&2
+        else
+          echo "stderr: (empty — binary produced no diagnostic output)" >&2
+          echo "hint: verify '$AGENT_BIN' is installed, ANTHROPIC_API_KEY is set, and network is reachable" >&2
+        fi
+        exit "$_EXIT_CODE"
+      fi
     output: "decomposition_json"
 
   # parse-decomposition: extract task_type from architect JSON output.
@@ -77,22 +172,25 @@ steps:
   - id: "parse-decomposition"
     type: "bash"
     command: |
-      HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
+      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
       if [ ! -f "$HELPER_PATH" ]; then
           echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
-          echo "Set AMPLIHACK_HOME to your amplihack repo root, or run from within the repo." >&2
+          echo "Ensure amplihack is installed correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
           exit 1
       fi
-      DECOMP_JSON=$(cat <<'EOFDECOMP'
+      _DECOMP_TMPFILE=$(mktemp)
+      trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
+      cat > "$_DECOMP_TMPFILE" <<__DECOMP_EOF__
       {{decomposition_json}}
-      EOFDECOMP
-      )
-      export DECOMP_JSON HELPER_PATH
+      __DECOMP_EOF__
+      export DECOMP_TMPFILE="$_DECOMP_TMPFILE"
+      export HELPER_PATH
       python3 - <<'PYEOF'
       import sys, json, os, importlib.util
 
       helper_path = os.environ['HELPER_PATH']
-      decomp_json = os.environ['DECOMP_JSON']
+      with open(os.environ['DECOMP_TMPFILE']) as f:
+          decomp_json = f.read()
 
       spec = importlib.util.spec_from_file_location('orch_helper', helper_path)
       h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
@@ -102,12 +200,13 @@ steps:
           msg = (
               "\n"
               "╔══════════════════════════════════════════════════════════════════╗\n"
-              "║  WARNING: decomposition JSON parse failed                        ║\n"
-              "║  The architect agent returned non-JSON prose instead of the      ║\n"
-              "║  expected structured plan. Defaulting to:                        ║\n"
-              "║    task_type=Development, workstream_count=1 (no goal spec).     ║\n"
-              "║  The goal specification will be EMPTY — execution quality may    ║\n"
-              "║  be degraded. Consider re-running /dev if results are wrong.     ║\n"
+              "║  ERROR: decomposition JSON parse failed                         ║\n"
+              "║  The architect agent returned non-JSON prose instead of the     ║\n"
+              "║  expected structured plan.                                      ║\n"
+              "║                                                                 ║\n"
+              "║  Action: defaulting to task_type=Development so execution can   ║\n"
+              "║  continue. The adaptive strategy step will evaluate whether     ║\n"
+              "║  direct recipe invocation should be attempted.                  ║\n"
               "╚══════════════════════════════════════════════════════════════════╝\n"
           )
           print(msg, file=sys.stderr)
@@ -124,43 +223,87 @@ steps:
   - id: "activate-workflow"
     type: "bash"
     command: |
-      HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
-      DECOMP_JSON=$(cat <<'EOFDECOMP'
+      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
+      if [ ! -f "$HELPER_PATH" ]; then
+          echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
+          echo "Ensure amplihack is installed correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
+          exit 1
+      fi
+      DECOMP_JSON=$(cat <<EOFDECOMP
       {{decomposition_json}}
       EOFDECOMP
       )
       TASK_TYPE={{task_type}}
-      HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
-      export DECOMP_JSON HELPER_PATH TASK_TYPE HOOKS_DIR
+      FORCE_SINGLE={{force_single_workstream}}
+      HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir 2>/dev/null || true)"
+      _DECOMP_TMPFILE=$(mktemp)
+      trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
+      cat > "$_DECOMP_TMPFILE" <<__DECOMP_EOF__
+      {{decomposition_json}}
+      __DECOMP_EOF__
+      export DECOMP_TMPFILE="$_DECOMP_TMPFILE"
+      export TASK_TYPE=$(printf '%s' {{task_type}})
+      export FORCE_SINGLE=$(printf '%s' "$FORCE_SINGLE")
+      export HELPER_PATH HOOKS_DIR
       python3 - <<'PYEOF'
-      import os, sys, importlib.util
+      import os, sys, io, importlib.util
 
       helper_path = os.environ['HELPER_PATH']
-      decomp_json = os.environ['DECOMP_JSON']
+      with open(os.environ['DECOMP_TMPFILE']) as f:
+          decomp_json = f.read()
       task_type = os.environ['TASK_TYPE']
       hooks_dir = os.environ['HOOKS_DIR']
+      force_single = os.environ.get('FORCE_SINGLE', 'false').strip().lower() in ('true', '1')
 
       # Compute workstream count from decomposition JSON
       spec = importlib.util.spec_from_file_location('orch_helper', helper_path)
       h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
       obj = h.extract_json(decomp_json)
-      count = max(1, len(obj.get("workstreams", [{}])))
+      raw_count = max(1, len(obj.get("workstreams", [])))
 
-      # Set workflow-active semaphore so the hook skips injection during execution
+      # Enforce force_single_workstream override (fix #3130)
+      count = 1 if force_single else raw_count
+
+      # Update workflow-active semaphore with actual task_type and workstream count
+      # (initial semaphore was set in preflight-validation with placeholder values)
+      # Redirect stdout during import to prevent pollution of captured output
+      _saved_stdout = sys.stdout
+      sys.stdout = io.StringIO()
       try:
           sys.path.insert(0, hooks_dir)
           from dev_intent_router import set_workflow_active
           set_workflow_active(task_type, count)
       except Exception:
           pass  # Hook may not exist in all environments
+      finally:
+          sys.stdout = _saved_stdout
 
       # Announce classification to stderr (visible to user, not captured as output)
+      if force_single and raw_count != count:
+          print(f"[dev-orchestrator] force_single_workstream=true — overriding {raw_count} workstreams to 1", file=sys.stderr)
       print(f"[dev-orchestrator] Classified as: {task_type} | Workstreams: {count} — starting execution...", file=sys.stderr)
 
-      # Output workstream count (captured by recipe runner)
-      print(count)
+      # Output workstream count (captured by recipe runner).
+      # Use sys.stdout.write to avoid trailing newline — the recipe runner
+      # stores step output as-is, and a trailing '\n' breaks exact string
+      # comparisons in downstream conditions (fix #3570).
+      sys.stdout.write(str(count))
       PYEOF
     output: "workstream_count"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Materialize user_context overrides into step outputs so they are
+  # available in condition evaluation (fix #3075, #3130).
+  # The Rust runner's --set flag updates template variables ({{...}}) but
+  # the condition evaluator only sees step outputs and initial context.
+  # This step bridges the gap by echoing the context value to stdout.
+  # NOTE: Use bare {{var}} — single-quoted '{{var}}' prevents expansion.
+  # ─────────────────────────────────────────────────────────────────────────
+  - id: "materialize-force-single-workstream"
+    type: "bash"
+    command: |
+      printf '%s' {{force_single_workstream}}
+    output: "force_single_workstream"
 
   # ─────────────────────────────────────────────────────────────────────────
   # Setup: register this session in the session tree (atomic check+register)
@@ -172,7 +315,7 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type or task_type == ''"
     command: |
-      TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
+      TREE_SCRIPT="$(python3 -m amplihack.runtime_assets session-tree-path 2>/dev/null || true)"
       SESSION_ID=$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")
 
       if [ -f "$TREE_SCRIPT" ]; then
@@ -252,7 +395,10 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type"
     command: |
-      SESSION_JSON={{session_info}}
+      SESSION_JSON=$(cat <<EOFSESSIONJSON
+      {{session_info}}
+      EOFSESSIONJSON
+      )
       # Extract status using shell grep — no Python subprocess needed
       if echo "$SESSION_JSON" | grep -qE '"status" *: *"ok"'; then
         echo "ALLOWED"
@@ -269,16 +415,35 @@ steps:
 
   # ─────────────────────────────────────────────────────────────────────────
   # Phase 2c: Single dev/investigation workstream -- round 1
-  # NOTE: workstream_count is a bash command output and may contain a trailing
-  # newline. The .strip() and `or '1'` are load-bearing — do not remove them.
-  # If workstream_count is empty (step failed), we default to 1 (single workstream).
+  # NOTE: workstream_count may be stored as a Number (int) by the Rust
+  # recipe runner's parse_context_value (which auto-detects "1" → Number).
+  # Conditions compare against both int (1) and string ('1') to avoid
+  # calling .strip() on non-string types (fix #3606, supersedes #3570).
+  # If workstream_count is empty (step failed), we default to single workstream.
   # ─────────────────────────────────────────────────────────────────────────
 
-  - id: "execute-single-round-1"
+  - id: "execute-single-round-1-development"
     type: "recipe"
+    # NOTE: force_single_workstream may be Value::Bool(true) when set via CLI
+    # --set (parse_context_value coerces "true" -> Bool). The condition evaluator
+    # handles Bool/String cross-type coercion (fix #3069 in recipe-runner-rs).
+    # workstream_count may be an integer (parse_context_value auto-detects "1"
+    # as Number) or a string with trailing whitespace. Compare against both
+    # types to avoid .strip() on non-strings (fix #3606).
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and ((workstream_count == '1' or workstream_count == '') or force_single_workstream == 'true')
+      'Development' in task_type and ((workstream_count == 1 or workstream_count == '1' or workstream_count == '') or force_single_workstream == 'true')
     recipe: "default-workflow"
+    # No explicit context needed: task_description and repo_path flow through
+    # from the parent smart-orchestrator context automatically via context merging
+    # in _execute_sub_recipe().
+    output: "round_1_result"
+
+  - id: "execute-single-round-1-investigation"
+    type: "recipe"
+    # workstream_count may be Number or String (fix #3606, supersedes #3570).
+    condition: |
+      'Investigation' in task_type and ((workstream_count == 1 or workstream_count == '1' or workstream_count == '') or force_single_workstream == 'true')
+    recipe: "investigation-workflow"
     # No explicit context needed: task_description and repo_path flow through
     # from the parent smart-orchestrator context automatically via context merging
     # in _execute_sub_recipe().
@@ -290,37 +455,50 @@ steps:
 
   - id: "create-workstreams-config"
     type: "bash"
+    # workstream_count may be Number or String (fix #3606, supersedes #3570).
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
+      ('Development' in task_type or 'Investigation' in task_type) and workstream_count != 1 and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
+      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
       if [ ! -f "$HELPER_PATH" ]; then
           echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
-          echo "Set AMPLIHACK_HOME to your amplihack repo root, or run from within the repo." >&2
+          echo "Ensure amplihack is installed correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
           exit 1
       fi
-      DECOMP_JSON=$(cat <<'EOFDECOMP'
+      _DECOMP_TMPFILE=$(mktemp)
+      trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
+      cat > "$_DECOMP_TMPFILE" <<__DECOMP_EOF__
       {{decomposition_json}}
-      EOFDECOMP
-      )
-      export DECOMP_JSON HELPER_PATH
+      __DECOMP_EOF__
+      MAX_RUNTIME="{{max_runtime}}"
+      TIMEOUT_POLICY="{{timeout_policy}}"
+      export DECOMP_TMPFILE="$_DECOMP_TMPFILE"
+      export HELPER_PATH MAX_RUNTIME TIMEOUT_POLICY
       python3 - <<'PYEOF'
       import json, os, re, tempfile, sys
       sys.path.insert(0, os.path.dirname(os.environ['HELPER_PATH']))
       import orch_helper
-      decomp = os.environ['DECOMP_JSON']
+      with open(os.environ['DECOMP_TMPFILE']) as f:
+          decomp = f.read()
       obj = orch_helper.extract_json(decomp)
       config = []
+      max_runtime = os.environ.get("MAX_RUNTIME", "")
+      timeout_policy = os.environ.get("TIMEOUT_POLICY", "")
       for i, ws in enumerate(obj.get("workstreams", [])):
           name = ws.get("name", f"workstream-{i+1}")
           slug = re.sub(r'[^a-z0-9-]', '-', name.lower())[:30].strip('-') or f"ws-{i+1}"
-          config.append({
+          entry = {
               "issue": "TBD",
               "branch": f"feat/orch-{i+1}-{slug}",
               "description": name,
               "task": ws.get("description", name),
               "recipe": ws.get("recipe", "default-workflow")
-          })
+          }
+          if max_runtime:
+              entry["max_runtime"] = int(max_runtime)
+          if timeout_policy:
+              entry["timeout_policy"] = timeout_policy
+          config.append(entry)
       fd, p = tempfile.mkstemp(prefix="smart-orch-ws-", suffix=".json", dir="/tmp")
       os.chmod(p, 0o600)
       with os.fdopen(fd, "w") as f: json.dump(config, f, indent=2)
@@ -330,12 +508,19 @@ steps:
 
   - id: "launch-parallel-round-1"
     type: "bash"
+    # workstream_count may be Number or String (fix #3606, supersedes #3570).
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
+      ('Development' in task_type or 'Investigation' in task_type) and workstream_count != 1 and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
+      set -o pipefail
+      # Emit step-transition marker for progress tracking (#3625)
+      echo '{"transition":"step_started","step":"launch-parallel-round-1","timestamp":'$(date +%s)'}' >&2
       REPO_PATH={{repo_path}}
       WS_FILE={{workstreams_file}}
-      SESSION_JSON={{session_info}}
+      SESSION_JSON=$(cat <<EOFSESSIONJSON
+      {{session_info}}
+      EOFSESSIONJSON
+      )
       # Parse tree_id, depth, and validate workstreams file in one Python subprocess.
       # Uses env vars instead of pipe+heredoc to avoid stdin conflict (issue #2581).
       export SESSION_JSON WS_FILE
@@ -364,47 +549,233 @@ steps:
 
       if [ -z "$WS_FILE" ] || [ ! -f "$WS_FILE" ]; then
         echo "ERROR: workstreams_file is missing or empty. create-workstreams-config may have failed." >&2
+        emit_step_transition fail
         exit 1
       fi
 
       if [ "$WS_COUNT_CHECK" = "0" ]; then
         echo "ERROR: workstreams config has 0 entries — decomposition may have failed." >&2
+        emit_step_transition fail
         exit 1
       fi
 
       if [ ! -d "$REPO_PATH" ]; then
-        echo "ERROR: repo_path does not exist: $REPO_PATH" >&2; exit 1
+        echo "ERROR: repo_path does not exist: $REPO_PATH" >&2
+        emit_step_transition fail
+        exit 1
       fi
       cd "$REPO_PATH"
+
+      # Resolve multitask orchestrator from AMPLIHACK_HOME, not from repo root.
+      # The orchestrator.py is an amplihack asset, not a repo file (#3762).
+      ORCH_SCRIPT=""
+      for candidate in \
+        "${AMPLIHACK_HOME:+$AMPLIHACK_HOME/.claude/skills/multitask/orchestrator.py}" \
+        "${HOME}/.amplihack/.claude/skills/multitask/orchestrator.py" \
+        "${HOME}/.copilot/skills/multitask/orchestrator.py" \
+        ".claude/skills/multitask/orchestrator.py"; do
+        if [ -n "$candidate" ] && [ -f "$candidate" ]; then
+          ORCH_SCRIPT="$candidate"
+          break
+        fi
+      done
+      if [ -z "$ORCH_SCRIPT" ]; then
+        echo "ERROR: multitask orchestrator.py not found." >&2
+        echo "  Searched: AMPLIHACK_HOME/.claude/skills/multitask/orchestrator.py" >&2
+        echo "  Set AMPLIHACK_HOME or ensure amplihack is installed." >&2
+        emit_step_transition fail
+        exit 1
+      fi
+      echo "Selected orchestrator source: $ORCH_SCRIPT" >&2
+
       echo "Launching parallel workstreams (tree: $TREE_ID, depth: $SESSION_DEPTH):"
       cat "$WS_FILE"
       echo "---"
+      ORCH_ARGS=()
+      if [ -n "${RECIPE_VAR_max_runtime:-}" ]; then
+        ORCH_ARGS+=(--max-runtime "$RECIPE_VAR_max_runtime")
+      fi
+      if [ -n "${RECIPE_VAR_timeout_policy:-}" ]; then
+        ORCH_ARGS+=(--timeout-policy "$RECIPE_VAR_timeout_policy")
+      fi
+      status=0
       AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$SESSION_DEPTH" \
-        python3 .claude/skills/multitask/orchestrator.py "$WS_FILE"
+        AMPLIHACK_PARENT_STEP="launch-parallel-round-1" \
+        AMPLIHACK_REPO_PATH="$REPO_PATH" \
+        python3 -u "$ORCH_SCRIPT" "${ORCH_ARGS[@]}" "$WS_FILE" | tee /dev/stderr || status=$?
+      # Clean up workstreams file now, before this step's output inflates
+      # the recipe context. Doing it here avoids the E2BIG error that
+      # occurs when a later bash step inherits megabytes of env vars
+      # from accumulated round_1_result (fix: cleanup-helper-arg-overflow).
+      rm -f "$WS_FILE" 2>/dev/null || true
+      exit $status
     output: "round_1_result"
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Recursion depth limit: fall back to single-session execution
-  # Uses default-workflow sub-recipe (same as primary path) so workflow
-  # steps are enforced even when parallel spawning is blocked.
+  # Recursion depth limit: adapt to single-session execution
+  # Uses the task-appropriate sub-recipe (default-workflow for Development,
+  # investigation-workflow for Investigation) so workflow steps are enforced
+  # even when parallel spawning is blocked.
+  # This is an ADAPTIVE strategy (announced via recursion_guard), not a
+  # degradation — the depth-limited banner makes the change visible.
   # ─────────────────────────────────────────────────────────────────────────
 
-  - id: "execute-single-fallback-blocked"
+  - id: "execute-single-fallback-blocked-development"
     type: "recipe"
-    # Fires when blocked from spawning subworkstreams — executes as single session instead
+    # Fires when blocked from spawning subworkstreams — adapts to single session
+    # workstream_count may be Number or String (fix #3606, supersedes #3570).
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard and workstream_count != '1' and workstream_count != ''
+      'Development' in task_type and 'BLOCKED' in recursion_guard and workstream_count != 1 and workstream_count != '1' and workstream_count != ''
     recipe: "default-workflow"
     # No explicit context needed: task_description and repo_path flow through
     # from the parent smart-orchestrator context automatically.
     output: "round_1_result"
 
-  # Cleanup temp workstreams file
+  - id: "execute-single-fallback-blocked-investigation"
+    type: "recipe"
+    # Fires when blocked from spawning subworkstreams — adapts to single session
+    # workstream_count may be Number or String (fix #3606, supersedes #3570).
+    condition: |
+      'Investigation' in task_type and 'BLOCKED' in recursion_guard and workstream_count != 1 and workstream_count != '1' and workstream_count != ''
+    recipe: "investigation-workflow"
+    # No explicit context needed: task_description and repo_path flow through
+    # from the parent smart-orchestrator context automatically.
+    output: "round_1_result"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Phase 2e: Adaptive error recovery (fix #3132)
+  # When ALL execution paths are skipped (round_1_result is empty), this
+  # is an infrastructure or routing error. Instead of silently producing
+  # no results, surface the error, file a bug, and attempt direct recipe
+  # invocation as an ADAPTIVE STRATEGY (announced, not silent).
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - id: "detect-execution-gap"
+    type: "bash"
+    condition: |
+      ('Development' in task_type or 'Investigation' in task_type) and not round_1_result
+    command: |
+      TASK_TYPE={{task_type}}
+      WS_COUNT={{workstream_count}}
+      FORCE_SINGLE={{force_single_workstream}}
+      GUARD={{recursion_guard}}
+
+      cat >&2 <<ERRMSG
+
+      ╔══════════════════════════════════════════════════════════════════╗
+      ║  ERROR: No execution path produced results                     ║
+      ║  All routing conditions evaluated to false — this indicates    ║
+      ║  a routing or infrastructure bug in smart-orchestrator.        ║
+      ║                                                                ║
+      ║  Diagnostic context:                                           ║
+      ║    task_type:               $TASK_TYPE                         ║
+      ║    workstream_count:        $WS_COUNT                          ║
+      ║    force_single_workstream: $FORCE_SINGLE                      ║
+      ║    recursion_guard:         $GUARD                             ║
+      ╚══════════════════════════════════════════════════════════════════╝
+
+      ERRMSG
+
+      # Determine the appropriate direct recipe based on task type
+      if echo "$TASK_TYPE" | grep -qi "investigation"; then
+        RECIPE="investigation-workflow"
+      else
+        RECIPE="default-workflow"
+      fi
+
+      echo "[ADAPTIVE] No execution path ran for $TASK_TYPE task." >&2
+      echo "[ADAPTIVE] Switching to direct $RECIPE invocation." >&2
+      echo "$RECIPE"
+    output: "adaptive_recipe"
+
+  - id: "file-routing-bug"
+    type: "bash"
+    condition: |
+      adaptive_recipe and adaptive_recipe != ''
+    command: |
+      TASK_TYPE={{task_type}}
+      WS_COUNT={{workstream_count}}
+      FORCE_SINGLE={{force_single_workstream}}
+      GUARD={{recursion_guard}}
+      RECIPE={{adaptive_recipe}}
+      TASK_DESC=$(printf '%s' {{task_description}})
+
+      # Build diagnostic body
+      BODY=$(cat <<EOFBODY
+      ## smart-orchestrator routing gap: no execution path ran
+
+      **Symptom**: All execution routing conditions evaluated to false.
+      No execution step (single, parallel, or blocked-fallback) ran.
+
+      ### Diagnostic context
+      - task_type: \`$TASK_TYPE\`
+      - workstream_count: \`$WS_COUNT\`
+      - force_single_workstream: \`$FORCE_SINGLE\`
+      - recursion_guard: \`$GUARD\`
+      - adaptive_recipe selected: \`$RECIPE\`
+
+      ### Task description (truncated)
+      $(echo "$TASK_DESC" | head -c 500)
+
+      ### Environment
+      - AMPLIHACK_HOME: \`${AMPLIHACK_HOME:-<unset>}\`
+      - recipe-runner-rs: \`$(which recipe-runner-rs 2>/dev/null || echo '<not found>')\`
+      - hostname: \`$(hostname -s 2>/dev/null || echo unknown)\`
+      - date: \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\`
+
+      ### Expected behavior
+      At least one execution path should have run based on the classification.
+      The adaptive strategy step ran \`$RECIPE\` directly to recover.
+
+      ---
+      *Auto-filed by smart-orchestrator adaptive error recovery (fix #3132)*
+      EOFBODY
+      )
+
+      # Attempt to file a GH issue — non-fatal if gh is unavailable or auth fails
+      ISSUE_URL=$(gh issue create \
+        --title "smart-orchestrator routing gap: $TASK_TYPE task, workstream_count=$WS_COUNT" \
+        --body "$BODY" \
+        --label "bug" 2>/dev/null) || true
+
+      if [ -n "$ISSUE_URL" ]; then
+        echo "[ADAPTIVE] Filed infrastructure bug: $ISSUE_URL" >&2
+        echo "$ISSUE_URL"
+      else
+        # Log the diagnostic info so it's preserved even if filing fails
+        DIAG_FILE=$(mktemp /tmp/smart-orch-diag-XXXXXX.md)
+        echo "$BODY" > "$DIAG_FILE"
+        echo "[ADAPTIVE] Could not file GH issue (gh unavailable or auth failed)." >&2
+        echo "[ADAPTIVE] Diagnostic info saved to: $DIAG_FILE" >&2
+        echo "diag:$DIAG_FILE"
+      fi
+    output: "infra_error_details"
+
+  - id: "adaptive-execute-development"
+    type: "recipe"
+    condition: |
+      adaptive_recipe == 'default-workflow'
+    recipe: "default-workflow"
+    output: "round_1_result"
+
+  - id: "adaptive-execute-investigation"
+    type: "recipe"
+    condition: |
+      adaptive_recipe == 'investigation-workflow'
+    recipe: "investigation-workflow"
+    output: "round_1_result"
+
+  # Cleanup temp workstreams file (best-effort fallback).
+  # Primary cleanup happens inside launch-parallel-round-1 before context
+  # bloat.  This step uses a glob instead of {{workstreams_file}} so it
+  # carries no template variables — reducing the env-var payload the Rust
+  # runner passes to bash.  The command is unconditionally successful so a
+  # cleanup failure never aborts the recipe (fix: cleanup-helper-arg-overflow).
   - id: "cleanup-helper"
+    fatal: false
     type: "bash"
     command: |
-      WS_FILE={{workstreams_file}}
-      [ -f "$WS_FILE" ] && rm -f "$WS_FILE"
+      rm -f /tmp/smart-orch-ws-*.json 2>/dev/null || true
       echo "ok"
     output: "cleanup_status"
 
@@ -426,16 +797,40 @@ steps:
 
       Was each success criterion met?
 
+      ## Hollow Success Detection (CRITICAL)
+
+      A hollow success is when execution completes structurally but produces
+      no meaningful results. Check for these patterns:
+      - Agent reports "no codebase exists" or "I could not access the code"
+      - Round result is mostly boilerplate with no concrete findings or changes
+      - PR URLs are absent for Development tasks that should produce code changes
+      - Success criteria are marked met without evidence or verification
+      - Agent output repeats the goal description without showing work done
+
+      If the result is a hollow success, use GOAL_STATUS: HOLLOW and explain
+      what specific outputs are missing. Do NOT mark ACHIEVED when agents
+      produced no meaningful work.
+
+      ## Adaptive Strategy Context
+
+      If an infrastructure error was detected and adaptive strategy was used:
+      **Adaptive recipe**: {{adaptive_recipe}}
+      **Error details**: {{infra_error_details}}
+
+      Factor this into your evaluation — if the task ran via adaptive strategy
+      due to a routing failure, note this in your assessment.
+
       End with EXACTLY one of:
-      - `GOAL_STATUS: ACHIEVED` -- all criteria met
+      - `GOAL_STATUS: ACHIEVED` -- all criteria met with verifiable evidence
       - `GOAL_STATUS: PARTIAL -- [what's missing]` -- needs another round
       - `GOAL_STATUS: NOT_ACHIEVED -- [reason]` -- needs another round
+      - `GOAL_STATUS: HOLLOW -- [what was empty]` -- agents ran but produced no real work
     output: "reflection_1"
 
   - id: "execute-round-2"
     type: "agent"
     condition: |
-      reflection_1 and ('PARTIAL' in reflection_1 or 'NOT_ACHIEVED' in reflection_1)
+      reflection_1 and ('PARTIAL' in reflection_1 or 'NOT_ACHIEVED' in reflection_1 or 'HOLLOW' in reflection_1)
     agent: "amplihack:core:builder"
     prompt: |
       Round 1 was incomplete. Continue from where it left off.
@@ -540,7 +935,7 @@ steps:
 
       For parallel workstreams: inspect the round results for evidence that each
       workstream completed, and check whether the log references mention outside-in
-      testing being performed (look for "Step 13", "outside-in-testing", or
+      testing being performed (look for "Step 13", "qa-team", "outside-in-testing", or
       "local testing" references in the results).
 
       ## Validation Steps
@@ -552,7 +947,7 @@ steps:
 
       2. For each workstream, determine whether outside-in testing was performed:
          - Look for "Step 13: Local Testing Results" evidence
-         - Look for `outside-in-testing` skill invocation
+         - Look for `qa-team` or `outside-in-testing` skill invocation
          - Look for at least 2 test scenario results (PASS/FAIL)
 
       3. Report your findings in this format:
@@ -565,7 +960,7 @@ steps:
 
          For each workstream:
            - Workstream: <name or PR URL>
-           - outside-in-testing skill invoked: YES / NO / UNKNOWN
+           - qa-team / outside-in-testing skill invoked: YES / NO / UNKNOWN
            - Step 13 results documented: YES / NO / UNKNOWN
            - Test scenarios executed: <count or UNKNOWN>
            - VERDICT: PASS / FAIL / CANNOT_VERIFY
@@ -606,26 +1001,36 @@ steps:
 
       Note: empty strings above mean that round was not needed.
 
+      **Adaptive strategy used**: {{adaptive_recipe}}
+      **Infrastructure error details**: {{infra_error_details}}
+
       Provide:
       1. What was accomplished (2-3 sentences)
       2. PR links (if any)
       3. Outside-in testing status (PASSED / FAILED / N/A — not applicable when no PR was created)
-      4. Goal status (ACHIEVED / PARTIAL / NOT_ACHIEVED)
+      4. Goal status (ACHIEVED / PARTIAL / NOT_ACHIEVED / HOLLOW)
       5. Remaining work if PARTIAL or if outside-in testing FAILED
+      6. If adaptive strategy was used, note what failed and what strategy was applied
     output: "summary"
 
   # ─────────────────────────────────────────────────────────────────────────
   # Teardown: mark this session complete in the session tree
   # Runs unconditionally so the slot is freed even on partial/failed runs.
-  # Combines session completion + workflow semaphore clearing in one Python call.
+  # Canonical teardown now also runs in Python after the Rust runner returns,
+  # so this bash step is a compatibility fallback only and must never flip an
+  # otherwise successful orchestration red due to late-stage env/arg bloat.
   # ─────────────────────────────────────────────────────────────────────────
 
   - id: "complete-session"
+    fatal: false
     type: "bash"
     command: |
-      SESSION_JSON={{session_info}}
-      TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
-      HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
+      SESSION_JSON=$(cat <<EOFSESSIONJSON
+      {{session_info}}
+      EOFSESSIONJSON
+      )
+      TREE_SCRIPT="$(python3 -m amplihack.runtime_assets session-tree-path 2>/dev/null || true)"
+      HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir 2>/dev/null || true)"
       # Parse session fields and clear workflow semaphore in one Python subprocess.
       # Uses env vars instead of pipe+heredoc to avoid stdin conflict (issue #2581).
       export SESSION_JSON HOOKS_DIR
@@ -668,10 +1073,11 @@ output:
     **Task**: {{task_description}}
     **Type**: {{task_type}}
     **Workstreams**: {{workstream_count}}
+    **Adaptive strategy**: {{adaptive_recipe}}
 
     ## Summary
 
     {{summary}}
 
     ---
-    *amplihack dev-orchestrator v1.4.0 (smart-orchestrator)*
+    *amplihack dev-orchestrator v1.5.0 (smart-orchestrator)*

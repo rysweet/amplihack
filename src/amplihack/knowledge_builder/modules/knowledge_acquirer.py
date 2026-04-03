@@ -41,8 +41,11 @@ Requirements:
   - [url2]
   - [url3]"""
 
+        permission_flag = (
+            "--allow-all-tools" if self.agent_cmd == "copilot" else "--dangerously-skip-permissions"
+        )
         result = subprocess.run(
-            [self.agent_cmd, "--dangerously-skip-permissions", "-p", prompt],
+            [self.agent_cmd, permission_flag, "-p", prompt],
             capture_output=True,
             text=True,
             check=False,

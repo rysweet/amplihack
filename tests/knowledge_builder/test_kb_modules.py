@@ -53,6 +53,54 @@ class TestQuestionGenerator:
         assert len(questions) == 0  # No questions beyond depth 3
         assert not mock_run.called
 
+    @patch("subprocess.run")
+    def test_copilot_generate_initial_questions_no_dangerous_flag(self, mock_run):
+        """Copilot agent must use --allow-all-tools instead of the Claude-only flag."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="\n".join([f"{i}. Question {i}?" for i in range(1, 11)]),
+        )
+
+        gen = QuestionGenerator(agent_cmd="copilot")
+        gen.generate_initial_questions("Test Topic")
+
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "--dangerously-skip-permissions" not in call_args
+        assert "--allow-all-tools" in call_args
+        assert "copilot" in call_args
+
+    @patch("subprocess.run")
+    def test_copilot_generate_socratic_questions_no_dangerous_flag(self, mock_run):
+        """Copilot agent must use the Copilot-compatible permission flag in Socratic mode."""
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="1. Follow-up 1?\n2. Follow-up 2?\n3. Follow-up 3?"
+        )
+
+        gen = QuestionGenerator(agent_cmd="copilot")
+        parent = Question(text="Parent question?", depth=0, parent_index=None)
+        gen.generate_socratic_questions(parent, 0)
+
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "--dangerously-skip-permissions" not in call_args
+        assert "--allow-all-tools" in call_args
+
+    @patch("subprocess.run")
+    def test_claude_generate_initial_questions_keeps_dangerous_flag(self, mock_run):
+        """Claude agent must keep its existing flag behavior."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="\n".join([f"{i}. Question {i}?" for i in range(1, 11)]),
+        )
+
+        gen = QuestionGenerator(agent_cmd="claude")
+        gen.generate_initial_questions("Test Topic")
+
+        call_args = mock_run.call_args[0][0]
+        assert "--dangerously-skip-permissions" in call_args
+        assert "--allow-all-tools" not in call_args
+
 
 class TestKnowledgeAcquirer:
     """Test knowledge acquisition via web search."""
@@ -73,6 +121,27 @@ class TestKnowledgeAcquirer:
         assert len(sources) == 2
         assert "https://example.com" in sources
         assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "--dangerously-skip-permissions" in call_args
+        assert "--allow-all-tools" not in call_args
+
+    @patch("subprocess.run")
+    def test_answer_question_copilot_uses_allow_all_tools(self, mock_run):
+        """Copilot agent must use the Copilot-compatible permission flag."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="ANSWER: This is the answer.\nSOURCES:\n- https://example.com\n- https://test.org",
+        )
+
+        acq = KnowledgeAcquirer(agent_cmd="copilot")
+        question = Question(text="What is this?", depth=0, parent_index=None)
+        answer, sources = acq.answer_question(question, "Topic")
+
+        assert answer == "This is the answer."
+        assert len(sources) == 2
+        call_args = mock_run.call_args[0][0]
+        assert "--dangerously-skip-permissions" not in call_args
+        assert "--allow-all-tools" in call_args
 
     @patch("subprocess.run")
     def test_answer_question_no_sources(self, mock_run):

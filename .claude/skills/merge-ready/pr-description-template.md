@@ -7,9 +7,9 @@ Copy these sections into the PR description and replace every placeholder with a
 ### QA-team evidence
 
 - Scenario files: `<path/to/scenario.yaml>`
-- Validation command: `gadugi-test validate <scenario>`
+- Validation command: `gadugi-test validate -f <scenario-file>`
 - Validation result: `<passed / failed>`
-- Run command: `gadugi-test run <scenario>`
+- Run command: `gadugi-test run -d <scenario-dir> -s "<scenario-name>" --verbose`
 - Run target: `<local env / deployed env>`
 - Run result: `<passed / failed>`
 - Evidence location: `<artifact path or log link>` (must include pass/fail counts and command output, not just a claim)

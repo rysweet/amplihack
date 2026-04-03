@@ -23,7 +23,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from amplihack.recipes.models import StepStatus
+from amplihack.recipes.models import RecipeResult, StepStatus
 from amplihack.recipes.rust_runner import (
     RustRunnerNotFoundError,
     _redact_command_for_log,
@@ -390,6 +390,157 @@ class TestRunRecipeViaRust:
         """PR-M5: OSError during subprocess.run propagates cleanly."""
         with pytest.raises(OSError, match="No such file or directory"):
             run_recipe_via_rust("test-recipe")
+
+
+# ============================================================================
+# Smart-orchestrator teardown hardening
+# ============================================================================
+
+
+class TestSmartOrchestratorTeardown:
+    """Teardown is finalized in Python so late bash failures stay non-fatal."""
+
+    def test_postprocess_updates_session_complete_status(self):
+        import amplihack.recipes.rust_runner as mod
+
+        result = RecipeResult(
+            recipe_name="smart-orchestrator",
+            success=True,
+            step_results=[],
+            context={"session_info": '{"session_id":"abc123","tree_id":"tree123","status":"ok"}'},
+        )
+
+        with (
+            patch(
+                "amplihack.recipes.rust_runner._best_effort_clear_smart_orchestrator_workflow_active",
+                return_value="workflow-active semaphore cleared",
+            ) as mock_clear,
+            patch(
+                "amplihack.recipes.rust_runner._best_effort_complete_smart_orchestrator_session",
+                return_value="Session abc123 completed in tree tree123",
+            ) as mock_complete,
+        ):
+            mod._postprocess_smart_orchestrator_result(result, dry_run=False)
+
+        mock_clear.assert_called_once_with()
+        mock_complete.assert_called_once_with(result.context["session_info"])
+        assert (
+            result.context["session_complete_status"]
+            == "workflow-active semaphore cleared; Session abc123 completed in tree tree123"
+        )
+
+    def test_postprocess_skips_side_effects_in_dry_run(self):
+        import amplihack.recipes.rust_runner as mod
+
+        result = RecipeResult(
+            recipe_name="smart-orchestrator",
+            success=True,
+            step_results=[],
+            context={"session_info": '{"session_id":"abc123","tree_id":"tree123","status":"ok"}'},
+        )
+
+        with (
+            patch(
+                "amplihack.recipes.rust_runner._best_effort_clear_smart_orchestrator_workflow_active"
+            ) as mock_clear,
+            patch(
+                "amplihack.recipes.rust_runner._best_effort_complete_smart_orchestrator_session"
+            ) as mock_complete,
+        ):
+            mod._postprocess_smart_orchestrator_result(result, dry_run=True)
+
+        mock_clear.assert_not_called()
+        mock_complete.assert_not_called()
+        assert "session_complete_status" not in result.context
+
+    @patch(
+        "amplihack.recipes.rust_runner._find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch(
+        "amplihack.recipes.rust_runner._resolve_recipe_target",
+        return_value="/repo/amplifier-bundle/recipes/smart-orchestrator.yaml",
+    )
+    @patch("amplihack.recipes.rust_runner._execute_rust_command")
+    @patch("amplihack.recipes.rust_runner._postprocess_smart_orchestrator_result")
+    def test_run_recipe_via_rust_postprocesses_smart_orchestrator(
+        self,
+        mock_postprocess,
+        mock_execute,
+        mock_resolve_target,
+        mock_find_binary,
+    ):
+        expected = RecipeResult(
+            recipe_name="smart-orchestrator",
+            success=True,
+            step_results=[],
+            context={"session_info": '{"session_id":"abc123","tree_id":"tree123","status":"ok"}'},
+        )
+        mock_execute.return_value = expected
+
+        result = run_recipe_via_rust("smart-orchestrator")
+
+        assert result is expected
+        mock_postprocess.assert_called_once_with(expected, dry_run=False)
+        mock_execute.assert_called_once()
+        mock_resolve_target.assert_called_once()
+        mock_find_binary.assert_called_once()
+
+    @patch(
+        "amplihack.recipes.rust_runner._find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch(
+        "amplihack.recipes.rust_runner._resolve_recipe_target",
+        return_value="/repo/amplifier-bundle/recipes/default-workflow.yaml",
+    )
+    @patch("amplihack.recipes.rust_runner._execute_rust_command")
+    @patch("amplihack.recipes.rust_runner._postprocess_smart_orchestrator_result")
+    def test_run_recipe_via_rust_skips_postprocess_for_other_recipes(
+        self,
+        mock_postprocess,
+        mock_execute,
+        mock_resolve_target,
+        mock_find_binary,
+    ):
+        mock_execute.return_value = RecipeResult(
+            recipe_name="default-workflow",
+            success=True,
+            step_results=[],
+            context={},
+        )
+
+        run_recipe_via_rust("default-workflow")
+
+        mock_postprocess.assert_not_called()
+        mock_execute.assert_called_once()
+        mock_resolve_target.assert_called_once()
+        mock_find_binary.assert_called_once()
+
+    @patch(
+        "amplihack.recipes.rust_runner._find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch(
+        "amplihack.recipes.rust_runner._resolve_recipe_target",
+        return_value="/repo/amplifier-bundle/recipes/smart-orchestrator.yaml",
+    )
+    @patch("amplihack.recipes.rust_runner._execute_rust_command", side_effect=RuntimeError("boom"))
+    @patch(
+        "amplihack.recipes.rust_runner._best_effort_clear_smart_orchestrator_workflow_active",
+        return_value="workflow-active semaphore cleared",
+    )
+    def test_run_recipe_via_rust_clears_workflow_active_when_smart_orchestrator_fails(
+        self,
+        mock_clear,
+        mock_execute,
+        mock_resolve_target,
+        mock_find_binary,
+    ):
+        with pytest.raises(RuntimeError, match="boom"):
+            run_recipe_via_rust("smart-orchestrator")
+
+        mock_clear.assert_called_once_with()
+        mock_execute.assert_called_once()
+        mock_resolve_target.assert_called_once()
+        mock_find_binary.assert_called_once()
 
 
 # ============================================================================

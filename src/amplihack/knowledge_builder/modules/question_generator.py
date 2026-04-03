@@ -34,8 +34,11 @@ Requirements:
 - Format: One question per line, numbered 1-10
 - No additional commentary"""
 
+        permission_flag = (
+            "--allow-all-tools" if self.agent_cmd == "copilot" else "--dangerously-skip-permissions"
+        )
         result = subprocess.run(
-            [self.agent_cmd, "--dangerously-skip-permissions", "-p", prompt],
+            [self.agent_cmd, permission_flag, "-p", prompt],
             capture_output=True,
             text=True,
             check=False,
@@ -91,8 +94,11 @@ Requirements:
 - Format: One question per line, numbered 1-3
 - No additional commentary"""
 
+        permission_flag = (
+            "--allow-all-tools" if self.agent_cmd == "copilot" else "--dangerously-skip-permissions"
+        )
         result = subprocess.run(
-            [self.agent_cmd, "--dangerously-skip-permissions", "-p", prompt],
+            [self.agent_cmd, permission_flag, "-p", prompt],
             capture_output=True,
             text=True,
             check=False,

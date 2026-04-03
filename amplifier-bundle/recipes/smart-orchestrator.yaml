@@ -1016,10 +1016,13 @@ steps:
   # ─────────────────────────────────────────────────────────────────────────
   # Teardown: mark this session complete in the session tree
   # Runs unconditionally so the slot is freed even on partial/failed runs.
-  # Combines session completion + workflow semaphore clearing in one Python call.
+  # Canonical teardown now also runs in Python after the Rust runner returns,
+  # so this bash step is a compatibility fallback only and must never flip an
+  # otherwise successful orchestration red due to late-stage env/arg bloat.
   # ─────────────────────────────────────────────────────────────────────────
 
   - id: "complete-session"
+    fatal: false
     type: "bash"
     command: |
       SESSION_JSON=$(cat <<EOFSESSIONJSON

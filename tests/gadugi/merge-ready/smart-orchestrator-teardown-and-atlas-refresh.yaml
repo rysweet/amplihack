@@ -1,0 +1,137 @@
+name: "Smart Orchestrator - Teardown Hardening and Atlas Refresh"
+description: >
+  Validates the orchestration-brittleness fix that moved smart-orchestrator
+  teardown into deterministic Python post-processing, keeps the packaged
+  smart-orchestrator recipe copy synced with the top-level source, and refreshes
+  the ast-lsp-bindings atlas layer for rust_runner.py changes.
+version: "1.0.0"
+config:
+  timeout: 240000
+  retries: 0
+  parallel: false
+
+environment:
+  requires: []
+
+agents:
+  - name: "cli-agent"
+    type: "cli"
+    config:
+      workingDirectory: "."
+      defaultTimeout: 120000
+      executionMode: "spawn"
+      captureOutput: true
+      ioConfig:
+        encoding: "utf8"
+        handleInteractivePrompts: false
+      logConfig:
+        logCommands: true
+        logOutput: true
+        logLevel: "info"
+
+steps:
+  - name: "Run focused orchestration regression suites"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: >-
+        PYTHONPATH=src uv run pytest -q
+        tests/recipes/test_rust_runner.py
+        tests/recipes/test_smart_orchestrator_bundle_sync.py
+        tests/recipes/test_session_info_quoting.py
+        tests/skills/test_dev_orchestrator_issue_3002.py
+        tests/recipes/test_rust_runner_binary.py
+        tests/knowledge_builder/test_kb_modules.py
+        tests/recipes/test_default_workflow_resumable_timeouts.py
+        && echo ORCH_TEARDOWN_REGRESSIONS_OK
+    timeout: 180000
+
+  - name: "Verify orchestration regression suites passed"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "ORCH_TEARDOWN_REGRESSIONS_OK"
+    timeout: 15000
+
+  - name: "Run outside-in startup smoke"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: >-
+        PYTHONPATH=src uv run pytest -q
+        tests/outside_in/test_dev_orchestrator_startup_e2e.py
+        -k direct_launch_snippet_executes_in_dry_run
+        && echo OUTSIDE_IN_STARTUP_OK
+    timeout: 120000
+
+  - name: "Verify outside-in startup smoke passed"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "OUTSIDE_IN_STARTUP_OK"
+    timeout: 15000
+
+  - name: "Verify Python teardown path and bundle sync surfaces"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: >-
+        python3 -c "from pathlib import Path; import yaml;
+        recipe = yaml.safe_load(Path('amplifier-bundle/recipes/smart-orchestrator.yaml').read_text());
+        step = next(s for s in recipe['steps'] if s['id'] == 'complete-session');
+        assert step.get('fatal') is False;
+        src = Path('amplifier-bundle/recipes/smart-orchestrator.yaml').read_text();
+        pkg = Path('src/amplihack/amplifier-bundle/recipes/smart-orchestrator.yaml').read_text();
+        assert src == pkg;
+        text = Path('src/amplihack/recipes/rust_runner.py').read_text();
+        required = ['def _clear_smart_orchestrator_workflow_active', 'def _complete_smart_orchestrator_session', 'def _postprocess_smart_orchestrator_result', 'resolve_asset_path(\"hooks-dir\")', 'resolve_asset_path(\"session-tree-path\")'];
+        missing = [item for item in required if item not in text];
+        assert not missing, missing;
+        print('PYTHON_TEARDOWN_OK')"
+    timeout: 30000
+
+  - name: "Verify Python teardown path marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PYTHON_TEARDOWN_OK"
+    timeout: 10000
+
+  - name: "Verify atlas layer refresh markers"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: >-
+        python3 -c "from pathlib import Path;
+        idx = Path('docs/atlas/ast-lsp-bindings/index.md').read_text();
+        dot = Path('docs/atlas/ast-lsp-bindings/ast-lsp-bindings.dot').read_text();
+        mmd = Path('docs/atlas/ast-lsp-bindings/ast-lsp-bindings.mmd').read_text();
+        assert 'rust_runner.py' in idx;
+        assert 'runtime_assets' in dot and 'dev_intent_router' in dot and 'session_tree.py' in dot;
+        assert 'runtime_assets' in mmd;
+        print('ATLAS_REFRESH_OK')"
+    timeout: 30000
+
+  - name: "Verify atlas layer refresh marker"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "ATLAS_REFRESH_OK"
+    timeout: 10000
+
+cleanup:
+  - name: "Capture full outside-in output"
+    agent: "cli-agent"
+    action: "save_output"
+    params:
+      outputType: "full"
+      path: "smart-orchestrator-teardown-and-atlas-refresh-output.txt"
+
+metadata:
+  tags:
+    ["cli", "smart-orchestrator", "teardown", "rust-runner", "atlas", "regression", "outside-in"]
+  priority: "high"
+
+# Run commands:
+# gadugi-test validate -f tests/gadugi/merge-ready/smart-orchestrator-teardown-and-atlas-refresh.yaml
+# gadugi-test run -d tests/gadugi/merge-ready -s "smart-orchestrator-teardown-and-atlas-refresh" --verbose

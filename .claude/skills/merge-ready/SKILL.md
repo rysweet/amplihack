@@ -21,7 +21,7 @@ Use [pr-description-template.md](pr-description-template.md) to update the PR de
 
 A PR is merge-ready only when **all** of the following are true:
 
-1. `qa-team` scenarios were written or updated, validated with `gadugi-test validate`, and actually run with `gadugi-test run`.
+1. `qa-team` scenarios were written or updated, validated with `gadugi-test validate -f`, and actually run with `gadugi-test run -d ... -s ...`.
 2. User-facing docs were updated when the change affects APIs, configuration, deployment, CLI behavior, or other external surfaces.
 3. `quality-audit` completed at least 3 SEEK → VALIDATE → FIX cycles, continued past 3 if critical or high findings remained, and ended on a clean final cycle.
 4. All GitHub Actions checks are green with **0 failures**.
@@ -71,17 +71,19 @@ Invoke `qa-team` and ensure it covers the changed behavior from an external user
 Required deliverables:
 
 - scenario file path(s)
-- proof that `gadugi-test validate` succeeded
-- proof that `gadugi-test run` succeeded
+- proof that `gadugi-test validate -f <scenario-file>` succeeded
+- proof that `gadugi-test run -d <scenario-dir> -s "<scenario-name>"` succeeded
 - target environment used for the run (local or deployed)
 - evidence location or execution output summary
 
 Minimum commands:
 
 ```bash
-gadugi-test validate path/to/scenario.yaml
-gadugi-test run path/to/scenario.yaml
+gadugi-test validate -f path/to/scenario.yaml
+gadugi-test run -d path/to/scenario-dir -s "scenario-name" --verbose
 ```
+
+Use a scenario directory that contains only valid gadugi YAML files for the run. If the repository has legacy or incompatible scenario files elsewhere, isolate the merge-ready scenario in its own subdirectory rather than letting unrelated invalid files poison the run.
 
 If the environment needed to run the scenario does not exist, stop and report a blocker. Do not downgrade this to "definition only".
 
@@ -165,6 +167,7 @@ Use this format:
 Verdict: MERGE_READY | NOT_MERGE_READY
 
 Criteria:
+
 - QA-team: pass | fail
 - Docs: pass | fail | not-applicable
 - Quality-audit: pass | fail
@@ -173,6 +176,7 @@ Criteria:
 - PR description evidence: pass | fail
 
 Blockers:
+
 - <concrete missing item or `none`>
 ```
 

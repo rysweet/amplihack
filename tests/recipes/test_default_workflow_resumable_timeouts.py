@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
 
@@ -112,3 +113,56 @@ def test_checkpoint_commands_are_shell_syntax_valid(
     )
 
     assert result.returncode == 0, result.stderr
+
+
+_LIST_LITERAL_IN_CONDITION = re.compile(r"\bnot\s+in\s*\[|\bin\s*\[")
+
+
+@pytest.mark.parametrize(
+    "step_id,condition",
+    [(step["id"], step["condition"]) for step in _load_recipe()["steps"] if step.get("condition")],
+)
+def test_step_conditions_do_not_use_list_literals(step_id: str, condition: str):
+    """List-literal conditions are incompatible with the Rust recipe runner parser."""
+    assert not _LIST_LITERAL_IN_CONDITION.search(condition), (
+        f"Step '{step_id}' condition uses list-literal 'in [...]' syntax "
+        f"which is incompatible with the Rust recipe runner: {condition!r}"
+    )
+
+
+@pytest.mark.parametrize(
+    "step_id,checkpoint_value,expected",
+    [
+        ("step-07-write-tests", "", True),
+        ("step-07-write-tests", "checkpoint-after-implementation", False),
+        ("step-07-write-tests", "checkpoint-after-review-feedback", False),
+        ("step-08-implement", "", True),
+        ("step-08-implement", "checkpoint-after-implementation", False),
+        ("step-08-implement", "checkpoint-after-review-feedback", False),
+        ("checkpoint-after-implementation", "", True),
+        ("checkpoint-after-implementation", "checkpoint-after-implementation", False),
+        ("checkpoint-after-implementation", "checkpoint-after-review-feedback", False),
+    ],
+)
+def test_pre_checkpoint_conditions_evaluate_correctly(
+    steps: dict[str, dict],
+    step_id: str,
+    checkpoint_value: str,
+    expected: bool,
+):
+    """The rewritten checkpoint resume conditions must preserve existing behavior."""
+    from amplihack.recipes.models import Step, StepType
+
+    raw = steps[step_id]
+    step = Step(
+        id=raw["id"],
+        step_type=StepType.AGENT if raw.get("agent") else StepType.BASH,
+        condition=raw.get("condition"),
+        prompt=raw.get("prompt", ""),
+        output=raw.get("output"),
+    )
+    result = step.evaluate_condition({"resume_checkpoint": checkpoint_value})
+    assert result is expected, (
+        f"Step '{step_id}' with resume_checkpoint={checkpoint_value!r}: "
+        f"expected {expected}, got {result}"
+    )
