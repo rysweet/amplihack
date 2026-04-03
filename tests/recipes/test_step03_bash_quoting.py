@@ -29,6 +29,7 @@ Verifies:
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -208,8 +209,6 @@ printf '%s\n' "$TASK_DESC"
         assert result.returncode == 0, f"bash error: {result.stderr}"
         assert "$(touch" in result.stdout, "Subshell syntax should appear literally"
         assert "`touch" in result.stdout, "Backtick syntax should appear literally"
-        import os
-
         assert not os.path.exists("/tmp/injected_4206_test"), (
             "Shell injection executed! /tmp/injected_4206_test was created."
         )

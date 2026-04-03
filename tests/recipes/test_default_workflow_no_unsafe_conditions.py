@@ -204,12 +204,8 @@ class TestSingleCheckpointConditions:
 
 
 class TestYamlValidity:
-    def test_recipe_yaml_is_valid(self) -> None:
+    def test_recipe_yaml_is_valid(self, recipe: dict) -> None:
         """The recipe file must parse as valid YAML without errors."""
-        try:
-            recipe = _load_recipe()
-        except yaml.YAMLError as e:
-            pytest.fail(f"default-workflow.yaml is not valid YAML: {e}")
         assert recipe is not None
         assert "steps" in recipe, "Recipe must have a 'steps' key"
         assert len(recipe["steps"]) > 0, "Recipe must have at least one step"
