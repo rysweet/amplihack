@@ -303,8 +303,9 @@ steps:
       cd "{{repo_path}}"
 
       # detect_git_provider: returns "ado" for dev.azure.com/visualstudio.com remotes, "github" otherwise
-      # NOTE: This function is duplicated verbatim in step-16-create-draft-pr.
-      #       Update both locations together; they run in separate bash shells.
+      # NOTE: Same logic as step-16-create-draft-pr. step-16 uses a pre-cached $REMOTE_URL
+      #       (avoids a second git subprocess); here we capture inline since there is no prior cache.
+      #       Keep detection logic in sync across both steps; they run in separate bash shells.
       detect_git_provider() {
         local remote_url
         remote_url=$(git remote get-url origin 2>/dev/null || echo '')
@@ -1863,13 +1864,22 @@ steps:
       cd "{{worktree_setup.worktree_path}}"
       echo "=== Step 16: Creating Draft PR ===" >&2
 
+      # Cache remote URL once — used by detect_git_provider and remote guard below.
+      # git remote get-url is a local .git/config read; calling it once avoids a second spawn.
+      REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo '')
+
+      # Remote guard: if no remote configured, skip PR creation gracefully
+      if [ -z "$REMOTE_URL" ]; then
+        echo "INFO: No remote configured — skipping PR creation" >&2
+        printf ''
+        exit 0
+      fi
+
       # detect_git_provider: returns "ado" for dev.azure.com/visualstudio.com remotes, "github" otherwise
-      # NOTE: This function is duplicated verbatim in step-03-create-issue.
-      #       Update both locations together; they run in separate bash shells.
+      # NOTE: Same logic as step-03-create-issue. Here we read the pre-cached $REMOTE_URL
+      #       (set above) to avoid a redundant git subprocess. Keep detection logic in sync.
       detect_git_provider() {
-        local remote_url
-        remote_url=$(git remote get-url origin 2>/dev/null || echo '')
-        if [[ "$remote_url" == *"dev.azure.com"* ]] || [[ "$remote_url" == *"visualstudio.com"* ]]; then
+        if [[ "$REMOTE_URL" == *"dev.azure.com"* ]] || [[ "$REMOTE_URL" == *"visualstudio.com"* ]]; then
           echo "ado"
         else
           echo "github"
@@ -1889,15 +1899,11 @@ steps:
           ;;
       esac
 
-      # Remote guard: if no remote configured, skip PR creation gracefully
-      if ! git remote get-url origin >/dev/null 2>&1; then
-        echo "INFO: No remote configured — skipping PR creation" >&2
-        printf ''
-        exit 0
-      fi
-
-      # Detect default base branch (supports repos using master/develop/trunk, not just main)
-      BASE_BRANCH=$(git remote show origin 2>/dev/null | grep 'HEAD branch' | awk '{print $NF}')
+      # Detect default base branch: symbolic-ref reads local .git refs — no network round-trip.
+      # Falls back to "main" if origin/HEAD is not set (e.g. shallow clone, new remote).
+      # Supports repos using master/develop/trunk, not just main.
+      _HEAD_REF=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null || echo '')
+      BASE_BRANCH="${_HEAD_REF##*/}"   # strip "refs/remotes/origin/" prefix via bash builtin
       BASE_BRANCH="${BASE_BRANCH:-main}"
 
       # Check: How many commits are ahead of origin/$BASE_BRANCH?
