@@ -1915,17 +1915,19 @@ steps:
         fi
 
         # timeout 120: az repos pr create contacts ADO REST API — cap wait to 2 minutes
+        # Note: do NOT use `|| echo ''` here; we capture exit code separately so that
+        # a real az failure propagates a non-zero exit instead of always exiting 0.
         ADO_PR_URL=$(timeout 120 az repos pr create --draft \
           --title "$PR_TITLE" \
           --description "$PR_BODY" \
           --source-branch "$CURRENT_BRANCH" \
           --target-branch "main" \
           --query url \
-          -o tsv 2>/dev/null || echo '')
+          -o tsv 2>/dev/null)
+        AZ_STATUS=$?
         if [ -z "$ADO_PR_URL" ] || [ "$ADO_PR_URL" = "None" ]; then
-          STATUS=$?
-          echo "ERROR: az repos pr create failed (exit $STATUS) — ADO API may be unavailable" >&2
-          exit "${STATUS:-1}"
+          echo "ERROR: az repos pr create failed (exit $AZ_STATUS) — ADO API may be unavailable" >&2
+          exit "${AZ_STATUS:-1}"
         fi
         printf '%s\n' "$ADO_PR_URL"
       else

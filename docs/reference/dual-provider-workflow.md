@@ -167,12 +167,13 @@ https://dev.azure.com/org/project/_git/repo/pullrequest/NNN
 
 ### Exit Codes
 
-| Code | Meaning                                                            |
-| ---- | ------------------------------------------------------------------ |
-| 0    | PR created or idempotency guard matched; URL emitted               |
-| 1    | `az repos pr create` returned empty or `None`                      |
-| 1    | `COMMITS_AHEAD` is 0 (pre-condition guard, not ADO-specific)       |
-| 1    | `ISSUE_NUM` is not numeric (pre-condition guard, not ADO-specific) |
+| Code   | Meaning                                                                                                    |
+| ------ | ---------------------------------------------------------------------------------------------------------- |
+| 0      | PR created or idempotency guard matched; URL emitted                                                       |
+| 1      | `az repos pr create` returned empty or `None`                                                              |
+| N (≠0) | `az repos pr create` exited non-zero; exit code propagated directly via `AZ_STATUS` (not clamped to 1)   |
+| 1      | `COMMITS_AHEAD` is 0 (pre-condition guard, not ADO-specific)                                               |
+| 1      | `ISSUE_NUM` is not numeric (pre-condition guard, not ADO-specific)                                         |
 
 ---
 
