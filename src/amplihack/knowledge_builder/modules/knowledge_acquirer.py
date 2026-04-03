@@ -1,8 +1,17 @@
 """Knowledge acquirer using web search."""
 
+import os
 import subprocess
 
 from amplihack.knowledge_builder.kb_types import Question
+
+
+def _build_agent_cmd(agent_cmd: str, prompt: str) -> list[str]:
+    """Build subprocess command list, routing copilot vs claude flags appropriately."""
+    effective_agent = os.environ.get("AMPLIHACK_AGENT_BINARY", agent_cmd)
+    if effective_agent == "copilot":
+        return ["amplihack", "copilot", "--allow-all-tools", "--add-dir", "/", "-p", prompt]
+    return [effective_agent, "--dangerously-skip-permissions", "-p", prompt]
 
 
 class KnowledgeAcquirer:
@@ -41,8 +50,9 @@ Requirements:
   - [url2]
   - [url3]"""
 
+        cmd = _build_agent_cmd(self.agent_cmd, prompt)
         result = subprocess.run(
-            [self.agent_cmd, "--dangerously-skip-permissions", "-p", prompt],
+            cmd,
             capture_output=True,
             text=True,
             check=False,
