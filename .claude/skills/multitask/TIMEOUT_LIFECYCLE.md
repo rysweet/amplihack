@@ -37,7 +37,7 @@ The multitask orchestrator tracks every workstream through a well-defined lifecy
 |---|---|---|
 | `pending` | Not yet launched | No |
 | `running` | Subprocess active | No |
-| `completed` | Exited 0 — all done | No |
+| `completed` | Exited 0 — all done | **Yes** |
 | `failed_resumable` | Non-zero exit with saved progress | No |
 | `failed_terminal` | Non-zero exit, no saved progress | **Yes** |
 | `timed_out_resumable` | Time budget exceeded; workdir preserved | No |
@@ -46,7 +46,7 @@ The multitask orchestrator tracks every workstream through a well-defined lifecy
 
 **Resumable states** (`failed_resumable`, `timed_out_resumable`, `interrupted_resumable`) are never cleaned up automatically. Their workdirs and state files remain on disk so work can continue.
 
-**Cleanup-eligible states** (`failed_terminal`, `abandoned`, `completed`) are safe to remove from disk. The orchestrator will not delete working trees in resumable states even when cleanup is requested.
+**Cleanup-eligible states** (`completed`, `failed_terminal`, `abandoned`) are safe to remove from disk. The orchestrator will not delete working trees in resumable states even when cleanup is requested.
 
 ---
 
