@@ -139,6 +139,29 @@ To use classic mode as fallback, specify `--mode classic` when invoking the orch
 | Agent step (CLISubprocessAdapter) | 300s per step |
 | Bash step (CLISubprocessAdapter)  | 120s per step |
 
+### Timeout Policies
+
+When a workstream reaches its `max_runtime`, the `timeout_policy` controls what happens:
+
+| Policy | Behaviour |
+| ---------------------- | --------------------------------------------------------------- |
+| `interrupt-preserve` | Terminate subprocess; save state as `timed_out_resumable` (default) |
+| `continue-preserve` | Let subprocess run; mark state `timed_out_resumable`; orchestrator moves on |
+
+Set per-workstream in the JSON config or in `add()`:
+
+```json
+{ "timeout_policy": "continue-preserve", "max_runtime": 10800 }
+```
+
+Set globally:
+
+```
+AMPLIHACK_TIMEOUT_POLICY=continue-preserve
+```
+
+See [`TIMEOUT_LIFECYCLE.md`](TIMEOUT_LIFECYCLE.md) for the full lifecycle state machine, resume behaviour, state file schema, and security details.
+
 ## Error Handling
 
 ### Workstream Failures
