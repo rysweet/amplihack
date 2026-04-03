@@ -377,10 +377,6 @@ def parse_args_with_passthrough(
     return args, claude_args
 
 
-_DEFAULT_TIMEOUT_MINUTES: float = 30.0
-_OPUS_TIMEOUT_MINUTES: float = 60.0
-
-
 def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
     """Add auto mode arguments to a parser.
 
@@ -408,55 +404,6 @@ def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
-    parser.add_argument(
-        "--query-timeout-minutes",
-        type=float,
-        default=_DEFAULT_TIMEOUT_MINUTES,
-        metavar="MINUTES",
-        dest="query_timeout_minutes",
-        help=f"Max minutes per SDK query (default: {_DEFAULT_TIMEOUT_MINUTES}). Opus models auto-detect to {_OPUS_TIMEOUT_MINUTES} min. Use --no-timeout to disable.",
-    )
-    parser.add_argument(
-        "--no-timeout",
-        action="store_true",
-        dest="no_timeout",
-        help="Disable SDK query timeout completely. Overrides --query-timeout-minutes.",
-    )
-
-
-def resolve_timeout(
-    args: argparse.Namespace,
-    model: str | None = None,
-) -> float | None:
-    """Resolve the effective query timeout from parsed CLI args and optional model name.
-
-    Priority (highest → lowest):
-    1. ``--no-timeout`` flag → ``None`` (no timeout)
-    2. Explicit ``--query-timeout-minutes`` (value differs from default) → that value
-    3. Opus model auto-detection → ``_OPUS_TIMEOUT_MINUTES`` (60.0)
-    4. Default → ``_DEFAULT_TIMEOUT_MINUTES`` (30.0)
-
-    Args:
-        args: Parsed :class:`argparse.Namespace` from a parser that had
-            :func:`add_auto_mode_args` applied.
-        model: Optional model name string. If it contains ``"opus"``
-            (case-insensitive), the Opus timeout is applied when the
-            user has not set an explicit override.
-
-    Returns:
-        Timeout in minutes as a float, or ``None`` to disable timeout.
-    """
-    if getattr(args, "no_timeout", False):
-        return None
-
-    explicit = getattr(args, "query_timeout_minutes", _DEFAULT_TIMEOUT_MINUTES)
-    if explicit != _DEFAULT_TIMEOUT_MINUTES:
-        return float(explicit)
-
-    if model and "opus" in model.lower():
-        return _OPUS_TIMEOUT_MINUTES
-
-    return _DEFAULT_TIMEOUT_MINUTES
 
 
 def add_common_sdk_args(parser: argparse.ArgumentParser) -> None:
@@ -1102,14 +1049,11 @@ def _common_launcher_startup(args: "argparse.Namespace") -> None:
     _ensure_rust_recipe_runner()
 
     # 4. SDK dependency check
-    try:
-        from .dep_check import ensure_sdk_deps
+    from .dep_check import ensure_sdk_deps
 
-        dep_result = ensure_sdk_deps()
-        if not dep_result.all_ok:
-            logger.warning("Some SDK deps could not be installed: %s", dep_result.missing)
-    except Exception as e:
-        logger.debug("SDK dependency check skipped: %s", e)
+    dep_result = ensure_sdk_deps()
+    if not dep_result.all_ok:
+        logger.warning("Some SDK deps could not be installed: %s", dep_result.missing)
 
     # 5. Power-steering re-enable prompt (#2544)
     try:

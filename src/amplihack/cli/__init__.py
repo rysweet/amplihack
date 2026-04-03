@@ -10,6 +10,7 @@ def _load_cli_module():
     """Load amplihack/cli.py directly since this package shadows it."""
     cli_py = Path(__file__).parent.parent / "cli.py"
     spec = importlib.util.spec_from_file_location("amplihack._cli_module", cli_py)
+    assert spec is not None and spec.loader is not None, f"Cannot load spec for {cli_py}"
     mod = importlib.util.module_from_spec(spec)
     # Set the parent package so relative imports work
     mod.__package__ = "amplihack"
@@ -24,7 +25,6 @@ main = _cli.main
 # and explicit imports (``from amplihack.cli import X``) work without the
 # dynamic fallback below.
 add_auto_mode_args = _cli.add_auto_mode_args
-resolve_timeout = _cli.resolve_timeout
 create_parser = _cli.create_parser
 
 
@@ -44,6 +44,5 @@ def __getattr__(name: str):
 __all__ = [
     "main",
     "add_auto_mode_args",
-    "resolve_timeout",
     "create_parser",
 ]
