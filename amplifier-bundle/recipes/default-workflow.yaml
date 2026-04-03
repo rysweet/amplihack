@@ -301,7 +301,20 @@ steps:
     command: |
       set -euo pipefail
       cd "{{repo_path}}"
-      echo "=== Step 3: Creating GitHub Issue ===" >&2
+
+      # FIX (#4205): Provider-aware issue/work-item creation
+      # detect_git_provider: returns "ado" for dev.azure.com/visualstudio.com remotes, "github" otherwise
+      detect_git_provider() {
+        local remote_url
+        remote_url=$(git remote get-url origin 2>/dev/null || echo '')
+        if [[ "$remote_url" == *"dev.azure.com"* ]] || [[ "$remote_url" == *"visualstudio.com"* ]]; then
+          echo "ado"
+        else
+          echo "github"
+        fi
+      }
+      GIT_PROVIDER=$(detect_git_provider)
+      echo "=== Step 3: Creating Issue/Work Item (provider: $GIT_PROVIDER) ===" >&2
 
       # FIX (#3045/#3076/#3117): heredoc capture — prevents echo metacharacter injection.
       # SECURITY FIX: quoted delimiter (<<'EOF') prevents bash from expanding $() / backticks
@@ -320,62 +333,115 @@ steps:
       {{final_requirements}}
       EOFREQS
       )
+      ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$TASK_DESC" "$ISSUE_REQS")
 
-      # Idempotency Guard 1: Reuse issue referenced in task_description (#NNNN)
-      # Mirrors step-16-create-draft-pr idempotency pattern (#3324).
-      # Bash regex replaces printf|grep|head|tr pipeline — avoids 4 subprocess spawns
-      if [[ "$TASK_DESC" =~ \#([0-9]+) ]]; then
-          REF_ISSUE_NUM="${BASH_REMATCH[1]}"
+      if [ "$GIT_PROVIDER" = "ado" ]; then
+        # ── ADO PATH ────────────────────────────────────────────────────────
+        # Idempotency Guard 1: Reuse work item referenced in task_description (#NNNN)
+        if [[ "$TASK_DESC" =~ \#([0-9]+) ]]; then
+          REF_ITEM_NUM="${BASH_REMATCH[1]}"
+        else
+          REF_ITEM_NUM=""
+        fi
+        case "$REF_ITEM_NUM" in
+          ''|*[!0-9]*) REF_ITEM_NUM="" ;;
+        esac
+        if [ -n "$REF_ITEM_NUM" ]; then
+          echo "INFO: task_description references work item #$REF_ITEM_NUM — verifying it exists" >&2
+          EXISTING_ID=$(timeout 60 az boards work-item show --id "$REF_ITEM_NUM" --query id -o tsv 2>/dev/null || echo '')
+          if [ -n "$EXISTING_ID" ] && [ "$EXISTING_ID" != "None" ]; then
+            echo "INFO: Reusing existing work item #$REF_ITEM_NUM — skipping creation" >&2
+            printf '_workitems/edit/%s\n' "$REF_ITEM_NUM"
+            exit 0
+          fi
+          echo "WARN: Referenced work item #$REF_ITEM_NUM not found — will create" >&2
+        fi
+
+        # Idempotency Guard 2: Search open ADO work items for matching title
+        SEARCH_TITLE="${ISSUE_TITLE:0:100}"
+        SEARCH_TITLE="${SEARCH_TITLE//\'/\'\''}"
+        if [ -n "$SEARCH_TITLE" ]; then
+          echo "INFO: Searching open ADO work items for similar title" >&2
+          EXISTING_ADO_ID=$(timeout 60 az boards query \
+            --wiql "SELECT [System.Id] FROM WorkItems WHERE [System.Title] = '$SEARCH_TITLE' AND [System.State] <> 'Closed'" \
+            --query '[0].id' -o tsv 2>/dev/null || echo '')
+          if [ -n "$EXISTING_ADO_ID" ] && [ "$EXISTING_ADO_ID" != "None" ]; then
+            echo "INFO: Found existing open work item matching title — skipping creation" >&2
+            printf '_workitems/edit/%s\n' "$EXISTING_ADO_ID"
+            exit 0
+          fi
+          echo "INFO: No matching open work item found — proceeding to create" >&2
+        fi
+
+        # Normal ADO path: create work item of type Task
+        NEW_ITEM_ID=$(timeout 60 az boards work-item create \
+          --type "Task" \
+          --title "$ISSUE_TITLE" \
+          --description "$ISSUE_BODY" \
+          --query id \
+          -o tsv 2>/dev/null || echo '')
+        if [ -z "$NEW_ITEM_ID" ] || [ "$NEW_ITEM_ID" = "None" ]; then
+          echo "ERROR: Failed to create ADO work item (az boards work-item create returned empty)" >&2
+          exit 1
+        fi
+        echo "INFO: Created ADO work item #$NEW_ITEM_ID" >&2
+        # Emit URL-like path that step-03b can extract the numeric ID from
+        printf '_workitems/edit/%s\n' "$NEW_ITEM_ID"
       else
+        # ── GITHUB PATH ─────────────────────────────────────────────────────
+        # Idempotency Guard 1: Reuse issue referenced in task_description (#NNNN)
+        # Mirrors step-16-create-draft-pr idempotency pattern (#3324).
+        # Bash regex replaces printf|grep|head|tr pipeline — avoids 4 subprocess spawns
+        if [[ "$TASK_DESC" =~ \#([0-9]+) ]]; then
+          REF_ISSUE_NUM="${BASH_REMATCH[1]}"
+        else
           REF_ISSUE_NUM=""
-      fi
-      # Defense-in-depth: validate numeric before interpolating into gh command
-      if [ -n "$REF_ISSUE_NUM" ] && ! [[ "$REF_ISSUE_NUM" =~ ^[0-9]+$ ]]; then
-          echo "WARN: Extracted issue reference is not numeric: $REF_ISSUE_NUM — skipping guard 1" >&2
-          REF_ISSUE_NUM=""
-      fi
-      if [ -n "$REF_ISSUE_NUM" ]; then
+        fi
+        # Defense-in-depth: validate numeric before interpolating into gh command
+        case "$REF_ISSUE_NUM" in
+          ''|*[!0-9]*) REF_ISSUE_NUM="" ;;
+        esac
+        if [ -n "$REF_ISSUE_NUM" ]; then
           echo "INFO: task_description references issue #$REF_ISSUE_NUM — verifying it exists" >&2
           EXISTING_URL=$(timeout 60 gh issue view "$REF_ISSUE_NUM" --json url --jq '.url // ""' 2>/dev/null || echo '')
           if [ -n "$EXISTING_URL" ]; then
-              echo "INFO: Reusing existing issue #$REF_ISSUE_NUM — skipping creation" >&2
-              printf '%s\n' "$EXISTING_URL"
-              exit 0
+            echo "INFO: Reusing existing issue #$REF_ISSUE_NUM — skipping creation" >&2
+            printf '%s\n' "$EXISTING_URL"
+            exit 0
           fi
           echo "WARN: Referenced issue #$REF_ISSUE_NUM not found — will search or create" >&2
-      fi
+        fi
 
-      # Idempotency Guard 2: Search open issues for similar title
-      SEARCH_QUERY="${ISSUE_TITLE:0:100}"
-      if [ -n "$SEARCH_QUERY" ]; then
+        # Idempotency Guard 2: Search open issues for similar title
+        SEARCH_QUERY="${ISSUE_TITLE:0:100}"
+        if [ -n "$SEARCH_QUERY" ]; then
           echo "INFO: Searching open issues for similar title" >&2
           FOUND_URL=$(timeout 60 gh issue list --state open --search "$SEARCH_QUERY" --json url --jq '.[0].url // ""' 2>/dev/null || echo '')
           if [ -n "$FOUND_URL" ]; then
-              echo "INFO: Found existing open issue matching title — skipping creation" >&2
-              printf '%s\n' "$FOUND_URL"
-              exit 0
+            echo "INFO: Found existing open issue matching title — skipping creation" >&2
+            printf '%s\n' "$FOUND_URL"
+            exit 0
           fi
           echo "INFO: No matching open issue found — proceeding to create" >&2
-      fi
+        fi
 
-      # Normal path: create a new issue
-      ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$TASK_DESC" "$ISSUE_REQS")
-      LABEL_NAME="workflow:default"
-      if ! gh label list --limit 1000 2>/dev/null | grep -qw "$LABEL_NAME"; then
-        gh label create "$LABEL_NAME" \
-          --color "0366d6" \
-          --description "Created by default-workflow recipe" 2>/dev/null || true
+        # Normal path: create a new issue (label creation is GitHub-only)
+        LABEL_NAME="workflow:default"
+        if ! gh label list --limit 1000 2>/dev/null | grep -qw "$LABEL_NAME"; then
+          gh label create "$LABEL_NAME" \
+            --color "0366d6" \
+            --description "Created by default-workflow recipe" 2>/dev/null || true
+        fi
+        gh issue create \
+          --title "$ISSUE_TITLE" \
+          --body "$ISSUE_BODY" \
+          --label "$LABEL_NAME" 2>&1 || \
+        gh issue create \
+          --title "$ISSUE_TITLE" \
+          --body "$ISSUE_BODY"
       fi
-      gh issue create \
-        --title "$ISSUE_TITLE" \
-        --body "$ISSUE_BODY" \
-        --label "$LABEL_NAME" 2>&1 || \
-      gh issue create \
-        --title "$ISSUE_TITLE" \
-        --body "$ISSUE_BODY"
     output: "issue_creation"
     parse_json: false
-
   - id: "step-03b-extract-issue-number"
     type: "bash"
     condition: "not issue_number"
@@ -449,8 +515,8 @@ steps:
       sys.stdout.write(result.stdout)
       PY
       }
-      EXTRACTED=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
-
+      # FIX (#4205): Also match ADO work item URLs: _workitems/edit/NNNN
+      EXTRACTED=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE '(issues|_workitems/edit)/[0-9]+' | grep -oE '[0-9]+' | head -1)
       if [ -z "$EXTRACTED" ]; then
         PR_NUMBER=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'pull/[0-9]+' | grep -oE '[0-9]+' | head -1)
         if [ -n "$PR_NUMBER" ]; then
@@ -1773,49 +1839,38 @@ steps:
       cd "{{worktree_setup.worktree_path}}"
       echo "=== Step 16: Creating Draft PR ===" >&2
 
-      # FIX (#3324): Idempotency guard — detect pre-existing PRs before creating one
-      # Prevents: "GraphQL: No commits between main and feat/issue-XXXX" error
-      # Root cause: step-09-refactor may create PR on a different branch, leaving
-      # the worktree branch with 0 commits ahead of main.
+      # FIX (#4205): Provider-aware PR creation
+      # detect_git_provider: returns "ado" for dev.azure.com/visualstudio.com remotes, "github" otherwise
+      detect_git_provider() {
+        local remote_url
+        remote_url=$(git remote get-url origin 2>/dev/null || echo '')
+        if [[ "$remote_url" == *"dev.azure.com"* ]] || [[ "$remote_url" == *"visualstudio.com"* ]]; then
+          echo "ado"
+        else
+          echo "github"
+        fi
+      }
+      GIT_PROVIDER=$(detect_git_provider)
+
       CURRENT_BRANCH=$(git branch --show-current)
       ISSUE_NUM="{{issue_number}}"
 
-      # SECURITY: Validate ISSUE_NUM is numeric before interpolating into jq regex
-      # Without this, a non-numeric value could inject into the jq test() filter.
-      if ! [[ "$ISSUE_NUM" =~ ^[0-9]+$ ]]; then
+      # SECURITY: Validate ISSUE_NUM is numeric before interpolating into shell expressions
+      # case pattern [!0-9] is POSIX portable (fixes #3324 validation regression)
+      case "$ISSUE_NUM" in
+        ''|*[!0-9]*)
           echo "ERROR: issue_number is not numeric: $ISSUE_NUM" >&2
           exit 1
-      fi
+          ;;
+      esac
 
-      # Check 1: Is there already a PR on the exact current branch?
-      # timeout 60: prevents hanging indefinitely if GitHub API is unresponsive
-      # REL-003: 2>/dev/null || echo '' is intentional resilience — gh pr list stderr
-      # is noisy (auth warnings, API rate limits) and failure here should not block
-      # the workflow; an empty result simply means "no existing PR found".
-      EXISTING_PR=$(timeout 60 gh pr list --head "$CURRENT_BRANCH" --json url --jq '.[0].url // ""' 2>/dev/null || echo '')
-
-      # Check 2: If not, look for a PR on any branch matching the issue number pattern
-      # (handles case where step-09-refactor created PR on fix/issue-XXXX-* branch)
-      if [ -z "$EXISTING_PR" ]; then
-          EXISTING_PR=$(timeout 60 gh pr list --json url,headRefName --jq "[.[] | select(.headRefName | test(\"issue-$ISSUE_NUM\"))] | .[0].url // \"\""  2>/dev/null || echo '')
-      fi
-
-      # If a PR exists: skip creation, output existing URL to stdout, exit SUCCESS
-      if [ -n "$EXISTING_PR" ]; then
-          echo "INFO: PR already exists — skipping creation" >&2
-          echo "Existing PR: $EXISTING_PR" >&2
-          printf '%s\n' "$EXISTING_PR"
-          exit 0
-      fi
-
-      # Check 3: How many commits are ahead of origin/main?
+      # Check: How many commits are ahead of origin/main?
       # NOTE: base branch is confirmed as 'main' (error message says "between main and feat/...")
       # Use arithmetic -eq (not string ==) to handle whitespace-padded output on some platforms
       COMMITS_AHEAD=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "0")
 
       if [ "$COMMITS_AHEAD" -eq 0 ]; then
-          echo "ERROR: 0 commits ahead of main and no related PR found for issue-$ISSUE_NUM." >&2
-          echo "This is a hollow-success condition: the workflow ran but produced no commits." >&2
+          echo "ERROR: 0 commits ahead of main — skipping PR creation, hollow-success condition for issue-$ISSUE_NUM." >&2
           echo "Possible causes:" >&2
           echo "  1. step-15-commit-push failed silently (check commit_result output)" >&2
           echo "  2. Implementation agents wrote files outside the worktree" >&2
@@ -1824,7 +1879,6 @@ steps:
           exit 1
       fi
 
-      # Normal path: 1+ commits ahead, no existing PR — create the PR
       # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
       TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
@@ -1839,26 +1893,79 @@ steps:
       EOFDESIGN
       )
       PR_BODY=$(printf '## Summary\n%s\n\n## Issue\nCloses #%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$TASK_DESC" "$ISSUE_NUM" "$PR_DESIGN")
-      # timeout 120: gh pr create contacts GitHub GraphQL API — cap wait to 2 minutes
-      # 2>/dev/null: suppress gh stderr to prevent output contract corruption of pr_url
-      timeout 120 gh pr create --draft \
-        --title "$PR_TITLE" \
-        --body "$PR_BODY" 2>/dev/null || {
+
+      if [ "$GIT_PROVIDER" = "ado" ]; then
+        # ── ADO PATH ──────────────────────────────────────────────────────────
+        # FIX (#3324): Idempotency guard for ADO — detect pre-existing PRs
+        EXISTING_PR=$(timeout 60 az repos pr list \
+          --source-branch "$CURRENT_BRANCH" \
+          --query '[0].url' -o tsv 2>/dev/null || echo '')
+        if [ -n "$EXISTING_PR" ] && [ "$EXISTING_PR" != "None" ]; then
+          echo "INFO: ADO PR already exists — skipping creation" >&2
+          echo "Existing PR: $EXISTING_PR" >&2
+          printf '%s\n' "$EXISTING_PR"
+          exit 0
+        fi
+
+        # timeout 120: az repos pr create contacts ADO REST API — cap wait to 2 minutes
+        ADO_PR_URL=$(timeout 120 az repos pr create --draft \
+          --title "$PR_TITLE" \
+          --description "$PR_BODY" \
+          --source-branch "$CURRENT_BRANCH" \
+          --target-branch "main" \
+          --query url \
+          -o tsv 2>/dev/null || echo '')
+        if [ -z "$ADO_PR_URL" ] || [ "$ADO_PR_URL" = "None" ]; then
           STATUS=$?
-          if [ "$STATUS" -eq 124 ]; then
-              echo "ERROR: gh pr create timed out after 120s — GitHub API may be unavailable" >&2
-          else
-              echo "ERROR: gh pr create failed (exit $STATUS) — PR may already exist for this branch or GitHub API is unavailable" >&2
-          fi
-          exit "$STATUS"
-      }
+          echo "ERROR: az repos pr create failed (exit $STATUS) — ADO API may be unavailable" >&2
+          exit "${STATUS:-1}"
+        fi
+        printf '%s\n' "$ADO_PR_URL"
+      else
+        # ── GITHUB PATH ───────────────────────────────────────────────────────
+        # FIX (#3324): Idempotency guard — detect pre-existing PRs before creating one
+        # Prevents: "GraphQL: No commits between main and feat/issue-XXXX" error
+        # Root cause: step-09-refactor may create PR on a different branch, leaving
+        # the worktree branch with 0 commits ahead of main.
+
+        # Check 1: Is there already a PR on the exact current branch?
+        # timeout 60: prevents hanging indefinitely if GitHub API is unresponsive
+        # REL-003: 2>/dev/null || echo '' is intentional resilience — gh pr list stderr
+        # is noisy (auth warnings, API rate limits) and failure here should not block
+        # the workflow; an empty result simply means "no existing PR found".
+        EXISTING_PR=$(timeout 60 gh pr list --head "$CURRENT_BRANCH" --json url --jq '.[0].url // ""' 2>/dev/null || echo '')
+
+        # Check 2: If not, search for PRs associated with this issue number
+        # (handles case where step-09-refactor created PR on fix/issue-XXXX-* branch)
+        if [ -z "$EXISTING_PR" ]; then
+          EXISTING_PR=$(timeout 60 gh pr list --search "issue-$ISSUE_NUM" --json url --jq '.[0].url // ""' 2>/dev/null || echo '')
+        fi
+
+        # If a PR exists: skip creation, output existing URL to stdout, exit SUCCESS
+        if [ -n "$EXISTING_PR" ]; then
+          echo "INFO: PR already exists — skipping creation" >&2
+          echo "Existing PR: $EXISTING_PR" >&2
+          printf '%s\n' "$EXISTING_PR"
+          exit 0
+        fi
+
+        # Normal path: 1+ commits ahead, no existing PR — create the PR
+        # timeout 120: gh pr create contacts GitHub GraphQL API — cap wait to 2 minutes
+        # 2>/dev/null: suppress gh stderr to prevent output contract corruption of pr_url
+        timeout 120 gh pr create --draft \
+          --title "$PR_TITLE" \
+          --body "$PR_BODY" 2>/dev/null || {
+            STATUS=$?
+            if [ "$STATUS" -eq 124 ]; then
+                echo "ERROR: gh pr create timed out after 120s — GitHub API may be unavailable" >&2
+            else
+                echo "ERROR: gh pr create failed (exit $STATUS) — PR may already exist for this branch or GitHub API is unavailable" >&2
+            fi
+            exit "$STATUS"
+          }
+      fi
     output: "pr_url"
 
-  # ==========================================================================
-  # STEP 16b: OUTSIDE-IN TESTING AND FIX LOOP
-  # After the PR is open, run outside-in tests from the PR branch.
-  # If failures are found, fix them and re-test in a loop until all pass.
-  # ==========================================================================
   - id: "step-16b-outside-in-fix-loop"
     agent: "amplihack:builder"
     working_dir: "{{worktree_setup.worktree_path}}"
