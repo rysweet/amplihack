@@ -276,7 +276,7 @@ def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | N
     # Note: --no-reflection flag (Issue #1147) is also handled in non-auto mode paths
     os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
 
-    from .launcher.auto_mode import AutoMode
+    from . import cli as cli_package
 
     # Extract prompt from args
     prompt = None
@@ -292,7 +292,7 @@ def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | N
     # Check if UI mode is enabled
     ui_mode = getattr(args, "ui", False)
 
-    auto = AutoMode(sdk, prompt, args.max_turns, ui_mode=ui_mode)
+    auto = cli_package.AutoMode(sdk, prompt, args.max_turns, ui_mode=ui_mode)
     return auto.run()
 
 

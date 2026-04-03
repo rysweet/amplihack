@@ -51,6 +51,6 @@ sequenceDiagram
     User->>CLI: auto
     CLI->>cli: add_auto_mode_args()
     CLI->>auto_mode: AutoMode(timeout=default)
-    Note over auto_mode: Default 30 min timeout; configurable via env vars
+    Note over auto_mode: Default 30 min timeout; session limits configurable via env vars
     auto_mode-->>CLI: session limits applied
     CLI-->>User: exit code

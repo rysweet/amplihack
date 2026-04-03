@@ -1,0 +1,224 @@
+# Outside-in test: PR #4190 — CLI package entrypoint and forwarding surface
+# Verifies:
+#   1. `python -m amplihack.cli --help` works via src/amplihack/cli/__main__.py
+#   2. `from amplihack.cli import create_parser, add_auto_mode_args` works
+#   3. `mock.patch("amplihack.cli.create_parser")` and `AutoMode` patching work
+#      via forwarding/lazy import resolution
+
+name: "PR-4190 CLI Entrypoint and Forwarding"
+description: >
+  PR #4190 currently carries the CLI package surface changes that remain after the
+  broader timeout lifecycle work landed elsewhere: a runnable
+  `python -m amplihack.cli` entrypoint and dynamic forwarding from
+  `amplihack.cli` to `cli.py` so imports and patch paths keep working.
+version: "1.0.0"
+config:
+  timeout: 30000
+  retries: 0
+  parallel: false
+
+environment:
+  requires: []
+
+agents:
+  - name: "cli-agent"
+    type: "cli"
+    config:
+      workingDirectory: "."
+      defaultTimeout: 15000
+      executionMode: "spawn"
+      captureOutput: true
+      ioConfig:
+        encoding: "utf8"
+        handleInteractivePrompts: false
+      logConfig:
+        logCommands: true
+        logOutput: true
+        logLevel: "info"
+
+steps:
+  # -----------------------------------------------------------------------
+  # Phase 1: `python -m amplihack.cli` entrypoint works
+  # -----------------------------------------------------------------------
+
+  - name: "CLI package entrypoint prints help"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: "PYTHONPATH=src python3 -m amplihack.cli --help"
+    timeout: 10000
+
+  - name: "Verify CLI help banner"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "Amplihack CLI - Enhanced tools for Claude Code development"
+    timeout: 5000
+
+  - name: "CLI package entrypoint preserves non-zero exit codes"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: |
+        python3 - <<'PY'
+        import os
+        import subprocess
+        import sys
+
+        env = dict(os.environ)
+        env["PYTHONPATH"] = "src"
+        proc = subprocess.run(
+            [sys.executable, "-m", "amplihack.cli"],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        if proc.returncode != 0:
+            print("NO_ARGS_EXIT_NONZERO=True")
+        else:
+            print(f"FAIL: expected non-zero exit, got {proc.returncode}")
+            sys.exit(1)
+        PY
+    timeout: 10000
+
+  - name: "Verify no-args exit stays non-zero"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "NO_ARGS_EXIT_NONZERO=True"
+    timeout: 5000
+
+  # -----------------------------------------------------------------------
+  # Phase 2: helper imports work through amplihack.cli
+  # -----------------------------------------------------------------------
+
+  - name: "CLI package exposes parser helpers"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: |
+        python3 - <<'PY'
+        import sys
+        sys.path.insert(0, "src")
+        import amplihack.cli as cli
+
+        print(f"CREATE_PARSER_CALLABLE={callable(cli.create_parser)}")
+        print(f"ADD_AUTO_MODE_ARGS_CALLABLE={callable(cli.add_auto_mode_args)}")
+        PY
+    timeout: 10000
+
+  - name: "Verify create_parser importability"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "CREATE_PARSER_CALLABLE=True"
+    timeout: 5000
+
+  - name: "Verify add_auto_mode_args importability"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "ADD_AUTO_MODE_ARGS_CALLABLE=True"
+    timeout: 5000
+
+  # -----------------------------------------------------------------------
+  # Phase 3: patch paths resolve through __getattr__ forwarding
+  # -----------------------------------------------------------------------
+
+  - name: "mock.patch on amplihack.cli.create_parser succeeds"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: |
+        python3 - <<'PY'
+        import sys
+        from unittest.mock import patch
+
+        sys.path.insert(0, "src")
+
+        patcher = patch("amplihack.cli.create_parser")
+        patched = patcher.start()
+        try:
+          print(f"PATCH_PATH_WORKS={patched is not None}")
+        finally:
+          patcher.stop()
+        PY
+    timeout: 10000
+
+  - name: "Verify patch path works"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PATCH_PATH_WORKS=True"
+    timeout: 5000
+
+  - name: "mock.patch on amplihack.cli.AutoMode succeeds"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: |
+        python3 - <<'PY'
+        import sys
+        from unittest.mock import patch
+
+        sys.path.insert(0, "src")
+
+        patcher = patch("amplihack.cli.AutoMode")
+        patched = patcher.start()
+        try:
+          print(f"PATCH_AUTOMODE_WORKS={patched is not None}")
+        finally:
+          patcher.stop()
+        PY
+    timeout: 10000
+
+  - name: "Verify AutoMode patch path works"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PATCH_AUTOMODE_WORKS=True"
+    timeout: 5000
+
+  - name: "handle_auto_mode uses patched AutoMode"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: |
+        python3 - <<'PY'
+        import argparse
+        import sys
+        from unittest.mock import patch
+
+        sys.path.insert(0, "src")
+        from amplihack.cli import handle_auto_mode
+
+        args = argparse.Namespace(auto=True, max_turns=3, ui=False)
+
+        with patch("amplihack.cli.AutoMode") as patched:
+          patched.return_value.run.return_value = 0
+          rc = handle_auto_mode("claude", args, ["-p", "hello from gadugi"])
+          print(f"HANDLE_AUTOMODE_RC={rc}")
+          print(f"HANDLE_AUTOMODE_PATCHED={patched.called}")
+        PY
+    timeout: 10000
+
+  - name: "Verify handle_auto_mode uses patched AutoMode"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "HANDLE_AUTOMODE_PATCHED=True"
+    timeout: 5000
+
+cleanup:
+  - name: "Capture final output"
+    agent: "cli-agent"
+    action: "capture_output"
+
+metadata:
+  tags:
+    - "cli"
+    - "entrypoint"
+    - "forwarding"
+    - "regression"
+    - "pr-4190"
+  priority: "high"
