@@ -96,6 +96,11 @@ nav:
           - Configuration: howto/configure-workflow-execution-guardrails.md
           - Tutorial: tutorials/workflow-execution-guardrails.md
           - Reference: reference/workflow-execution-guardrails.md
+      - Dual-Provider Workflow (GitHub + ADO):
+          - Overview: features/dual-provider-workflow.md
+          - Configuration: howto/configure-dual-provider-workflow.md
+          - Tutorial: tutorials/dual-provider-workflow.md
+          - Reference: reference/dual-provider-workflow.md
       - Workflow Publish Import Validation (planned):
           - Overview (spec): features/workflow-publish-import-validation.md
           - Configuration (spec): howto/configure-workflow-publish-import-validation.md
