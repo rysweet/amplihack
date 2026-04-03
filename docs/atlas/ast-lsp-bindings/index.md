@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-04-06T17:03:00.000000+00:00
+Category: <strong>Structural</strong> | Generated: 2026-04-03T03:04:17.482736+00:00
 </div>
 
 ## Map
@@ -36,7 +36,7 @@ Category: <strong>Structural</strong> | Generated: 2026-04-06T17:03:00.000000+00
         F15["common<br/>refs: 22"]
         F16["utils<br/>refs: 22"]
         F17["xpia_defense_interface<br/>refs: 22"]
-        F18["event_bus<br/>refs: 19"]
+        F18["event_bus<br/>refs: 20"]
         F19["uvx_launcher<br/>refs: 19"]
         F20["uvx_models<br/>refs: 18"]
         F21["considerations<br/>refs: 17"]
@@ -65,9 +65,9 @@ Category: <strong>Structural</strong> | Generated: 2026-04-06T17:03:00.000000+00
 
     | Metric | Value |
     |--------|-------|
-    | Total definitions | 15383 |
+    | Total definitions | 15343 |
     | Total exports | 2268 |
-    | Total imports | 16757 |
+    | Total imports | 16848 |
     | Potentially dead | 434 |
     | Files with `__all__` | 428 |
 
@@ -75,19 +75,19 @@ Category: <strong>Structural</strong> | Generated: 2026-04-06T17:03:00.000000+00
 
 <div class="atlas-legend" markdown>
 
-| Symbol    | Meaning               |
-| --------- | --------------------- |
-| Rectangle | Source file           |
-| Arrow     | Import dependency     |
+| Symbol | Meaning |
+|--------|---------|
+| Rectangle | Source file |
+| Arrow | Import dependency |
 | `refs: N` | Total reference count |
 
 </div>
 
 ## Key Findings
 
-- 15383 total definitions across all files
+- 15343 total definitions across all files
 - 434 potentially dead definitions (2.8% of total)
-- 1983 files without `__all__` exports
+- 1979 files without `__all__` exports
 
 ## Detail
 
@@ -95,15 +95,15 @@ Category: <strong>Structural</strong> | Generated: 2026-04-06T17:03:00.000000+00
 
     **Summary metrics:**
 
-    - **Total Definitions**: 15383
+    - **Total Definitions**: 15343
     - **Total Exports**: 2268
-    - **Total Imports**: 16757
+    - **Total Imports**: 16848
     - **Potentially Dead Count**: 434
     - **Files With All**: 428
-    - **Files Without All**: 1983
+    - **Files Without All**: 1979
     - **Importlib Dynamic Imports**: 43
     - **Language Counts**:
-        - `python`: 15383
+        - `python`: 15343
 
 ## Cross-References
 

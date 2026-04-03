@@ -329,19 +329,26 @@ def _build_rust_env() -> dict[str, str]:
 
 
 def ensure_rust_recipe_runner(*, quiet: bool = False) -> bool:
-    """Ensure the recipe-runner-rs binary is installed.
+    """Ensure the recipe-runner-rs binary is installed and up-to-date.
 
-    If the binary is already available, returns True immediately.
-    Otherwise, attempts to install via ``cargo install --git``.
+    If the binary is already available and meets the minimum version, returns True immediately.
+    If the binary is present but outdated, re-installs it via ``cargo install --git``.
+    If the binary is absent, installs it.
 
     Args:
         quiet: Suppress progress messages.
 
     Returns:
-        True if binary is available after this call, False if installation failed.
+        True if binary is available and up-to-date after this call, False otherwise.
     """
-    if is_rust_runner_available():
+    if is_rust_runner_available() and check_runner_version():
         return True
+
+    if is_rust_runner_available() and not check_runner_version():
+        if not quiet:
+            logger.info(
+                "recipe-runner-rs is outdated — updating from %s …", _REPO_URL
+            )
 
     cargo = shutil.which("cargo")
     if cargo is None:
