@@ -46,3 +46,11 @@ sequenceDiagram
     cli->>mcp_operations: return_value: MCPServer.from_dict
     cli-->>CLI: result
     CLI-->>User: exit code
+
+    participant resolve_timeout
+    User->>CLI: auto (--query-timeout-minutes / --no-timeout)
+    CLI->>cli: add_auto_mode_args()
+    CLI->>resolve_timeout: resolve_timeout(args, model)
+    Note over resolve_timeout: Priority: --no-timeout > explicit flag > opus-auto > default
+    resolve_timeout-->>CLI: float | None
+    CLI-->>User: exit code

@@ -7,7 +7,9 @@ digraph service_components {
     subgraph cluster_cli {
         label="CLI Layer";
         style=filled; fillcolor="#dfe6e9";
-        cli [label="cli.py\ncreate_parser() / main()"];
+        cli [label="cli.py\ncreate_parser() / main() / resolve_timeout()"];
+        cli_pkg [label="cli/__init__.py\nadd_auto_mode_args / resolve_timeout / __getattr__"];
+        cli_main [label="cli/__main__.py\npython -m amplihack.cli entrypoint"];
         cli_ext [label="cli_extensions.py"];
     }
 

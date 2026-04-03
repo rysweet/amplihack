@@ -32,5 +32,9 @@ graph LR
     F22 --> F6
     F23 --> F7
     F24 --> F8
+    F34["cli<br/>refs: 5"]
+    F35["cli_pkg<br/>refs: 3"]
+    F34 --> F0
+    F35 --> F34
 
     click F0 "../ast-lsp-bindings/" "View AST bindings"
