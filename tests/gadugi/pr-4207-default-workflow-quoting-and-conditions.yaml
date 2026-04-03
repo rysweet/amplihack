@@ -1,0 +1,161 @@
+# Outside-in test: PR #4207 — default-workflow SEARCH_TITLE quoting and unsafe conditions
+# Verifies:
+#   1. SEARCH_TITLE uses 2-char SQL-safe escaping ('' not ''')
+#   2. No 'not in [...]' list-membership conditions remain
+#   3. The 4 dual-checkpoint steps use != conjunction form
+# Related: #4206, PR #4207
+
+name: "PR-4207 Default Workflow Quoting and Condition Safety"
+description: >
+  PR #4207 fixes two bugs in amplifier-bundle/recipes/default-workflow.yaml:
+  (1) SEARCH_TITLE used 3-char replacement instead of correct 2-char SQL-safe form;
+  (2) four condition expressions used unsupported not-in-list syntax, rewritten as != conjunctions.
+version: "1.0.0"
+config:
+  timeout: 30000
+  retries: 0
+  parallel: false
+
+environment:
+  requires: []
+
+agents:
+  - name: "cli-agent"
+    type: "cli"
+    config:
+      workingDirectory: "."
+      defaultTimeout: 15000
+      executionMode: "spawn"
+      captureOutput: true
+      ioConfig:
+        encoding: "utf8"
+        handleInteractivePrompts: false
+      logConfig:
+        logCommands: true
+        logOutput: true
+        logLevel: "info"
+
+steps:
+  # -----------------------------------------------------------------------
+  # Phase 1: SEARCH_TITLE quoting — no unsafe not-in-list conditions
+  # -----------------------------------------------------------------------
+
+  - name: "No not-in-list conditions in YAML"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: 'python3 -c "from pathlib import Path; import sys; text = Path(''amplifier-bundle/recipes/default-workflow.yaml'').read_text(); count = text.count(''not in [''); sys.exit(1) if count > 0 else print(''PASS: zero not-in-list conditions found'')"'
+    timeout: 10000
+
+  - name: "Verify no not-in-list conditions"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PASS: zero not-in-list conditions found"
+    timeout: 5000
+
+  # -----------------------------------------------------------------------
+  # Phase 2: Dual-checkpoint steps use != conjunction form (not not-in-list)
+  # -----------------------------------------------------------------------
+
+  - name: "Dual-checkpoint conjunction count >= 4"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: 'python3 -c "import subprocess, sys; r = subprocess.run([''grep'', ''-c'', ''resume_checkpoint != .checkpoint-after-implementation. and resume_checkpoint != .checkpoint-after-review-feedback.'', ''amplifier-bundle/recipes/default-workflow.yaml''], capture_output=True, text=True); count = int(r.stdout.strip()) if r.stdout.strip().isdigit() else 0; print(''PASS: found '' + str(count) + '' dual-checkpoint conjunction conditions'') if count >= 4 else (print(''FAIL: only '' + str(count) + '' found'') or sys.exit(1))"'
+    timeout: 10000
+
+  - name: "Verify dual-checkpoint conjunctions"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PASS: found"
+    timeout: 5000
+
+  # -----------------------------------------------------------------------
+  # Phase 3: SEARCH_TITLE uses 2-char SQL-safe escaping
+  # -----------------------------------------------------------------------
+
+  - name: "SEARCH_TITLE escaping line is present in YAML"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: 'python3 -c "import subprocess, sys; r = subprocess.run([''grep'', ''-c'', ''SEARCH_TITLE'', ''amplifier-bundle/recipes/default-workflow.yaml''], capture_output=True, text=True); count = int(r.stdout.strip()) if r.stdout.strip().isdigit() else 0; print(''PASS: SEARCH_TITLE lines found: '' + str(count)) if count >= 1 else (print(''FAIL: SEARCH_TITLE not found'') or sys.exit(1))"'
+    timeout: 10000
+
+  - name: "Verify SEARCH_TITLE present"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PASS: SEARCH_TITLE lines found"
+    timeout: 5000
+
+  - name: "SEARCH_TITLE escaping uses 2-char backslash-quote replacement"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: |
+        python3 - <<'PY'
+        from pathlib import Path
+        import subprocess
+        import sys
+
+        text = Path("amplifier-bundle/recipes/default-workflow.yaml").read_text()
+        lines = [line.strip() for line in text.splitlines() if "SEARCH_TITLE=" in line and "SEARCH_TITLE//" in line]
+        line = lines[0] if lines else ""
+        script = (
+            "set -eu\n"
+            "SEARCH_TITLE=\"Ryan's test with O'Brien\"\n"
+            f"{line}\n"
+            "printf '%s\\n' \"$SEARCH_TITLE\"\n"
+        )
+        result = subprocess.run(["bash", "-c", script], capture_output=True, text=True, timeout=10)
+
+        if result.returncode == 0 and result.stdout.strip() == "Ryan''s test with O''Brien":
+            print("PASS: correct 2-char replacement")
+        else:
+            message = (result.stdout + " " + result.stderr).strip()
+            print(f"FAIL: {message}")
+            sys.exit(1)
+        PY
+    timeout: 10000
+
+  - name: "Verify SEARCH_TITLE 2-char escaping"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PASS: correct 2-char replacement"
+    timeout: 5000
+
+  # -----------------------------------------------------------------------
+  # Phase 4: YAML is parseable
+  # -----------------------------------------------------------------------
+
+  - name: "YAML parses without error"
+    agent: "cli-agent"
+    action: "execute_command"
+    params:
+      command: 'python3 -c "import yaml; from pathlib import Path; yaml.safe_load(Path(''amplifier-bundle/recipes/default-workflow.yaml'').read_text()); print(''PASS: YAML parses successfully'')"'
+    timeout: 10000
+
+  - name: "Verify YAML parse success"
+    agent: "cli-agent"
+    action: "wait_for_output"
+    params:
+      target: "PASS: YAML parses successfully"
+    timeout: 5000
+
+cleanup:
+  - name: "Capture final output"
+    agent: "cli-agent"
+    action: "capture_output"
+
+metadata:
+  tags:
+    - "workflow"
+    - "quoting"
+    - "conditions"
+    - "regression"
+    - "pr-4207"
+    - "issue-4206"
+  priority: "high"
