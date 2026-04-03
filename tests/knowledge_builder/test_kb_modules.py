@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from amplihack.knowledge_builder.kb_types import KnowledgeGraph, KnowledgeTriplet, Question
+from amplihack.knowledge_builder.modules._agent_flags import permission_flag_for_agent_cmd
 from amplihack.knowledge_builder.modules.artifact_generator import ArtifactGenerator
 from amplihack.knowledge_builder.modules.knowledge_acquirer import KnowledgeAcquirer
 from amplihack.knowledge_builder.modules.question_generator import QuestionGenerator
@@ -71,6 +72,22 @@ class TestQuestionGenerator:
         assert "copilot" in call_args
 
     @patch("subprocess.run")
+    def test_copilot_path_generate_initial_questions_no_dangerous_flag(self, mock_run):
+        """Full copilot paths must still use the Copilot-compatible permission flag."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="\n".join([f"{i}. Question {i}?" for i in range(1, 11)]),
+        )
+
+        gen = QuestionGenerator(agent_cmd="/usr/local/bin/copilot")
+        gen.generate_initial_questions("Test Topic")
+
+        call_args = mock_run.call_args[0][0]
+        assert "--dangerously-skip-permissions" not in call_args
+        assert "--allow-all-tools" in call_args
+        assert call_args[0] == "/usr/local/bin/copilot"
+
+    @patch("subprocess.run")
     def test_copilot_generate_socratic_questions_no_dangerous_flag(self, mock_run):
         """Copilot agent must use the Copilot-compatible permission flag in Socratic mode."""
         mock_run.return_value = MagicMock(
@@ -85,6 +102,17 @@ class TestQuestionGenerator:
         call_args = mock_run.call_args[0][0]
         assert "--dangerously-skip-permissions" not in call_args
         assert "--allow-all-tools" in call_args
+
+    def test_permission_flag_accepts_codex_and_windows_paths(self):
+        """Codex and Windows Copilot paths should use --allow-all-tools."""
+        assert permission_flag_for_agent_cmd("/opt/tools/codex") == "--allow-all-tools"
+        assert (
+            permission_flag_for_agent_cmd(r"C:\Program Files\GitHub\copilot.exe")
+            == "--allow-all-tools"
+        )
+        assert permission_flag_for_agent_cmd("/usr/local/bin/claude") == (
+            "--dangerously-skip-permissions"
+        )
 
     @patch("subprocess.run")
     def test_claude_generate_initial_questions_keeps_dangerous_flag(self, mock_run):
@@ -142,6 +170,25 @@ class TestKnowledgeAcquirer:
         call_args = mock_run.call_args[0][0]
         assert "--dangerously-skip-permissions" not in call_args
         assert "--allow-all-tools" in call_args
+
+    @patch("subprocess.run")
+    def test_answer_question_copilot_path_uses_allow_all_tools(self, mock_run):
+        """Full copilot paths must still use the Copilot-compatible permission flag."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="ANSWER: This is the answer.\nSOURCES:\n- https://example.com\n- https://test.org",
+        )
+
+        acq = KnowledgeAcquirer(agent_cmd="/usr/local/bin/copilot")
+        question = Question(text="What is this?", depth=0, parent_index=None)
+        answer, sources = acq.answer_question(question, "Topic")
+
+        assert answer == "This is the answer."
+        assert len(sources) == 2
+        call_args = mock_run.call_args[0][0]
+        assert "--dangerously-skip-permissions" not in call_args
+        assert "--allow-all-tools" in call_args
+        assert call_args[0] == "/usr/local/bin/copilot"
 
     @patch("subprocess.run")
     def test_answer_question_no_sources(self, mock_run):

@@ -3,6 +3,7 @@
 import subprocess
 
 from amplihack.knowledge_builder.kb_types import Question
+from amplihack.knowledge_builder.modules._agent_flags import permission_flag_for_agent_cmd
 
 
 class KnowledgeAcquirer:
@@ -41,9 +42,7 @@ Requirements:
   - [url2]
   - [url3]"""
 
-        permission_flag = (
-            "--allow-all-tools" if self.agent_cmd == "copilot" else "--dangerously-skip-permissions"
-        )
+        permission_flag = permission_flag_for_agent_cmd(self.agent_cmd)
         result = subprocess.run(
             [self.agent_cmd, permission_flag, "-p", prompt],
             capture_output=True,
