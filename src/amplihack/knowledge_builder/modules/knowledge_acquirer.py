@@ -1,8 +1,17 @@
 """Knowledge acquirer using web search."""
 
+import os
 import subprocess
 
 from amplihack.knowledge_builder.kb_types import Question
+
+
+def _is_copilot_binary(agent_cmd: str) -> bool:
+    """Return True if agent_cmd resolves to the Copilot binary."""
+    return (
+        os.path.basename(agent_cmd) == "copilot"
+        or os.getenv("AMPLIHACK_AGENT_BINARY", "") == "copilot"
+    )
 
 
 class KnowledgeAcquirer:
@@ -41,8 +50,11 @@ Requirements:
   - [url2]
   - [url3]"""
 
+        cmd = [self.agent_cmd, "-p", prompt]
+        if not _is_copilot_binary(self.agent_cmd):
+            cmd.insert(1, "--dangerously-skip-permissions")
         result = subprocess.run(
-            [self.agent_cmd, "--dangerously-skip-permissions", "-p", prompt],
+            cmd,
             capture_output=True,
             text=True,
             check=False,

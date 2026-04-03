@@ -510,7 +510,8 @@ class ClaudeLauncher:
                 raise RuntimeError("No Claude binary found. Please install Claude CLI.")
 
             # Build standard claude command
-            cmd = [claude_path, "--dangerously-skip-permissions"]
+            is_copilot = os.getenv("AMPLIHACK_AGENT_BINARY", "") == "copilot"
+            cmd = [claude_path] if is_copilot else [claude_path, "--dangerously-skip-permissions"]
 
             # Add --verbose if requested
             if self.verbose:
@@ -552,8 +553,10 @@ class ClaudeLauncher:
             trace_file=trace_file,
         )
 
-        # Add standard Claude CLI arguments
-        cmd.append("--dangerously-skip-permissions")
+        # Add standard Claude CLI arguments (not supported by copilot binary)
+        is_copilot = binary.name == "copilot" or os.getenv("AMPLIHACK_AGENT_BINARY", "") == "copilot"
+        if not is_copilot:
+            cmd.append("--dangerously-skip-permissions")
 
         # Add --verbose if requested
         if self.verbose:
