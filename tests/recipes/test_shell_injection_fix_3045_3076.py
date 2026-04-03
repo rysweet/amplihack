@@ -466,9 +466,11 @@ class TestTitleNormalisationPresent:
         assert "tr '\\n\\r'" in cmd or ("tr '\\n'" in cmd) or ("head -1" in cmd), (
             "step-15-commit-push COMMIT_TITLE must normalise newlines"
         )
-        # Either printf format truncation (%.72s) or cut
-        assert "72" in cmd or "cut -c1-72" in cmd, (
-            "step-15-commit-push COMMIT_TITLE must be limited to 72 chars"
+        assert "COMMIT_TITLE_MAX_LENGTH" in cmd, (
+            "step-15-commit-push should use configurable commit_title_max_length"
+        )
+        assert "TOTAL_SUBJECT_LENGTH=$((COMMIT_TITLE_MAX_LENGTH + 6))" in cmd, (
+            "step-15-commit-push should derive total subject length including the prefix"
         )
 
     def test_step_16_pr_title_normalised(self, step_map):

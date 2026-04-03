@@ -1,0 +1,360 @@
+# Outside-in QA scenario: step-16 ADO dual-provider behavior (issue-4205 / PR #4212)
+#
+# Covers ADO-specific behavior added by issue #4205:
+#   1. ADO provider detection from dev.azure.com and visualstudio.com remotes
+#   2. Step-16 ADO preflight auth check via az account show
+#   3. az repos pr list --source-branch idempotency guard
+#   4. az repos pr create --work-items $ISSUE_NUM (work-item linking)
+#   5. Variable-driven target branch BASE_BRANCH (not hardcoded main)
+#   6. Step-03 WIQL injection sanitization: strip [ ] ; from search title
+#   7. Step-03 az boards query uses --wiql for open work item search
+#   8. Truncation warnings are emitted for ADO search titles and PR titles
+#
+# All steps are static grep/bash verification against the workflow YAML.
+# No live ADO credentials are required.
+#
+# Run: gadugi-test run -d tests/gadugi -s "Step 16 ADO Dual-Provider" --verbose
+
+name: "Step 16 ADO Dual-Provider"
+description: |
+  Verifies that default-workflow.yaml contains all ADO dual-provider behavior
+  introduced by issue #4205 / PR #4212:
+  - Provider detection for dev.azure.com and visualstudio.com remotes
+  - az account show preflight auth gate in step-16
+  - ADO idempotency guard via az repos pr list --source-branch
+  - az repos pr create with --work-items $ISSUE_NUM (work-item linking)
+  - Variable-driven target branch (BASE_BRANCH, not hardcoded main)
+  - WIQL injection sanitization in step-03 ADO work item search
+  - Truncation warnings for ADO search titles and PR titles
+version: "1.0.0"
+config:
+  timeout: 120000
+  retries: 0
+  parallel: false
+
+agents:
+  - name: "verifier"
+    type: "system"
+    config:
+      shell: "bash"
+      cwd: "."
+      timeout: 60000
+      capture_output: true
+
+steps:
+  # ======================================================================
+  # ADO Provider Detection
+  # ======================================================================
+
+  - name: "ADO detection: dev.azure.com pattern present"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'dev.azure.com' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "ADO detection: visualstudio.com pattern present"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'visualstudio.com' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "ADO detection: returns 'ado' string"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: 'grep -c ''echo "ado"'' amplifier-bundle/recipes/default-workflow.yaml'
+    expect:
+      exit_code: 0
+
+  - name: "ADO detection: GIT_PROVIDER compared to 'ado'"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'GIT_PROVIDER.*=.*ado' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  # ======================================================================
+  # Step-16 ADO Pre-flight Auth Check
+  # ======================================================================
+
+  - name: "Step-16 ADO: az account show preflight gate"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'az account show' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-16 ADO: auth failure message directs to az login"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'az login' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  # ======================================================================
+  # Step-16 ADO Idempotency Guard
+  # ======================================================================
+
+  - name: "Step-16 ADO: idempotency guard via az repos pr list"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'az repos pr list' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-16 ADO: idempotency guard uses --source-branch"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c -- '--source-branch' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-16 ADO: existing PR skips creation with INFO message"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'ADO PR already exists' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  # ======================================================================
+  # Step-16 ADO PR Creation: work-item linking
+  # ======================================================================
+
+  - name: "Step-16 ADO: az repos pr create present"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'az repos pr create' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-16 ADO: az repos pr create does not suppress stderr"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        python3 - <<'PY'
+        import re
+        from pathlib import Path
+
+        cmd = Path("amplifier-bundle/recipes/default-workflow.yaml").read_text()
+        match = re.search(r'ADO_PR_URL=\$\(timeout 120 az repos pr create --draft \\\n.*?-o tsv\)', cmd, re.DOTALL)
+        if not match:
+            raise SystemExit("FAIL: az repos pr create block not found")
+        if "2>/dev/null" in match.group(0):
+            raise SystemExit("FAIL: az repos pr create still suppresses stderr")
+        print("PASS: az repos pr create keeps stderr visible")
+        PY
+    expect:
+      stdout_contains: ["PASS: az repos pr create keeps stderr visible"]
+      exit_code: 0
+
+  - name: "Step-16 ADO: --work-items flag carries ISSUE_NUM"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c -- '--work-items.*ISSUE_NUM' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-16 ADO: creates draft PR"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'az repos pr create --draft' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  # ======================================================================
+  # Variable-Driven Target Branch (not hardcoded main)
+  # ======================================================================
+
+  - name: "Step-16: BASE_BRANCH derived from origin/HEAD symbolic-ref"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'symbolic-ref refs/remotes/origin/HEAD' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-16: BASE_BRANCH falls back to main (not hardcoded)"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'BASE_BRANCH:-main' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-16 ADO: --target-branch uses BASE_BRANCH variable"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c -- '--target-branch.*BASE_BRANCH' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-03 ADO: warns when WIQL search title is truncated"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'Truncating ADO work item search title to 100 characters' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-16: warns when PR title is truncated"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'Truncating PR title to 200 characters' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  # ======================================================================
+  # Step-03 ADO: WIQL injection sanitization
+  # ======================================================================
+
+  - name: "Step-03 ADO: WIQL query strips [ characters"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'SEARCH_TITLE//\\[' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-03 ADO: WIQL query strips ] characters"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'SEARCH_TITLE//\\]' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-03 ADO: WIQL query strips ; characters"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'SEARCH_TITLE//;' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-03 ADO: az boards query uses --wiql"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'az boards query' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  # ======================================================================
+  # Functional test: BASE_BRANCH fallback logic
+  # ======================================================================
+
+  - name: "BASE_BRANCH fallback: empty symbolic-ref yields 'main'"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        _HEAD_REF=""
+        BASE_BRANCH="${_HEAD_REF##*/}"
+        BASE_BRANCH="${BASE_BRANCH:-main}"
+        if [ "$BASE_BRANCH" = "main" ]; then
+          echo "PASS: empty symbolic-ref falls back to main"
+          exit 0
+        else
+          echo "FAIL: expected main, got $BASE_BRANCH"
+          exit 1
+        fi
+        '
+    expect:
+      stdout_contains: ["PASS: empty symbolic-ref falls back to main"]
+      exit_code: 0
+
+  - name: "BASE_BRANCH fallback: non-main default branch preserved"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        _HEAD_REF="refs/remotes/origin/develop"
+        BASE_BRANCH="${_HEAD_REF##*/}"
+        BASE_BRANCH="${BASE_BRANCH:-main}"
+        if [ "$BASE_BRANCH" = "develop" ]; then
+          echo "PASS: non-main default branch preserved"
+          exit 0
+        else
+          echo "FAIL: expected develop, got $BASE_BRANCH"
+          exit 1
+        fi
+        '
+    expect:
+      stdout_contains: ["PASS: non-main default branch preserved"]
+      exit_code: 0
+
+  # ======================================================================
+  # Functional test: WIQL injection sanitization logic
+  # ======================================================================
+
+  - name: "WIQL sanitization: strips injection-significant characters"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        ISSUE_TITLE="Fix [bug] in module; DROP TABLE --"
+        SEARCH_TITLE="${ISSUE_TITLE:0:100}"
+        SEARCH_TITLE="${SEARCH_TITLE//\[/}"
+        SEARCH_TITLE="${SEARCH_TITLE//\]/}"
+        SEARCH_TITLE="${SEARCH_TITLE//;/}"
+        echo "result: $SEARCH_TITLE"
+        # Verify injection chars are removed
+        if echo "$SEARCH_TITLE" | grep -qE "[\\[\\];]"; then
+          echo "FAIL: injection chars still present: $SEARCH_TITLE"
+          exit 1
+        fi
+        echo "PASS: injection chars stripped from WIQL search title"
+        '
+    expect:
+      stdout_contains: ["PASS: injection chars stripped from WIQL search title"]
+      exit_code: 0
+
+  # ======================================================================
+  # Step-16 structural integrity check
+  # ======================================================================
+
+  - name: "Step-16 has step banner"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'Step 16' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-16 id is step-16-create-draft-pr"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: 'grep -c ''id: "step-16-create-draft-pr"'' amplifier-bundle/recipes/default-workflow.yaml'
+    expect:
+      exit_code: 0
+
+cleanup:
+  - name: "Capture verification output"
+    agent: "verifier"
+    action: "capture_output"
+
+metadata:
+  tags: [ado, dual-provider, step-16, regression, issue-4205, pr-4212]
+  priority: "high"
+  issue: "issue-4205"
+  pr: "pr-4212"

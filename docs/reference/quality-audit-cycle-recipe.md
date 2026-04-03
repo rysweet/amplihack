@@ -91,9 +91,10 @@ interprets the content, then read from the file in Python:
     export FIX_RESULTS_FILE="$_FIX_RESULTS_TMPFILE"
 
     python3 - <<'PYEOF'
-    import json, os
+    import os
+    from amplihack.utils.defensive import parse_llm_json
     with open(os.environ['VALIDATED_FILE']) as f:
-        validated = json.loads(f.read())
+        validated = parse_llm_json(f.read())
     # ... process safely in Python ...
     PYEOF
 ```
@@ -133,9 +134,9 @@ For simpler steps that only need one variable:
     __EOF__
 
     python3 - <<'PYEOF'
-    import json
+    from amplihack.utils.defensive import parse_llm_json
     with open("'$_TMPFILE'") as f:
-        data = json.loads(f.read())
+        data = parse_llm_json(f.read())
     PYEOF
 ```
 
