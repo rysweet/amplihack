@@ -337,6 +337,11 @@ steps:
 
       if [ "$GIT_PROVIDER" = "ado" ]; then
         # ── ADO PATH ────────────────────────────────────────────────────────
+        # Pre-flight: verify az CLI is authenticated before making API calls
+        if ! az account show >/dev/null 2>&1; then
+          echo "ERROR: Azure CLI not authenticated. Run 'az login' first." >&2
+          exit 1
+        fi
         # Idempotency Guard 1: Reuse work item referenced in task_description (#NNNN)
         if [[ "$TASK_DESC" =~ \#([0-9]+) ]]; then
           REF_ITEM_NUM="${BASH_REMATCH[1]}"
@@ -520,7 +525,8 @@ steps:
       PY
       }
       # FIX (#4205): Also match ADO work item URLs: _workitems/edit/NNNN
-      EXTRACTED=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE '(issues|_workitems/edit)/[0-9]+' | grep -oE '[0-9]+' | head -1)
+      # Fallback: bare numeric ID (e.g. from az boards work-item create --query id output)
+      EXTRACTED=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE '(issues|_workitems/edit)/[0-9]+|^[0-9]+$' | grep -oE '[0-9]+' | head -1)
       if [ -z "$EXTRACTED" ]; then
         PR_NUMBER=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'pull/[0-9]+' | grep -oE '[0-9]+' | head -1)
         if [ -n "$PR_NUMBER" ]; then
@@ -1868,13 +1874,16 @@ steps:
           ;;
       esac
 
-      # Check: How many commits are ahead of origin/main?
-      # NOTE: base branch is confirmed as 'main' (error message says "between main and feat/...")
+      # Detect default base branch (supports repos using master/develop/trunk, not just main)
+      BASE_BRANCH=$(git remote show origin 2>/dev/null | grep 'HEAD branch' | awk '{print $NF}')
+      BASE_BRANCH="${BASE_BRANCH:-main}"
+
+      # Check: How many commits are ahead of origin/$BASE_BRANCH?
       # Use arithmetic -eq (not string ==) to handle whitespace-padded output on some platforms
-      COMMITS_AHEAD=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "0")
+      COMMITS_AHEAD=$(git rev-list --count "origin/${BASE_BRANCH}..HEAD" 2>/dev/null || echo "0")
 
       if [ "$COMMITS_AHEAD" -eq 0 ]; then
-          echo "ERROR: 0 commits ahead of main — skipping PR creation, hollow-success condition for issue-$ISSUE_NUM." >&2
+          echo "ERROR: 0 commits ahead of $BASE_BRANCH — skipping PR creation, hollow-success condition for issue-$ISSUE_NUM." >&2
           echo "Possible causes:" >&2
           echo "  1. step-15-commit-push failed silently (check commit_result output)" >&2
           echo "  2. Implementation agents wrote files outside the worktree" >&2
@@ -1903,6 +1912,11 @@ steps:
 
       if [ "$GIT_PROVIDER" = "ado" ]; then
         # ── ADO PATH ──────────────────────────────────────────────────────────
+        # Pre-flight: verify az CLI is authenticated before making API calls
+        if ! az account show >/dev/null 2>&1; then
+          echo "ERROR: Azure CLI not authenticated. Run 'az login' first." >&2
+          exit 1
+        fi
         # FIX (#3324): Idempotency guard for ADO — detect pre-existing PRs
         EXISTING_PR=$(timeout 60 az repos pr list \
           --source-branch "$CURRENT_BRANCH" \
@@ -1921,7 +1935,8 @@ steps:
           --title "$PR_TITLE" \
           --description "$PR_BODY" \
           --source-branch "$CURRENT_BRANCH" \
-          --target-branch "main" \
+          --target-branch "$BASE_BRANCH" \
+          --work-items "$ISSUE_NUM" \
           --query url \
           -o tsv 2>/dev/null)
         AZ_STATUS=$?
