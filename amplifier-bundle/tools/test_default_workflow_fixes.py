@@ -1436,6 +1436,220 @@ class TestStep03bThreeTierEdgeCases(unittest.TestCase):
             _run_extraction_fixed(issue_creation, task_description, gh_mock)
 
 
+# ===========================================================================
+# TestStep03CreateIssueIdempotency — idempotency guards for step-03-create-issue
+#
+# Regression contract for PR #3952:
+#   Guard 1: task_description contains #NNNN → verify issue exists → reuse it
+#   Guard 2: search open issues for similar title → reuse if found
+#   Security: non-numeric REF_ISSUE_NUM skipped with WARN
+#   Normal path: both guards miss → create new issue
+# ===========================================================================
+
+
+def _make_fake_gh(
+    tmpdir: str,
+    issue_view_url: str = "",
+    issue_list_url: str = "",
+    issue_create_url: str = "https://github.com/test/repo/issues/999",
+) -> str:
+    """
+    Write a fake ``gh`` binary into ``tmpdir/bin/`` and return the bin dir path.
+
+    The fake binary responds to the sub-commands used by step-03:
+      gh issue view  → prints issue_view_url (or nothing if empty)
+      gh issue list  → prints issue_list_url (or nothing if empty)
+      gh issue create → prints issue_create_url
+      gh label list/create → no-op
+    """
+    bin_dir = os.path.join(tmpdir, "bin")
+    os.makedirs(bin_dir, exist_ok=True)
+    gh_path = os.path.join(bin_dir, "gh")
+    script = textwrap.dedent(f"""\
+        #!/bin/bash
+        subcmd="$1"
+        action="$2"
+        case "$subcmd" in
+          issue)
+            case "$action" in
+              view)   echo '{issue_view_url}' ;;
+              list)   echo '{issue_list_url}' ;;
+              create) echo '{issue_create_url}' ;;
+            esac
+            ;;
+          label)
+            case "$action" in
+              list)   echo "" ;;
+              create) echo "Created" ;;
+            esac
+            ;;
+        esac
+        exit 0
+    """)
+    Path(gh_path).write_text(script)
+    os.chmod(gh_path, 0o755)
+    return bin_dir
+
+
+def _run_step03_create_issue(
+    repo_path: str,
+    task_description: str,
+    final_requirements: str,
+    fake_gh_bin_dir: str,
+) -> subprocess.CompletedProcess:
+    """
+    Extract step-03-create-issue command from the YAML, substitute template
+    variables, and execute it with the fake gh binary prepended to PATH.
+    """
+    raw_cmd = _extract_step_command(_WORKFLOW_YAML, "step-03-create-issue")
+    cmd = (
+        raw_cmd.replace("{{repo_path}}", repo_path)
+        .replace("{{task_description}}", task_description)
+        .replace("{{final_requirements}}", final_requirements)
+    )
+    env = os.environ.copy()
+    env["PATH"] = fake_gh_bin_dir + os.pathsep + env.get("PATH", "")
+    return subprocess.run(
+        ["bash", "-c", cmd],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=env,
+    )
+
+
+class TestStep03CreateIssueIdempotency(unittest.TestCase):
+    """
+    Regression tests for the step-03-create-issue idempotency guards (PR #3952).
+
+    Guard 1: If task_description contains #NNNN, call ``gh issue view`` and
+             reuse the issue URL if it exists.
+    Guard 2: Search open issues by title; reuse if a match is found.
+    Security: Non-numeric REF_ISSUE_NUM must be silently skipped (WARN only).
+    Normal path: Both guards miss → ``gh issue create`` is called.
+    """
+
+    def setUp(self):
+        self.repo_dir = tempfile.mkdtemp(prefix="test_step03_")
+        self.tmp_dir = tempfile.mkdtemp(prefix="test_step03_gh_")
+        _init_repo_with_commit(self.repo_dir)
+
+    def tearDown(self):
+        shutil.rmtree(self.repo_dir, ignore_errors=True)
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
+
+    def test_guard1_reuses_issue_when_found(self):
+        """Guard 1: task_description with #123, issue exists → exit 0, URL on stdout."""
+        fake_url = "https://github.com/test/repo/issues/123"
+        bin_dir = _make_fake_gh(self.tmp_dir, issue_view_url=fake_url)
+        result = _run_step03_create_issue(
+            self.repo_dir,
+            task_description="Fix the thing described in #123",
+            final_requirements="Requirement A",
+            fake_gh_bin_dir=bin_dir,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(fake_url, result.stdout)
+        self.assertIn("Reusing existing issue", result.stderr)
+
+    def test_guard1_falls_through_when_issue_not_found(self):
+        """Guard 1: #NNN present but issue not found → guard 2 runs (search)."""
+        bin_dir = _make_fake_gh(
+            self.tmp_dir,
+            issue_view_url="",
+            issue_list_url="",
+            issue_create_url="https://github.com/test/repo/issues/999",
+        )
+        result = _run_step03_create_issue(
+            self.repo_dir,
+            task_description="Fix the thing described in #9999",
+            final_requirements="Requirement A",
+            fake_gh_bin_dir=bin_dir,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("not found", result.stderr)
+
+    def test_guard1_skips_non_numeric_extraction(self):
+        """Guard 1: task_description without #NNN → REF_ISSUE_NUM empty, proceeds."""
+        bin_dir = _make_fake_gh(
+            self.tmp_dir,
+            issue_view_url="",
+            issue_list_url="https://github.com/test/repo/issues/42",
+        )
+        result = _run_step03_create_issue(
+            self.repo_dir,
+            task_description="Fix the thing — no issue reference here",
+            final_requirements="Requirement B",
+            fake_gh_bin_dir=bin_dir,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("https://github.com/test/repo/issues/42", result.stdout)
+
+    def test_guard2_reuses_existing_open_issue(self):
+        """Guard 2: similar open issue found by title search → exit 0, URL on stdout."""
+        found_url = "https://github.com/test/repo/issues/77"
+        bin_dir = _make_fake_gh(
+            self.tmp_dir,
+            issue_view_url="",
+            issue_list_url=found_url,
+        )
+        result = _run_step03_create_issue(
+            self.repo_dir,
+            task_description="Refactor the authentication module",
+            final_requirements="Requirement C",
+            fake_gh_bin_dir=bin_dir,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(found_url, result.stdout)
+        self.assertIn("Found existing open issue", result.stderr)
+
+    def test_normal_path_creates_new_issue_when_no_guards_fire(self):
+        """Normal path: both guards miss → gh issue create is called, URL returned."""
+        new_url = "https://github.com/test/repo/issues/999"
+        bin_dir = _make_fake_gh(
+            self.tmp_dir,
+            issue_view_url="",
+            issue_list_url="",
+            issue_create_url=new_url,
+        )
+        result = _run_step03_create_issue(
+            self.repo_dir,
+            task_description="Brand new task with no existing issue",
+            final_requirements="Requirement D",
+            fake_gh_bin_dir=bin_dir,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(new_url, result.stdout)
+
+    def test_yaml_step03_contains_guard1_bash_regex(self):
+        """YAML guard: step-03 must use bash regex for issue extraction (not grep pipeline)."""
+        raw_cmd = _extract_step_command(_WORKFLOW_YAML, "step-03-create-issue")
+        self.assertIn("BASH_REMATCH", raw_cmd, "Guard 1 must use bash regex [[ =~ ]] pattern")
+        self.assertIn("REF_ISSUE_NUM", raw_cmd, "Guard 1 variable REF_ISSUE_NUM must be present")
+
+    def test_yaml_step03_contains_guard2_search(self):
+        """YAML guard: step-03 must contain Guard 2 (gh issue list --search)."""
+        raw_cmd = _extract_step_command(_WORKFLOW_YAML, "step-03-create-issue")
+        self.assertIn("gh issue list", raw_cmd, "Guard 2 must call gh issue list")
+        self.assertIn("--search", raw_cmd, "Guard 2 must use --search flag")
+        self.assertIn("SEARCH_QUERY", raw_cmd, "Guard 2 variable SEARCH_QUERY must be present")
+
+    def test_yaml_step03_contains_numeric_validation(self):
+        """YAML security: REF_ISSUE_NUM must be validated as numeric (^[0-9]+$)."""
+        raw_cmd = _extract_step_command(_WORKFLOW_YAML, "step-03-create-issue")
+        self.assertRegex(
+            raw_cmd,
+            r"\^?\[0-9\]\+\$",
+            "Numeric validation guard ^[0-9]+$ must be present",
+        )
+
+    def test_yaml_step03_uses_bash_builtins_for_title(self):
+        """YAML optimization: ISSUE_TITLE must use bash parameter expansion, not tr|cut."""
+        raw_cmd = _extract_step_command(_WORKFLOW_YAML, "step-03-create-issue")
+        self.assertNotIn("| tr ", raw_cmd, "ISSUE_TITLE should not use tr subprocess")
+        self.assertNotIn("| cut ", raw_cmd, "ISSUE_TITLE should not use cut subprocess")
+
+
 # Entry point
 # ===========================================================================
 

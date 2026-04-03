@@ -303,8 +303,12 @@ steps:
       cd "{{repo_path}}"
       echo "=== Step 3: Creating GitHub Issue ===" >&2
 
-      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
-      TASK_DESC=$(cat <<EOFTASKDESC
+      # FIX (#3045/#3076/#3117): heredoc capture — prevents echo metacharacter injection.
+      # SECURITY FIX: quoted delimiter (<<'EOF') prevents bash from expanding $() / backticks
+      # in template-substituted content. Step-03b already uses this pattern correctly.
+      # {{variable}} substitution is performed by the recipe runner before bash executes,
+      # so quoted delimiters are safe and correct here.
+      TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
       )
@@ -312,7 +316,7 @@ steps:
       ISSUE_TITLE="${TASK_DESC//$'\n'/ }"
       ISSUE_TITLE="${ISSUE_TITLE//$'\r'/ }"
       ISSUE_TITLE="${ISSUE_TITLE:0:200}"
-      ISSUE_REQS=$(cat <<EOFREQS
+      ISSUE_REQS=$(cat <<'EOFREQS'
       {{final_requirements}}
       EOFREQS
       )
