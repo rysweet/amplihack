@@ -109,7 +109,7 @@ az repos pr create --draft \
 
 An idempotency guard calls `az repos pr list --source-branch` first to detect an existing PR on the same branch before attempting creation.
 
-The `--work-items` flag is not currently used because ADO work item IDs and PR IDs live in the same numeric space only within a project, and the issue number tracked by the recipe is not guaranteed to be an ADO work item ID (it may come from external context). The PR body contains `Closes #<issue_number>` as a prose reference.
+The `--work-items` flag is not currently used. In the ADO workflow path `issue_number` is always the ADO work item ID (extracted from `_workitems/edit/<N>` by step-03b), but formal API linkage via `--work-items` is deferred to a future enhancement. The PR body contains `Closes #<issue_number>` as a prose reference, which is sufficient for most ADO board policies.
 
 ---
 

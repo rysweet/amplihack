@@ -178,11 +178,11 @@ https://dev.azure.com/org/project/_git/repo/pullrequest/NNN
 
 ## Security Invariants
 
-| Invariant                                | Implementation                                                                                                      |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Heredoc delimiters are quoted            | `<<'EOFTASKDESC'` and `<<'EOFDESIGN'` prevent bash from expanding `$()` and backticks in recipe-substituted content |
-| ADO work item ID is validated as numeric | `case "$NEW_ITEM_ID" in ''                                                                                          | _[!0-9]_)` guard before any downstream use        |
-| `issue_number` is validated as numeric   | `case "$ISSUE_NUM" in ''                                                                                            | _[!0-9]_)` guard (pre-existing, not ADO-specific) |
+| Invariant                                | Implementation                                                                                                                                     |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Heredoc delimiters are quoted            | `<<'EOFTASKDESC'` and `<<'EOFDESIGN'` prevent bash from expanding `$()` and backticks in recipe-substituted content                               |
+| ADO work item ID is validated as numeric | `case "$NEW_ITEM_ID" in ''`\|`*[!0-9]*)` exits 1 before any downstream interpolation; rejects empty, `None`, or non-numeric `az boards` output    |
+| `issue_number` is validated as numeric   | `case "$ISSUE_NUM" in ''`\|`*[!0-9]*)` exits 1 at the start of step-16 (pre-existing guard, not ADO-specific)                                     |
 
 ---
 
@@ -194,7 +194,7 @@ https://dev.azure.com/org/project/_git/repo/pullrequest/NNN
 | WIQL title search escapes only single quotes                | Titles containing `[`, `]`, `CONTAINS`, semicolons may produce unexpected WIQL query behavior | Use `task_description` with simple alphanumeric titles on ADO                  |
 | `CURRENT_BRANCH` not validated against a safe character set | Branches with unusual characters could produce unexpected `--source-branch` arguments         | Use standard branch names (`feat/`, `fix/`, `docs/`)                           |
 | No pre-flight `az` auth check                               | Auth failures propagate as `exit 1` from `az` commands without a specific diagnostic message  | Run `az account show` before invoking the workflow                             |
-| `--work-items` flag not used in PR creation                 | ADO PR is not formally linked to the work item via the API                                    | The PR description body contains `Closes #<issue_number>` as a prose reference |
+| `--work-items` flag not used in PR creation                 | ADO PR is not formally API-linked to the work item (prose `Closes #N` in description only)   | Future: add `--work-items "$ISSUE_NUM"` to `az repos pr create` for formal linkage             |
 
 ---
 
