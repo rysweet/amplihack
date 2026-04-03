@@ -243,3 +243,28 @@ class TestGracefulDegradation:
             result = expand_query("some query about memory")
             assert len(result) >= 1
             assert result[0] == "some query about memory"
+
+
+class TestAnthropicDisabledGuard:
+    """Tests for the ANTHROPIC_DISABLED env-var guard in query_expansion."""
+
+    def test_no_print_on_has_anthropic_false(self, capsys):
+        """When HAS_ANTHROPIC is False, no message is printed to stdout/stderr."""
+        with patch("amplihack.agents.goal_seeking.hive_mind.query_expansion.HAS_ANTHROPIC", False):
+            from amplihack.agents.goal_seeking.hive_mind.query_expansion import expand_query
+
+            expand_query("test query")
+
+        captured = capsys.readouterr()
+        assert "anthropic" not in captured.out.lower()
+        assert "anthropic" not in captured.err.lower()
+
+    def test_disabled_flag_causes_local_fallback(self, monkeypatch):
+        """ANTHROPIC_DISABLED=true prevents LLM expansion (uses local fallback)."""
+        monkeypatch.setenv("ANTHROPIC_DISABLED", "true")
+        with patch("amplihack.agents.goal_seeking.hive_mind.query_expansion.HAS_ANTHROPIC", False):
+            from amplihack.agents.goal_seeking.hive_mind.query_expansion import expand_query
+
+            result = expand_query("deploy api")
+            assert isinstance(result, list)
+            assert result[0] == "deploy api"

@@ -8,21 +8,34 @@ Public API:
     AnthropicBackend: Anthropic SDK backend
     CopilotBackend: GitHub Copilot SDK backend
     auto_detect_backend: Pick the best available backend
+
+Disablement:
+    Set ``ANTHROPIC_DISABLED=true`` to explicitly disable Anthropic.
+    ``AnthropicBackend`` will raise ``ConfigurationError`` on instantiation
+    when this flag is set, rather than silently falling back or failing later.
 """
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Protocol
 
 from amplihack.fleet._constants import DEFAULT_LLM_MAX_TOKENS, SUBPROCESS_TIMEOUT_SECONDS
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
     "LLMBackend",
     "AnthropicBackend",
     "CopilotBackend",
+    "ConfigurationError",
     "auto_detect_backend",
 ]
+
+
+class ConfigurationError(RuntimeError):
+    """Raised when a backend is unavailable due to missing or disabled configuration."""
 
 
 class LLMBackend(Protocol):
@@ -32,7 +45,17 @@ class LLMBackend(Protocol):
 
 
 class AnthropicBackend:
-    """Anthropic SDK backend."""
+    """Anthropic SDK backend.
+
+    Raises ``ConfigurationError`` on instantiation when Anthropic is explicitly
+    disabled via ``ANTHROPIC_DISABLED=true`` or when no API key is available.
+    This ensures clear, early failure rather than a silent no-op or an obscure
+    error deep inside the SDK.
+
+    Controlling env-vars:
+        ANTHROPIC_DISABLED: Set to ``true`` (case-insensitive) to disable.
+        ANTHROPIC_API_KEY:  Required API key; absence also raises ConfigurationError.
+    """
 
     def __init__(
         self,
@@ -40,6 +63,14 @@ class AnthropicBackend:
         api_key: str = "",
         max_tokens: int = DEFAULT_LLM_MAX_TOKENS,
     ):
+        if os.environ.get("ANTHROPIC_DISABLED", "").strip().lower() == "true":
+            msg = (
+                "AnthropicBackend is disabled (ANTHROPIC_DISABLED=true). "
+                "Unset ANTHROPIC_DISABLED or choose a different backend."
+            )
+            logger.warning(msg)
+            raise ConfigurationError(msg)
+
         self.model = model
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
         self.max_tokens = max_tokens
@@ -123,13 +154,20 @@ def auto_detect_backend() -> LLMBackend:
     """Auto-detect the best available LLM backend.
 
     Priority:
-    1. Anthropic (if ANTHROPIC_API_KEY set)
+    1. Anthropic (if ANTHROPIC_API_KEY set AND ANTHROPIC_DISABLED is not true)
     2. Copilot (fallback -- uses GitHub Copilot subscription)
 
     Always returns a backend; falls back to CopilotBackend.
     """
-    if os.environ.get("ANTHROPIC_API_KEY"):
+    anthropic_disabled = os.environ.get("ANTHROPIC_DISABLED", "").strip().lower() == "true"
+    if os.environ.get("ANTHROPIC_API_KEY") and not anthropic_disabled:
         return AnthropicBackend()
+
+    if anthropic_disabled and os.environ.get("ANTHROPIC_API_KEY"):
+        logger.warning(
+            "ANTHROPIC_API_KEY is set but ANTHROPIC_DISABLED=true; "
+            "falling back to CopilotBackend."
+        )
 
     # Fall back to GitHub Copilot SDK when running under copilot (no Anthropic key)
     return CopilotBackend()

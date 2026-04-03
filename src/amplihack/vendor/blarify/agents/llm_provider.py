@@ -4,7 +4,6 @@ from enum import Enum
 from typing import Any
 
 import json_repair
-from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable
@@ -15,11 +14,30 @@ from pydantic import BaseModel
 
 from .api_key_manager import APIKeyManager
 from .rotating_provider import (
-    RotatingKeyChatAnthropic,
     RotatingKeyChatGoogle,
     RotatingKeyChatOpenAI,
 )
 from .utils import discover_keys_for_provider
+
+try:
+    from langchain_anthropic import ChatAnthropic as _ChatAnthropic
+
+    ChatAnthropic = _ChatAnthropic
+    _LANGCHAIN_ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ChatAnthropic = None  # type: ignore[assignment,misc]
+    _LANGCHAIN_ANTHROPIC_AVAILABLE = False
+    logging.getLogger(__name__).warning(
+        "langchain-anthropic is not installed; Anthropic models will be unavailable "
+        "in LLMProvider. Install with: pip install langchain-anthropic"
+    )
+
+try:
+    from .rotating_provider import RotatingKeyChatAnthropic as _RotatingKeyChatAnthropic
+
+    RotatingKeyChatAnthropic = _RotatingKeyChatAnthropic
+except ImportError:
+    RotatingKeyChatAnthropic = None  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +55,7 @@ class ReasoningEffort(Enum):
     HIGH = "high"
 
 
-MODEL_PROVIDER_DICT = {
+MODEL_PROVIDER_DICT: dict[str, Any] = {
     "gpt-4.1": ChatOpenAI,
     "gpt-4.1-nano": ChatOpenAI,
     "gpt-4.1-mini": ChatOpenAI,
@@ -45,9 +63,11 @@ MODEL_PROVIDER_DICT = {
     "o3": ChatOpenAI,
     "gemini-2.5-flash-preview-05-20": ChatGoogleGenerativeAI,
     "gemini-2.5-pro-preview-06-05": ChatGoogleGenerativeAI,
-    "claude-3-5-haiku-latest": ChatAnthropic,
-    "claude-sonnet-4-20250514": ChatAnthropic,
 }
+# Only register Anthropic models when the dependency is present.
+if _LANGCHAIN_ANTHROPIC_AVAILABLE:
+    MODEL_PROVIDER_DICT["claude-3-5-haiku-latest"] = ChatAnthropic
+    MODEL_PROVIDER_DICT["claude-sonnet-4-20250514"] = ChatAnthropic
 
 
 class LLMProvider:
@@ -64,9 +84,10 @@ class LLMProvider:
     # Mapping of providers to their rotating classes
     ROTATING_PROVIDER_MAP: dict[str, type[Any]] = {
         "openai": RotatingKeyChatOpenAI,
-        "anthropic": RotatingKeyChatAnthropic,
         "google": RotatingKeyChatGoogle,
     }
+    if RotatingKeyChatAnthropic is not None:
+        ROTATING_PROVIDER_MAP["anthropic"] = RotatingKeyChatAnthropic
 
     def __init__(
         self, reasoning_agent_order: list[str] | None = None, reasoning_agent: str | None = None
@@ -150,9 +171,7 @@ class LLMProvider:
         if model not in MODEL_PROVIDER_DICT:
             raise ValueError(f"Model {model} not found in MODEL_PROVIDER_DICT")
 
-        chat_model_class: type[ChatGoogleGenerativeAI | ChatAnthropic | ChatOpenAI] = (
-            MODEL_PROVIDER_DICT[model]
-        )
+        chat_model_class: type[Any] = MODEL_PROVIDER_DICT[model]
 
         # Use provided timeout or instance timeout
         model_timeout = timeout or self.TIMEOUT
@@ -164,7 +183,7 @@ class LLMProvider:
                 if model_timeout
                 else ChatGoogleGenerativeAI(model=model)
             )
-        elif issubclass(chat_model_class, ChatAnthropic):
+        elif _LANGCHAIN_ANTHROPIC_AVAILABLE and issubclass(chat_model_class, ChatAnthropic):
             if model_timeout:
                 chat_model = ChatAnthropic(model_name=model, timeout=model_timeout, stop=None)
             else:

@@ -18,8 +18,8 @@ Public API (the "studs"):
 from __future__ import annotations
 
 import logging
+import os
 import re
-import sys
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,18 @@ try:
 except ImportError:
     anthropic = None  # type: ignore[assignment]
     HAS_ANTHROPIC = False
-    print("WARNING: anthropic not available", file=sys.stderr)
+    logger.warning(
+        "anthropic SDK not available; query_expansion will use local synonym fallback. "
+        "Install with: pip install anthropic"
+    )
+
+# Honour explicit disablement even when the SDK is installed.
+if HAS_ANTHROPIC and os.environ.get("ANTHROPIC_DISABLED", "").strip().lower() == "true":
+    HAS_ANTHROPIC = False
+    logger.warning(
+        "Anthropic is disabled (ANTHROPIC_DISABLED=true); "
+        "query_expansion will use local synonym fallback."
+    )
 
 # Backward-compatible alias
 EXPANSION_MODEL = DEFAULT_EXPANSION_MODEL

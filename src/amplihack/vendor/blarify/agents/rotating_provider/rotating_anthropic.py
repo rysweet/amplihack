@@ -5,10 +5,22 @@ from datetime import datetime
 from typing import Any
 
 from amplihack.vendor.blarify.agents.api_key_manager import APIKeyManager
-from langchain_anthropic import ChatAnthropic
 from pydantic import SecretStr
 
 from .rotating_providers import ErrorType, RotatingProviderBase
+
+try:
+    from langchain_anthropic import ChatAnthropic as _ChatAnthropic
+
+    ChatAnthropic = _ChatAnthropic
+    _LANGCHAIN_ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ChatAnthropic = None  # type: ignore[assignment,misc]
+    _LANGCHAIN_ANTHROPIC_AVAILABLE = False
+    logging.getLogger(__name__).warning(
+        "langchain-anthropic is not installed; RotatingKeyChatAnthropic will raise "
+        "ImportError when instantiated. Install with: pip install langchain-anthropic"
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -19,14 +31,22 @@ class RotatingKeyChatAnthropic(RotatingProviderBase):
     def __init__(self, key_manager: APIKeyManager, **kwargs: Any) -> None:
         """Initialize the rotating Anthropic provider.
 
+        Raises:
+            ImportError: If ``langchain-anthropic`` is not installed.
+
         Args:
             key_manager: The API key manager instance
             **kwargs: Additional ChatAnthropic arguments
         """
+        if not _LANGCHAIN_ANTHROPIC_AVAILABLE:
+            raise ImportError(
+                "langchain-anthropic is required for RotatingKeyChatAnthropic. "
+                "Install with: pip install langchain-anthropic"
+            )
         super().__init__(key_manager, **kwargs)
         self.model_kwargs = {k: v for k, v in kwargs.items() if k != "api_key"}
 
-    def _create_client(self, api_key: str) -> ChatAnthropic:
+    def _create_client(self, api_key: str) -> Any:
         """Create ChatAnthropic instance with specific API key.
 
         Args:
