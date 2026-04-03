@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 from unittest.mock import patch
 
@@ -167,8 +168,10 @@ class TestRunnerVersionChecks:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value="0.0.9")
+    @patch("amplihack.recipes.rust_runner_binary.ensure_rust_recipe_runner", return_value=False)
     def test_run_recipe_raises_when_runner_version_is_too_old(
         self,
+        _mock_ensure,
         _mock_get_version,
         _mock_find,
     ):
@@ -179,8 +182,10 @@ class TestRunnerVersionChecks:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value=None)
+    @patch("amplihack.recipes.rust_runner_binary.ensure_rust_recipe_runner", return_value=False)
     def test_run_recipe_raises_when_runner_version_is_unknown(
         self,
+        _mock_ensure,
         _mock_get_version,
         _mock_find,
     ):
@@ -191,10 +196,89 @@ class TestRunnerVersionChecks:
         "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
     )
     @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value="dev-build")
+    @patch("amplihack.recipes.rust_runner_binary.ensure_rust_recipe_runner", return_value=False)
     def test_run_recipe_raises_when_runner_version_is_unparseable(
         self,
+        _mock_ensure,
         _mock_get_version,
         _mock_find,
     ):
         with pytest.raises(RustRunnerVersionError, match="unparseable version 'dev-build'"):
             run_recipe_via_rust("test-recipe")
+
+
+_VALID_RUST_OUTPUT = json.dumps(
+    {
+        "recipe_name": "test-recipe",
+        "success": True,
+        "step_results": [
+            {"step_id": "s1", "status": "Completed", "output": "ok", "error": ""},
+        ],
+        "context": {},
+    }
+)
+
+
+class TestAutoUpdate:
+    """Tests for the auto-update path triggered on version mismatch in _find_rust_binary()."""
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value="0.0.9")
+    @patch("amplihack.recipes.rust_runner_binary.ensure_rust_recipe_runner", return_value=True)
+    @patch("subprocess.run")
+    def test_auto_update_success_proceeds_to_execution(
+        self, mock_run, _mock_ensure, _mock_version, _mock_find
+    ):
+        """Outdated binary + cargo available → auto-update succeeds → recipe executes."""
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout=_VALID_RUST_OUTPUT, stderr=""
+        )
+        result = run_recipe_via_rust("test-recipe")
+        assert result.success is True
+        _mock_ensure.assert_called_once()
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value="0.0.9")
+    @patch("amplihack.recipes.rust_runner_binary.ensure_rust_recipe_runner", return_value=False)
+    def test_auto_update_failure_raises_version_error(
+        self, _mock_ensure, _mock_version, _mock_find
+    ):
+        """Outdated binary + no cargo (or install failure) → RustRunnerVersionError."""
+        with pytest.raises(RustRunnerVersionError, match="0.0.9"):
+            run_recipe_via_rust("test-recipe")
+        _mock_ensure.assert_called_once()
+
+    @patch.dict("os.environ", {"RECIPE_RUNNER_AUTO_UPDATE": "0"})
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value="0.0.9")
+    @patch("amplihack.recipes.rust_runner_binary.ensure_rust_recipe_runner", return_value=True)
+    def test_auto_update_disabled_raises_immediately(
+        self, mock_ensure, _mock_version, _mock_find
+    ):
+        """RECIPE_RUNNER_AUTO_UPDATE=0 → RustRunnerVersionError without calling ensure."""
+        with pytest.raises(RustRunnerVersionError, match="0.0.9"):
+            run_recipe_via_rust("test-recipe")
+        mock_ensure.assert_not_called()
+
+    @patch(
+        "amplihack.recipes.rust_runner.find_rust_binary", return_value="/usr/bin/recipe-runner-rs"
+    )
+    @patch("amplihack.recipes.rust_runner_binary.get_runner_version", return_value="0.0.9")
+    @patch(
+        "amplihack.recipes.rust_runner_binary.ensure_rust_recipe_runner",
+        side_effect=subprocess.TimeoutExpired("cargo", 300),
+    )
+    def test_auto_update_timeout_raises_version_error(
+        self, mock_ensure, _mock_version, _mock_find
+    ):
+        """If ensure_rust_recipe_runner() raises TimeoutExpired, propagate as RustRunnerVersionError."""
+        with pytest.raises((RustRunnerVersionError, subprocess.TimeoutExpired)):
+            run_recipe_via_rust("test-recipe")
+        mock_ensure.assert_called_once()
+

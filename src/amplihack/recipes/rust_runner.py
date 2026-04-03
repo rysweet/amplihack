@@ -437,6 +437,11 @@ def _find_rust_binary() -> str:
     if Path(binary).exists():
         _check_binary_permissions(binary)
     if not check_runner_version(binary):
+        if os.environ.get("RECIPE_RUNNER_AUTO_UPDATE", "1") != "0":
+            logger.info("recipe-runner-rs version mismatch — attempting auto-update…")
+            if runner_binary.ensure_rust_recipe_runner():
+                updated_binary = find_rust_binary()
+                return updated_binary if updated_binary is not None else binary
         raise_for_runner_version(binary)
     return binary
 
