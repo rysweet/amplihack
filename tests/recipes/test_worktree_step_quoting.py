@@ -119,16 +119,30 @@ class TestNoRecoveryOnFailure:
             )
 
     def test_execute_single_round_1_no_recovery(self, smart_orchestrator):
-        step = _get_step(smart_orchestrator, "execute-single-round-1")
-        assert "recovery_on_failure" not in step, (
-            "execute-single-round-1 must not use recovery_on_failure"
-        )
+        matching = [
+            step
+            for step in smart_orchestrator["steps"]
+            if step.get("id", "").startswith("execute-single-round-1")
+        ]
+        assert matching, "No steps matching 'execute-single-round-1*' found in smart-orchestrator"
+        for step in matching:
+            assert "recovery_on_failure" not in step, (
+                f"Step '{step.get('id')}' must not use recovery_on_failure"
+            )
 
     def test_execute_single_fallback_blocked_no_recovery(self, smart_orchestrator):
-        step = _get_step(smart_orchestrator, "execute-single-fallback-blocked")
-        assert "recovery_on_failure" not in step, (
-            "execute-single-fallback-blocked must not use recovery_on_failure"
+        matching = [
+            step
+            for step in smart_orchestrator["steps"]
+            if step.get("id", "").startswith("execute-single-fallback-blocked")
+        ]
+        assert matching, (
+            "No steps matching 'execute-single-fallback-blocked*' found in smart-orchestrator"
         )
+        for step in matching:
+            assert "recovery_on_failure" not in step, (
+                f"Step '{step.get('id')}' must not use recovery_on_failure"
+            )
 
 
 # ---------------------------------------------------------------------------

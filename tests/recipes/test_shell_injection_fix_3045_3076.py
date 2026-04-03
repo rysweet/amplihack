@@ -48,14 +48,16 @@ import yaml
 
 RECIPE_DIR = Path("amplifier-bundle/recipes")
 
-# Steps that reference {{task_description}} inside a bash command: block.
+# Steps that reference {{task_description}} inside a bash command: block
+# and use UNQUOTED heredoc (for Rust runner $RECIPE_VAR_* expansion, #3117).
+# NOTE: step-03-create-issue and step-16-create-draft-pr intentionally use
+# QUOTED heredoc (<<'EOFTASKDESC') for security — they are excluded here and
+# verified separately in TestHeredocSecurity (test_ado_dual_provider_tdd.py).
 AFFECTED_STEP_IDS = [
     "step-00-workflow-preparation",
-    "step-03-create-issue",
     "step-04-setup-worktree",
     "step-08c-hollow-success-guard",
     "step-15-commit-push",
-    "step-16-create-draft-pr",
     "step-22b-final-status",
     "workflow-complete",
 ]
@@ -882,23 +884,25 @@ class TestCIRegressionGuards:
         )
 
     def test_grep_confirms_heredoc_count_matches_affected_steps(self):
-        """grep must find exactly one heredoc open per affected step (7 total).
+        """grep must find exactly one UNQUOTED heredoc open per affected step.
 
-        Counts both quoted (<<'EOFTASKDESC') and unquoted (<<EOFTASKDESC)
-        heredocs. Step-04-setup-worktree uses unquoted for Rust runner
-        compatibility (issue #3087).
+        Counts only unquoted (<<EOFTASKDESC) heredocs — these correspond to the
+        steps in AFFECTED_STEP_IDS that use the Rust runner $RECIPE_VAR_* env-var
+        expansion approach (#3117). Steps step-03-create-issue and
+        step-16-create-draft-pr intentionally use QUOTED heredoc for security and
+        are tracked separately in TestHeredocSecurity (test_ado_dual_provider_tdd.py).
         """
         recipe_path = RECIPE_DIR / "default-workflow.yaml"
         if not recipe_path.exists():
             pytest.skip("default-workflow.yaml not found")
         result = subprocess.run(
-            ["grep", "-cE", r"<<'?EOFTASKDESC'?", str(recipe_path)],
+            ["grep", "-cE", r"<<EOFTASKDESC$", str(recipe_path)],
             capture_output=True,
             text=True,
         )
         count = int(result.stdout.strip())
         assert count == len(AFFECTED_STEP_IDS), (
-            f"Expected {len(AFFECTED_STEP_IDS)} heredoc opens (one per affected step), "
+            f"Expected {len(AFFECTED_STEP_IDS)} unquoted heredoc opens (one per affected step), "
             f"found {count}. Either a step is missing the fix or an extra heredoc was added."
         )
 

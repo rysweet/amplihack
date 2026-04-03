@@ -222,8 +222,6 @@ def discover_recipes(
         RecipeCache of qualified key -> RecipeInfo (bare-name lookup supported).
     """
     dirs = search_dirs or _get_default_search_dirs()
-    recipes: dict[str, RecipeInfo] = {}
-    dirs = search_dirs or _DEFAULT_SEARCH_DIRS
     recipes = RecipeCache()
 
     logger.debug("Searching for recipes in %d directories", len(dirs))
@@ -349,7 +347,6 @@ def find_recipe(name: str, search_dirs: list[Path] | None = None) -> Path | None
         return candidate if candidate.is_file() else None
 
     # Bare-name lookup: last-wins
-    dirs = search_dirs or _DEFAULT_SEARCH_DIRS
     found: Path | None = None
     for search_dir in dirs:
         candidate = search_dir / f"{name}.yaml"
