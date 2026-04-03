@@ -302,8 +302,9 @@ steps:
       set -euo pipefail
       cd "{{repo_path}}"
 
-      # FIX (#4205): Provider-aware issue/work-item creation
       # detect_git_provider: returns "ado" for dev.azure.com/visualstudio.com remotes, "github" otherwise
+      # NOTE: This function is duplicated verbatim in step-16-create-draft-pr.
+      #       Update both locations together; they run in separate bash shells.
       detect_git_provider() {
         local remote_url
         remote_url=$(git remote get-url origin 2>/dev/null || echo '')
@@ -362,8 +363,12 @@ steps:
         fi
 
         # Idempotency Guard 2: Search open ADO work items for matching title
+        # SECURITY: strip injection-significant chars from search title before query
         SEARCH_TITLE="${ISSUE_TITLE:0:100}"
-        SEARCH_TITLE="${SEARCH_TITLE//\'/\'\''}"
+        SEARCH_TITLE="${SEARCH_TITLE//\'/\'\'}"          # escape single quotes
+        SEARCH_TITLE="${SEARCH_TITLE//[/}"               # strip [ (field reference syntax)
+        SEARCH_TITLE="${SEARCH_TITLE//]/}"               # strip ] (field reference syntax)
+        SEARCH_TITLE="${SEARCH_TITLE//;/}"               # strip ; (statement terminators)
         if [ -n "$SEARCH_TITLE" ]; then
           echo "INFO: Searching open ADO work items for similar title" >&2
           EXISTING_ADO_ID=$(timeout 60 az boards query \
@@ -1858,8 +1863,9 @@ steps:
       cd "{{worktree_setup.worktree_path}}"
       echo "=== Step 16: Creating Draft PR ===" >&2
 
-      # FIX (#4205): Provider-aware PR creation
       # detect_git_provider: returns "ado" for dev.azure.com/visualstudio.com remotes, "github" otherwise
+      # NOTE: This function is duplicated verbatim in step-03-create-issue.
+      #       Update both locations together; they run in separate bash shells.
       detect_git_provider() {
         local remote_url
         remote_url=$(git remote get-url origin 2>/dev/null || echo '')
