@@ -47,10 +47,10 @@ sequenceDiagram
     cli-->>CLI: result
     CLI-->>User: exit code
 
-    participant resolve_timeout
-    User->>CLI: auto (--query-timeout-minutes / --no-timeout)
+    participant auto_mode
+    User->>CLI: auto
     CLI->>cli: add_auto_mode_args()
-    CLI->>resolve_timeout: resolve_timeout(args, model)
-    Note over resolve_timeout: Priority: --no-timeout > explicit flag > opus-auto > default
-    resolve_timeout-->>CLI: float | None
+    CLI->>auto_mode: AutoMode(timeout=default)
+    Note over auto_mode: Default 30 min timeout; configurable via env vars
+    auto_mode-->>CLI: session limits applied
     CLI-->>User: exit code
