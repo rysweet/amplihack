@@ -218,6 +218,7 @@ nav:
   - Reference:
       - Discoveries: claude/context/DISCOVERIES.md
       - Security: SECURITY_RECOMMENDATIONS.md
+      - Anthropic Disablement: ANTHROPIC_DISABLEMENT.md
       - Testing: testing/README.md
       - Troubleshooting: troubleshooting/README.md
       - Code Review: CODE_REVIEW.md

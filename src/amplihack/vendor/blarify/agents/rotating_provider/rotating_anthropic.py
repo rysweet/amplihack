@@ -33,11 +33,19 @@ class RotatingKeyChatAnthropic(RotatingProviderBase):
 
         Raises:
             ImportError: If ``langchain-anthropic`` is not installed.
+            RuntimeError: If ``ANTHROPIC_DISABLED=true`` is set in the environment.
 
         Args:
             key_manager: The API key manager instance
             **kwargs: Additional ChatAnthropic arguments
         """
+        import os
+
+        if os.environ.get("ANTHROPIC_DISABLED", "").strip().lower() == "true":
+            raise RuntimeError(
+                "RotatingKeyChatAnthropic is disabled (ANTHROPIC_DISABLED=true). "
+                "Unset ANTHROPIC_DISABLED or choose a different provider."
+            )
         if not _LANGCHAIN_ANTHROPIC_AVAILABLE:
             raise ImportError(
                 "langchain-anthropic is required for RotatingKeyChatAnthropic. "
