@@ -8,7 +8,7 @@ This document tracks recent bug fixes and improvements to the Recipe Runner and 
 
 **Problem**: All `type: agent` steps in `default-workflow` and `consensus-workflow`
 ran from the repo root instead of the worktree created for the task, causing
-*hollow-context execution* — agents read the repo root state, not their assigned
+_hollow-context execution_ — agents read the repo root state, not their assigned
 branch — and CWD conflicts when two parallel workflows ran simultaneously.
 
 **Fix**:
@@ -17,11 +17,11 @@ branch — and CWD conflicts when two parallel workflows ran simultaneously.
   `working_dir: {{worktree_path}}` to all 75 agent steps.
 - `MIN_RUNNER_VERSION` bumped through three releases:
 
-| Version | Fix |
-|---|---|
+| Version          | Fix                                                 |
+| ---------------- | --------------------------------------------------- |
 | 0.3.1 (PR #3771) | Resolve orchestrator from `AMPLIHACK_HOME`, not CWD |
-| 0.3.2 (PR #3779) | Relative worktree path resolution |
-| 0.3.3 (PR #3781) | Template rendering for `working_dir` field |
+| 0.3.2 (PR #3779) | Relative worktree path resolution                   |
+| 0.3.3 (PR #3781) | Template rendering for `working_dir` field          |
 
 **Impact**: Nested agent sessions now inherit the correct working directory.
 Parallel workflows no longer overwrite each other's lock files or context.
@@ -101,12 +101,12 @@ but do not abort the workflow. Requires recipe-runner-rs ≥ 0.2.10.
 
 **Taxonomy**:
 
-| Step category | `fatal` setting |
-|---|---|
-| Core implementation steps | `true` (default) |
-| Pre-commit / lint steps | `false` |
-| Checkpoint / status-check steps | `false` |
-| Cleanup steps | `false` |
+| Step category                   | `fatal` setting  |
+| ------------------------------- | ---------------- |
+| Core implementation steps       | `true` (default) |
+| Pre-commit / lint steps         | `false`          |
+| Checkpoint / status-check steps | `false`          |
+| Cleanup steps                   | `false`          |
 
 ---
 
@@ -181,10 +181,10 @@ native, restricted shells) can now use the dev-orchestrator without workarounds.
 
 **How to choose**:
 
-| Mode | When to use |
-|---|---|
-| Direct (default) | Interactive local development, short-to-medium recipes |
-| Durable (tmux) | Long recipes (>15 min), SSH sessions, environments that prune orphan processes |
+| Mode             | When to use                                                                    |
+| ---------------- | ------------------------------------------------------------------------------ |
+| Direct (default) | Interactive local development, short-to-medium recipes                         |
+| Durable (tmux)   | Long recipes (>15 min), SSH sessions, environments that prune orphan processes |
 
 **Using the durable (tmux) mode**:
 
@@ -269,11 +269,11 @@ guidance were improved for reliability:
 rules for `{{var}}` placeholders. The Python wrapper (`rust_runner.py`) now
 applies three automatic fixes before invoking the Rust binary:
 
-| Pattern | Problem | Auto-fix |
-|---|---|---|
-| `"{{var}}"` | Runner adds double quotes; explicit wrapping doubles them | Strip outer `"` |
-| `'{{var}}'` | Single quotes block `$RECIPE_VAR_*` expansion | Strip outer `'` |
-| `<<'DELIM'` | Quoted heredoc delimiter blocks variable expansion | Remove quotes from delimiter |
+| Pattern     | Problem                                                   | Auto-fix                     |
+| ----------- | --------------------------------------------------------- | ---------------------------- |
+| `"{{var}}"` | Runner adds double quotes; explicit wrapping doubles them | Strip outer `"`              |
+| `'{{var}}'` | Single quotes block `$RECIPE_VAR_*` expansion             | Strip outer `'`              |
+| `<<'DELIM'` | Quoted heredoc delimiter blocks variable expansion        | Remove quotes from delimiter |
 
 **Impact**: Recipes that previously silently broke due to quoting (doubled
 quotes, unexpanded variables, literal heredoc output) now work correctly without
@@ -297,13 +297,13 @@ from amplihack.workflows import GhAwCompiler, Diagnostic, compile_workflow
 
 **Key improvements over the previous parser**:
 
-| Issue | Fix |
-|---|---|
-| `on:` key → Python `True` false positives (YAML 1.1 Norway problem) | `yaml.compose()` preserves the raw `"on"` string key |
-| No line/column in error messages | `Diagnostic(line=N, col=N)` from compose node tree |
-| Typos silently stay as warnings | Levenshtein distance ≤ 2 → severity escalated to `"error"` |
-| Full field list in suggestions | `difflib.get_close_matches(n=3)` → top-3 ranked matches |
-| Missing-field errors give no guidance | `FIELD_VALID_VALUES` dict embeds format examples |
+| Issue                                                               | Fix                                                        |
+| ------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `on:` key → Python `True` false positives (YAML 1.1 Norway problem) | `yaml.compose()` preserves the raw `"on"` string key       |
+| No line/column in error messages                                    | `Diagnostic(line=N, col=N)` from compose node tree         |
+| Typos silently stay as warnings                                     | Levenshtein distance ≤ 2 → severity escalated to `"error"` |
+| Full field list in suggestions                                      | `difflib.get_close_matches(n=3)` → top-3 ranked matches    |
+| Missing-field errors give no guidance                               | `FIELD_VALID_VALUES` dict embeds format examples           |
 
 **Example**:
 
@@ -593,15 +593,15 @@ amplihack recipe run investigation --context task_description="How does auth wor
 
 #### Feature Compatibility Matrix
 
-| Feature | macOS | Linux | WSL | Windows Native |
-|---|---|---|---|---|
-| Core recipe runner | Full | Full | Full | Full |
-| Agent orchestration | Full | Full | Full | Full |
-| Auto mode | Full | Full | Full | Partial (no TUI) |
-| Fleet CLI | Full | Full | Full | Not supported |
-| File locking | Full | Full | Full | Full (`msvcrt` fallback) |
-| Keyboard input | Full | Full | Full | Full (`msvcrt` fallback) |
-| Temp directory | Full | Full | Full | Full (`tempfile.gettempdir()`) |
+| Feature             | macOS | Linux | WSL  | Windows Native                 |
+| ------------------- | ----- | ----- | ---- | ------------------------------ |
+| Core recipe runner  | Full  | Full  | Full | Full                           |
+| Agent orchestration | Full  | Full  | Full | Full                           |
+| Auto mode           | Full  | Full  | Full | Partial (no TUI)               |
+| Fleet CLI           | Full  | Full  | Full | Not supported                  |
+| File locking        | Full  | Full  | Full | Full (`msvcrt` fallback)       |
+| Keyboard input      | Full  | Full  | Full | Full (`msvcrt` fallback)       |
+| Temp directory      | Full  | Full  | Full | Full (`tempfile.gettempdir()`) |
 
 **Documentation Updated**:
 
@@ -647,10 +647,60 @@ Fixes released in **amplihack v0.6.69** (March 16, 2026):
 - **Agent-Agnostic Binary** (PR #3174) - `AMPLIHACK_AGENT_BINARY` env var
 - **Windows Compatibility** (PR #3127) - Phases 1–3 native PowerShell support
 
+---
+
+## April 2026 — Shell Quoting Fix for step-03-create-issue
+
+### step-03-create-issue Shell Quoting Bug (PR #4221, April 2026)
+
+**Problem:** `step-03-create-issue` crashed with `unexpected EOF while looking for matching '''`
+(bash exit 2) when `task_description` or `final_requirements` contained shell metacharacters
+such as backticks, `$()` command substitutions, or backslashes. The failure occurred before
+any repo code changes, blocking all default-workflow runs in Copilot CLI for affected tasks.
+
+**Root cause:** Two independent flaws in the bash step script:
+
+1. **Unquoted heredoc** (`<<EOFTASKDESC`): After the recipe runner substituted `{{task_description}}`
+   into the script, bash performed a second round of expansion on the heredoc body. Backticks and
+   `$()` in the task description were executed as commands, producing malformed output or
+   syntax errors.
+
+2. **Inline `--body` argument**: `gh issue create --body "$ISSUE_BODY"` with a multiline body
+   containing single quotes produced a script with unmatched quoting after template substitution.
+
+**Fix:**
+
+- Changed `<<EOFTASKDESC` and `<<EOFREQS` to `<<'EOFTASKDESC'` / `<<'EOFREQS'` (quoted
+  heredoc delimiters prevent all bash expansion of the heredoc body).
+- Added temp-file transport: body is written to a `mktemp` file (mode 600, cleaned via
+  `trap ... EXIT`) and passed as `--body-file <path>` to `gh issue create`.
+- ADO path updated: `az boards work-item create --description "$ISSUE_BODY"` →
+  `--description @"$ISSUE_BODY_FILE"`.
+
+**Why quoted heredoc is safe:** The recipe runner performs `{{var}}` substitution on the raw
+YAML string _before_ bash executes the script. Quoted heredocs prevent a second round of
+expansion — exactly the right behavior for user-supplied content.
+
+**Regression tests** (`tests/recipes/test_shell_injection_fix_3045_3076.py`):
+
+- New `TestStep03IssueBodyTransport` class: asserts `--body-file` is used and temp file is
+  cleaned up via `rm -f`.
+- `test_recipe_steps_use_eoftaskdesc_heredoc`: updated to accept both `<<EOFTASKDESC` and
+  `<<'EOFTASKDESC'` (previously rejected quoted form, blocking the fix).
+- `step-03b-extract-issue-number` added to `AFFECTED_STEP_IDS` (was missing from coverage).
+
+**Also fixed in this PR:** `test_worktree_step_quoting.py` step-name assertions updated from
+`execute-single-round-1` → `execute-single-round-1-development` to match current
+`smart-orchestrator.yaml` step IDs.
+
+See [step-03-idempotency.md — Shell Quoting Fix](./step-03-idempotency.md#shell-quoting-fix-4221)
+for full details.
+
 ## See Also
 
 - [Recipe Runner Documentation](./README.md)
 - [Recipe Discovery Troubleshooting](./recipe-discovery-troubleshooting.md)
+- [Step-03 Idempotency and Shell Quoting](./step-03-idempotency.md)
 - [Skill Catalog](../skills/SKILL_CATALOG.md)
 - [SDK Adapters Guide](../SDK_ADAPTERS_GUIDE.md)
 - [Dev-Orchestrator Tutorial](../tutorials/dev-orchestrator-tutorial.md)
