@@ -293,18 +293,22 @@ steps:
       cd "{{repo_path}}"
       echo "=== Step 3: Creating GitHub Issue ===" >&2
 
-      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
-      TASK_DESC=$(cat <<EOFTASKDESC
+      # FIX (#4221): Use quoted heredoc (<<'DELIM') to prevent bash from expanding
+      # $(), backticks, or other shell metacharacters in template-substituted content.
+      # The recipe runner performs {{variable}} substitution before bash executes,
+      # so quoted delimiters are safe and correct.
+      # Use unique delimiter unlikely to appear in user task descriptions.
+      TASK_DESC=$(cat <<'_AMPLIHACK_STEP03_TASK_EOF_'
       {{task_description}}
-      EOFTASKDESC
+      _AMPLIHACK_STEP03_TASK_EOF_
       )
       # Bash builtins replace tr|cut pipeline — avoids 2 subprocess spawns (matches step-16)
       ISSUE_TITLE="${TASK_DESC//$'\n'/ }"
       ISSUE_TITLE="${ISSUE_TITLE//$'\r'/ }"
       ISSUE_TITLE="${ISSUE_TITLE:0:200}"
-      ISSUE_REQS=$(cat <<EOFREQS
+      ISSUE_REQS=$(cat <<'_AMPLIHACK_STEP03_REQS_EOF_'
       {{final_requirements}}
-      EOFREQS
+      _AMPLIHACK_STEP03_REQS_EOF_
       )
 
       # Idempotency Guard 1: Reuse issue referenced in task_description (#NNNN)
@@ -376,7 +380,31 @@ steps:
       {{issue_creation}}
       EOFISSUECREATION
       )
+      # FIX (#4233): Match both issue URLs (issues/NNN) and PR URLs (pull/NNN).
+      # If the output is a PR URL, resolve the linked issue via gh pr view.
       EXTRACTED=$(printf '%s' "$ISSUE_CREATION" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+      if [ -z "$EXTRACTED" ]; then
+        # Try PR URL — step-03 may have returned a PR URL if reusing an existing PR
+        PR_NUMBER=$(printf '%s' "$ISSUE_CREATION" | grep -oE 'pull/[0-9]+' | grep -oE '[0-9]+' | head -1)
+        if [ -n "$PR_NUMBER" ]; then
+          echo "INFO: step-03b found PR URL (not issue URL) — resolving linked issue from PR #$PR_NUMBER" >&2
+          EXTRACTED=$(timeout 60 gh pr view "$PR_NUMBER" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // ""' 2>/dev/null || echo '')
+          # If no linked issue, use the PR number as the issue number
+          # (downstream steps can handle PR-only workflows)
+          if [ -z "$EXTRACTED" ]; then
+            echo "INFO: PR #$PR_NUMBER has no linked issue — using PR number as reference" >&2
+            EXTRACTED="$PR_NUMBER"
+          fi
+        fi
+      fi
+      if [ -z "$EXTRACTED" ]; then
+        # Last resort: scan for bare #NNNN references in the task description
+        TASK_DESC=$(cat <<'_AMPLIHACK_STEP03B_TASK_EOF_'
+        {{task_description}}
+        _AMPLIHACK_STEP03B_TASK_EOF_
+        )
+        EXTRACTED=$(printf '%s' "$TASK_DESC" | grep -oE '#[0-9]+' | grep -oE '[0-9]+' | head -1)
+      fi
       if [ -z "$EXTRACTED" ]; then
         echo "ERROR: step-03b failed to extract issue number from issue_creation output." >&2
         echo "Raw issue_creation output was:" >&2
