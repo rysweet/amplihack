@@ -119,15 +119,15 @@ class TestNoRecoveryOnFailure:
             )
 
     def test_execute_single_round_1_no_recovery(self, smart_orchestrator):
-        step = _get_step(smart_orchestrator, "execute-single-round-1")
+        step = _get_step(smart_orchestrator, "execute-single-round-1-development")
         assert "recovery_on_failure" not in step, (
-            "execute-single-round-1 must not use recovery_on_failure"
+            "execute-single-round-1-development must not use recovery_on_failure"
         )
 
     def test_execute_single_fallback_blocked_no_recovery(self, smart_orchestrator):
-        step = _get_step(smart_orchestrator, "execute-single-fallback-blocked")
+        step = _get_step(smart_orchestrator, "execute-single-fallback-blocked-development")
         assert "recovery_on_failure" not in step, (
-            "execute-single-fallback-blocked must not use recovery_on_failure"
+            "execute-single-fallback-blocked-development must not use recovery_on_failure"
         )
 
 

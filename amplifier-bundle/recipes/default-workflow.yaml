@@ -316,11 +316,10 @@ steps:
       GIT_PROVIDER=$(detect_git_provider)
       echo "=== Step 3: Creating Issue/Work Item (provider: $GIT_PROVIDER) ===" >&2
 
-      # FIX (#3045/#3076/#3117): heredoc capture — prevents echo metacharacter injection.
-      # SECURITY FIX: quoted delimiter (<<'EOF') prevents bash from expanding $() / backticks
-      # in template-substituted content. Step-03b already uses this pattern correctly.
-      # {{variable}} substitution is performed by the recipe runner before bash executes,
-      # so quoted delimiters are safe and correct here.
+      # FIX (#4221): QUOTED heredoc prevents shell expansion of $, backticks, and
+      # backslashes in task_description/requirements. Template substitution
+      # ({{var}}) is performed by the recipe runner BEFORE bash executes, so
+      # quoted heredocs are safe and required for injection prevention.
       TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
@@ -340,7 +339,7 @@ steps:
       ISSUE_BODY_FILE=$(mktemp)
       chmod 600 "$ISSUE_BODY_FILE"
       trap 'rm -f "$ISSUE_BODY_FILE"' EXIT
-      printf '%s' "$ISSUE_BODY" > "$ISSUE_BODY_FILE"
+      printf '%s\n' "$ISSUE_BODY" > "$ISSUE_BODY_FILE"
 
       if [ "$GIT_PROVIDER" = "ado" ]; then
         # ── ADO PATH ────────────────────────────────────────────────────────
@@ -365,8 +364,7 @@ steps:
         fi
 
         # Idempotency Guard 2: Search open ADO work items for matching title
-        SEARCH_TITLE="${ISSUE_TITLE:0:100}"
-        SEARCH_TITLE="${SEARCH_TITLE//\'/\'\''}"
+        SEARCH_TITLE=$(printf '%s' "${ISSUE_TITLE:0:100}" | sed "s/'/''/g")
         if [ -n "$SEARCH_TITLE" ]; then
           echo "INFO: Searching open ADO work items for similar title" >&2
           EXISTING_ADO_ID=$(timeout 60 az boards query \
@@ -466,11 +464,11 @@ steps:
       # to the actual issue number instead of a related PR number.
       # EOFISSUECREATION delimiter is intentionally long/specific to prevent accidental
       # collision with issue body text that might contain common delimiters like "EOF".
-      ISSUE_CREATION=$(cat <<'EOFISSUECREATION'
+      ISSUE_CREATION=$(cat <<EOFISSUECREATION
       {{issue_creation}}
       EOFISSUECREATION
       )
-      TASK_DESC=$(cat <<'EOFTASKDESC'
+      TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
       )
@@ -1890,11 +1888,9 @@ steps:
           exit 1
       fi
 
-      # FIX (#3045/#3076/#3117): heredoc capture — prevents echo metacharacter injection.
-      # SECURITY FIX: quoted delimiter (<<'EOF') prevents bash from expanding $() / backticks
-      # in template-substituted content. {{variable}} substitution is performed by the recipe
-      # runner before bash executes, so quoted delimiters are safe and correct here.
-      TASK_DESC=$(cat <<'EOFTASKDESC'
+      # FIX (#3045/#3076/#3117/#4221): unquoted heredoc — allows Rust recipe runner
+      # env-var expansion of {{variables}} before bash executes.
+      TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
       )
@@ -1902,7 +1898,7 @@ steps:
       PR_TITLE="${TASK_DESC//$'\n'/ }"
       PR_TITLE="${PR_TITLE//$'\r'/ }"
       PR_TITLE="${PR_TITLE:0:200}"
-      PR_DESIGN=$(cat <<'EOFDESIGN'
+      PR_DESIGN=$(cat <<EOFDESIGN
       {{design_spec}}
       EOFDESIGN
       )

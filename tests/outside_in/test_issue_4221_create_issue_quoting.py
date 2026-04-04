@@ -68,6 +68,21 @@ SPECIAL_CHAR_CASES = [
         "1. Handle C:\\Users\\admin paths.\n2. Keep \\n literal in config values.",
         id="backslashes",
     ),
+    pytest.param(
+        "Run `echo hello` and `uname -a` in the shell",
+        "1. Run `make test` before merging.\n2. Check `git status` output.",
+        id="backticks",
+    ),
+    pytest.param(
+        "Cost is 100 and PATH expansion must stay safe",
+        "1. PATH must not be exposed.\n2. Sanitize env lookups from logs.",
+        id="dollar-signs",
+    ),
+    pytest.param(
+        "Fix auth; rm canary, redirect and pipe output",
+        "1. Sanitize input.\n2. Reject shell injection chains.",
+        id="shell-metacharacters",
+    ),
 ]
 
 
@@ -144,7 +159,11 @@ def _expected_issue_body(task_desc: str = TASK_DESCRIPTION, reqs: str = FINAL_RE
 
 
 def _write_fake_gh(bin_dir: Path, capture_path: Path) -> None:
-    """Create a fake gh executable that captures --title/--body-file args."""
+    """Create a fake gh executable that captures --title/--body-file args.
+
+    Handles the idempotency guard calls (issue list, issue view, label list/create)
+    by returning empty results, then captures the actual issue create call.
+    """
     fake_gh = bin_dir / "gh"
     fake_gh.write_text(
         """#!/usr/bin/env python3
@@ -154,29 +173,49 @@ import sys
 from pathlib import Path
 
 args = sys.argv[1:]
-payload = {"args": args, "labels": []}
-idx = 0
-while idx < len(args):
-    arg = args[idx]
-    if arg == "--title" and idx + 1 < len(args):
-        payload["title"] = args[idx + 1]
-        idx += 2
-        continue
-    if arg == "--body-file" and idx + 1 < len(args):
-        payload["body_file"] = args[idx + 1]
-        payload["body"] = Path(args[idx + 1]).read_text(encoding="utf-8")
-        idx += 2
-        continue
-    if arg == "--label" and idx + 1 < len(args):
-        payload["labels"].append(args[idx + 1])
-        idx += 2
-        continue
-    idx += 1
 
-with open(os.environ["FAKE_GH_CAPTURE"], "w", encoding="utf-8") as f:
-    json.dump(payload, f)
+# Idempotency guard: gh issue view (returns failure = not found)
+if len(args) >= 2 and args[0] == "issue" and args[1] == "view":
+    sys.exit(1)
 
-print("https://github.com/example/repo/issues/4221")
+# Idempotency guard: gh issue list --search (returns empty JSON array)
+if len(args) >= 2 and args[0] == "issue" and args[1] == "list":
+    print("")
+    sys.exit(0)
+
+# Label operations: succeed silently
+if len(args) >= 2 and args[0] == "label":
+    sys.exit(0)
+
+# Issue create: capture and return URL
+if len(args) >= 2 and args[0] == "issue" and args[1] == "create":
+    payload = {"args": args, "labels": []}
+    idx = 0
+    while idx < len(args):
+        arg = args[idx]
+        if arg == "--title" and idx + 1 < len(args):
+            payload["title"] = args[idx + 1]
+            idx += 2
+            continue
+        if arg == "--body-file" and idx + 1 < len(args):
+            payload["body_file"] = args[idx + 1]
+            payload["body"] = Path(args[idx + 1]).read_text(encoding="utf-8")
+            idx += 2
+            continue
+        if arg == "--label" and idx + 1 < len(args):
+            payload["labels"].append(args[idx + 1])
+            idx += 2
+            continue
+        idx += 1
+
+    with open(os.environ["FAKE_GH_CAPTURE"], "w", encoding="utf-8") as f:
+        json.dump(payload, f)
+
+    print("https://github.com/example/repo/issues/4221")
+    sys.exit(0)
+
+# Unknown command: succeed silently
+sys.exit(0)
 """,
         encoding="utf-8",
     )

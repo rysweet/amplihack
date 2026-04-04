@@ -1305,8 +1305,7 @@ class TestStep03bThreeTierEdgeCases(unittest.TestCase):
         This confirms Tier 1 takes priority.
         """
         issue_creation = (
-            "https://github.com/org/repo/pull/4000\n"
-            "https://github.com/org/repo/issues/3983\n"
+            "https://github.com/org/repo/pull/4000\nhttps://github.com/org/repo/issues/3983\n"
         )
         result = _run_extraction_fixed(issue_creation)
         self.assertEqual(result, "3983", "Tier 1 issues/ URL must beat PR URL")
@@ -1408,7 +1407,6 @@ class TestStep03bThreeTierEdgeCases(unittest.TestCase):
         """
         issue_creation = ""
         task_description = "Fix #3983 as mentioned in #3983"
-        gh_call_count = [0]
 
         gh_mock = textwrap.dedent("""\
             #!/bin/bash
@@ -1635,12 +1633,16 @@ class TestStep03CreateIssueIdempotency(unittest.TestCase):
         self.assertIn("SEARCH_QUERY", raw_cmd, "Guard 2 variable SEARCH_QUERY must be present")
 
     def test_yaml_step03_contains_numeric_validation(self):
-        """YAML security: REF_ISSUE_NUM must be validated as numeric (^[0-9]+$)."""
+        """YAML security: REF_ISSUE_NUM must be validated as numeric."""
         raw_cmd = _extract_step_command(_WORKFLOW_YAML, "step-03-create-issue")
-        self.assertRegex(
-            raw_cmd,
-            r"\^?\[0-9\]\+\$",
-            "Numeric validation guard ^[0-9]+$ must be present",
+        # Accept either bash regex (^[0-9]+$) or case pattern (*[!0-9]*)
+        import re
+
+        has_regex = bool(re.search(r"\^?\[0-9\]\+\$", raw_cmd))
+        has_case = "[!0-9]" in raw_cmd
+        self.assertTrue(
+            has_regex or has_case,
+            "Numeric validation (^[0-9]+$ or case *[!0-9]*) must be present",
         )
 
     def test_yaml_step03_uses_bash_builtins_for_title(self):
