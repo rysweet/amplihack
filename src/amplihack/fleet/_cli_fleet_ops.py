@@ -6,6 +6,8 @@ This module should NOT be imported directly by external code.
 
 from __future__ import annotations
 
+import os
+
 import click
 
 __all__ = ["register_fleet_ops"]
@@ -107,6 +109,13 @@ def register_fleet_ops(fleet_cli: click.Group) -> None:
         if backend == "auto":
             llm_backend = _cmd.auto_detect_backend()
         elif backend == "anthropic":
+            if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+                from amplihack.exceptions import ConfigurationError
+
+                raise ConfigurationError(
+                    "Anthropic is disabled (ANTHROPIC_DISABLED=true). "
+                    "Use --backend copilot or unset ANTHROPIC_DISABLED."
+                )
             llm_backend = _cmd.AnthropicBackend()
         elif backend == "copilot":
             llm_backend = _cmd.CopilotBackend()

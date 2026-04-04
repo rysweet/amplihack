@@ -40,6 +40,13 @@ class AnthropicBackend:
         api_key: str = "",
         max_tokens: int = DEFAULT_LLM_MAX_TOKENS,
     ):
+        if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+            from amplihack.exceptions import ConfigurationError
+
+            raise ConfigurationError(
+                "Anthropic is disabled (ANTHROPIC_DISABLED=true). "
+                "Use --backend copilot or unset ANTHROPIC_DISABLED."
+            )
         self.model = model
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
         self.max_tokens = max_tokens
@@ -126,11 +133,14 @@ def auto_detect_backend() -> LLMBackend:
     """Auto-detect the best available LLM backend.
 
     Priority:
-    1. Anthropic (if ANTHROPIC_API_KEY set)
+    1. Anthropic (if ANTHROPIC_API_KEY set and ANTHROPIC_DISABLED is not true)
     2. Copilot (fallback -- uses GitHub Copilot subscription)
 
     Always returns a backend; falls back to CopilotBackend.
     """
+    if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+        return CopilotBackend()
+
     if os.environ.get("ANTHROPIC_API_KEY"):
         return AnthropicBackend()
 

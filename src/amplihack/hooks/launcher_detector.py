@@ -46,7 +46,7 @@ class LauncherDetector:
 
     # Environment variables that indicate launcher type
     LAUNCHER_MARKERS = {
-        "claude": ["CLAUDE_CODE_SESSION", "CLAUDE_SESSION_ID", "ANTHROPIC_API_KEY"],
+        "claude": ["CLAUDE_CODE_SESSION", "CLAUDE_SESSION_ID"],
         "copilot": ["GITHUB_COPILOT_TOKEN", "GITHUB_TOKEN", "COPILOT_SESSION"],
         "codex": ["OPENAI_API_KEY", "CODEX_SESSION"],
     }

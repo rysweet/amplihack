@@ -11,6 +11,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from amplihack.exceptions import ConfigurationError
 from amplihack.fleet._backends import (
     AnthropicBackend,
     CopilotBackend,
@@ -25,30 +28,47 @@ from amplihack.fleet._backends import (
 class TestAnthropicBackend:
     """Tests for AnthropicBackend."""
 
-    def test_init_with_explicit_api_key(self):
+    def test_init_with_explicit_api_key(self, monkeypatch):
         """Explicit api_key is stored directly."""
+        monkeypatch.delenv("ANTHROPIC_DISABLED", raising=False)
         backend = AnthropicBackend(api_key="sk-test-123")
         assert backend.api_key == "sk-test-123"
 
     def test_init_from_env(self, monkeypatch):
         """Falls back to ANTHROPIC_API_KEY env var."""
+        monkeypatch.delenv("ANTHROPIC_DISABLED", raising=False)
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-env-456")
         backend = AnthropicBackend()
         assert backend.api_key == "sk-env-456"
 
     def test_init_no_key_stores_empty(self, monkeypatch):
         """No key available stores empty string (fails at call time)."""
+        monkeypatch.delenv("ANTHROPIC_DISABLED", raising=False)
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         backend = AnthropicBackend()
         assert backend.api_key == ""
 
-    def test_default_model(self):
+    def test_disabled_raises_configuration_error(self, monkeypatch):
+        """ANTHROPIC_DISABLED=true raises ConfigurationError on init."""
+        monkeypatch.setenv("ANTHROPIC_DISABLED", "true")
+        with pytest.raises(ConfigurationError, match="ANTHROPIC_DISABLED"):
+            AnthropicBackend(api_key="sk-test")  # pragma: allowlist secret
+
+    def test_disabled_case_insensitive(self, monkeypatch):
+        """ANTHROPIC_DISABLED is case-insensitive."""
+        monkeypatch.setenv("ANTHROPIC_DISABLED", "True")
+        with pytest.raises(ConfigurationError):
+            AnthropicBackend()
+
+    def test_default_model(self, monkeypatch):
         """Default model is set."""
+        monkeypatch.delenv("ANTHROPIC_DISABLED", raising=False)
         backend = AnthropicBackend(api_key="sk-test")
         assert "claude" in backend.model
 
-    def test_complete_calls_sdk_streaming(self):
+    def test_complete_calls_sdk_streaming(self, monkeypatch):
         """complete() uses streaming API and extracts final text."""
+        monkeypatch.delenv("ANTHROPIC_DISABLED", raising=False)
         mock_anthropic = MagicMock()
         mock_client = MagicMock()
         mock_anthropic.Anthropic.return_value = mock_client
@@ -66,8 +86,9 @@ class TestAnthropicBackend:
         assert result == "The answer is 42"
         mock_client.messages.stream.assert_called_once()
 
-    def test_complete_empty_response(self):
+    def test_complete_empty_response(self, monkeypatch):
         """complete() returns empty string when stream returns empty text."""
+        monkeypatch.delenv("ANTHROPIC_DISABLED", raising=False)
         mock_anthropic = MagicMock()
         mock_client = MagicMock()
         mock_anthropic.Anthropic.return_value = mock_client
@@ -123,18 +144,35 @@ class TestAutoDetectBackend:
 
     def test_returns_anthropic_when_key_set(self, monkeypatch):
         """Returns AnthropicBackend when ANTHROPIC_API_KEY is set."""
+        monkeypatch.delenv("ANTHROPIC_DISABLED", raising=False)
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-key")
         backend = auto_detect_backend()
         assert isinstance(backend, AnthropicBackend)
 
     def test_returns_copilot_when_no_key(self, monkeypatch):
         """Returns CopilotBackend as fallback when no Anthropic key."""
+        monkeypatch.delenv("ANTHROPIC_DISABLED", raising=False)
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         backend = auto_detect_backend()
         assert isinstance(backend, CopilotBackend)
 
     def test_empty_anthropic_key_falls_through(self, monkeypatch):
         """Empty ANTHROPIC_API_KEY string falls through to CopilotBackend."""
+        monkeypatch.delenv("ANTHROPIC_DISABLED", raising=False)
         monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+        backend = auto_detect_backend()
+        assert isinstance(backend, CopilotBackend)
+
+    def test_disabled_returns_copilot_even_with_key(self, monkeypatch):
+        """ANTHROPIC_DISABLED=true returns CopilotBackend even when API key is set."""
+        monkeypatch.setenv("ANTHROPIC_DISABLED", "true")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-key")
+        backend = auto_detect_backend()
+        assert isinstance(backend, CopilotBackend)
+
+    def test_disabled_returns_copilot_without_key(self, monkeypatch):
+        """ANTHROPIC_DISABLED=true returns CopilotBackend when no key set."""
+        monkeypatch.setenv("ANTHROPIC_DISABLED", "true")
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         backend = auto_detect_backend()
         assert isinstance(backend, CopilotBackend)

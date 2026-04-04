@@ -152,6 +152,14 @@ class Executor:
         Raises:
             ExecutionError: If execution setup fails
         """
+        # Fail immediately when Anthropic is disabled — remote execution is Anthropic-only
+        if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+            raise ExecutionError(
+                "Remote execution requires Anthropic but ANTHROPIC_DISABLED=true. "
+                "Unset ANTHROPIC_DISABLED to use remote execution.",
+                context={"required": "ANTHROPIC_API_KEY", "blocked_by": "ANTHROPIC_DISABLED"},
+            )
+
         # Get API key
         if not api_key:
             api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -462,6 +470,14 @@ echo "Bundle created"
             raise ExecutionError(
                 f"Invalid session_id: {session_id}. Must be alphanumeric with dashes only.",
                 context={"session_id": session_id},
+            )
+
+        # Fail immediately when Anthropic is disabled — remote execution is Anthropic-only
+        if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+            raise ExecutionError(
+                "Remote execution requires Anthropic but ANTHROPIC_DISABLED=true. "
+                "Unset ANTHROPIC_DISABLED to use remote execution.",
+                context={"required": "ANTHROPIC_API_KEY", "blocked_by": "ANTHROPIC_DISABLED"},
             )
 
         # Get API key

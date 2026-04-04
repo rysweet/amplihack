@@ -90,6 +90,32 @@ class TestExecutorTmux(unittest.TestCase):
 
         self.assertIn("ANTHROPIC_API_KEY not found", str(ctx.exception))
 
+    @patch.dict(
+        os.environ,
+        {"ANTHROPIC_DISABLED": "true", "ANTHROPIC_API_KEY": "test-key"},  # pragma: allowlist secret
+    )
+    def test_execute_remote_disabled(self):
+        """Test sync remote execution is blocked when Anthropic is disabled."""
+        with self.assertRaises(ExecutionError) as ctx:
+            self.executor.execute_remote(command=self.test_command, prompt=self.test_prompt)
+
+        self.assertIn("ANTHROPIC_DISABLED=true", str(ctx.exception))
+        self.assertEqual(ctx.exception.context["blocked_by"], "ANTHROPIC_DISABLED")
+
+    @patch.dict(
+        os.environ,
+        {"ANTHROPIC_DISABLED": "true", "ANTHROPIC_API_KEY": "test-key"},  # pragma: allowlist secret
+    )
+    def test_execute_remote_tmux_disabled(self):
+        """Test tmux remote execution is blocked when Anthropic is disabled."""
+        with self.assertRaises(ExecutionError) as ctx:
+            self.executor.execute_remote_tmux(
+                session_id=self.test_session_id, command=self.test_command, prompt=self.test_prompt
+            )
+
+        self.assertIn("ANTHROPIC_DISABLED=true", str(ctx.exception))
+        self.assertEqual(ctx.exception.context["blocked_by"], "ANTHROPIC_DISABLED")
+
     @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"})  # pragma: allowlist secret
     def test_execute_remote_tmux_invalid_session_id(self):
         """Test error with invalid session ID."""

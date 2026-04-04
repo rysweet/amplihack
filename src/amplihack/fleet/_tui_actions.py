@@ -8,7 +8,6 @@ project/session management live in _tui_workers.py (_WorkersMixin).
 from __future__ import annotations
 
 import logging
-import os
 from typing import TYPE_CHECKING
 
 from textual.widgets import (
@@ -191,13 +190,6 @@ class _ActionsMixin(_WorkersMixin):
         """Run LLM reasoning for the currently selected session."""
         if not self._selected_key:
             self.notify("No session selected", severity="warning")
-            return
-        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-        if not api_key:
-            self.notify("ANTHROPIC_API_KEY not set -- cannot run reasoning", severity="error")
-            self.query_one("#proposal-text", Static).update(
-                "[red]No ANTHROPIC_API_KEY. Set the env var to enable director proposals.[/red]"
-            )
             return
         entry = self._cache.get(self._selected_key)
         if entry is None:

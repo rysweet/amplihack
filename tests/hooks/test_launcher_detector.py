@@ -92,6 +92,22 @@ class TestLauncherDetection:
             launcher_type = LauncherDetector._detect_launcher_type()
             assert launcher_type == "codex"
 
+    def test_anthropic_api_key_does_not_detect_claude(self):
+        """ANTHROPIC_API_KEY alone must NOT be a Claude launcher marker."""
+        # Ensure only ANTHROPIC_API_KEY is present (no CLAUDE_* markers)
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(LauncherDetector, "_get_parent_process_name", return_value=None):
+                env_with_key = {"ANTHROPIC_API_KEY": "sk-test-key"}  # pragma: allowlist secret
+                with patch.dict(os.environ, env_with_key):
+                    launcher_type = LauncherDetector._detect_launcher_type()
+                    assert launcher_type != "claude", (
+                        "ANTHROPIC_API_KEY should not determine Claude launcher type"
+                    )
+
+    def test_anthropic_api_key_not_in_claude_markers(self):
+        """ANTHROPIC_API_KEY must not appear in claude LAUNCHER_MARKERS."""
+        assert "ANTHROPIC_API_KEY" not in LauncherDetector.LAUNCHER_MARKERS["claude"]
+
     def test_detect_unknown_when_no_markers(self):
         """Test unknown detection when no markers present."""
         # Use clear=True and empty dict to remove all env vars including the markers
@@ -134,22 +150,35 @@ class TestCommandGathering:
 class TestEnvironmentGathering:
     """Unit tests for environment variable gathering."""
 
-    def test_gather_environment_sanitizes_keys(self):
-        """Test that API keys are sanitized."""
+    def test_gather_environment_sanitizes_launcher_keys(self):
+        """Launcher API keys should be sanitized when captured."""
+        with patch.dict(
+            os.environ,
+            {"OPENAI_API_KEY": "sk_test_1234567890abcdefghij"},  # pragma: allowlist secret
+            clear=True,
+        ):
+            env = LauncherDetector._gather_environment()
+            assert env["OPENAI_API_KEY"] == "sk_t...ghij"  # pragma: allowlist secret
+
+    def test_gather_environment_short_launcher_key_not_sanitized(self):
+        """Short launcher keys are left unchanged."""
+        with patch.dict(
+            os.environ,
+            {"OPENAI_API_KEY": "short"},  # pragma: allowlist secret
+            clear=True,
+        ):
+            env = LauncherDetector._gather_environment()
+            assert env["OPENAI_API_KEY"] == "short"  # pragma: allowlist secret
+
+    def test_gather_environment_excludes_anthropic_api_key(self):
+        """ANTHROPIC_API_KEY is not launcher context anymore."""
         with patch.dict(
             os.environ,
             {"ANTHROPIC_API_KEY": "sk_test_1234567890abcdefghij"},  # pragma: allowlist secret
+            clear=True,
         ):
             env = LauncherDetector._gather_environment()
-            # Should be sanitized
-            assert env["ANTHROPIC_API_KEY"] == "sk_t...ghij"  # pragma: allowlist secret
-
-    def test_gather_environment_short_key_not_sanitized(self):
-        """Test that short keys are not sanitized."""
-        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "short"}):  # pragma: allowlist secret
-            env = LauncherDetector._gather_environment()
-            # Too short to sanitize
-            assert env["ANTHROPIC_API_KEY"] == "short"  # pragma: allowlist secret
+            assert "ANTHROPIC_API_KEY" not in env
 
     def test_gather_environment_includes_non_sensitive(self):
         """Test that non-sensitive vars are included as-is."""

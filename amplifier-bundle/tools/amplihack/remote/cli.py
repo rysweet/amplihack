@@ -96,6 +96,15 @@ def remote_execute(
         click.echo("Error: timeout must be between 5 and 480 minutes", err=True)
         sys.exit(1)
 
+    # Fail immediately when Anthropic is disabled — remote execution is Anthropic-only
+    if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+        click.echo(
+            "Error: Remote execution requires Anthropic but ANTHROPIC_DISABLED=true. "
+            "Unset ANTHROPIC_DISABLED to use remote execution.",
+            err=True,
+        )
+        sys.exit(1)
+
     # Get repository path (current directory)
     repo_path = Path.cwd()
 
@@ -433,6 +442,15 @@ def cmd_start(
         # Validate arguments
         if not prompts:
             click.echo("Error: At least one prompt is required", err=True)
+            sys.exit(1)
+
+        # Fail immediately when Anthropic is disabled — remote execution is Anthropic-only
+        if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+            click.echo(
+                "Error: Remote execution requires Anthropic but ANTHROPIC_DISABLED=true. "
+                "Unset ANTHROPIC_DISABLED to use remote execution.",
+                err=True,
+            )
             sys.exit(1)
 
         # Convert size to VMSize enum

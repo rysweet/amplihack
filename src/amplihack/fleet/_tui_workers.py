@@ -14,7 +14,7 @@ from textual import work
 from textual.widgets import DataTable, Input, Select
 from textual.worker import get_current_worker
 
-from amplihack.fleet._backends import AnthropicBackend
+from amplihack.fleet._backends import auto_detect_backend
 from amplihack.fleet._session_context import SessionDecision
 from amplihack.fleet._validation import (
     validate_vm_name,
@@ -100,7 +100,7 @@ class _WorkersMixin:
         try:
             reasoner = SessionReasoner(
                 azlin_path=self._fleet.azlin_path,
-                backend=AnthropicBackend(),
+                backend=auto_detect_backend(),
                 dry_run=True,
             )
             decision = reasoner.reason_about_session(vm_name=vm_name, session_name=session_name)
@@ -170,7 +170,7 @@ class _WorkersMixin:
         try:
             reasoner = SessionReasoner(
                 azlin_path=self._fleet.azlin_path,
-                backend=AnthropicBackend(),
+                backend=auto_detect_backend(),
                 dry_run=False,
             )
             reasoner.execute_decision(decision)

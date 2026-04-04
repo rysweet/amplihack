@@ -180,6 +180,8 @@ def _extract_vote(raw: dict[str, Any], agent_id: str, persona: str) -> AgentVote
 
 def _has_anthropic_api_key() -> bool:
     """Check if direct Anthropic API access is available."""
+    if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+        return False
     return bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 

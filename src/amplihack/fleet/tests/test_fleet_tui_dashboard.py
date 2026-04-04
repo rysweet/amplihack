@@ -14,7 +14,6 @@ Public API tested:
 
 from __future__ import annotations
 
-import os
 from unittest.mock import patch
 
 import pytest
@@ -173,7 +172,7 @@ class TestFlow1AppLaunch:
     async def test_app_mounts_without_crash(self):
         """The app should mount and render without raising."""
         app = FleetDashboardApp(refresh_interval=9999)
-        async with app.run_test(size=(120, 40)) as pilot:
+        async with app.run_test(size=(120, 40)):
             # If we get here the app mounted without crash
             assert app.title == "Fleet Dashboard"
 
@@ -181,7 +180,7 @@ class TestFlow1AppLaunch:
     async def test_header_shows_fleet_dashboard(self):
         """Header widget exists and app title is set."""
         app = FleetDashboardApp(refresh_interval=9999)
-        async with app.run_test(size=(120, 40)) as pilot:
+        async with app.run_test(size=(120, 40)):
             header = app.query_one(Header)
             assert header is not None
 
@@ -189,7 +188,7 @@ class TestFlow1AppLaunch:
     async def test_data_table_exists_with_columns(self):
         """DataTable has the 6 expected columns: St, VM, Session, State, Branch, PR."""
         app = FleetDashboardApp(refresh_interval=9999)
-        async with app.run_test(size=(120, 40)) as pilot:
+        async with app.run_test(size=(120, 40)):
             table = app.query_one("#session-table", DataTable)
             assert table is not None
             col_labels = [col.label.plain for col in table.columns.values()]
@@ -199,7 +198,7 @@ class TestFlow1AppLaunch:
     async def test_preview_pane_exists(self):
         """RichLog preview pane is present."""
         app = FleetDashboardApp(refresh_interval=9999)
-        async with app.run_test(size=(120, 40)) as pilot:
+        async with app.run_test(size=(120, 40)):
             preview = app.query_one("#preview-pane", RichLog)
             assert preview is not None
 
@@ -207,7 +206,7 @@ class TestFlow1AppLaunch:
     async def test_summary_bar_exists(self):
         """Summary Static bar exists at bottom of fleet tab."""
         app = FleetDashboardApp(refresh_interval=9999)
-        async with app.run_test(size=(120, 40)) as pilot:
+        async with app.run_test(size=(120, 40)):
             summary = app.query_one("#fleet-summary", Static)
             assert summary is not None
 
@@ -215,7 +214,7 @@ class TestFlow1AppLaunch:
     async def test_footer_with_keybindings_visible(self):
         """Footer widget exists (shows keybindings)."""
         app = FleetDashboardApp(refresh_interval=9999)
-        async with app.run_test(size=(120, 40)) as pilot:
+        async with app.run_test(size=(120, 40)):
             footer = app.query_one(Footer)
             assert footer is not None
 
@@ -251,7 +250,7 @@ class TestFlow2DataPopulation:
             _inject_mock_data(app, vms)
             await pilot.pause()
 
-            table = app.query_one("#session-table", DataTable)
+            app.query_one("#session-table", DataTable)
             # Check that the cache has the expected keys
             assert "devo/work-1" in app._cache
             assert app._cache["devo/work-1"].view.status == "thinking"
@@ -480,10 +479,12 @@ class TestFlow6DryRun:
             assert "confirmation" in proposal_text.lower()
 
     @pytest.mark.asyncio
-    async def test_dry_run_without_api_key_shows_error(self):
-        """Pressing 'd' without ANTHROPIC_API_KEY should show an error message."""
+    async def test_dry_run_without_api_key_triggers_worker(self, monkeypatch):
+        """Pressing 'd' without ANTHROPIC_API_KEY should trigger the reasoning worker (no preflight gate)."""
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("ANTHROPIC_DISABLED", raising=False)
         app = FleetDashboardApp(refresh_interval=9999)
-        async with app.run_test(size=(120, 40), notifications=True) as pilot:
+        async with app.run_test(size=(120, 40)) as pilot:
             vms = _make_mock_vms()
             _inject_mock_data(app, vms)
             await pilot.pause()
@@ -491,15 +492,13 @@ class TestFlow6DryRun:
             await pilot.press("down")
             await pilot.pause()
 
-            # Ensure no API key is set
-            with patch.dict(os.environ, {}, clear=False):
-                os.environ.pop("ANTHROPIC_API_KEY", None)
-                await pilot.press("d")
-                await pilot.pause()
+            # Without API key gate, pressing 'd' moves to "Running LLM reasoning..." state
+            await pilot.press("d")
+            await pilot.pause()
 
-            # The proposal text should mention the missing key
+            # The proposal text should show the reasoning in-progress message, not an API key error
             proposal_text = str(app.query_one("#proposal-text", Static).content)
-            assert "ANTHROPIC_API_KEY" in proposal_text
+            assert "ANTHROPIC_API_KEY" not in proposal_text
 
 
 # ---------------------------------------------------------------------------
@@ -841,7 +840,7 @@ class TestEdgeCases:
     async def test_tabbed_content_has_three_tabs(self):
         """TabbedContent should have fleet-tab, detail-tab, and editor-tab."""
         app = FleetDashboardApp(refresh_interval=9999)
-        async with app.run_test(size=(120, 40)) as pilot:
+        async with app.run_test(size=(120, 40)):
             tabs = app.query_one("#tabs", TabbedContent)
             assert tabs is not None
             # Verify all three tab panes exist

@@ -1,10 +1,10 @@
 import json
 import logging
+import os
 from enum import Enum
 from typing import Any
 
 import json_repair
-from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable
@@ -15,13 +15,26 @@ from pydantic import BaseModel
 
 from .api_key_manager import APIKeyManager
 from .rotating_provider import (
-    RotatingKeyChatAnthropic,
     RotatingKeyChatGoogle,
     RotatingKeyChatOpenAI,
 )
 from .utils import discover_keys_for_provider
 
 logger = logging.getLogger(__name__)
+
+# langchain_anthropic is an optional dependency; degrade gracefully when absent or disabled
+_ANTHROPIC_DISABLED = os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true"
+try:
+    if _ANTHROPIC_DISABLED:
+        raise ImportError("Anthropic disabled via ANTHROPIC_DISABLED=true")
+    from langchain_anthropic import ChatAnthropic  # type: ignore[import-untyped]
+    from .rotating_provider import RotatingKeyChatAnthropic
+
+    _HAS_LANGCHAIN_ANTHROPIC = True
+except ImportError:
+    ChatAnthropic = None  # type: ignore[assignment,misc]
+    RotatingKeyChatAnthropic = None  # type: ignore[assignment]
+    _HAS_LANGCHAIN_ANTHROPIC = False
 
 
 STRUCTURED_PROMPT = """
@@ -37,7 +50,7 @@ class ReasoningEffort(Enum):
     HIGH = "high"
 
 
-MODEL_PROVIDER_DICT = {
+MODEL_PROVIDER_DICT: dict[str, Any] = {
     "gpt-4.1": ChatOpenAI,
     "gpt-4.1-nano": ChatOpenAI,
     "gpt-4.1-mini": ChatOpenAI,
@@ -45,9 +58,12 @@ MODEL_PROVIDER_DICT = {
     "o3": ChatOpenAI,
     "gemini-2.5-flash-preview-05-20": ChatGoogleGenerativeAI,
     "gemini-2.5-pro-preview-06-05": ChatGoogleGenerativeAI,
-    "claude-3-5-haiku-latest": ChatAnthropic,
-    "claude-sonnet-4-20250514": ChatAnthropic,
 }
+
+# Register Claude models only when langchain_anthropic is available and not disabled
+if _HAS_LANGCHAIN_ANTHROPIC:
+    MODEL_PROVIDER_DICT["claude-3-5-haiku-latest"] = ChatAnthropic
+    MODEL_PROVIDER_DICT["claude-sonnet-4-20250514"] = ChatAnthropic
 
 
 class LLMProvider:
@@ -64,7 +80,6 @@ class LLMProvider:
     # Mapping of providers to their rotating classes
     ROTATING_PROVIDER_MAP: dict[str, type[Any]] = {
         "openai": RotatingKeyChatOpenAI,
-        "anthropic": RotatingKeyChatAnthropic,
         "google": RotatingKeyChatGoogle,
     }
 
@@ -79,6 +94,12 @@ class LLMProvider:
             self.reasoning_agent = "o4-mini"
         self.dumb_agent = "gpt-4.1-nano"
         self.average_agent = "gpt-4.1-nano"
+        # Add Anthropic rotating provider only when available
+        if _HAS_LANGCHAIN_ANTHROPIC and RotatingKeyChatAnthropic is not None:
+            self.ROTATING_PROVIDER_MAP = {
+                **self.__class__.ROTATING_PROVIDER_MAP,
+                "anthropic": RotatingKeyChatAnthropic,
+            }
         # Cache for model instances to maintain metrics
         self._model_cache: dict[
             tuple[str, int | None, type[BaseModel] | None], Runnable[Any, Any]
@@ -150,9 +171,7 @@ class LLMProvider:
         if model not in MODEL_PROVIDER_DICT:
             raise ValueError(f"Model {model} not found in MODEL_PROVIDER_DICT")
 
-        chat_model_class: type[ChatGoogleGenerativeAI | ChatAnthropic | ChatOpenAI] = (
-            MODEL_PROVIDER_DICT[model]
-        )
+        chat_model_class: type[Any] = MODEL_PROVIDER_DICT[model]
 
         # Use provided timeout or instance timeout
         model_timeout = timeout or self.TIMEOUT
@@ -164,7 +183,7 @@ class LLMProvider:
                 if model_timeout
                 else ChatGoogleGenerativeAI(model=model)
             )
-        elif issubclass(chat_model_class, ChatAnthropic):
+        elif _HAS_LANGCHAIN_ANTHROPIC and ChatAnthropic is not None and issubclass(chat_model_class, ChatAnthropic):
             if model_timeout:
                 chat_model = ChatAnthropic(model_name=model, timeout=model_timeout, stop=None)
             else:
