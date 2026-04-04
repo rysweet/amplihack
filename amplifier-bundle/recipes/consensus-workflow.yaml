@@ -578,7 +578,8 @@ steps:
       fi
 
       # Create branch name
-      TASK_DESC=$(cat <<EOFTASKDESC
+      # FIX (#4221): quoted heredoc for defense-in-depth injection prevention
+      TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
       )

@@ -340,6 +340,274 @@ def _run_issue_creation(binary: str, task_desc: str, final_reqs: str) -> tuple[d
         return data, captured
 
 
+def _write_fake_az(bin_dir: Path, capture_path: Path) -> None:
+    """Create a fake az executable for ADO path testing.
+
+    Handles:
+    - az boards work-item show: returns "not found" (empty output)
+    - az boards query: returns empty (no matching work item)
+    - az boards work-item create: captures args and returns a numeric ID
+    """
+    fake_az = bin_dir / "az"
+    fake_az.write_text(
+        """#!/usr/bin/env python3
+import json
+import os
+import sys
+
+args = sys.argv[1:]
+
+# az boards work-item show --id NNN: return empty (not found)
+if len(args) >= 4 and args[:3] == ["boards", "work-item", "show"]:
+    sys.exit(1)
+
+# az boards query --wiql ...: return empty (no match)
+if len(args) >= 2 and args[:2] == ["boards", "query"]:
+    print("")
+    sys.exit(0)
+
+# az boards work-item create: capture and return numeric ID
+if len(args) >= 3 and args[:3] == ["boards", "work-item", "create"]:
+    payload = {"args": args}
+    idx = 0
+    while idx < len(args):
+        arg = args[idx]
+        if arg == "--title" and idx + 1 < len(args):
+            payload["title"] = args[idx + 1]
+            idx += 2
+            continue
+        if arg == "--description" and idx + 1 < len(args):
+            desc_arg = args[idx + 1]
+            payload["description_arg"] = desc_arg
+            # If it's a file reference (@path), read the file
+            if desc_arg.startswith("@"):
+                from pathlib import Path as P
+                desc_path = desc_arg[1:]
+                payload["description_body"] = P(desc_path).read_text(encoding="utf-8")
+                payload["description_file"] = desc_path
+            idx += 2
+            continue
+        if arg == "--type" and idx + 1 < len(args):
+            payload["type"] = args[idx + 1]
+            idx += 2
+            continue
+        idx += 1
+
+    with open(os.environ["FAKE_AZ_CAPTURE"], "w", encoding="utf-8") as f:
+        json.dump(payload, f)
+
+    print("99042")
+    sys.exit(0)
+
+sys.exit(0)
+""",
+        encoding="utf-8",
+    )
+    fake_az.chmod(0o755)
+
+
+def _write_fake_git_ado(bin_dir: Path) -> None:
+    """Create a fake git that reports an ADO remote URL for provider detection."""
+    fake_git = bin_dir / "git"
+    fake_git.write_text(
+        """#!/usr/bin/env python3
+import os
+import subprocess
+import sys
+
+args = sys.argv[1:]
+
+# Intercept only "remote get-url origin" to return ADO URL
+if len(args) >= 3 and args[:3] == ["remote", "get-url", "origin"]:
+    print("https://dev.azure.com/myorg/myproject/_git/myrepo")
+    sys.exit(0)
+
+# For all other git commands, delegate to real git
+real_git = None
+for p in os.environ.get("REAL_GIT_PATH", "/usr/bin/git").split(":"):
+    if os.path.isfile(p) and os.access(p, os.X_OK):
+        real_git = p
+        break
+
+if real_git is None:
+    # Search PATH excluding our directory
+    my_dir = os.path.dirname(os.path.abspath(__file__))
+    for d in os.environ.get("PATH", "").split(":"):
+        if d == my_dir:
+            continue
+        candidate = os.path.join(d, "git")
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            real_git = candidate
+            break
+
+if real_git:
+    os.execv(real_git, [real_git] + args)
+else:
+    print("ERROR: real git not found", file=sys.stderr)
+    sys.exit(1)
+""",
+        encoding="utf-8",
+    )
+    fake_git.chmod(0o755)
+
+
+def _build_ado_recipe() -> str:
+    """Create a recipe using only step-03 for ADO path testing."""
+    step03, step03b = _load_step_commands()
+    return f"""\
+name: "test-4221-ado-create"
+context:
+  repo_path: ""
+  task_description: ""
+  final_requirements: ""
+  issue_creation: ""
+  issue_number: ""
+steps:
+  - id: "step-03-create-issue"
+    type: "bash"
+    command: |
+{_indent(step03, 6)}
+    output: "issue_creation"
+    parse_json: false
+
+  - id: "step-03b-extract-issue-number"
+    type: "bash"
+    command: |
+{_indent(step03b, 6)}
+    output: "issue_number"
+"""
+
+
+def _run_ado_issue_creation(binary: str, task_desc: str, final_reqs: str) -> tuple[dict, dict]:
+    """Run step-03/03b with ADO provider, return (recipe_output, az_capture)."""
+    recipe = _build_ado_recipe()
+
+    with tempfile.TemporaryDirectory(prefix="issue-4221-ado-") as tmpdir:
+        temp_root = Path(tmpdir)
+        repo_path = temp_root / "repo"
+        repo_path.mkdir()
+
+        # Initialize a git repo so git commands work
+        subprocess.run(["git", "init", str(repo_path)], capture_output=True, check=True)
+        subprocess.run(
+            ["git", "remote", "add", "origin", "https://dev.azure.com/org/proj/_git/repo"],
+            capture_output=True,
+            check=True,
+            cwd=str(repo_path),
+        )
+
+        bin_dir = temp_root / "bin"
+        bin_dir.mkdir()
+        az_capture_path = temp_root / "az-capture.json"
+        _write_fake_az(bin_dir, az_capture_path)
+        _write_fake_git_ado(bin_dir)
+
+        # Also need a fake gh for step-03b fallbacks
+        gh_capture_path = temp_root / "gh-capture.json"
+        _write_fake_gh(bin_dir, gh_capture_path)
+
+        recipe_path = temp_root / "recipe.yaml"
+        recipe_path.write_text(recipe, encoding="utf-8")
+
+        real_git = shutil.which("git") or "/usr/bin/git"
+        env = dict(os.environ)
+        env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
+        env["FAKE_AZ_CAPTURE"] = str(az_capture_path)
+        env["FAKE_GH_CAPTURE"] = str(gh_capture_path)
+        env["REAL_GIT_PATH"] = real_git
+
+        result = subprocess.run(
+            [
+                binary,
+                str(recipe_path),
+                "--output-format",
+                "json",
+                "-C",
+                str(REPO_ROOT),
+                "--set",
+                f"repo_path={repo_path}",
+                "--set",
+                f"task_description={task_desc}",
+                "--set",
+                f"final_requirements={final_reqs}",
+            ],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=30,
+        )
+        assert result.returncode == 0, (
+            f"Recipe runner failed (rc={result.returncode}):\n{result.stderr}"
+        )
+        data = json.loads(result.stdout)
+        assert data["success"], f"Recipe reported failure: {data}"
+
+        captured = json.loads(az_capture_path.read_text(encoding="utf-8"))
+        return data, captured
+
+
+ADO_SPECIAL_CHAR_CASES = [
+    pytest.param(
+        "Fix the user's login page (it's broken)",
+        "1. The user's session must persist.\n2. Don't break it.",
+        id="ado-single-quotes-in-title",
+    ),
+    pytest.param(
+        "Fix O'Brien's auth module",
+        "1. O'Reilly's guide says to use OAuth.\n2. Don't skip.",
+        id="ado-multiple-single-quotes",
+    ),
+]
+
+
+def test_ado_work_item_creation_body_file_transport() -> None:
+    """ADO path must transport body via @file, not inline --description."""
+    binary = _find_recipe_runner_binary()
+    if binary is None:
+        pytest.skip("recipe-runner-rs binary not found")
+
+    data, captured = _run_ado_issue_creation(
+        binary,
+        "Implement ADO widget for dashboards",
+        "1. Widget must be responsive.\n2. Follow ADO API guidelines.",
+    )
+
+    steps = {step["step_id"]: step for step in data["step_results"]}
+    assert steps["step-03-create-issue"]["status"] == "completed", steps["step-03-create-issue"]
+    assert steps["step-03b-extract-issue-number"]["status"] == "completed"
+
+    # Description must have been passed via @file
+    assert captured["description_arg"].startswith("@"), (
+        f"ADO description should use @file transport, got: {captured['description_arg']}"
+    )
+    # Body content must contain the task description
+    assert "ADO widget" in captured["description_body"]
+    # Work item type must be Task
+    assert captured["type"] == "Task"
+    # Issue number must be extracted from _workitems/edit/99042
+    assert steps["step-03b-extract-issue-number"]["output"] == "99042"
+
+
+@pytest.mark.parametrize("task_desc,final_reqs", ADO_SPECIAL_CHAR_CASES)
+def test_ado_sed_escaping_with_single_quotes(task_desc: str, final_reqs: str) -> None:
+    """ADO SEARCH_TITLE sed escaping must handle single quotes in task descriptions."""
+    binary = _find_recipe_runner_binary()
+    if binary is None:
+        pytest.skip("recipe-runner-rs binary not found")
+
+    data, captured = _run_ado_issue_creation(binary, task_desc, final_reqs)
+
+    steps = {step["step_id"]: step for step in data["step_results"]}
+    assert steps["step-03-create-issue"]["status"] == "completed", (
+        f"step-03 failed for ADO with single quotes in title: {steps['step-03-create-issue']}"
+    )
+    # Title must be present and single-line
+    assert captured["title"]
+    assert "\n" not in captured["title"]
+    # Issue number must resolve from ADO work item URL
+    assert steps["step-03b-extract-issue-number"]["output"] == "99042"
+
+
 @pytest.mark.parametrize("task_desc,final_reqs", SPECIAL_CHAR_CASES)
 def test_issue_creation_with_special_characters(task_desc: str, final_reqs: str) -> None:
     """Step-03 must handle special characters in task_description and final_requirements."""

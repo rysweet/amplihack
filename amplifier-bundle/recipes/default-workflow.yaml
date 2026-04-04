@@ -137,10 +137,11 @@ steps:
       echo "  Step 21: Convert PR to Ready"
       echo "  Step 22: Ensure PR Mergeable"
       echo ""
-      # FIX (issues #3045/#3076/#3117): unquoted heredoc for safe variable capture.
-      # Unquoted heredoc allows Rust runner env-var expansion ($RECIPE_VAR_*).
-      # Shell expansion is single-pass: expanded values are NOT re-processed.
-      TASK_DESC=$(cat <<EOFTASKDESC
+      # FIX (#4221): quoted heredoc prevents shell expansion of $, backticks, and
+      # backslashes in task_description. Template substitution ({{var}}) is
+      # performed by the recipe runner BEFORE bash executes, so quoted heredocs
+      # are safe and required for defense-in-depth injection prevention.
+      TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
       )
@@ -464,11 +465,15 @@ steps:
       # to the actual issue number instead of a related PR number.
       # EOFISSUECREATION delimiter is intentionally long/specific to prevent accidental
       # collision with issue body text that might contain common delimiters like "EOF".
-      ISSUE_CREATION=$(cat <<EOFISSUECREATION
+      # FIX (#4221): quoted heredocs prevent shell expansion of $, backticks, and
+      # backslashes in user content. Template substitution ({{var}}) is performed
+      # by the recipe runner BEFORE bash executes — quoted heredocs are safe and
+      # required for defense-in-depth injection prevention.
+      ISSUE_CREATION=$(cat <<'EOFISSUECREATION'
       {{issue_creation}}
       EOFISSUECREATION
       )
-      TASK_DESC=$(cat <<EOFTASKDESC
+      TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
       )
@@ -603,13 +608,12 @@ steps:
       # update consensus-workflow.yaml in the same commit. See Issue #2952 for context.
       #
       # Generate branch name from task description.
-      # FIX (issue #3087): Use UNQUOTED heredoc so the Rust recipe runner's
-      # env-var expansion ($RECIPE_VAR_task_description) works correctly.
-      # Single-quoted heredoc (<<'EOF') prevented variable expansion, producing
-      # garbled branch names like "feat/issue--recipevartaskdescription".
-      # Security note: the sanitization pipeline (tr -cd 'a-z0-9-') strips all
-      # shell metacharacters from the output, mitigating injection risk.
-      TASK_DESC=$(cat <<EOFTASKDESC
+      # FIX (#4221): quoted heredoc prevents shell expansion of $, backticks, and
+      # backslashes in task_description. Template substitution ({{var}}) is
+      # performed by the recipe runner BEFORE bash executes, so quoted heredocs
+      # are safe. The sanitization pipeline (tr -cd 'a-z0-9-') additionally
+      # strips all shell metacharacters from the output.
+      TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
       )
@@ -1033,7 +1037,8 @@ steps:
 
       if [ "$TOTAL" -eq 0 ]; then
         # Check if the task description contains action verbs that imply changes
-        TASK_DESC=$(cat <<EOFTASKDESC
+        # FIX (#4221): quoted heredoc for defense-in-depth injection prevention
+        TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
         )
@@ -1786,7 +1791,8 @@ steps:
       fi
       echo ""
       echo "--- Creating Commit ---"
-      TASK_DESC=$(cat <<EOFTASKDESC
+      # FIX (#4221): quoted heredoc for defense-in-depth injection prevention
+      TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
       )
@@ -1888,9 +1894,11 @@ steps:
           exit 1
       fi
 
-      # FIX (#3045/#3076/#3117/#4221): unquoted heredoc — allows Rust recipe runner
-      # env-var expansion of {{variables}} before bash executes.
-      TASK_DESC=$(cat <<EOFTASKDESC
+      # FIX (#4221): quoted heredocs prevent shell expansion of $, backticks, and
+      # backslashes in user content. Template substitution ({{var}}) is performed
+      # by the recipe runner BEFORE bash executes — quoted heredocs are safe and
+      # required for defense-in-depth injection prevention.
+      TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
       )
@@ -1898,7 +1906,7 @@ steps:
       PR_TITLE="${TASK_DESC//$'\n'/ }"
       PR_TITLE="${PR_TITLE//$'\r'/ }"
       PR_TITLE="${PR_TITLE:0:200}"
-      PR_DESIGN=$(cat <<EOFDESIGN
+      PR_DESIGN=$(cat <<'EOFDESIGN'
       {{design_spec}}
       EOFDESIGN
       )
@@ -2620,7 +2628,8 @@ steps:
       echo "PR Status:"
       gh pr view --json state,mergeable,reviews,statusCheckRollup
       echo ""
-      TASK_DESC=$(cat <<EOFTASKDESC
+      # FIX (#4221): quoted heredoc for defense-in-depth injection prevention
+      TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
       )
@@ -2638,8 +2647,8 @@ steps:
     type: "bash"
     parse_json: true
     command: |
-      # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
-      TASK_DESC=$(cat <<EOFTASKDESC
+      # FIX (#4221): quoted heredoc for defense-in-depth injection prevention
+      TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
       )

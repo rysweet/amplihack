@@ -72,17 +72,14 @@ def _get_step(workflow, step_id: str) -> dict:
 class TestWorktreeStepUsesHeredoc:
     """Verify step-04 and consensus step3 use heredoc, not single-quote wrapping."""
 
-    def test_default_workflow_uses_unquoted_heredoc(self, default_workflow):
+    def test_default_workflow_uses_quoted_heredoc(self, default_workflow):
         step = _get_step(default_workflow, "step-04-setup-worktree")
         cmd = step.get("command", "")
-        assert "<<EOFTASKDESC" in cmd, (
-            "step-04-setup-worktree must use unquoted heredoc so that the "
-            "Rust runner's $RECIPE_VAR_task_description env var expands"
-        )
-        assert "<<'EOFTASKDESC'" not in cmd, (
-            "step-04-setup-worktree must NOT use single-quoted heredoc — "
-            "it prevents env-var expansion, producing garbled branch names "
-            "(issue #3087)"
+        assert "<<'EOFTASKDESC'" in cmd, (
+            "step-04-setup-worktree must use quoted heredoc for "
+            "defense-in-depth injection prevention (issue #4221). "
+            "Recipe runner performs {{var}} template substitution "
+            "BEFORE bash executes, so quoted heredocs are safe."
         )
 
     def test_default_workflow_no_single_quote_wrapping(self, default_workflow):
