@@ -20,4 +20,15 @@ def _load_cli_module():
 _cli = _load_cli_module()
 main = _cli.main
 
+
+def __getattr__(name: str):
+    """Proxy package attribute access to the loaded cli.py module."""
+    return getattr(_cli, name)
+
+
+def __dir__() -> list[str]:
+    """Expose proxied cli.py names for introspection and from-imports."""
+    return sorted(set(globals()) | set(dir(_cli)))
+
+
 __all__ = ["main"]

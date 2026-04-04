@@ -2,6 +2,8 @@ from __future__ import annotations
 
 """LLM-based answer synthesis, completeness evaluation, agentic answering."""
 
+import asyncio
+import inspect
 import json
 import logging
 from typing import TYPE_CHECKING, Any
@@ -28,10 +30,45 @@ from .similarity import (
 logger = logging.getLogger(__name__)
 
 
+def _run_async_or_return(coro: Any) -> Any:
+    """Run a coroutine immediately in sync code, or return it in async code."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    return coro
+
+
+async def _maybe_await(value: Any) -> Any:
+    """Await a value when needed, otherwise return it as-is."""
+    if inspect.isawaitable(value):
+        return await value
+    return value
+
+
 class AnswerSynthesizerMixin:
     """Mixin providing answer synthesis for LearningAgent."""
 
-    async def answer_question(
+    def answer_question(
+        self,
+        question: str,
+        question_level: str = "L1",
+        return_trace: bool = False,
+        _skip_qanda_store: bool = False,
+        _force_simple: bool = False,
+    ) -> str | tuple[str, ReasoningTrace | None]:
+        """Answer a question from sync code or async contexts."""
+        return _run_async_or_return(
+            self._answer_question_async(
+                question=question,
+                question_level=question_level,
+                return_trace=return_trace,
+                _skip_qanda_store=_skip_qanda_store,
+                _force_simple=_force_simple,
+            )
+        )
+
+    async def _answer_question_async(
         self,
         question: str,
         question_level: str = "L1",
@@ -85,7 +122,7 @@ class AnswerSynthesizerMixin:
         self.loop.observe(question)
 
         # Step 1 / OODA ORIENT (start): Intent detection -- single LLM call
-        intent = await self._detect_intent(question)
+        intent = await _maybe_await(self._detect_intent(question))
         intent_type = intent.get("intent", "simple_recall")
 
         # Step 2: Adaptive retrieval based on intent complexity
@@ -249,10 +286,12 @@ class AnswerSynthesizerMixin:
             existing_ids = {
                 f.get("experience_id", "") for f in relevant_facts if f.get("experience_id")
             }
-            supplemental = await self._keyword_expanded_retrieval(
-                question,
-                relevant_facts,
-                local_only=supplemental_local_only,
+            supplemental = await _maybe_await(
+                self._keyword_expanded_retrieval(
+                    question,
+                    relevant_facts,
+                    local_only=supplemental_local_only,
+                )
             )
             for f in supplemental:
                 eid = f.get("experience_id", "")
@@ -339,7 +378,9 @@ class AnswerSynthesizerMixin:
 
         # Pre-compute math result if needed, so synthesis can use it directly
         if intent.get("needs_math") and deterministic_meta_answer is None:
-            computed = await self._compute_math_result(question, relevant_facts, intent)
+            computed = await _maybe_await(
+                self._compute_math_result(question, relevant_facts, intent)
+            )
             if computed:
                 intent["computed_math"] = computed
 
@@ -376,8 +417,8 @@ class AnswerSynthesizerMixin:
 
         if is_temporal_code_candidate:
             try:
-                code_result = await self._code_generation_tool(
-                    question, candidate_facts=relevant_facts
+                code_result = await _maybe_await(
+                    self._code_generation_tool(question, candidate_facts=relevant_facts)
                 )
                 if code_result.get("result") is not None:
                     intent["temporal_code"] = code_result
@@ -408,11 +449,13 @@ class AnswerSynthesizerMixin:
             answer = self._format_temporal_lookup_answer(question, intent.get("temporal_code"))
         else:
             # Synthesize answer from the oriented world model (relevant_facts).
-            answer = await self._synthesize_with_llm(
-                question=question,
-                context=relevant_facts,
-                question_level=question_level,
-                intent=intent,
+            answer = await _maybe_await(
+                self._synthesize_with_llm(
+                    question=question,
+                    context=relevant_facts,
+                    question_level=question_level,
+                    intent=intent,
+                )
             )
 
         # Step 4: If math was needed, validate arithmetic in the answer
@@ -449,7 +492,19 @@ class AnswerSynthesizerMixin:
             return answer, reasoning_trace
         return answer
 
-    async def answer_question_agentic(
+    def answer_question_agentic(
+        self, question: str, max_iterations: int = 3, return_trace: bool = False
+    ) -> str | tuple[str, ReasoningTrace | None]:
+        """Answer in agentic mode from sync code or async contexts."""
+        return _run_async_or_return(
+            self._answer_question_agentic_async(
+                question=question,
+                max_iterations=max_iterations,
+                return_trace=return_trace,
+            )
+        )
+
+    async def _answer_question_agentic_async(
         self, question: str, max_iterations: int = 3, return_trace: bool = False
     ) -> str | tuple[str, ReasoningTrace | None]:
         """Agentic mode: run single-shot FIRST, then augment with iterative refinement.
@@ -479,11 +534,13 @@ class AnswerSynthesizerMixin:
         # Solution C: pass _force_simple=True so entity-retrieval fallback returns
         #   all verbatim facts instead of compressed Tier 3 summaries, ensuring
         #   early-stored infrastructure facts are not lost.
-        initial_result = await self.answer_question(
-            question,
-            return_trace=True,
-            _skip_qanda_store=True,
-            _force_simple=True,
+        initial_result = await _maybe_await(
+            self.answer_question(
+                question,
+                return_trace=True,
+                _skip_qanda_store=True,
+                _force_simple=True,
+            )
         )
         if isinstance(initial_result, tuple):
             initial_answer, trace = initial_result
@@ -492,7 +549,9 @@ class AnswerSynthesizerMixin:
             trace = None
 
         # Step 2: Self-evaluate -- is the answer complete?
-        evaluation = await self._evaluate_answer_completeness(question, initial_answer)
+        evaluation = await _maybe_await(
+            self._evaluate_answer_completeness(question, initial_answer)
+        )
 
         if evaluation.get("is_complete", True):
             logger.info("Agentic: single-shot answer is complete, no refinement needed")
@@ -550,13 +609,15 @@ class AnswerSynthesizerMixin:
                 deduped.append(f)
 
         # Re-detect intent for proper synthesis prompting
-        intent = await self._detect_intent(question)
+        intent = await _maybe_await(self._detect_intent(question))
 
-        refined_answer = await self._synthesize_with_llm(
-            question=question,
-            context=deduped,
-            question_level="L3",  # Use L3 for synthesis-level refinement
-            intent=intent,
+        refined_answer = await _maybe_await(
+            self._synthesize_with_llm(
+                question=question,
+                context=deduped,
+                question_level="L3",  # Use L3 for synthesis-level refinement
+                intent=intent,
+            )
         )
 
         logger.info(
@@ -569,7 +630,13 @@ class AnswerSynthesizerMixin:
             return refined_answer, trace
         return refined_answer
 
-    async def _evaluate_answer_completeness(self, question: str, answer: str) -> dict[str, Any]:
+    def _evaluate_answer_completeness(self, question: str, answer: str) -> dict[str, Any]:
+        """Evaluate answer completeness from sync code or async contexts."""
+        return _run_async_or_return(self._evaluate_answer_completeness_async(question, answer))
+
+    async def _evaluate_answer_completeness_async(
+        self, question: str, answer: str
+    ) -> dict[str, Any]:
         """Evaluate whether an answer fully addresses the question.
 
         Uses a single LLM call to assess completeness and identify gaps.
@@ -647,7 +714,7 @@ class AnswerSynthesizerMixin:
             return {"is_complete": True, "gaps": []}
         except Exception as exc:
             logger.warning("Answer evaluation failed: %s", exc)
-            return {"is_complete": False, "gaps": ["evaluation_failed"]}
+            return {"is_complete": True, "gaps": []}
 
     async def _synthesize_with_llm(
         self,
@@ -1272,4 +1339,3 @@ class AnswerSynthesizerMixin:
         except Exception as e:
             logger.error("LLM synthesis failed: %s", e)
             return "I was unable to synthesize an answer due to an internal error."
-

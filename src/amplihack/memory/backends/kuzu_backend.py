@@ -1102,6 +1102,9 @@ class KuzuBackend:
             where_conditions.append("m.agent_id = $agent_id")
             params["agent_id"] = query.agent_id
 
+        if query.session_id:
+            params["session_id"] = query.session_id
+
         if query.min_importance:
             where_conditions.append("m.importance >= $min_importance")
             params["min_importance"] = query.min_importance
@@ -1122,12 +1125,20 @@ class KuzuBackend:
         where_clause = " AND ".join(where_conditions) if where_conditions else "TRUE"
 
         # Build Cypher query
-        cypher = f"""
-            MATCH (m:{node_label})
-            WHERE {where_clause}
-            RETURN m
-            ORDER BY m.accessed_at DESC
-        """
+        if query.session_id:
+            cypher = f"""
+                MATCH (s:Session {{session_id: $session_id}})-[]->(m:{node_label})
+                WHERE {where_clause}
+                RETURN m, s.session_id
+                ORDER BY m.accessed_at DESC
+            """
+        else:
+            cypher = f"""
+                MATCH (s:Session)-[]->(m:{node_label})
+                WHERE {where_clause}
+                RETURN m, s.session_id
+                ORDER BY m.accessed_at DESC
+            """
 
         # Only apply limit/offset if querying single type
         if query.memory_type and query.limit:
@@ -1151,6 +1162,7 @@ class KuzuBackend:
         while result.has_next():
             row = result.get_next()
             memory_node = row[0]
+            session_id = row[1] if len(row) > 1 and row[1] is not None else "unknown"
 
             # Determine memory type from node label
             memory_type = self._get_memory_type_from_label(node_label)
@@ -1158,7 +1170,7 @@ class KuzuBackend:
             # Parse node properties
             memory = MemoryEntry(
                 id=memory_node["memory_id"],
-                session_id=memory_node.get("session_id", "unknown"),
+                session_id=session_id,
                 agent_id=memory_node["agent_id"],
                 memory_type=memory_type,
                 title=memory_node["title"],
@@ -1227,7 +1239,9 @@ class KuzuBackend:
                 result = self.connection.execute(
                     f"""
                     MATCH (m:{node_label} {{memory_id: $memory_id}})
-                    RETURN m
+                    OPTIONAL MATCH (s:Session)-[]->(m)
+                    RETURN m, s.session_id
+                    LIMIT 1
                 """,
                     {"memory_id": memory_id},
                 )
@@ -1235,6 +1249,7 @@ class KuzuBackend:
                 if result.has_next():
                     row = result.get_next()
                     memory_node = row[0]
+                    session_id = row[1] if len(row) > 1 and row[1] is not None else "unknown"
 
                     # Update access time
                     now = datetime.now()
@@ -1249,7 +1264,7 @@ class KuzuBackend:
                     # Parse to MemoryEntry
                     return MemoryEntry(
                         id=memory_node["memory_id"],
-                        session_id=memory_node.get("session_id", "unknown"),
+                        session_id=session_id,
                         agent_id=memory_node["agent_id"],
                         memory_type=memory_type,
                         title=memory_node["title"],

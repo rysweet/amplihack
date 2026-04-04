@@ -488,8 +488,8 @@ class GoalSeekingAgent(ABC):
             la = self._get_learning_agent()
             if la:
                 if answer_mode == "agentic":
-                    return asyncio.run(la.answer_question_agentic(question))
-                result = asyncio.run(la.answer_question(question))
+                    return la.answer_question_agentic(question)
+                result = la.answer_question(question)
                 if isinstance(result, tuple):
                     return result[0]
                 return result

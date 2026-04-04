@@ -31,6 +31,32 @@ from .prompts import render_prompt
 
 logger = logging.getLogger(__name__)
 
+# Backward-compatible alias retained because older tests and patch sites
+# target amplihack.agents.goal_seeking.learning_agent.completion directly.
+_ORIGINAL_LLM_COMPLETION = _llm_completion
+completion = _llm_completion
+
+
+def _get_completion_binding():
+    """Return the currently active completion callable.
+
+    Some tests patch ``learning_agent._llm_completion`` while others patch
+    ``learning_agent.completion``. Prefer whichever binding diverged from the
+    original import so both patch targets continue to work.
+    """
+    current_primary = _llm_completion
+    current_alias = completion
+    primary_patched = current_primary is not _ORIGINAL_LLM_COMPLETION
+    alias_patched = current_alias is not _ORIGINAL_LLM_COMPLETION
+
+    if alias_patched and not primary_patched:
+        return current_alias
+    if primary_patched and not alias_patched:
+        return current_primary
+    if alias_patched:
+        return current_alias
+    return current_primary
+
 
 from .answer_synthesizer import AnswerSynthesizerMixin
 from .code_synthesis import CodeSynthesisMixin
@@ -226,7 +252,7 @@ class LearningAgent(
         last_exception: Exception | None = None
         for _retry_attempt in range(max_retries + 1):  # attempt 0 = first try
             try:
-                return await _llm_completion(
+                return await _get_completion_binding()(
                     messages,
                     model=self.model,
                     temperature=temperature,
@@ -302,4 +328,3 @@ class LearningAgent(
     def close(self) -> None:
         """Close agent and release resources."""
         self.memory.close()
-
