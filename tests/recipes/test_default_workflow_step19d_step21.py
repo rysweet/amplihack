@@ -288,11 +288,17 @@ class TestStep21GhCommandsPreserved:
         )
 
     def test_worktree_path_prefix_present(self, step_21: dict):
-        """``cd {{worktree_setup.worktree_path}}`` must remain at the start."""
+        """Worktree path template must be referenced and cd'd into."""
         cmd = step_21.get("command", "")
-        assert "cd {{worktree_setup.worktree_path}}" in cmd, (
-            "step-21 lost worktree-path 'cd' prefix"
+        assert "{{worktree_setup.worktree_path}}" in cmd, (
+            "step-21 lost worktree_setup.worktree_path template reference"
         )
+        # Accept both direct `cd {{...}}` and variable-based `cd "$WORKTREE_DIR"`
+        has_direct_cd = "cd {{worktree_setup.worktree_path}}" in cmd
+        has_var_cd = (
+            'WORKTREE_DIR="{{worktree_setup.worktree_path}}"' in cmd and 'cd "$WORKTREE_DIR"' in cmd
+        )
+        assert has_direct_cd or has_var_cd, "step-21 lost worktree-path 'cd' prefix"
 
     def test_output_field_preserved(self, step_21: dict):
         """``output: pr_ready_result`` must not change."""

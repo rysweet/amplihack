@@ -167,7 +167,7 @@ When creating a new PowerPoint presentation from scratch, use the **html2pptx** 
 
 ### Workflow
 
-1. **MANDATORY - READ ENTIRE FILE**: Read the [OOXML common infrastructure guide](../common/ooxml/README.md#html2pptxjs) completely from start to finish. **NEVER set any range limits when reading this file.** Read the full file content for detailed syntax, critical formatting rules, and best practices before proceeding with presentation creation.
+1. **MANDATORY - READ ENTIRE FILE**: Read [`html2pptx.md`](html2pptx.md) completely from start to finish. **NEVER set any range limits when reading this file.** Read the full file content for detailed syntax, critical formatting rules, and best practices before proceeding with presentation creation.
 2. Create an HTML file for each slide with proper dimensions (e.g., 720pt × 405pt for 16:9)
    - Use `<p>`, `<h1>`-`<h6>`, `<ul>`, `<ol>` for all text content
    - Use `class="placeholder"` for areas where charts/tables will be added (render with gray background for visibility)
@@ -193,7 +193,7 @@ When edit slides in an existing PowerPoint presentation, you need to work with t
 
 ### Workflow
 
-1. **MANDATORY - READ ENTIRE FILE**: Read the [OOXML common infrastructure guide](../common/ooxml/README.md) completely from start to finish. **NEVER set any range limits when reading this file.** Read the full file content for detailed guidance on OOXML structure and editing workflows before any presentation editing.
+1. **MANDATORY - READ ENTIRE FILE**: Read [`ooxml.md`](ooxml.md) (~500 lines) completely from start to finish. **NEVER set any range limits when reading this file.** Read the full file content for detailed guidance on OOXML structure and editing workflows before any presentation editing.
 2. Unpack the presentation: `python ooxml/scripts/unpack.py <office_file> <output_dir>`
 3. Edit the XML files (primarily `ppt/slides/slide{N}.xml` and related files)
 4. **CRITICAL**: Validate immediately after each edit and fix any validation errors before proceeding: `python ooxml/scripts/validate.py <dir> --original <file>`
