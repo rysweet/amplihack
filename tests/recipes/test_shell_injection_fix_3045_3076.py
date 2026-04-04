@@ -489,7 +489,41 @@ class TestTitleNormalisationPresent:
 
 
 # ---------------------------------------------------------------------------
-# 8. Bash syntax validation: heredoc pattern with adversarial inputs
+# 8. Step-03 issue body transport must use a body file
+# ---------------------------------------------------------------------------
+
+
+class TestStep03IssueBodyTransport:
+    """step-03 must pass the issue body through a temp file, not an inline arg."""
+
+    def test_step_03_uses_body_file_argument(self, step_map):
+        step = _get_step(step_map, "step-03-create-issue")
+        cmd = step.get("command", "")
+
+        assert "--body-file" in cmd, (
+            "step-03-create-issue must use gh issue create --body-file to avoid "
+            "shell-quoting regressions from multiline/special-character content."
+        )
+        assert '--body "$ISSUE_BODY"' not in cmd, (
+            "step-03-create-issue must not pass the full issue body inline via "
+            '--body "$ISSUE_BODY".'
+        )
+
+    def test_step_03_creates_and_cleans_temp_body_file(self, step_map):
+        step = _get_step(step_map, "step-03-create-issue")
+        cmd = step.get("command", "")
+
+        assert "mktemp" in cmd, (
+            "step-03-create-issue must create a temporary body file before calling gh issue create."
+        )
+        assert "rm -f" in cmd, (
+            "step-03-create-issue must remove the temporary body file after "
+            "gh issue create completes."
+        )
+
+
+# ---------------------------------------------------------------------------
+# 9. Bash syntax validation: heredoc pattern with adversarial inputs
 # ---------------------------------------------------------------------------
 
 
@@ -619,7 +653,7 @@ class TestHeredocBashSyntax:
 
 
 # ---------------------------------------------------------------------------
-# 8b. Unquoted heredoc env-var expansion (Rust runner compatibility, issue #3117)
+# 9b. Unquoted heredoc env-var expansion (Rust runner compatibility, issue #3117)
 # ---------------------------------------------------------------------------
 
 
@@ -695,7 +729,7 @@ class TestUnquotedHeredocEnvVarExpansion:
 
 
 # ---------------------------------------------------------------------------
-# 9. Step-specific heredoc integration: each step's full script fragment
+# 10. Step-specific heredoc integration: each step's full script fragment
 # ---------------------------------------------------------------------------
 
 

@@ -335,6 +335,13 @@ steps:
       )
       ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$TASK_DESC" "$ISSUE_REQS")
 
+      # FIX (#4221): Write issue body to temp file to avoid shell quoting issues
+      # with --body flag when body contains special characters, newlines, or quotes.
+      ISSUE_BODY_FILE=$(mktemp)
+      chmod 600 "$ISSUE_BODY_FILE"
+      trap 'rm -f "$ISSUE_BODY_FILE"' EXIT
+      printf '%s' "$ISSUE_BODY" > "$ISSUE_BODY_FILE"
+
       if [ "$GIT_PROVIDER" = "ado" ]; then
         # ── ADO PATH ────────────────────────────────────────────────────────
         # Idempotency Guard 1: Reuse work item referenced in task_description (#NNNN)
@@ -377,7 +384,7 @@ steps:
         NEW_ITEM_ID=$(timeout 60 az boards work-item create \
           --type "Task" \
           --title "$ISSUE_TITLE" \
-          --description "$ISSUE_BODY" \
+          --description @"$ISSUE_BODY_FILE" \
           --query id \
           -o tsv 2>/dev/null || echo '')
         if [ -z "$NEW_ITEM_ID" ] || [ "$NEW_ITEM_ID" = "None" ]; then
@@ -438,11 +445,11 @@ steps:
         fi
         gh issue create \
           --title "$ISSUE_TITLE" \
-          --body "$ISSUE_BODY" \
+          --body-file "$ISSUE_BODY_FILE" \
           --label "$LABEL_NAME" 2>&1 || \
         gh issue create \
           --title "$ISSUE_TITLE" \
-          --body "$ISSUE_BODY"
+          --body-file "$ISSUE_BODY_FILE"
       fi
     output: "issue_creation"
     parse_json: false
