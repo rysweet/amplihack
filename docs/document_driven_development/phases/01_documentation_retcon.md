@@ -374,7 +374,6 @@ README.md (Entry Point)
 ```bash
 curl -sSL https://install.sh | sh
 ```
-````
 
 ### Step 2: Run (60 seconds)
 

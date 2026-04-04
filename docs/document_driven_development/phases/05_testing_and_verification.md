@@ -580,7 +580,7 @@ make check
 - Linting: Code quality
 - Formatting: Style consistency
 
-**Philosophy compliance** (from [IMPLEMENTATION_PHILOSOPHY.md](../../.claude/context/PHILOSOPHY.md)):
+**Philosophy compliance** (from [IMPLEMENTATION_PHILOSOPHY.md](../../claude/context/PHILOSOPHY.md)):
 
 - Test real bugs, not code inspection
 - Test runtime invariants
@@ -748,4 +748,4 @@ $ amplifier provider use anthropic  # Missing required flag
 
 **Core Techniques**: [File Crawling](../core_concepts/file_crawling.md)
 
-**Philosophy**: [IMPLEMENTATION_PHILOSOPHY.md](../../.claude/context/PHILOSOPHY.md#testing-strategy)
+**Philosophy**: [IMPLEMENTATION_PHILOSOPHY.md](../../claude/context/PHILOSOPHY.md#testing-strategy)

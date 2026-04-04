@@ -21,7 +21,7 @@ How to maintain, extend, and troubleshoot the `issue-classifier` GitHub Actions 
 
 The issue-classifier workflow automatically labels new issues as `bug`, `feature`, `enhancement`, or `documentation` using an AI agent step. It runs in strict mode — the agent **must** emit exactly one label; a no-output result is treated as a workflow failure.
 
-Workflow source: `.github/workflows/issue-classifier.md`
+Workflow source: [`../../.github/workflows/issue-classifier.md`](../../.github/workflows/issue-classifier.md)
 Compiled lock file: `.github/workflows/issue-classifier.lock.yml`
 
 The `.md` source is the authoritative definition; the `.lock.yml` is generated from it and is what GitHub Actions actually executes. Always edit the `.md` source and recompile — never edit the lock file directly.
@@ -238,6 +238,6 @@ Check the prompt section in `issue-classifier.md`. The model's classification lo
 
 **See also:**
 
-- [Issue Classifier Workflow source](./../../../.github/workflows/issue-classifier.md)
+- [Issue Classifier Workflow source](../../.github/workflows/issue-classifier.md)
 - [Rust Runner Execution Reference](../reference/rust-runner-execution.md)
 - [CI Diagnostic Workflow](../claude/agents/amplihack/specialized/ci-diagnostic-workflow.md)
