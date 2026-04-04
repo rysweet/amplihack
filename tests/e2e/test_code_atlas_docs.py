@@ -16,6 +16,8 @@ Usage:
 
 import pytest
 
+pytest.importorskip("playwright", reason="Playwright not installed")
+
 BASE_URL = "http://127.0.0.1:8123"
 
 ATLAS_LAYERS = [
