@@ -10,17 +10,17 @@ Tests:
 import pytest
 import pytest_asyncio
 
-from amplihack.memory.models import MemoryType
-from amplihack.memory.sqlite_backend import create_backend
-from src.amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
-from src.amplihack.memory.evaluation import (
+from amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
+from amplihack.memory.evaluation import (
     BackendComparison,
     PerformanceEvaluator,
     QualityEvaluator,
     ReliabilityEvaluator,
     run_evaluation,
 )
-from src.amplihack.memory.evaluation.quality_evaluator import QueryTestCase
+from amplihack.memory.evaluation.quality_evaluator import QueryTestCase
+from amplihack.memory.models import MemoryType
+from amplihack.memory.sqlite_backend import create_backend
 
 
 @pytest_asyncio.fixture

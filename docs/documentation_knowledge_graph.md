@@ -579,6 +579,6 @@ The Documentation Knowledge Graph provides:
 
 ## Related Documentation
 
-- [Neo4j Memory System](research/neo4j_memory_system/README.md)
-- [Code Graph Integration](research/neo4j_memory_system/BLARIFY_INTEGRATION_SUMMARY.md)
-- [External Knowledge Integration](research/neo4j_memory_system/04-external-knowledge/)
+- [Memory System Overview](memory/README.md)
+- [Code Graph Integration](blarify_integration.md)
+- [External Knowledge Integration](external_knowledge_integration.md)

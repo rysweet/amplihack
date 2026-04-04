@@ -393,6 +393,8 @@ class TestIntegration:
         # Arrange
         claude_dir = temp_home / ".claude"
         claude_dir.mkdir(parents=True)
+        hooks_dir = temp_home / ".amplihack" / ".claude" / "tools" / "amplihack" / "hooks"
+        hooks_dir.mkdir(parents=True)
         settings_path = claude_dir / "settings.json"
 
         # Create settings with legacy paths
@@ -419,6 +421,13 @@ class TestIntegration:
 
         # Mock to avoid interactive prompts and actual hook installation
         monkeypatch.setenv("AMPLIHACK_YES", "1")
+
+        # ensure_settings_json now fails if managed hook files are absent, so
+        # provision the expected hook files for this integration scenario.
+        from amplihack import HOOK_CONFIGS
+
+        for hook_info in HOOK_CONFIGS["amplihack"]:
+            (hooks_dir / hook_info["file"]).write_text("# stub hook\n", encoding="utf-8")
 
         # Mock the module-level constants that ensure_settings_json uses
         import amplihack.settings

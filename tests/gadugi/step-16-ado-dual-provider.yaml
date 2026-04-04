@@ -8,6 +8,7 @@
 #   5. Variable-driven target branch BASE_BRANCH (not hardcoded main)
 #   6. Step-03 WIQL injection sanitization: strip [ ] ; from search title
 #   7. Step-03 az boards query uses --wiql for open work item search
+#   8. Truncation warnings are emitted for ADO search titles and PR titles
 #
 # All steps are static grep/bash verification against the workflow YAML.
 # No live ADO credentials are required.
@@ -24,6 +25,7 @@ description: |
   - az repos pr create with --work-items $ISSUE_NUM (work-item linking)
   - Variable-driven target branch (BASE_BRANCH, not hardcoded main)
   - WIQL injection sanitization in step-03 ADO work item search
+  - Truncation warnings for ADO search titles and PR titles
 version: "1.0.0"
 config:
   timeout: 120000
@@ -35,7 +37,7 @@ agents:
     type: "system"
     config:
       shell: "bash"
-      cwd: "/home/azureuser/src/amplihack-pm"
+      cwd: "."
       timeout: 60000
       capture_output: true
 
@@ -136,6 +138,27 @@ steps:
     expect:
       exit_code: 0
 
+  - name: "Step-16 ADO: az repos pr create does not suppress stderr"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        python3 - <<'PY'
+        import re
+        from pathlib import Path
+
+        cmd = Path("amplifier-bundle/recipes/default-workflow.yaml").read_text()
+        match = re.search(r'ADO_PR_URL=\$\(timeout 120 az repos pr create --draft \\\n.*?-o tsv\)', cmd, re.DOTALL)
+        if not match:
+            raise SystemExit("FAIL: az repos pr create block not found")
+        if "2>/dev/null" in match.group(0):
+            raise SystemExit("FAIL: az repos pr create still suppresses stderr")
+        print("PASS: az repos pr create keeps stderr visible")
+        PY
+    expect:
+      stdout_contains: ["PASS: az repos pr create keeps stderr visible"]
+      exit_code: 0
+
   - name: "Step-16 ADO: --work-items flag carries ISSUE_NUM"
     agent: "verifier"
     action: "execute_command"
@@ -177,6 +200,22 @@ steps:
     action: "execute_command"
     params:
       command: "grep -c -- '--target-branch.*BASE_BRANCH' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-03 ADO: warns when WIQL search title is truncated"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'Truncating ADO work item search title to 100 characters' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-16: warns when PR title is truncated"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'Truncating PR title to 200 characters' amplifier-bundle/recipes/default-workflow.yaml"
     expect:
       exit_code: 0
 

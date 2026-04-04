@@ -483,7 +483,7 @@ To extend blarify integration:
 - [Blarify GitHub](https://github.com/blarApp/blarify)
 - [SCIP Protocol](https://github.com/sourcegraph/scip)
 - [Neo4j Python Driver](https://neo4j.com/docs/api/python-driver/current/)
-- [Memory System Docs](./neo4j_memory_system.md)
+- [Memory System Docs](./memory/README.md)
 
 ## Support
 
@@ -492,7 +492,7 @@ For issues or questions:
 1. Check test suite: `python scripts/test_blarify_integration.py`
 2. Review logs in console output
 3. Check Neo4j Browser: `http://localhost:7474`
-4. See `docs/neo4j_memory_system.md` for memory system details
+4. See `docs/memory/README.md` for memory system details
 
 ---
 

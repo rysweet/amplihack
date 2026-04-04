@@ -108,7 +108,7 @@ amplihack copilot
 - Uses GitHub Copilot models (switch with `/model` command)
 - Adaptive hooks enable preference injection and context loading
 - All 38 agents available via `--agent <name>` flag
-- See [GitHub Copilot CLI](../COPILOT_CLI.md) for complete guide
+- See [GitHub Copilot CLI](COPILOT_CLI.md) for complete guide
 - See [How to Use amplihack with a Non-Claude Agent](howto/use-non-claude-agent.md) for `AMPLIHACK_AGENT_BINARY` propagation and nested Copilot compatibility details
 - Follow the [Copilot parity control-plane tutorial](tutorials/copilot-parity-control-plane.md) for step-by-step setup and validation
 - Use [How to Configure the Copilot Parity Control Plane](howto/configure-copilot-parity-control-plane.md) to pin the runner, pick the hook engine, and verify XPIA behavior
@@ -391,7 +391,7 @@ Specialized AI agents and tools for every development task.
 ### Workflow Agents
 
 - [Ambiguity Handler](claude/agents/amplihack/specialized/ambiguity.md) - Clarify unclear requirements
-- [Optimizer](claude/agents/amplihack/specialized/optimizer.md) - Performance improvements
+- [Optimizer](claude/agents/amplihack/core/optimizer.md) - Performance improvements
 - [Pattern Recognition](claude/agents/amplihack/specialized/patterns.md) - Identify reusable solutions
 
 ### Claude Code Skills
@@ -413,12 +413,6 @@ Production-ready executable tools following the Progressive Maturity Model:
 - [Agent Bundle Generator](agent-bundle-generator-guide.md) - Package agents for distribution
 
 #### Available Tools
-
-- **[check-broken-links](claude/scenarios/check-broken-links/README.md)** - Automated link checker for documentation sites and markdown files
-  - Check GitHub Pages sites or local documentation
-  - Catch broken internal links and dead external URLs
-  - Integrates with Makefile: `make check-broken-links TARGET=<url-or-path>`
-  - Returns exit codes for CI integration
 
 - **[Platform Bridge](platform-bridge/README.md)** - Multi-platform support for GitHub and Azure DevOps
   - Automatic platform detection from git remotes
@@ -510,20 +504,16 @@ python -m amplihack.memory.kuzu.query_code_graph search <name>
 python -m amplihack.memory.kuzu.query_code_graph functions --file <path>
 ```
 
-**Historical Research** (Neo4j was replaced with Kuzu in Week 7):
+**Current References**:
 
-- [Executive Summary](research/neo4j_memory_system/00-executive-summary/README.md)
-- [Technical Research](research/neo4j_memory_system/01-technical-research/README.md)
-- [Design Patterns](research/neo4j_memory_system/02-design-patterns/README.md)
-- [Integration Guides](research/neo4j_memory_system/03-integration-guides/README.md)
-- [External Knowledge](research/neo4j_memory_system/04-external-knowledge/README.md)
+- [Documentation Knowledge Graph](documentation_knowledge_graph.md) - Documentation graph architecture and workflows
+- [Blarify Code Graph Integration](blarify_integration.md) - Kuzu-backed code graph indexing and retrieval
 
 ### Memory Testing
 
-- [A/B Test Summary](memory/AB_TEST_SUMMARY.md) - Performance comparisons
-- [A/B Test Quick Reference](memory/AB_TEST_QUICK_REFERENCE.md) - Test results at a glance
+- [Memory System Guide](memory/README.md) - Overview of the current Kuzu-backed memory stack
+- [Testing Strategy](memory/TESTING_STRATEGY.md) - Validation approach for memory behavior
 - [Effectiveness Test Design](memory/EFFECTIVENESS_TEST_DESIGN.md) - How we measure success
-- [Final Cleanup Report](memory/FINAL_CLEANUP_REPORT.md) - Memory system cleanup
 
 ### External Knowledge
 
@@ -632,9 +622,9 @@ Advanced configuration, deployment patterns, and environment management.
 
 ### Remote Sessions
 
-- [Remote Sessions Overview](remote-sessions/README.md) - Execute on remote machines
-- [Remote Session Architecture](remote-sessions/architecture.md) - How remote execution works
-- [Remote Session Security](remote-sessions/security.md) - Secure remote operations
+- [Remote Sessions Overview](remote-sessions/index.md) - Execute on remote machines
+- [Remote Sessions User Guide](remote-sessions/README.md) - Set up and operate remote sessions
+- [Remote Sessions Tutorial](remote-sessions/TUTORIAL.md) - Walk through an end-to-end remote workflow
 
 ---
 
@@ -647,13 +637,12 @@ Testing strategies, quality assurance, and validation patterns.
 - [Benchmarking](BENCHMARKING.md) - Performance measurement and comparison
 - [Test Gap Analyzer](claude/skills/test-gap-analyzer/SKILL.md) - Find untested code
 - [CS Validator](cs-validator/README.md) - Code style validation
-- [Testing Strategies](testing/README.md) - Comprehensive testing guide
+- [Testing Plan](testing/TEST_PLAN.md) - Testing strategy and execution checklist
 
 ### Code Review
 
 - [Code Review Guide](CODE_REVIEW.md) - Review process and standards
 - [Memory Code Review](memory/CODE_REVIEW_PR_1077.md) - Example: Memory system review
-- [Workflow Completion](WORKFLOW_COMPLETION.md) - Checklist for finishing features
 
 ---
 
@@ -685,13 +674,11 @@ Fix common issues and learn from past solutions.
 - [Memory-Enabled Agents Issues](troubleshooting/memory-enabled-agents.md) - Fix memory persistence, pattern recognition, and learning problems
 - [Platform Bridge Troubleshooting](troubleshooting/platform-bridge.md) - Fix platform detection and CLI issues
 - [Stop Hook Exit Hang](troubleshooting/stop-hook-exit-hang.md) - Fix 10-13s hang on exit (resolved v0.9.1)
-- [Tool Null Name Analysis](TOOL_NULL_NAME_ANALYSIS.md) - Debugging tool name issues
-- [Config Analysis Report](config-analysis-report.md) - Configuration problem diagnosis
 
 ### Documentation Guides
 
 - [Documentation Guidelines](DOCUMENTATION_GUIDELINES.md) - Writing effective docs
-- [Documentation Structure Analysis](DOCUMENTATION_STRUCTURE_ANALYSIS.md) - Current state of docs
+- [Documentation Knowledge Graph](documentation_knowledge_graph.md) - Graph-based doc navigation and indexing
 - [How to Generate GitHub Pages](howto/github-pages-generation.md) - Publish your docs
 
 ### How-To Guides
@@ -711,12 +698,9 @@ Cutting-edge research, experimental features, and deep technical dives.
 
 ### Research Projects
 
-- [Neo4j Memory System Research](research/neo4j_memory_system/README.md) - Historical research (replaced with Kuzu)
-  - [Executive Summary](research/neo4j_memory_system/00-executive-summary/README.md)
-  - [Technical Research](research/neo4j_memory_system/01-technical-research/README.md)
-  - [Design Patterns](research/neo4j_memory_system/02-design-patterns/README.md)
-  - [Integration Guides](research/neo4j_memory_system/03-integration-guides/README.md)
-  - [External Knowledge](research/neo4j_memory_system/04-external-knowledge/README.md)
+- [Blarify Code Graph Integration](blarify_integration.md) - Code graph indexing with Kuzu-backed memory
+- [Documentation Knowledge Graph](documentation_knowledge_graph.md) - Graph-based documentation retrieval
+- [External Knowledge Integration](external_knowledge_integration.md) - Import external data sources into memory workflows
 
 ### Advanced Topics
 
@@ -738,8 +722,6 @@ Quick references, guides, and additional resources.
 - [Power Steering File Locking](reference/power-steering-file-locking.md) - Prevents counter race conditions
 - [UserPromptSubmit Hook API Reference](reference/user-prompt-submit-hook-api.md) - Framework injection API
 - [Doc Graph Quick Reference](doc_graph_quick_reference.md) - Navigate documentation
-<!-- Neo4j Quick Reference removed - now using Kuzu embedded database -->
-- [A/B Test Quick Reference](memory/AB_TEST_QUICK_REFERENCE.md) - Test results
 
 ### Developing amplihack
 

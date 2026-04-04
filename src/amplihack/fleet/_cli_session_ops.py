@@ -33,6 +33,7 @@ from amplihack.fleet._error_sanitizer import sanitize_external_error_detail
 from amplihack.fleet._session_lifecycle import (
     FleetConfig,
     FleetSession,
+    _active_sessions,
     get_fleet_session_status,
     list_fleet_sessions,
     run_advance,
@@ -48,6 +49,7 @@ __all__ = [
     "_parse_session_target",
     "FleetSession",
     "FleetConfig",
+    "_active_sessions",
     "ScoutResult",
     "AdvanceResult",
     "start_fleet_session",

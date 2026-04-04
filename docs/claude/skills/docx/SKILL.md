@@ -64,7 +64,7 @@ When creating a new Word document from scratch, use **docx-js**, which allows yo
 
 ### Workflow
 
-1. **MANDATORY - READ ENTIRE FILE**: Read [`docx-js.md`](docx-js.md) (~500 lines) completely from start to finish. **NEVER set any range limits when reading this file.** Read the full file content for detailed syntax, critical formatting rules, and best practices before proceeding with document creation.
+1. **MANDATORY - READ ENTIRE FILE**: Read the [`README.md`](README.md#1-creating-new-documents) integration notes completely from start to finish. **NEVER set any range limits when reading this file.** Review the `docx-js` workflow details and best practices before proceeding with document creation.
 2. Create a JavaScript/TypeScript file using Document, Paragraph, TextRun components (You can assume all dependencies are installed, but if not, refer to the dependencies section below)
 3. Export as .docx using Packer.toBuffer()
 
@@ -74,7 +74,7 @@ When editing an existing Word document, use the **Document library** (a Python l
 
 ### Workflow
 
-1. **MANDATORY - READ ENTIRE FILE**: Read [`ooxml.md`](ooxml.md) (~600 lines) completely from start to finish. **NEVER set any range limits when reading this file.** Read the full file content for the Document library API and XML patterns for directly editing document files.
+1. **MANDATORY - READ ENTIRE FILE**: Read the [OOXML common infrastructure guide](../common/ooxml/README.md) completely from start to finish. **NEVER set any range limits when reading this file.** Read the full file content for the Document library API and XML patterns for directly editing document files.
 2. Unpack the document: `python ooxml/scripts/unpack.py <office_file> <output_directory>`
 3. Create and run a Python script using the Document library (see "Document Library" section in ooxml.md)
 4. Pack the final document: `python ooxml/scripts/pack.py <input_directory> <office_file>`
@@ -124,7 +124,7 @@ Example - Changing "30 days" to "60 days" in a sentence:
    - Sequential: "Batch 1: Pages 1-3", "Batch 2: Pages 4-6"
 
 3. **Read documentation and unpack**:
-   - **MANDATORY - READ ENTIRE FILE**: Read [`ooxml.md`](ooxml.md) (~600 lines) completely from start to finish. **NEVER set any range limits when reading this file.** Pay special attention to the "Document Library" and "Tracked Change Patterns" sections.
+   - **MANDATORY - READ ENTIRE FILE**: Read the [OOXML common infrastructure guide](../common/ooxml/README.md) completely from start to finish. **NEVER set any range limits when reading this file.** Pay special attention to the "Document Library" and "Tracked Change Patterns" sections.
    - **Unpack the document**: `python ooxml/scripts/unpack.py <file.docx> <dir>`
    - **Note the suggested RSID**: The unpack script will suggest an RSID to use for your tracked changes. Copy this RSID for use in step 4b.
 

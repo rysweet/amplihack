@@ -394,7 +394,7 @@ class TestMemoryStatistics:
                 await coordinator.retrieve(query)
 
             # Get statistics
-            stats = coordinator.get_statistics()
+            stats = await coordinator.get_statistics()
 
             assert stats["total_stored"] == 5
             assert stats["total_retrievals"] == 3

@@ -13,27 +13,14 @@ Public API:
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from .backends.base import BackendCapabilities
 from .database import MemoryDatabase
 from .models import MemoryEntry, MemoryQuery, SessionInfo
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class BackendCapabilities:
-    """Capabilities that each backend supports."""
-
-    supports_graph_queries: bool = False
-    supports_vector_search: bool = False
-    supports_transactions: bool = True
-    supports_fulltext_search: bool = False
-    max_concurrent_connections: int = 1
-    backend_name: str = "unknown"
-    backend_version: str = "0.0.0"
 
 
 class MemoryBackend(Protocol):

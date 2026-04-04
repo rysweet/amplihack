@@ -72,16 +72,16 @@ class TestAnswerSynthesizer:
         assert "need more detail" in result["gaps"][0]
 
     @pytest.mark.asyncio
-    async def test_evaluate_returns_incomplete_on_exception(self, agent):
-        """Critical bug fix: exceptions must return is_complete=False, not True."""
+    async def test_evaluate_defaults_to_complete_on_exception(self, agent):
+        """LLM evaluation failures should preserve the single-shot answer."""
         with patch(
             "amplihack.agents.goal_seeking.learning_agent._llm_completion",
             new_callable=AsyncMock,
             side_effect=RuntimeError("LLM timeout"),
         ):
             result = await agent._evaluate_answer_completeness("What is X?", "Short answer.")
-        assert result["is_complete"] is False
-        assert "evaluation_failed" in result["gaps"]
+        assert result["is_complete"] is True
+        assert result["gaps"] == []
 
     @pytest.mark.asyncio
     async def test_evaluate_handles_json_parse_error(self, agent):

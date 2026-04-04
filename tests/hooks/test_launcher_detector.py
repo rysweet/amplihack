@@ -163,10 +163,8 @@ class TestEnvironmentGathering:
     def test_gather_environment_short_launcher_key_not_sanitized(self):
         """Short launcher keys are left unchanged."""
         with patch.dict(
-            os.environ,
-            {"OPENAI_API_KEY": "short"},  # pragma: allowlist secret
-            clear=True,
-        ):
+            os.environ, {"OPENAI_API_KEY": "short"}, clear=True
+        ):  # pragma: allowlist secret
             env = LauncherDetector._gather_environment()
             assert env["OPENAI_API_KEY"] == "short"  # pragma: allowlist secret
 
