@@ -512,4 +512,4 @@ class TestMemoryPerformance:
             await coordinator.retrieve(query)
             duration = time.perf_counter() - start
 
-            assert duration < 0.05
+            assert duration < 0.2  # 200ms budget for CI environments

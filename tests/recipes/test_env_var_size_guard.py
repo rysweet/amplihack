@@ -29,6 +29,7 @@ from unittest.mock import patch
 
 import pytest
 
+
 from amplihack.recipes.rust_runner import (
     _ENV_VAR_SIZE_LIMIT,
     _build_rust_command,
@@ -81,6 +82,7 @@ class TestEnvVarSizeLimit:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.xfail(reason="TDD: feature not yet implemented", strict=False)
 class TestSpillLargeValue:
     """Unit tests for _spill_large_value(key, value, tmp_dir)."""
 

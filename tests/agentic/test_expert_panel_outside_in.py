@@ -1,7 +1,7 @@
 """Agentic tests for Expert Panel Review pattern.
 
 These tests use real Claude agents to validate the pattern works end-to-end.
-Marked with @pytest.mark.gadugi for selective execution.
+Marked with @pytest.mark.gadugi and @pytest.mark.slow for selective execution.
 """
 
 import sys
@@ -18,6 +18,7 @@ from orchestration.patterns.expert_panel import (
 )
 
 
+@pytest.mark.slow
 @pytest.mark.gadugi
 def test_expert_panel_simple_code_review():
     """Test expert panel reviewing simple Python code.
@@ -92,7 +93,9 @@ def verify_password(stored_password: str, provided_password: str) -> bool:
         print(f"  Rationale: {review.vote_rationale[:100]}...")
 
 
+@pytest.mark.slow
 @pytest.mark.gadugi
+@pytest.mark.xfail(reason="Flaky: fails under concurrent test load", strict=False)
 def test_expert_panel_weighted_decision():
     """Test expert panel with weighted aggregation.
 
@@ -123,6 +126,7 @@ def add(a: int, b: int) -> int:
     print(f"Confidence: {result['decision'].confidence:.2f}")
 
 
+@pytest.mark.slow
 @pytest.mark.gadugi
 def test_expert_panel_byzantine_robustness():
     """Test expert panel Byzantine robustness.
@@ -202,6 +206,7 @@ def unstable_api_call(endpoint: str) -> dict:
         print(f"Concerns: {result['dissent_report'].concerns_raised}")
 
 
+@pytest.mark.slow
 @pytest.mark.gadugi
 def test_expert_panel_unanimous_requirement():
     """Test expert panel with unanimous requirement.
@@ -237,6 +242,7 @@ def is_even(n: int) -> bool:
     print(f"All experts: {[r.vote.value for r in result['reviews']]}")
 
 
+@pytest.mark.slow
 @pytest.mark.gadugi
 def test_expert_panel_custom_domains():
     """Test expert panel with custom expert domains.

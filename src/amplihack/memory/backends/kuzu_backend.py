@@ -39,7 +39,7 @@ import kuzu
 from ..kuzu.code_graph import KuzuCodeGraph
 from ..kuzu.connector import KuzuConnector
 from ..models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
-from .base import BackendCapabilities
+from amplihack.memory.sqlite_backend import BackendCapabilities
 
 logger = logging.getLogger(__name__)
 

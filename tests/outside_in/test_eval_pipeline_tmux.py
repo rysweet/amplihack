@@ -41,6 +41,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+pytestmark = pytest.mark.skip(reason="Outside-in E2E test requires tmux and full environment")
 
 # Add amplifier-bundle to sys.path so we can import the executor module.
 # The executor lives in amplifier-bundle/tools/amplihack/remote/ which is not

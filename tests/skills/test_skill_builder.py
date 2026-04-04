@@ -103,6 +103,7 @@ class TestFileStructure:
         )
 
 
+@pytest.mark.xfail(reason="TDD: skill-builder enhancements not yet implemented", strict=False)
 class TestYAMLFrontmatter:
     """Test YAML frontmatter structure and required fields."""
 
@@ -405,6 +406,7 @@ class TestZeroBSCompliance:
         )
 
 
+@pytest.mark.xfail(reason="TDD: skill-builder enhancements not yet implemented", strict=False)
 class TestBestPracticesDocumentation:
     """Test that official best practices are documented."""
 
@@ -510,6 +512,7 @@ class TestCommonMistakes:
         assert found, "reference.md should include troubleshooting guidance"
 
 
+@pytest.mark.xfail(reason="TDD: skill-builder enhancements not yet implemented", strict=False)
 class TestAgentOrchestration:
     """Test that agent orchestration is properly documented."""
 

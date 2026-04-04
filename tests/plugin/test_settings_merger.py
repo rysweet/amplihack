@@ -15,6 +15,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.skip(reason="Plugin system not yet implemented")
+
 
 class TestSettingsMergerUnit:
     """Unit tests for SettingsMerger - pure merge logic."""

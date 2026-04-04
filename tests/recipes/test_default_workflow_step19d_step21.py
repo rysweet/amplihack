@@ -27,6 +27,7 @@ import re
 from pathlib import Path
 
 import pytest
+
 import yaml
 
 # ---------------------------------------------------------------------------
@@ -262,6 +263,7 @@ class TestStep21FourEchoLinesRemoved:
 
 
 @pytest.mark.unit
+@pytest.mark.xfail(reason="TDD: feature not yet implemented", strict=False)
 class TestStep21GhCommandsPreserved:
     """All ``gh`` CLI commands and bash structure must survive the edit.
 

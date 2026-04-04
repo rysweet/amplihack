@@ -1,10 +1,8 @@
 """Subprocess-based test harness for outside-in plugin testin'.
-import sys
 
 Philosophy:
 - Test from the outside in, as a user would
 - Real subprocess execution (no mocking)
-import sys
 - Fast execution (< 5 minutes total)
 - Clear failure messages
 - Non-interactive (no user input)
@@ -17,6 +15,7 @@ Public API (the "studs"):
 """
 
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path

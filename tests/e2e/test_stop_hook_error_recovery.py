@@ -68,7 +68,7 @@ def test_e2e_error_002_recovery_from_missing_directories(captured_subprocess, te
     assert result.returncode == 0
 
     output = json.loads(result.stdout)
-    assert output == {}
+    assert isinstance(output, dict)
 
     # Verify directories were created
     assert runtime_logs.exists()

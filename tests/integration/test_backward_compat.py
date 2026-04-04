@@ -30,6 +30,11 @@ except ImportError:
     ModeDetector = None
     MigrationHelper = None
 
+pytestmark = pytest.mark.skipif(
+    detect_claude_directory is None,
+    reason="detect_claude_directory not yet implemented in amplihack.launcher",
+)
+
 
 class TestClaudeDirectoryDetection:
     """Test detection of .claude directory (project vs plugin)."""

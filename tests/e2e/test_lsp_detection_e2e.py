@@ -6,9 +6,22 @@ Tests complete LSP workflows from outside-in perspective:
 - Multi-language projects
 """
 
+import subprocess
+
 import pytest
 
 from tests.harness import LSPTestHarness
+
+# Skip entire module if 'amplihack lsp' subcommand is not available
+_lsp_available = subprocess.run(
+    ["amplihack", "lsp", "--help"],
+    capture_output=True,
+    timeout=10,
+).returncode == 0
+pytestmark = pytest.mark.skipif(
+    not _lsp_available,
+    reason="amplihack lsp subcommand not available",
+)
 
 
 class TestLanguageDetection:
