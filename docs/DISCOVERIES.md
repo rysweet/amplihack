@@ -669,6 +669,41 @@ Two distinct failures around pre-commit hooks in workflow-generated commits:
 
 ---
 
+## Heredoc Injection in Recipe Bash Steps (2026-04-03)
+
+### Issue
+
+`step-16-create-draft-pr` in `default-workflow.yaml` used **unquoted** heredoc delimiters (`<<EOFTASKDESC`, `<<EOFDESIGN`) for multi-line variables that receive recipe-runner-substituted content. When the substituted content contained `$()`, backtick subshells, or `$VAR` references, bash expanded them during heredoc assignment — executing arbitrary shell code and producing unpredictable output.
+
+### Root Cause
+
+Unquoted heredoc delimiters tell bash to perform the same expansions inside the heredoc body as it would in a double-quoted string. Content injected by the recipe runner (e.g., task descriptions, PR design text) may legitimately contain shell metacharacters. When that content reaches an unquoted heredoc, bash evaluates it.
+
+The same class of bug had previously been fixed in `step-03` (PRs #3045, #3076, #3117) but the pattern was not consistently applied to all steps that receive external content.
+
+### Solution
+
+**Commit `4c04a74`** (Copilot, 2026-04-03):
+
+- Changed `<<EOFTASKDESC` → `<<'EOFTASKDESC'` and `<<EOFDESIGN` → `<<'EOFDESIGN'` in `step-16` — single-quoting the delimiter disables all bash expansions inside the heredoc body, treating the content as a literal string
+- Added a numeric-only guard on `NEW_ITEM_ID` after `az boards work-item create` to reject unexpected az CLI output before it is used in subsequent commands
+
+All 27 ADO integration tests pass after the fix.
+
+### Key Learnings
+
+1. **Quote heredoc delimiters when content comes from external sources**: `<<'EOF'` is safe; `<<EOF` expands substitutions and subshells in the body
+2. **Fix classes of bugs, not instances**: The step-03 fix documented the root cause but did not audit other steps for the same pattern — step-16 carried the same vulnerability for months
+3. **Numeric guards prevent downstream corruption**: Validating `NEW_ITEM_ID` as a pure integer before use prevents a malformed az CLI response from silently poisoning the rest of the workflow
+
+### Prevention
+
+- Audit every recipe bash step that receives recipe-runner-substituted content; replace unquoted `<<DELIMITER` with `<<'DELIMITER'`
+- Add a linting rule (or pre-commit check) that flags unquoted heredoc delimiters in `default-workflow.yaml` and sibling recipe files
+- After any `az`/`gh`/`git` CLI call that captures an ID, add a `[[ "$ID" =~ ^[0-9]+$ ]]` guard before using the value
+
+---
+
 ## Checklist CLAUDE.md Breaks Sonnet 4.5 Autonomy (2025-11-30)
 
 ### Issue

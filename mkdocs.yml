@@ -222,6 +222,8 @@ nav:
       - Troubleshooting: troubleshooting/README.md
       - Code Review: CODE_REVIEW.md
       - Rust Runner Execution: reference/rust-runner-execution.md
+      - Recipes:
+          - Step-03 Idempotency Guards: recipes/step-03-idempotency.md
 
 # Plugins
 plugins:
