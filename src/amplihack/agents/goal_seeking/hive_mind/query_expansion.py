@@ -18,8 +18,8 @@ Public API (the "studs"):
 from __future__ import annotations
 
 import logging
+import os
 import re
-import sys
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,11 @@ try:
 except ImportError:
     anthropic = None  # type: ignore[assignment]
     HAS_ANTHROPIC = False
-    print("WARNING: anthropic not available", file=sys.stderr)
+    logger.warning("anthropic not available; query expansion will use local fallback")
+
+# Honor ANTHROPIC_DISABLED env var: treat as unavailable regardless of import success
+if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+    HAS_ANTHROPIC = False
 
 # Backward-compatible alias
 EXPANSION_MODEL = DEFAULT_EXPANSION_MODEL
