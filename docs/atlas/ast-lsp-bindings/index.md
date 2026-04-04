@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-04-03T03:10:00.000000+00:00 | files_analyzed: 2408 (includes amplifier-bundle/tools/test_step03_create_issue_idempotency.py)
+Category: <strong>Structural</strong> | Generated: 2026-04-04T06:00:00.000000+00:00 | files_analyzed: 2408 (includes amplifier-bundle/tools/test_default_workflow_fixes.py, test_step03_create_issue_idempotency.py)
 </div>
 
 ## Map
