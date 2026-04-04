@@ -5,6 +5,7 @@ Tests both the LLM path (mocked) and the local synonym expansion fallback.
 
 from __future__ import annotations
 
+import importlib
 from unittest.mock import MagicMock, patch
 
 
@@ -16,6 +17,18 @@ class TestHasAnthropic:
         from amplihack.agents.goal_seeking.hive_mind.query_expansion import HAS_ANTHROPIC
 
         assert isinstance(HAS_ANTHROPIC, bool)
+
+    def test_anthropic_disabled_forces_false(self, monkeypatch):
+        """ANTHROPIC_DISABLED=true sets HAS_ANTHROPIC=False regardless of import."""
+        mod_name = "amplihack.agents.goal_seeking.hive_mind.query_expansion"
+        qe = importlib.import_module(mod_name)
+
+        with monkeypatch.context() as isolated_env:
+            isolated_env.setenv("ANTHROPIC_DISABLED", "true")
+            qe = importlib.reload(qe)
+            assert qe.HAS_ANTHROPIC is False
+
+        importlib.reload(qe)
 
 
 class TestLocalExpansion:

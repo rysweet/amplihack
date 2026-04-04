@@ -476,10 +476,12 @@ class TestFlow6DryRun:
             assert "confirmation" in proposal_text.lower()
 
     @pytest.mark.asyncio
-    async def test_dry_run_without_api_key_shows_error(self):
-        """Pressing 'd' without ANTHROPIC_API_KEY should show an error message."""
+    async def test_dry_run_without_api_key_triggers_worker(self, monkeypatch):
+        """Pressing 'd' without ANTHROPIC_API_KEY should trigger the reasoning worker (no preflight gate)."""
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("ANTHROPIC_DISABLED", raising=False)
         app = FleetDashboardApp(refresh_interval=9999)
-        async with app.run_test(size=(120, 40), notifications=True) as pilot:
+        async with app.run_test(size=(120, 40)) as pilot:
             vms = _make_mock_vms()
             _inject_mock_data(app, vms)
             await pilot.pause()
@@ -487,15 +489,13 @@ class TestFlow6DryRun:
             await pilot.press("down")
             await pilot.pause()
 
-            # Ensure no API key is set
-            with patch.dict(os.environ, {}, clear=False):
-                os.environ.pop("ANTHROPIC_API_KEY", None)
-                await pilot.press("d")
-                await pilot.pause()
+            # Without API key gate, pressing 'd' moves to "Running LLM reasoning..." state
+            await pilot.press("d")
+            await pilot.pause()
 
-            # The proposal text should mention the missing key
+            # The proposal text should show the reasoning in-progress message, not an API key error
             proposal_text = str(app.query_one("#proposal-text", Static).content)
-            assert "ANTHROPIC_API_KEY" in proposal_text
+            assert "ANTHROPIC_API_KEY" not in proposal_text
 
 
 # ---------------------------------------------------------------------------
