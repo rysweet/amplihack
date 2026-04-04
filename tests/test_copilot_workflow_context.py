@@ -1,4 +1,4 @@
-from src.amplihack.launcher.copilot import (
+from amplihack.launcher.copilot import (
     build_copilot_agents_context,
     generate_copilot_instructions,
 )

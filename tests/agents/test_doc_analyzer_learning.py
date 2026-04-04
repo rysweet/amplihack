@@ -11,15 +11,102 @@ Test Approach:
 
 from dataclasses import dataclass
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from amplihack.memory.coordinator import MemoryCoordinator
-from amplihack.memory.models import MemoryQuery, MemoryType
+from amplihack.memory.coordinator import MemoryCoordinator, RetrievalQuery, StorageRequest
+from amplihack.memory.models import MemoryEntry, MemoryType
 
 # =============================================================================
 # Learning Metrics
 # =============================================================================
+
+
+@pytest.fixture
+def mock_backend():
+    """Mock memory backend for document analyzer learning tests."""
+    backend = MagicMock()
+    backend.store.return_value = "mock_memory_id"
+    backend.query.return_value = []
+    backend.delete.return_value = True
+    backend.delete_by_query.return_value = 0
+    backend.initialize = AsyncMock(return_value=None)
+    backend.close.return_value = None
+
+    async def retrieve_memories(query):
+        memories = backend.query(query)
+        for memory in memories:
+            if isinstance(memory, MemoryEntry):
+                memory.metadata.setdefault(
+                    "new_memory_type",
+                    memory.memory_type.value
+                    if hasattr(memory.memory_type, "value")
+                    else str(memory.memory_type),
+                )
+        return memories
+
+    async def store_memory(entry):
+        result = backend.store(entry)
+        return result is not None
+
+    backend.retrieve_memories = AsyncMock(side_effect=retrieve_memories)
+    backend.store_memory = AsyncMock(side_effect=store_memory)
+    backend.delete_memory = AsyncMock(return_value=True)
+    return backend
+
+
+@pytest.fixture
+def sample_documents(tmp_path):
+    """Create sample Azure documentation files for analyzer tests."""
+    docs_path = tmp_path / "documents"
+    docs_path.mkdir()
+
+    (docs_path / "azure_auth.md").write_text(
+        """
+# Azure Authentication
+
+Azure supports multiple authentication mechanisms:
+- Azure Active Directory (AAD)
+- Managed Identities
+- Service Principals
+- OAuth 2.0 / OpenID Connect
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    (docs_path / "azure_rbac.md").write_text(
+        """
+# Azure Role-Based Access Control (RBAC)
+
+RBAC provides fine-grained access management.
+
+## Key Concepts
+- Roles
+- Assignments
+- Scopes
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    (docs_path / "azure_storage.md").write_text(
+        """
+# Azure Storage
+
+Azure Storage provides scalable cloud storage.
+
+## Security
+- Storage Account Keys
+- Shared Access Signatures (SAS)
+- Azure AD integration
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    return docs_path
 
 
 @dataclass
@@ -85,12 +172,20 @@ class DocumentAnalyzerAgent:
 
         start_time = time.perf_counter()
 
+        self.memory.session_id = session_id
+        topic = extract_topic(document)
+
         # Check memory for relevant patterns
-        relevant_memories = self.memory.retrieve(
-            query=MemoryQuery(agent_id=self.agent_id, memory_type=MemoryType.SEMANTIC, limit=10)
+        relevant_memories = __import__("asyncio").run(
+            self.memory.retrieve(
+                RetrievalQuery(
+                    query_text=topic,
+                    memory_types=[MemoryType.SEMANTIC],
+                )
+            )
         )
 
-        memories_retrieved = len(relevant_memories.memories)
+        memories_retrieved = len(relevant_memories)
         memories_used = 0
 
         # Simulate faster processing if we have relevant memories
@@ -107,13 +202,19 @@ class DocumentAnalyzerAgent:
         time.sleep(processing_time / 1000)
 
         # Store learning from this analysis
-        self.memory.store(
-            memory_type=MemoryType.SEMANTIC,
-            title="Documentation analysis pattern",
-            content=f"Analyzed document about {extract_topic(document)}",
-            session_id=session_id,
-            agent_id=self.agent_id,
-            metadata={"processing_time": processing_time},
+        __import__("asyncio").run(
+            self.memory.store(
+                StorageRequest(
+                    content=f"Analyzed document about {topic}",
+                    memory_type=MemoryType.SEMANTIC,
+                    context={"agent_id": self.agent_id},
+                    metadata={
+                        "processing_time": processing_time,
+                        "topic": topic,
+                        "session_id": session_id,
+                    },
+                )
+            )
         )
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000

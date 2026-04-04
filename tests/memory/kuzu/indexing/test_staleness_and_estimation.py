@@ -11,10 +11,10 @@ from pathlib import Path
 import pytest
 
 # Import actual implementations and types
-from src.amplihack.memory.kuzu.indexing.staleness_detector import (
+from amplihack.memory.kuzu.indexing.staleness_detector import (
     check_index_status,
 )
-from src.amplihack.memory.kuzu.indexing.time_estimator import (
+from amplihack.memory.kuzu.indexing.time_estimator import (
     estimate_time,
 )
 

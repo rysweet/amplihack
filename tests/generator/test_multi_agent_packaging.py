@@ -13,16 +13,16 @@ from pathlib import Path
 
 import pytest
 
-from src.amplihack.goal_agent_generator.agent_assembler import AgentAssembler
-from src.amplihack.goal_agent_generator.models import (
+from amplihack.goal_agent_generator.agent_assembler import AgentAssembler
+from amplihack.goal_agent_generator.models import (
     ExecutionPlan,
     GoalDefinition,
     PlanPhase,
     SkillDefinition,
     SubAgentConfig,
 )
-from src.amplihack.goal_agent_generator.packager import GoalAgentPackager
-from src.amplihack.goal_agent_generator.templates.multi_agent_template import (
+from amplihack.goal_agent_generator.packager import GoalAgentPackager
+from amplihack.goal_agent_generator.templates.multi_agent_template import (
     get_coordinator_yaml,
     get_memory_agent_yaml,
     get_multi_agent_init_code,

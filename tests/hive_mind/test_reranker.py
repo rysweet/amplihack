@@ -10,8 +10,6 @@ import importlib
 from dataclasses import dataclass
 from unittest.mock import MagicMock
 
-import numpy as np
-
 
 class TestHasCrossEncoder:
     """Test availability detection."""
@@ -124,7 +122,7 @@ class TestCrossEncoderReranker:
 
         reranker = CrossEncoderReranker.__new__(CrossEncoderReranker)
         mock_model = MagicMock()
-        mock_model.predict.return_value = np.array([0.2, 0.8, 0.5])
+        mock_model.predict.return_value = [0.2, 0.8, 0.5]
         reranker._model = mock_model
         reranker._model_name = "test"
 

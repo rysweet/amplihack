@@ -31,7 +31,7 @@ class TestAmplifierUVXDeployment:
         attempt to install the Claude Code plugin since Amplifier uses its own
         bundle system.
         """
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         # Simulate UVX deployment mode
         mock_is_uvx.return_value = True
@@ -65,7 +65,7 @@ class TestAmplifierUVXDeployment:
         Even though we skip plugin installation, we still need to copy the files
         to ~/.amplihack/.claude where the Amplifier bundle expects them.
         """
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         # Simulate UVX deployment mode
         mock_is_uvx.return_value = True
@@ -101,7 +101,7 @@ class TestAmplifierUVXDeployment:
         This ensures we haven't broken the normal plugin installation flow for
         the launch command and other commands.
         """
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         # Simulate UVX deployment mode
         mock_is_uvx.return_value = True
@@ -155,7 +155,7 @@ class TestAmplifierUVXDeployment:
         This validates the user experience - no confusing warnings or errors about
         plugin installation when running the amplifier command.
         """
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         # Simulate UVX deployment mode
         mock_is_uvx.return_value = True
@@ -185,7 +185,7 @@ class TestAmplifierUVXDeployment:
         When not in UVX mode, the plugin installation logic should be skipped
         entirely (not just for amplifier, but for all commands).
         """
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         # Simulate non-UVX mode
         mock_is_uvx.return_value = False
@@ -220,7 +220,7 @@ class TestAmplifierCommandArgParsing:
         """
         import argparse
 
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         # Simulate UVX deployment mode
         mock_is_uvx.return_value = True

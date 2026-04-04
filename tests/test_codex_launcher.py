@@ -4,7 +4,7 @@ import json
 import subprocess
 from unittest.mock import MagicMock, mock_open, patch
 
-from src.amplihack.launcher.codex import (
+from amplihack.launcher.codex import (
     check_codex,
     configure_codex,
     install_codex,

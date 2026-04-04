@@ -20,7 +20,7 @@ import pytest
 
 pytest.importorskip("kuzu")
 
-from src.amplihack.memory.models import MemoryEntry, MemoryQuery, MemoryType
+from amplihack.memory.models import MemoryEntry, MemoryQuery, MemoryType
 
 
 class TestKuzuBackendNodeTypes:
@@ -29,7 +29,7 @@ class TestKuzuBackendNodeTypes:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_initialize_creates_episodic_memory_table(self, mock_kuzu):
         """Test that EpisodicMemory node table is created."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()
@@ -46,7 +46,7 @@ class TestKuzuBackendNodeTypes:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_initialize_creates_semantic_memory_table(self, mock_kuzu):
         """Test that SemanticMemory node table is created."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()
@@ -62,7 +62,7 @@ class TestKuzuBackendNodeTypes:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_initialize_creates_procedural_memory_table(self, mock_kuzu):
         """Test that ProceduralMemory node table is created."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()
@@ -78,7 +78,7 @@ class TestKuzuBackendNodeTypes:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_initialize_creates_prospective_memory_table(self, mock_kuzu):
         """Test that ProspectiveMemory node table is created."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()
@@ -94,7 +94,7 @@ class TestKuzuBackendNodeTypes:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_initialize_creates_working_memory_table(self, mock_kuzu):
         """Test that WorkingMemory node table is created."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()
@@ -114,7 +114,7 @@ class TestKuzuBackendRelationshipTypes:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_initialize_creates_contains_episodic_relationship(self, mock_kuzu):
         """Test that CONTAINS_EPISODIC relationship table is created."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()
@@ -130,7 +130,7 @@ class TestKuzuBackendRelationshipTypes:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_initialize_creates_all_11_relationships(self, mock_kuzu):
         """Test that all 11 relationship types are created."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()
@@ -167,7 +167,7 @@ class TestKuzuBackendStoreMemoryRouting:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_store_episodic_memory_creates_episodic_node(self, mock_kuzu):
         """Test storing episodic memory creates EpisodicMemory node."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()
@@ -201,7 +201,7 @@ class TestKuzuBackendStoreMemoryRouting:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_store_semantic_memory_creates_semantic_node(self, mock_kuzu):
         """Test storing semantic memory creates SemanticMemory node."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()
@@ -232,7 +232,7 @@ class TestKuzuBackendStoreMemoryRouting:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_store_procedural_memory_creates_procedural_node(self, mock_kuzu):
         """Test storing procedural memory creates ProceduralMemory node."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()
@@ -263,7 +263,7 @@ class TestKuzuBackendStoreMemoryRouting:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_store_prospective_memory_creates_prospective_node(self, mock_kuzu):
         """Test storing prospective memory creates ProspectiveMemory node."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()
@@ -294,7 +294,7 @@ class TestKuzuBackendStoreMemoryRouting:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_store_working_memory_creates_working_node(self, mock_kuzu):
         """Test storing working memory creates WorkingMemory node."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()
@@ -329,7 +329,7 @@ class TestKuzuBackendRetrieveMemoriesAcrossTypes:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_retrieve_memories_queries_all_node_types(self, mock_kuzu):
         """Test that retrieve_memories queries all 5 node types."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_result = Mock()
         mock_result.has_next.return_value = False
@@ -356,7 +356,7 @@ class TestKuzuBackendRetrieveMemoriesAcrossTypes:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_retrieve_memories_filters_by_memory_type(self, mock_kuzu):
         """Test that retrieve_memories can filter by specific memory type."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_result = Mock()
         mock_result.has_next.return_value = False
@@ -389,7 +389,7 @@ class TestKuzuBackendSessionRelationships:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_store_episodic_creates_contains_relationship(self, mock_kuzu):
         """Test that storing episodic memory creates CONTAINS_EPISODIC relationship."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()
@@ -421,7 +421,7 @@ class TestKuzuBackendSessionRelationships:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_store_working_creates_contains_relationship(self, mock_kuzu):
         """Test that storing working memory creates CONTAINS_WORKING relationship."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+        from amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()

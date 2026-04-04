@@ -13,7 +13,7 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from src.amplihack.launcher.amplifier import (
+from amplihack.launcher.amplifier import (
     check_amplifier,
     get_bundle_path,
     install_amplifier,
@@ -724,7 +724,7 @@ class TestAmplifierCLIIntegration:
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_cli_amplifier_basic_launch(self, mock_launch):
         """Test basic amplifier command through CLI."""
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         mock_launch.return_value = 0
 
@@ -737,7 +737,7 @@ class TestAmplifierCLIIntegration:
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_cli_amplifier_with_passthrough_model(self, mock_launch):
         """Test amplifier command with --model passed through via -- separator."""
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         mock_launch.return_value = 0
 
@@ -753,7 +753,7 @@ class TestAmplifierCLIIntegration:
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_cli_amplifier_with_passthrough_provider(self, mock_launch):
         """Test amplifier command with --provider passed through via -- separator."""
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         mock_launch.return_value = 0
 
@@ -769,7 +769,7 @@ class TestAmplifierCLIIntegration:
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_cli_amplifier_with_passthrough_resume(self, mock_launch):
         """Test amplifier command with resume passed through via -- separator."""
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         mock_launch.return_value = 0
 
@@ -785,7 +785,7 @@ class TestAmplifierCLIIntegration:
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_cli_amplifier_with_passthrough_print(self, mock_launch):
         """Test amplifier command with --print passed through via -- separator."""
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         mock_launch.return_value = 0
 
@@ -802,7 +802,7 @@ class TestAmplifierCLIIntegration:
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_cli_amplifier_with_prompt(self, mock_launch):
         """Test amplifier command with prompt via -- -p."""
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         mock_launch.return_value = 0
 
@@ -818,7 +818,7 @@ class TestAmplifierCLIIntegration:
     @patch("src.amplihack.launcher.amplifier.launch_amplifier_auto")
     def test_cli_amplifier_auto_mode(self, mock_auto):
         """Test amplifier command with --auto flag."""
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         mock_auto.return_value = 0
 
@@ -830,7 +830,7 @@ class TestAmplifierCLIIntegration:
 
     def test_cli_amplifier_auto_mode_missing_prompt(self, capsys):
         """Test amplifier --auto without prompt shows error."""
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         with patch("src.amplihack.utils.is_uvx_deployment", return_value=False):
             result = main(["amplifier", "--auto"])
@@ -843,7 +843,7 @@ class TestAmplifierCLIIntegration:
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_cli_amplifier_no_reflection_flag(self, mock_launch, monkeypatch):
         """Test amplifier command with --no-reflection flag."""
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         mock_launch.return_value = 0
         env_vars = {}
@@ -862,7 +862,7 @@ class TestAmplifierCLIIntegration:
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_cli_amplifier_passthrough_args(self, mock_launch):
         """Test that extra args after -- are passed through to amplifier."""
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         mock_launch.return_value = 0
 
@@ -878,7 +878,7 @@ class TestAmplifierCLIIntegration:
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_cli_amplifier_combined_passthrough_args(self, mock_launch):
         """Test multiple args passed through together."""
-        from src.amplihack.cli import main
+        from amplihack.cli import main
 
         mock_launch.return_value = 0
 
