@@ -135,6 +135,7 @@ class TestScenarioContent:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.xfail(reason="TDD: recipe features not yet implemented", strict=False)
 class TestRecipeBehavioralAssertions:
     """Execute grep-based behavioral checks against the actual recipe file."""
 

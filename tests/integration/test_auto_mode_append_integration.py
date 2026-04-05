@@ -9,6 +9,7 @@ Tests end-to-end workflows combining:
 Following TDD approach - these tests should FAIL initially until all components are implemented.
 """
 
+import os
 import sys
 import tempfile
 import time
@@ -16,6 +17,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# Disable memory subsystem to prevent kuzu segfault in test environments
+os.environ.setdefault("AMPLIHACK_MEMORY_ENABLED", "false")
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))

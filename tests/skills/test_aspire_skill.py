@@ -19,6 +19,8 @@ import tiktoken
 
 # Path constants
 WORKTREE_ROOT = Path("/home/azureuser/src/amplihack/worktrees/feat/issue-2197-aspire-skill")
+if not WORKTREE_ROOT.exists():
+    pytest.skip("aspire skill worktree not present", allow_module_level=True)
 SKILL_DIR = WORKTREE_ROOT / ".claude" / "skills" / "aspire"
 SKILL_FILE = SKILL_DIR / "SKILL.md"
 

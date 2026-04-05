@@ -88,7 +88,7 @@
 
 **Quality**:
 
-- Follow [philosophy principles](../../.claude/context/PHILOSOPHY.md)
+- Follow [philosophy principles](../../claude/context/PHILOSOPHY.md)
 - Verify against [checklists](checklists.md)
 - Test thoroughly
 - Iterate until right

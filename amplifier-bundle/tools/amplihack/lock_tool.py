@@ -15,7 +15,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-
 _SANITIZE_RE = re.compile(r"[^A-Za-z0-9_\-]")
 
 

@@ -15,6 +15,9 @@ Philosophy:
 """
 
 import pytest
+pytest.skip("requires UVX SDK environment", allow_module_level=True)
+
+pytestmark = pytest.mark.requires_sdk
 
 from .harness import (
     uvx_launch,

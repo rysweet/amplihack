@@ -152,6 +152,14 @@ class Executor:
         Raises:
             ExecutionError: If execution setup fails
         """
+        # Fail immediately when Anthropic is disabled — remote execution is Anthropic-only
+        if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+            raise ExecutionError(
+                "Remote execution requires Anthropic but ANTHROPIC_DISABLED=true. "
+                "Unset ANTHROPIC_DISABLED to use remote execution.",
+                context={"required": "ANTHROPIC_API_KEY", "blocked_by": "ANTHROPIC_DISABLED"},
+            )
+
         # Get API key
         if not api_key:
             api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -267,7 +275,13 @@ amplihack claude --{command} --max-turns {max_turns} -- -p "$PROMPT"
             # Try to terminate remote process
             try:
                 subprocess.run(
-                    ["azlin", "connect", *self._azlin_port_args(), self.vm.name, "pkill -TERM -f amplihack"],
+                    [
+                        "azlin",
+                        "connect",
+                        *self._azlin_port_args(),
+                        self.vm.name,
+                        "pkill -TERM -f amplihack",
+                    ],
                     timeout=30,
                     capture_output=True,
                 )
@@ -332,7 +346,13 @@ fi
             # Download archive (azlin cp requires relative paths)
             local_archive = local_dest / "logs.tar.gz"
             subprocess.run(
-                ["azlin", "cp", *self._azlin_port_args(), f"{self.vm.name}:~/logs.tar.gz", "logs.tar.gz"],
+                [
+                    "azlin",
+                    "cp",
+                    *self._azlin_port_args(),
+                    f"{self.vm.name}:~/logs.tar.gz",
+                    "logs.tar.gz",
+                ],
                 cwd=str(local_dest),  # Run from destination directory
                 capture_output=True,
                 text=True,
@@ -395,7 +415,13 @@ echo "Bundle created"
             # Download bundle (azlin cp requires relative paths)
             local_bundle = local_dest / "results.bundle"
             subprocess.run(
-                ["azlin", "cp", *self._azlin_port_args(), f"{self.vm.name}:~/results.bundle", "results.bundle"],
+                [
+                    "azlin",
+                    "cp",
+                    *self._azlin_port_args(),
+                    f"{self.vm.name}:~/results.bundle",
+                    "results.bundle",
+                ],
                 cwd=str(local_dest),  # Run from destination directory
                 capture_output=True,
                 text=True,
@@ -444,6 +470,14 @@ echo "Bundle created"
             raise ExecutionError(
                 f"Invalid session_id: {session_id}. Must be alphanumeric with dashes only.",
                 context={"session_id": session_id},
+            )
+
+        # Fail immediately when Anthropic is disabled — remote execution is Anthropic-only
+        if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+            raise ExecutionError(
+                "Remote execution requires Anthropic but ANTHROPIC_DISABLED=true. "
+                "Unset ANTHROPIC_DISABLED to use remote execution.",
+                context={"required": "ANTHROPIC_API_KEY", "blocked_by": "ANTHROPIC_DISABLED"},
             )
 
         # Get API key

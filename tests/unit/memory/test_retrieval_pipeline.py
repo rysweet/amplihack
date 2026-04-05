@@ -24,7 +24,6 @@ try:
         RetrievalQuery,
         RetrievalResult,
     )
-    from amplihack.memory.models import MemoryEntry, MemoryType
 except ImportError:
     pytest.skip("Retrieval pipeline not implemented yet", allow_module_level=True)
 

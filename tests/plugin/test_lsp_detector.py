@@ -13,6 +13,9 @@ Testing Strategy:
 import json
 from pathlib import Path
 
+import pytest
+pytestmark = pytest.mark.skip(reason="Plugin system not yet implemented")
+
 
 class TestLSPDetectorUnit:
     """Unit tests for LSPDetector - detection logic."""

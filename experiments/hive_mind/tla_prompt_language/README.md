@@ -133,21 +133,21 @@ Live smoke run: 4 prompt variants × 2 models × 1 repeat = 8 conditions.
 
 ### Claude Opus 4.6 Results
 
-| Prompt Variant | Baseline | Invariant | Proof | Local Protocol | Progress | Coverage |
-|---------------|----------|-----------|-------|----------------|----------|----------|
-| english (baseline) | 0.43 | 0.50 | 0.0 | 0.0 | 0.0 | 0.29 |
-| tla_only | **0.86** | **0.75** | **1.0** | **1.0** | **1.0** | **0.86** |
-| tla_plus_english | 0.43 | 0.50 | 1.0 | 0.0 | 0.0 | 0.43 |
-| tla_plus_refinement | **0.86** | **0.75** | **1.0** | **1.0** | **1.0** | **0.86** |
+| Prompt Variant      | Baseline | Invariant | Proof   | Local Protocol | Progress | Coverage |
+| ------------------- | -------- | --------- | ------- | -------------- | -------- | -------- |
+| english (baseline)  | 0.43     | 0.50      | 0.0     | 0.0            | 0.0      | 0.29     |
+| tla_only            | **0.86** | **0.75**  | **1.0** | **1.0**        | **1.0**  | **0.86** |
+| tla_plus_english    | 0.43     | 0.50      | 1.0     | 0.0            | 0.0      | 0.43     |
+| tla_plus_refinement | **0.86** | **0.75**  | **1.0** | **1.0**        | **1.0**  | **0.86** |
 
 ### GPT-5.4 Results (via Copilot SDK)
 
-| Prompt Variant | Baseline | Invariant | Proof | Local Protocol | Progress | Coverage |
-|---------------|----------|-----------|-------|----------------|----------|----------|
-| english (baseline) | 0.71 | 0.75 | 0.0 | 0.0 | 1.0 | 0.57 |
-| tla_only | **0.86** | **0.75** | **1.0** | **1.0** | **1.0** | **0.86** |
-| tla_plus_english | 0.57 | 0.50 | 1.0 | 0.0 | 1.0 | 0.57 |
-| tla_plus_refinement | 0.57 | 0.75 | 0.0 | 0.0 | 1.0 | 0.57 |
+| Prompt Variant      | Baseline | Invariant | Proof   | Local Protocol | Progress | Coverage |
+| ------------------- | -------- | --------- | ------- | -------------- | -------- | -------- |
+| english (baseline)  | 0.71     | 0.75      | 0.0     | 0.0            | 1.0      | 0.57     |
+| tla_only            | **0.86** | **0.75**  | **1.0** | **1.0**        | **1.0**  | **0.86** |
+| tla_plus_english    | 0.57     | 0.50      | 1.0     | 0.0            | 1.0      | 0.57     |
+| tla_plus_refinement | 0.57     | 0.75      | 0.0     | 0.0            | 1.0      | 0.57     |
 
 Note: `tla_only` and `tla_plus_refinement` initially timed out at 300s default.
 Retried at 600s — both completed. GPT-5.4 needs more time on spec-heavy prompts.
@@ -162,7 +162,7 @@ Retried at 600s — both completed. GPT-5.4 needs more time on spec-heavy prompt
 
 2. **Hybrid prompt (tla_plus_english) hurts both models.** Adding English
    guidance alongside the formal spec performs no better than English alone for
-   Claude (0.43 = 0.43) and actually *decreases* GPT-5.4's score (0.71 → 0.57).
+   Claude (0.43 = 0.43) and actually _decreases_ GPT-5.4's score (0.71 → 0.57).
    Natural language dilutes the formal signal rather than amplifying it.
 
 3. **Refinement guidance helps Claude but not GPT-5.4.** Claude scores
@@ -187,11 +187,11 @@ Retried at 600s — both completed. GPT-5.4 needs more time on spec-heavy prompt
 
 ### Summary: Spec-Only Wins
 
-| | English | TLA Only | Hybrid | Refinement |
-|---|---------|----------|--------|------------|
-| **Claude** | 0.43 | **0.86** | 0.43 | **0.86** |
-| **GPT-5.4** | 0.71 | **0.86** | 0.57 | 0.57 |
-| **Mean** | 0.57 | **0.86** | 0.50 | 0.71 |
+|             | English | TLA Only | Hybrid | Refinement |
+| ----------- | ------- | -------- | ------ | ---------- |
+| **Claude**  | 0.43    | **0.86** | 0.43   | **0.86**   |
+| **GPT-5.4** | 0.71    | **0.86** | 0.57   | 0.57       |
+| **Mean**    | 0.57    | **0.86** | 0.50   | 0.71       |
 
 The formal TLA+ specification alone — without English guidance or refinement
 prose — produces the best code generation results across both models. Adding

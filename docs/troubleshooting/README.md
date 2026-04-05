@@ -28,17 +28,12 @@ Ahoy, matey! Hit a snag? This be yer map to fix common issues and get back on co
 
 ### Configuration Problems
 
-- [Config Analysis Report](../config-analysis-report.md) - Configuration problem diagnosis
-- [Proxy Configuration](../PROXY_CONFIG_GUIDE.md) - Network proxy issues
-
-### Tool-Related Issues
-
-- [Tool Null Name Analysis](../TOOL_NULL_NAME_ANALYSIS.md) - Debugging tool name issues
+- [Hook Configuration](../HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
+- [Profile Management](../PROFILE_MANAGEMENT.md) - Multi-environment configuration guidance
 
 ### Azure & Cloud
 
 - [Azure Integration](../AZURE_INTEGRATION.md) - Azure deployment issues
-- [Test Azure Proxy](../TEST_AZURE_PROXY.md) - Validate Azure proxy setup
 
 ---
 
@@ -47,7 +42,6 @@ Ahoy, matey! Hit a snag? This be yer map to fix common issues and get back on co
 Having trouble with documentation?
 
 - [Documentation Guidelines](../DOCUMENTATION_GUIDELINES.md) - Writing effective docs
-- [Documentation Structure Analysis](../DOCUMENTATION_STRUCTURE_ANALYSIS.md) - Current state of docs
 - [Documentation Knowledge Graph](../documentation_knowledge_graph.md) - How docs connect
 
 ---
@@ -64,7 +58,7 @@ Problems during development?
 ### Code Quality
 
 - [Code Review Guide](../CODE_REVIEW.md) - Review process and standards
-- [Workflow Completion](../WORKFLOW_COMPLETION.md) - Checklist for finishing features
+- [Default Workflow](../claude/workflow/DEFAULT_WORKFLOW.md) - End-to-end checklist for finishing work
 - [CS Validator](../cs-validator/README.md) - Code style validation
 
 ---
@@ -74,7 +68,7 @@ Problems during development?
 Problems with agent memory?
 
 - [Memory System Docs](../memory/README.md) - Complete memory documentation
-- [Neo4j Validation Checklist](../memory/NEO4J_VALIDATION_CHECKLIST.md) - Ensure proper Neo4j setup
+- [Memory Testing Strategy](../memory/TESTING_STRATEGY.md) - Validate memory behavior and coverage
 - [Memory Code Review](../memory/CODE_REVIEW_PR_1077.md) - Example troubleshooting
 
 ---
@@ -85,7 +79,7 @@ Security-related problems?
 
 - [Security Recommendations](../SECURITY_RECOMMENDATIONS.md) - Essential security practices
 - [Security Context Preservation](../SECURITY_CONTEXT_PRESERVATION.md) - Maintain security through sessions
-- [Neo4j Cleanup Security Audit](../security/NEO4J_CLEANUP_SECURITY_AUDIT.md) - Memory system security
+- [Security Guides](../security/README.md) - Security-specific troubleshooting and guidance
 
 ---
 
@@ -106,14 +100,14 @@ Learn how to avoid common issues:
 
 - [Development Philosophy](../PHILOSOPHY.md) - Principles that prevent problems
 - [This Is The Way](../THIS_IS_THE_WAY.md) - Best practices and patterns
-- [Workflow Enforcement](../workflow-enforcement.md) - Ensure process compliance
+- [Default Workflow](../claude/workflow/DEFAULT_WORKFLOW.md) - Ensure process compliance
 
 ---
 
 ## Related Documentation
 
 - [Commands](../commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
-- [Agents](../../.claude/agents/amplihack/README.md) - Agent-specific issues
+- [Agents](../claude/agents/README.md) - Agent-specific issues
 - [Features](../features/README.md) - Feature troubleshooting
 
 ---

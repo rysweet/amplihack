@@ -142,7 +142,8 @@ class TestDistributedMemoryQueryPreservation:
         assert received_query == self.QUESTION, (
             f"query_facts received {received_query!r}, expected original question {self.QUESTION!r}"
         )
-        assert received_limit == 15
+        # search_facts applies SEARCH_CANDIDATE_MULTIPLIER (3×) before forwarding
+        assert received_limit == 15 * 3
 
     def test_get_all_facts_with_query_passes_original_question_to_query_facts(
         self,

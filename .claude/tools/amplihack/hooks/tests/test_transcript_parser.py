@@ -15,8 +15,6 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from power_steering_checker.transcript_parser import (
@@ -26,7 +24,6 @@ from power_steering_checker.transcript_parser import (
     parse_copilot_transcript,
     parse_transcript,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures: sample JSONL lines

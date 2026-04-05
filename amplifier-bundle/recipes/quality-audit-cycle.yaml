@@ -333,6 +333,7 @@ steps:
 
       python3 - <<'PYEOF'
       import json, os, sys
+      from amplihack.utils.defensive import JSONExtractionError, parse_llm_json
 
       SEVERITY_ORDER = {'low': 0, 'medium': 1, 'high': 2, 'critical': 3}
       threshold = int(os.environ.get('THRESHOLD', '2'))
@@ -341,8 +342,12 @@ steps:
       def load_validator(path):
           try:
               with open(path) as f:
-                  return json.loads(f.read())
-          except (json.JSONDecodeError, FileNotFoundError) as e:
+                  data = parse_llm_json(f.read())
+              if isinstance(data, dict):
+                  return data
+              print(f"load_validator: parsed non-dict payload from {path}: {type(data).__name__}", file=sys.stderr)
+              return {'validated': []}
+          except (JSONExtractionError, FileNotFoundError) as e:
               print(f"load_validator: failed to parse {path}: {e}", file=sys.stderr)
               return {'validated': []}
 
@@ -417,7 +422,7 @@ steps:
   - id: "fix"
     agent: "amplihack:specialized:fix-agent"
     working_dir: "{{repo_path}}"
-    condition: "validated_findings and 'confirmed' in validated_findings"
+    condition: "validated_findings and validated_findings['confirmed_count'] > 0"
     prompt: |
       # Quality Audit — Cycle {{cycle_number}} — FIX
 
@@ -503,16 +508,22 @@ steps:
       export FIX_RESULTS_FILE="$_FIX_RESULTS_TMPFILE"
 
       python3 - <<'PYEOF'
-      import json, sys, os
+      import json, os, sys
+      from amplihack.utils.defensive import JSONExtractionError, parse_llm_json
 
       fix_all = os.environ.get('FIX_ALL', '').lower() == 'true'
 
+      def load_jsonish(path):
+          with open(path) as f:
+              data = parse_llm_json(f.read())
+          if not isinstance(data, dict):
+              raise JSONExtractionError(f"expected dict payload, got {type(data).__name__}")
+          return data
+
       try:
-          with open(os.environ['VALIDATED_FILE']) as f:
-              validated = json.loads(f.read())
-          with open(os.environ['FIX_RESULTS_FILE']) as f:
-              fixes = json.loads(f.read())
-      except (json.JSONDecodeError, FileNotFoundError) as e:
+          validated = load_jsonish(os.environ['VALIDATED_FILE'])
+          fixes = load_jsonish(os.environ['FIX_RESULTS_FILE'])
+      except (JSONExtractionError, FileNotFoundError) as e:
           # If we can't parse, report but don't block
           print(f'WARNING: Could not parse JSON for fix verification: {e}')
           print('VERIFY: SKIP (unparseable)')
@@ -642,10 +653,13 @@ steps:
       # NOT: are there old unfixed issues remaining?
       export VALIDATED_FILE="$_VALIDATED_TMPFILE"
       read -r HIGH_COUNT CRITICAL_COUNT MEDIUM_COUNT CONFIRMED <<< $(python3 -c "
-      import json, os
+      import os
+      from amplihack.utils.defensive import JSONExtractionError, parse_llm_json
       try:
           with open(os.environ['VALIDATED_FILE']) as f:
-              data = json.loads(f.read())
+              data = parse_llm_json(f.read())
+          if not isinstance(data, dict):
+              raise JSONExtractionError(f'expected dict payload, got {type(data).__name__}')
           high = critical = medium = confirmed = 0
           for v in data.get('validated', []):
               if v.get('verdict') == 'confirmed':

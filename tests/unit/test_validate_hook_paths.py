@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.amplihack.settings import validate_hook_paths
+from amplihack.settings import validate_hook_paths
 
 
 class TestValidateHookPaths(unittest.TestCase):

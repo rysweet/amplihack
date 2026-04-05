@@ -83,6 +83,7 @@ def test_issue_classifier_lockfile_grants_required_agent_read_permissions() -> N
 # Additional structural tests (PASSING — lockfile already correct)
 # ---------------------------------------------------------------------------
 
+
 def test_issue_classifier_lockfile_has_toplevel_deny_all_permissions() -> None:
     """Top-level permissions must be empty dict (deny-all) to follow least-privilege."""
     workflow = _load_lock_workflow()
@@ -101,7 +102,8 @@ def test_issue_classifier_lockfile_has_secret_redaction_step() -> None:
         all_steps.extend(job.get("steps", []))
 
     redaction_steps = [
-        step for step in all_steps
+        step
+        for step in all_steps
         if "redact" in (step.get("name") or "").lower()
         or "redact_secrets" in str(step.get("uses") or "")
         or "redact_secrets" in str(step.get("run") or "")
@@ -138,6 +140,7 @@ def test_issue_classifier_lockfile_secret_redaction_covers_anthropic_key() -> No
 # ---------------------------------------------------------------------------
 # FAILING test — hard-fail on missing GH_AW_GITHUB_TOKEN (not implemented)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.xfail(
     reason=(
@@ -179,9 +182,7 @@ def test_issue_classifier_lockfile_requires_gh_aw_github_token_or_fail() -> None
                 and "GH_AW_GITHUB_TOKEN" in val_str
                 and key in ("GH_TOKEN", "GITHUB_TOKEN", "github-token")
             ):
-                violations.append(
-                    f"Step {step.get('name')!r} key {key!r}: {val_str!r}"
-                )
+                violations.append(f"Step {step.get('name')!r} key {key!r}: {val_str!r}")
 
     assert not violations, (
         "The following steps use GITHUB_TOKEN as a broad-scope fallback.\n"

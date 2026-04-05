@@ -9,7 +9,7 @@ title: "Layer 2: AST + LSP Bindings"
 # Layer 2: AST + LSP Bindings
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-04-03T03:10:00.000000+00:00 | files_analyzed: 2408 (includes amplifier-bundle/tools/test_step03_create_issue_idempotency.py)
+Category: <strong>Structural</strong> | Generated: 2026-04-05T05:10:04.000000+00:00
 </div>
 
 ## Map
@@ -36,7 +36,7 @@ Category: <strong>Structural</strong> | Generated: 2026-04-03T03:10:00.000000+00
         F15["common<br/>refs: 22"]
         F16["utils<br/>refs: 22"]
         F17["xpia_defense_interface<br/>refs: 22"]
-        F18["event_bus<br/>refs: 20"]
+        F18["event_bus<br/>refs: 19"]
         F19["uvx_launcher<br/>refs: 19"]
         F20["uvx_models<br/>refs: 18"]
         F21["considerations<br/>refs: 17"]
@@ -65,9 +65,9 @@ Category: <strong>Structural</strong> | Generated: 2026-04-03T03:10:00.000000+00
 
     | Metric | Value |
     |--------|-------|
-    | Total definitions | 15343 |
+    | Total definitions | 15383 |
     | Total exports | 2268 |
-    | Total imports | 16848 |
+    | Total imports | 16757 |
     | Potentially dead | 434 |
     | Files with `__all__` | 428 |
 
@@ -85,9 +85,9 @@ Category: <strong>Structural</strong> | Generated: 2026-04-03T03:10:00.000000+00
 
 ## Key Findings
 
-- 15343 total definitions across all files
+- 15383 total definitions across all files
 - 434 potentially dead definitions (2.8% of total)
-- 1979 files without `__all__` exports
+- 1983 files without `__all__` exports
 
 ## Detail
 
@@ -95,15 +95,15 @@ Category: <strong>Structural</strong> | Generated: 2026-04-03T03:10:00.000000+00
 
     **Summary metrics:**
 
-    - **Total Definitions**: 15343
+    - **Total Definitions**: 15383
     - **Total Exports**: 2268
-    - **Total Imports**: 16848
+    - **Total Imports**: 16757
     - **Potentially Dead Count**: 434
     - **Files With All**: 428
-    - **Files Without All**: 1979
+    - **Files Without All**: 1983
     - **Importlib Dynamic Imports**: 43
     - **Language Counts**:
-        - `python`: 15343
+        - `python`: 15383
 
 ## Cross-References
 

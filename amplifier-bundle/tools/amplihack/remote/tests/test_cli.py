@@ -269,6 +269,30 @@ def test_cmd_start_no_api_key(cli_runner):
         assert "ANTHROPIC_API_KEY not found" in result.output
 
 
+def test_remote_execute_anthropic_disabled(cli_runner):
+    """Test exec command fails fast when Anthropic is disabled."""
+    with patch.dict(
+        "os.environ",
+        {"ANTHROPIC_DISABLED": "true", "ANTHROPIC_API_KEY": "test-key"},  # pragma: allowlist secret
+    ):
+        result = cli_runner.invoke(remote_cli, ["exec", "auto", "test prompt"])
+
+    assert result.exit_code == 1
+    assert "ANTHROPIC_DISABLED=true" in result.output
+
+
+def test_cmd_start_anthropic_disabled(cli_runner):
+    """Test start command fails fast when Anthropic is disabled."""
+    with patch.dict(
+        "os.environ",
+        {"ANTHROPIC_DISABLED": "true", "ANTHROPIC_API_KEY": "test-key"},  # pragma: allowlist secret
+    ):
+        result = cli_runner.invoke(remote_cli, ["start", "test prompt"])
+
+    assert result.exit_code == 1
+    assert "ANTHROPIC_DISABLED=true" in result.output
+
+
 def test_cmd_start_secrets_detected(cli_runner):
     """Test start command with secrets detected."""
     with (

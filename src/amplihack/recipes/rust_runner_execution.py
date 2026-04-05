@@ -622,7 +622,9 @@ def _is_progress_metadata_line(line: str) -> bool:
         return True
     if stripped.startswith(("▶", "✓", "⊘", "✗", "[agent]", _LEGACY_HEARTBEAT_PREFIX)):
         return True
-    if stripped.startswith((_STEP_TRANSITION_PREFIX, _LEGACY_STEP_TRANSITION_PREFIX, _HEARTBEAT_PREFIX)):
+    if stripped.startswith(
+        (_STEP_TRANSITION_PREFIX, _LEGACY_STEP_TRANSITION_PREFIX, _HEARTBEAT_PREFIX)
+    ):
         return True
     if stripped.startswith("{"):
         try:

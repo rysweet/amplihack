@@ -1387,4 +1387,3 @@ class RetrievalStrategiesMixin:
         except Exception as e:
             logger.debug("_keyword_expanded_retrieval failed: %s", e)
             return existing_facts
-

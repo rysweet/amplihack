@@ -3,7 +3,7 @@
 > [Home](../index.md) > Reference > Workflow Issue Extraction
 
 Reference for the three-tier issue-number extraction logic in
-`default-workflow` step `03b`.  This step resolves a GitHub issue number from
+`default-workflow` step `03b`. This step resolves a GitHub issue number from
 the workflow context so that downstream steps can link the working branch,
 commit, and pull request to the correct issue.
 
@@ -76,7 +76,7 @@ gh pr view <N> \
     --jq '.closingIssuesReferences[0].number'
 ```
 
-The first closing issue reference is used.  If the PR closes no issues,
+The first closing issue reference is used. If the PR closes no issues,
 extraction falls through to Tier 3.
 
 ```
@@ -85,7 +85,7 @@ gh call: closingIssuesReferences → [3960, 3983]
 Output: issue_number=3960   (first reference)
 ```
 
-**Timeout**: 60 seconds.  If `gh` does not respond within the timeout, Tier 2
+**Timeout**: 60 seconds. If `gh` does not respond within the timeout, Tier 2
 is skipped and extraction falls through to Tier 3.
 
 ---
@@ -95,14 +95,14 @@ is skipped and extraction falls through to Tier 3.
 **Pattern**: `#<digits>` anywhere in `task_description`
 
 When neither a direct issue URL nor a PR URL is found, step `03b` scans
-`task_description` for bare `#N` patterns.  Each candidate is verified with:
+`task_description` for bare `#N` patterns. Each candidate is verified with:
 
 ```bash
 gh issue view <N> --json url --jq '.url // ""'
 ```
 
-The command returns the issue URL.  If the URL path contains `/issues/`, the
-candidate is accepted.  Candidates that return an empty URL (non-existent or
+The command returns the issue URL. If the URL path contains `/issues/`, the
+candidate is accepted. Candidates that return an empty URL (non-existent or
 wrong repo) are skipped.
 
 ```
@@ -121,8 +121,8 @@ If no candidate passes verification, `issue_number` is `null`.
 
 After step `03b` completes, the workflow context contains:
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field          | Type          | Description                                             |
+| -------------- | ------------- | ------------------------------------------------------- |
 | `issue_number` | `int \| null` | Resolved GitHub issue number, or `null` if unresolvable |
 
 > **Planned enhancements**: `issue_title` (fetched from GitHub), `branch_prefix`
@@ -152,12 +152,12 @@ After step `03b` completes, the workflow context contains:
 Step `03b` follows the same shell-security rules as the rest of the default
 workflow:
 
-| Constraint | Detail |
-|------------|--------|
-| **No `shell=True`** | All `gh` subprocess calls use a list-form argv; no shell interpolation |
+| Constraint                          | Detail                                                                                                                                                                         |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **No `shell=True`**                 | All `gh` subprocess calls use a list-form argv; no shell interpolation                                                                                                         |
 | **Heredoc delimiter single-quoted** | The `EOFISSUECREATION` delimiter in the issue-creation heredoc is always single-quoted (`'EOFISSUECREATION'`) to prevent shell metacharacter expansion from `task_description` |
-| **60-second timeout** | Every `gh` subprocess call carries `timeout=60`; hung subprocesses do not stall the workflow |
-| **No credential logging** | `gh` output is captured in memory and never written to disk unredacted |
+| **60-second timeout**               | Every `gh` subprocess call carries `timeout=60`; hung subprocesses do not stall the workflow                                                                                   |
+| **No credential logging**           | `gh` output is captured in memory and never written to disk unredacted                                                                                                         |
 
 ---
 
@@ -165,11 +165,11 @@ workflow:
 
 Step `03b` reads the following values from the workflow context:
 
-| Context key | Required | Description |
-|-------------|----------|-------------|
-| `task_description` | Yes | Free-form string describing the task |
-| `repo_path` | Yes | Absolute path used to derive `owner/repo` from `git remote get-url origin` |
-| `expected_gh_account` | No | If set, `gh api /user` is checked before Tier 2/3 network calls |
+| Context key           | Required | Description                                                                |
+| --------------------- | -------- | -------------------------------------------------------------------------- |
+| `task_description`    | Yes      | Free-form string describing the task                                       |
+| `repo_path`           | Yes      | Absolute path used to derive `owner/repo` from `git remote get-url origin` |
+| `expected_gh_account` | No       | If set, `gh api /user` is checked before Tier 2/3 network calls            |
 
 No environment variables are specific to step `03b`; it relies on the
 authenticated `gh` CLI configured in the user's shell.
@@ -245,22 +245,22 @@ Step `03b` degrades gracefully — Tier 1 (regex-only) still works without `gh`.
 
 **Tier 2 returns no closing issues**
 
-The PR may not use closing keywords (`Closes #N`, `Fixes #N`).  Add a closing
+The PR may not use closing keywords (`Closes #N`, `Fixes #N`). Add a closing
 keyword to the PR description, or supply the issue URL directly in
 `task_description`.
 
 **Tier 3 skips a valid issue number**
 
 The issue may not exist in the repository that `gh` is authenticated against,
-or the `gh issue view` call returned an empty URL.  Check that the issue exists
-and that `gh auth status` shows the correct account.  Closed issues that are
+or the `gh issue view` call returned an empty URL. Check that the issue exists
+and that `gh auth status` shows the correct account. Closed issues that are
 still in the repository will also resolve successfully — verification is
 URL-based (`*/issues/*`), not state-based.
 
 **Tier 3 does not resolve a `#N` that is present**
 
-The `#N` pattern requires at least one digit.  Values like `#` alone or
-`#abc` are not matched.  Check that the issue exists in the resolved repository
+The `#N` pattern requires at least one digit. Values like `#` alone or
+`#abc` are not matched. Check that the issue exists in the resolved repository
 and that `gh issue view <N>` returns a URL containing `/issues/`.
 
 ---
@@ -282,11 +282,11 @@ and that `gh issue view <N>` returns a URL containing `/issues/`.
 
 **Metadata**
 
-| Field | Value |
-|-------|-------|
-| Status | Planned / PR #4143 |
-| Issues | #3960, #3983 |
-| PR | #4143 |
+| Field       | Value                                                         |
+| ----------- | ------------------------------------------------------------- |
+| Status      | Planned / PR #4143                                            |
+| Issues      | #3960, #3983                                                  |
+| PR          | #4143                                                         |
 | Recipe file | `amplifier-bundle/recipes/default-workflow.yaml` (step `03b`) |
-| Test file | `amplifier-bundle/tools/test_default_workflow_fixes.py` |
-| Gadugi spec | `tests/gadugi/lock-recovery-and-issue-extraction.yaml` |
+| Test file   | `amplifier-bundle/tools/test_default_workflow_fixes.py`       |
+| Gadugi spec | `tests/gadugi/lock-recovery-and-issue-extraction.yaml`        |

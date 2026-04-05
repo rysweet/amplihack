@@ -453,10 +453,7 @@ class TestSessionLifecycle:
         options = mock_ctor.call_args.args[0]
         env = _client_option_env(options)
         assert env["AMPLIHACK_OTEL_ENABLED"] == "true"
-        assert (
-            env["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"]
-            == "http://collector:4318/v1/traces"
-        )
+        assert env["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] == "http://collector:4318/v1/traces"
         assert env["OTEL_SERVICE_NAME"] == "amplihack.copilot-sdk-agent"
 
     @patch(f"{_P}.HAS_COPILOT_SDK", True)

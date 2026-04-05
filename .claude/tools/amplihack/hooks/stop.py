@@ -202,7 +202,10 @@ class StopHook(HookProcessor):
                     # Fallback to _get_current_session_id() only if stem is unusable.
                     # Fix for Issue #2548: timestamp-based IDs changed each invocation,
                     # preventing _results_shown semaphore from being found on second stop.
-                    session_id = self._sanitize_session_id(transcript_path.stem) or self._get_current_session_id()
+                    session_id = (
+                        self._sanitize_session_id(transcript_path.stem)
+                        or self._get_current_session_id()
+                    )
 
                     # Create progress tracker (auto-detects verbosity and pirate mode from preferences)
                     progress_tracker = ProgressTracker(project_root=self.project_root)
@@ -834,7 +837,9 @@ class StopHook(HookProcessor):
                 sessions = [p for p in logs_dir.iterdir() if p.is_dir()]
                 sessions = sorted(sessions, key=lambda p: p.stat().st_mtime, reverse=True)
                 if sessions:
-                    return self._sanitize_session_id(sessions[0].name) or datetime.now().strftime("%Y%m%d_%H%M%S")
+                    return self._sanitize_session_id(sessions[0].name) or datetime.now().strftime(
+                        "%Y%m%d_%H%M%S"
+                    )
             except (OSError, PermissionError) as e:
                 self.log(
                     f"[CAUSE] Cannot access logs directory to detect session ID. [IMPACT] Will use timestamp-based ID instead. [ACTION] Check directory permissions. Error: {e}",

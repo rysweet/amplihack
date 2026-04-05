@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from amplihack.recipes.discovery import (
-    RecipeCache,
     _PACKAGE_BUNDLE_DIR,
+    RecipeCache,
     _qualified_key,
     check_upstream_changes,
     discover_recipes,

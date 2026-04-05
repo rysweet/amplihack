@@ -41,10 +41,7 @@
     {
       "domain": "biology",
       "question": "What are cells made of?",
-      "expected_keywords": [
-        "unit",
-        "life"
-      ],
+      "expected_keywords": ["unit", "life"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -53,10 +50,7 @@
     {
       "domain": "biology",
       "question": "How does DNA store information?",
-      "expected_keywords": [
-        "nucleotide",
-        "genetic"
-      ],
+      "expected_keywords": ["nucleotide", "genetic"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -65,10 +59,7 @@
     {
       "domain": "biology",
       "question": "What do enzymes do?",
-      "expected_keywords": [
-        "catalyst",
-        "protein"
-      ],
+      "expected_keywords": ["catalyst", "protein"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -77,10 +68,7 @@
     {
       "domain": "chemistry",
       "question": "What is the structure of water?",
-      "expected_keywords": [
-        "H2O",
-        "bent"
-      ],
+      "expected_keywords": ["H2O", "bent"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -89,10 +77,7 @@
     {
       "domain": "chemistry",
       "question": "How do covalent bonds work?",
-      "expected_keywords": [
-        "electron",
-        "share"
-      ],
+      "expected_keywords": ["electron", "share"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -101,10 +86,7 @@
     {
       "domain": "chemistry",
       "question": "What does pH measure?",
-      "expected_keywords": [
-        "hydrogen",
-        "concentration"
-      ],
+      "expected_keywords": ["hydrogen", "concentration"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -113,10 +95,7 @@
     {
       "domain": "physics",
       "question": "What is Newton's second law?",
-      "expected_keywords": [
-        "F",
-        "ma"
-      ],
+      "expected_keywords": ["F", "ma"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -125,9 +104,7 @@
     {
       "domain": "physics",
       "question": "What is the speed of light?",
-      "expected_keywords": [
-        "299792"
-      ],
+      "expected_keywords": ["299792"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -136,10 +113,7 @@
     {
       "domain": "physics",
       "question": "What does E=mc^2 mean?",
-      "expected_keywords": [
-        "mass",
-        "energy"
-      ],
+      "expected_keywords": ["mass", "energy"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -148,11 +122,7 @@
     {
       "domain": "mathematics",
       "question": "What is the Pythagorean theorem?",
-      "expected_keywords": [
-        "a squared",
-        "b squared",
-        "c squared"
-      ],
+      "expected_keywords": ["a squared", "b squared", "c squared"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -161,10 +131,7 @@
     {
       "domain": "mathematics",
       "question": "What does a derivative measure?",
-      "expected_keywords": [
-        "rate",
-        "change"
-      ],
+      "expected_keywords": ["rate", "change"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -173,10 +140,7 @@
     {
       "domain": "mathematics",
       "question": "What is Pi?",
-      "expected_keywords": [
-        "circumference",
-        "diameter"
-      ],
+      "expected_keywords": ["circumference", "diameter"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -185,10 +149,7 @@
     {
       "domain": "computer_science",
       "question": "What is the time complexity of binary search?",
-      "expected_keywords": [
-        "log",
-        "n"
-      ],
+      "expected_keywords": ["log", "n"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -197,10 +158,7 @@
     {
       "domain": "computer_science",
       "question": "What are ACID properties?",
-      "expected_keywords": [
-        "transaction",
-        "reliab"
-      ],
+      "expected_keywords": ["transaction", "reliab"],
       "hit": false,
       "result_count": 0,
       "top_results": [],
@@ -209,10 +167,7 @@
     {
       "domain": "computer_science",
       "question": "What does CAP theorem state?",
-      "expected_keywords": [
-        "consistency",
-        "partition"
-      ],
+      "expected_keywords": ["consistency", "partition"],
       "hit": false,
       "result_count": 0,
       "top_results": [],

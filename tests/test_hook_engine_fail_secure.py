@@ -35,7 +35,7 @@ class TestHookEngineAllowlist:
         [
             "javascript",
             "node",
-            "auto; rm -rf /",   # injection attempt
+            "auto; rm -rf /",  # injection attempt
             " ",
             "python; echo injected",
             "../../etc/passwd",
@@ -54,14 +54,18 @@ class TestHookEngineAllowlist:
 
     def test_valid_rust_engine(self):
         """AMPLIHACK_HOOK_ENGINE=rust must return 'rust' when binary is present."""
-        with patch("amplihack.settings.find_rust_hook_binary", return_value="/usr/bin/amplihack-hooks"):
+        with patch(
+            "amplihack.settings.find_rust_hook_binary", return_value="/usr/bin/amplihack-hooks"
+        ):
             with patch.dict(os.environ, {"AMPLIHACK_HOOK_ENGINE": "rust"}):
                 result = get_hook_engine()
                 assert result == "rust"
 
     def test_valid_auto_engine_with_binary(self):
         """AMPLIHACK_HOOK_ENGINE=auto must return 'rust' when binary is found."""
-        with patch("amplihack.settings.find_rust_hook_binary", return_value="/usr/bin/amplihack-hooks"):
+        with patch(
+            "amplihack.settings.find_rust_hook_binary", return_value="/usr/bin/amplihack-hooks"
+        ):
             with patch.dict(os.environ, {"AMPLIHACK_HOOK_ENGINE": "auto"}):
                 assert get_hook_engine() == "rust"
 

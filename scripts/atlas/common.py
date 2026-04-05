@@ -21,7 +21,7 @@ import ast
 import json
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 __all__ = [
@@ -68,11 +68,15 @@ def find_repo_root(root: Path) -> Path:
     """
     # Fixed-name manifests to check
     manifest_names = [
-        "pyproject.toml", "setup.py", "setup.cfg",
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg",
         "Cargo.toml",
         "package.json",
         "go.mod",
-        "pom.xml", "build.gradle", "build.gradle.kts",
+        "pom.xml",
+        "build.gradle",
+        "build.gradle.kts",
         ".git",
     ]
     # Glob patterns for manifests without fixed names
@@ -88,9 +92,7 @@ def find_repo_root(root: Path) -> Path:
                 return candidate
         parent = candidate.parent
         if parent == candidate:
-            raise FileNotFoundError(
-                f"No project manifest found in any parent of {root}"
-            )
+            raise FileNotFoundError(f"No project manifest found in any parent of {root}")
         candidate = parent
 
 
@@ -146,9 +148,7 @@ def detect_languages(manifest: dict, root: Path) -> dict:
         languages = _detect_via_extensions(manifest)
 
     # Discover manifest files on disk (root + immediate subdirectories)
-    search_dirs = [root] + [
-        d for d in root.iterdir() if d.is_dir() and not d.name.startswith(".")
-    ]
+    search_dirs = [root] + [d for d in root.iterdir() if d.is_dir() and not d.name.startswith(".")]
 
     for lang, manifest_specs in lang_manifests.items():
         found_manifests: list[str] = []
@@ -164,16 +164,21 @@ def detect_languages(manifest: dict, root: Path) -> dict:
         if found_manifests:
             if lang not in languages:
                 languages[lang] = {
-                    "file_count": 0, "code": 0, "comments": 0,
-                    "blanks": 0, "line_count": 0, "manifests": [],
+                    "file_count": 0,
+                    "code": 0,
+                    "comments": 0,
+                    "blanks": 0,
+                    "line_count": 0,
+                    "manifests": [],
                 }
-            languages[lang]["manifests"] = sorted(set(
-                languages[lang].get("manifests", []) + found_manifests
-            ))
+            languages[lang]["manifests"] = sorted(
+                set(languages[lang].get("manifests", []) + found_manifests)
+            )
 
     # Remove languages with zero files and no manifests (skip _meta)
     languages = {
-        lang: info for lang, info in languages.items()
+        lang: info
+        for lang, info in languages.items()
         if lang == "_meta" or info.get("file_count", 0) > 0 or info.get("manifests")
     }
 
@@ -198,6 +203,7 @@ def _detect_via_tokei(root: Path) -> dict | None:
         return None
 
     import json as _json
+
     try:
         tokei_data = _json.loads(result.stdout)
     except (ValueError, _json.JSONDecodeError):
@@ -302,8 +308,12 @@ def _detect_via_extensions(manifest: dict) -> dict:
         if lang:
             if lang not in languages:
                 languages[lang] = {
-                    "file_count": 0, "code": 0, "comments": 0,
-                    "blanks": 0, "line_count": 0, "manifests": [],
+                    "file_count": 0,
+                    "code": 0,
+                    "comments": 0,
+                    "blanks": 0,
+                    "line_count": 0,
+                    "manifests": [],
                 }
             languages[lang]["file_count"] += 1
             line_count = f.get("line_count", 0)
@@ -383,7 +393,7 @@ def build_manifest(root: Path) -> dict:
         by_classification[classification] = by_classification.get(classification, 0) + 1
 
     return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "root": str(root),
         "git_commit": git_commit,
         "total_files": len(files),
@@ -451,24 +461,28 @@ def walk_definitions(tree: ast.Module, filepath: str) -> list[dict]:
         elif isinstance(node, ast.Assign):
             for target in node.targets:
                 if isinstance(target, ast.Name):
-                    defs.append({
-                        "file": filepath,
-                        "name": target.id,
-                        "type": "constant",
-                        "lineno": node.lineno,
-                        "is_private": target.id.startswith("_"),
-                        "decorators": [],
-                    })
+                    defs.append(
+                        {
+                            "file": filepath,
+                            "name": target.id,
+                            "type": "constant",
+                            "lineno": node.lineno,
+                            "is_private": target.id.startswith("_"),
+                            "decorators": [],
+                        }
+                    )
         elif isinstance(node, ast.AnnAssign):
             if isinstance(node.target, ast.Name):
-                defs.append({
-                    "file": filepath,
-                    "name": node.target.id,
-                    "type": "constant",
-                    "lineno": node.lineno,
-                    "is_private": node.target.id.startswith("_"),
-                    "decorators": [],
-                })
+                defs.append(
+                    {
+                        "file": filepath,
+                        "name": node.target.id,
+                        "type": "constant",
+                        "lineno": node.lineno,
+                        "is_private": node.target.id.startswith("_"),
+                        "decorators": [],
+                    }
+                )
 
         # Walk one level into Try/If blocks for module-level assignments
         elif isinstance(node, (ast.Try, ast.If)):
@@ -476,24 +490,28 @@ def walk_definitions(tree: ast.Module, filepath: str) -> list[dict]:
                 if isinstance(child, ast.Assign):
                     for target in child.targets:
                         if isinstance(target, ast.Name):
-                            defs.append({
-                                "file": filepath,
-                                "name": target.id,
-                                "type": "constant",
-                                "lineno": child.lineno,
-                                "is_private": target.id.startswith("_"),
-                                "decorators": [],
-                            })
+                            defs.append(
+                                {
+                                    "file": filepath,
+                                    "name": target.id,
+                                    "type": "constant",
+                                    "lineno": child.lineno,
+                                    "is_private": target.id.startswith("_"),
+                                    "decorators": [],
+                                }
+                            )
                 elif isinstance(child, ast.AnnAssign):
                     if isinstance(child.target, ast.Name):
-                        defs.append({
-                            "file": filepath,
-                            "name": child.target.id,
-                            "type": "constant",
-                            "lineno": child.lineno,
-                            "is_private": child.target.id.startswith("_"),
-                            "decorators": [],
-                        })
+                        defs.append(
+                            {
+                                "file": filepath,
+                                "name": child.target.id,
+                                "type": "constant",
+                                "lineno": child.lineno,
+                                "is_private": child.target.id.startswith("_"),
+                                "decorators": [],
+                            }
+                        )
 
     return defs
 
@@ -523,15 +541,17 @@ def walk_imports(tree: ast.Module, filepath: str) -> list[dict]:
                 top_module = alias.name.split(".")[0]
                 category = _classify_import(alias.name, top_module, stdlib)
                 is_conditional = _is_inside_try(tree, node, _cache=try_cache)
-                imports.append({
-                    "file": filepath,
-                    "module": alias.name,
-                    "names": [alias.asname or alias.name.split(".")[-1]],
-                    "alias": alias.asname,
-                    "category": category,
-                    "lineno": node.lineno,
-                    "is_conditional": is_conditional,
-                })
+                imports.append(
+                    {
+                        "file": filepath,
+                        "module": alias.name,
+                        "names": [alias.asname or alias.name.split(".")[-1]],
+                        "alias": alias.asname,
+                        "category": category,
+                        "lineno": node.lineno,
+                        "is_conditional": is_conditional,
+                    }
+                )
 
         elif isinstance(node, ast.ImportFrom):
             module = node.module or ""
@@ -546,16 +566,18 @@ def walk_imports(tree: ast.Module, filepath: str) -> list[dict]:
             names = [alias.name for alias in node.names] if node.names else []
             is_conditional = _is_inside_try(tree, node, _cache=try_cache)
 
-            imports.append({
-                "file": filepath,
-                "module": ("." * level + module) if level > 0 else module,
-                "names": names,
-                "alias": None,
-                "category": category,
-                "lineno": node.lineno,
-                "is_conditional": is_conditional,
-                "level": level,
-            })
+            imports.append(
+                {
+                    "file": filepath,
+                    "module": ("." * level + module) if level > 0 else module,
+                    "names": names,
+                    "alias": None,
+                    "category": category,
+                    "lineno": node.lineno,
+                    "is_conditional": is_conditional,
+                    "level": level,
+                }
+            )
 
     return imports
 
@@ -575,15 +597,19 @@ def walk_calls(tree: ast.Module, filepath: str) -> list[dict]:
         if isinstance(node, ast.Call):
             call_name = _resolve_call_name(node.func)
             if call_name:
-                calls.append({
-                    "file": filepath,
-                    "name": call_name,
-                    "lineno": node.lineno,
-                })
+                calls.append(
+                    {
+                        "file": filepath,
+                        "name": call_name,
+                        "lineno": node.lineno,
+                    }
+                )
     return calls
 
 
-def resolve_internal_import(module: str, names: list[str], root: Path, importing_file: str | None = None) -> str | None:
+def resolve_internal_import(
+    module: str, names: list[str], root: Path, importing_file: str | None = None
+) -> str | None:
     """Resolve 'amplihack.foo.bar' or '.bar' to an absolute file path.
 
     Handles both absolute module imports (amplihack.foo -> amplihack/foo.py or
@@ -669,7 +695,7 @@ def write_layer_json(layer_name: str, data: dict, output_dir: Path) -> Path:
     envelope = {
         "meta": {
             "layer": layer_name,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         },
         **data,
     }
@@ -737,9 +763,7 @@ def _git_ls_files(root: Path) -> list[str]:
         timeout=30,
     )
     if result.returncode != 0:
-        raise RuntimeError(
-            f"git ls-files failed (exit {result.returncode}): {result.stderr}"
-        )
+        raise RuntimeError(f"git ls-files failed (exit {result.returncode}): {result.stderr}")
     return [line for line in result.stdout.splitlines() if line.strip()]
 
 
@@ -757,10 +781,7 @@ def _is_test_file(rel_path: str) -> bool:
     parts = Path(rel_path).parts
     name = Path(rel_path).name
     return (
-        name.startswith("test_")
-        or name.endswith("_test.py")
-        or "tests" in parts
-        or "test" in parts
+        name.startswith("test_") or name.endswith("_test.py") or "tests" in parts or "test" in parts
     )
 
 
@@ -771,8 +792,23 @@ def _classify_py_file(rel_path: str, ext: str, is_test: bool, is_init: bool) -> 
     and non-Python source files by language category.
     """
     _SOURCE_EXTS = {
-        ".rs", ".ts", ".tsx", ".js", ".jsx", ".go", ".cs", ".java",
-        ".rb", ".swift", ".kt", ".kts", ".c", ".h", ".cpp", ".hpp", ".cc",
+        ".rs",
+        ".ts",
+        ".tsx",
+        ".js",
+        ".jsx",
+        ".go",
+        ".cs",
+        ".java",
+        ".rb",
+        ".swift",
+        ".kt",
+        ".kts",
+        ".c",
+        ".h",
+        ".cpp",
+        ".hpp",
+        ".cc",
     }
     _CONFIG_EXTS = {".toml", ".yaml", ".yml", ".json", ".cfg", ".ini", ".xml"}
     _DOC_EXTS = {".md", ".rst", ".txt"}
@@ -816,7 +852,9 @@ def _build_try_node_ids(tree: ast.Module) -> set[int]:
     return inside_try
 
 
-def _is_inside_try(tree: ast.Module, target_node: ast.AST, _cache: dict[int, set[int]] | None = None) -> bool:
+def _is_inside_try(
+    tree: ast.Module, target_node: ast.AST, _cache: dict[int, set[int]] | None = None
+) -> bool:
     """Check if a node is inside a Try block (conditional import).
 
     Uses pre-computed set when available via _cache, keyed by id(tree).
@@ -837,12 +875,12 @@ def _resolve_call_name(func_node: ast.expr) -> str | None:
     """
     if isinstance(func_node, ast.Name):
         return func_node.id
-    elif isinstance(func_node, ast.Attribute):
+    if isinstance(func_node, ast.Attribute):
         value_name = _resolve_call_name(func_node.value)
         if value_name:
             return f"{value_name}.{func_node.attr}"
         return func_node.attr
-    elif isinstance(func_node, ast.Subscript):
+    if isinstance(func_node, ast.Subscript):
         return _resolve_call_name(func_node.value)
     return None
 

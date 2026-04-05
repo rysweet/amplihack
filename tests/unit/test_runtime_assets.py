@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from src.amplihack.runtime_assets import iter_runtime_roots, resolve_asset_path
+from amplihack.runtime_assets import iter_runtime_roots, resolve_asset_path
 
 # ---------------------------------------------------------------------------
 # iter_runtime_roots tests

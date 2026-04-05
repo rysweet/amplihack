@@ -51,20 +51,21 @@ Apply these systematically when helping users:
 
 ### 4. Industry Patterns (from Demirbas case studies)
 
-| Case Study | Key Lesson |
-|------------|-----------|
-| WPaxos (2016) | Model early — before implementation |
-| CosmosDB (2018) | Model minimalistically — relevant behavior, not entire systems |
-| AWS DistSQL (2022) | TLA+ as communication tool across large teams |
-| StableEmptySet (2022) | Define atomicity carefully; explore finest granularity |
-| PowerSet Paxos (2022) | "Code is cheap, testing broken algorithms is expensive" |
+| Case Study             | Key Lesson                                                        |
+| ---------------------- | ----------------------------------------------------------------- |
+| WPaxos (2016)          | Model early — before implementation                               |
+| CosmosDB (2018)        | Model minimalistically — relevant behavior, not entire systems    |
+| AWS DistSQL (2022)     | TLA+ as communication tool across large teams                     |
+| StableEmptySet (2022)  | Define atomicity carefully; explore finest granularity            |
+| PowerSet Paxos (2022)  | "Code is cheap, testing broken algorithms is expensive"           |
 | Secondary Index (2023) | Shifts thinking from control-flow patching to mathematical design |
-| LeaseGuard (2024) | Design discovery supersedes verification |
-| MongoDB (2025) | Model traces generate thousands of implementation tests |
+| LeaseGuard (2024)      | Design discovery supersedes verification                          |
+| MongoDB (2025)         | Model traces generate thousands of implementation tests           |
 
 ### 5. AI + TLA+ Awareness (SysMoBench findings)
 
 When helping LLMs or reviewing LLM-generated specs:
+
 - LLMs violate 41.9% of liveness properties but only 8.3% of safety properties
 - Abstraction decisions cannot be left to AI alone — guide explicitly
 - Invariant templates work better than autonomous invariant generation
@@ -81,6 +82,7 @@ When helping LLMs or reviewing LLM-generated specs:
 ## When to Recommend TLA+
 
 **Worth the investment:**
+
 - Concurrent/distributed protocols with subtle interleavings
 - Systems where testing is insufficient (state space too large)
 - Cross-team communication about protocol guarantees
@@ -88,6 +90,7 @@ When helping LLMs or reviewing LLM-generated specs:
 - When exploring design alternatives systematically
 
 **Overkill:**
+
 - Simple CRUD operations
 - Well-understood sequential algorithms
 - Problems with small, enumerable state spaces
@@ -145,15 +148,19 @@ LivenessProperty == \* Must eventually become true
 ## Advanced Patterns
 
 ### Verify the Orchestrator, Not the LLM
+
 For AI agent systems, separate the deterministic orchestration layer (verifiable with TLA+) from the stochastic LLM layer (testable with evals). Focus formal methods where they provide guarantees. Your LLM is non-deterministic; your orchestrator is not.
 
 ### Model-Based Test Generation at Scale
+
 MongoDB generated 87,000+ unit tests from TLC state graphs in 30 minutes. ModelFuzz uses TLA+ specs to guide fuzzing — found real bugs in etcd and RedisRaft. This bridges formal specs to implementation confidence.
 
 ### History-as-a-Log Abstraction
+
 Recurring pattern for modeling concurrency: represent system behavior as a log of operations. Used successfully in CosmosDB consistency models and MongoDB distributed transactions.
 
 ### Audit for Illegal Knowledge
+
 Every process guard should only check what is realistically observable locally. TLA+ makes it easy to accidentally read global state no distributed process could observe. Review every guard for this.
 
 ## Tools Beyond TLC

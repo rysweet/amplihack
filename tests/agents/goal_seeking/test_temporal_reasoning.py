@@ -9,13 +9,11 @@ Philosophy:
 import shutil
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from amplihack.agents.goal_seeking import LearningAgent
-
-
 
 
 class TestTemporalCodeGeneration:
@@ -429,7 +427,9 @@ class TestTemporalCodeGeneration:
             confidence=0.9,
         )
 
-        result = await agent._code_generation_tool("What WAS the Atlas deadline BEFORE the first change?")
+        result = await agent._code_generation_tool(
+            "What WAS the Atlas deadline BEFORE the first change?"
+        )
 
         assert "code" in result
         assert "Atlas" in result["code"]
@@ -484,7 +484,9 @@ class TestTemporalCodeGeneration:
             ),
             patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
             patch.object(agent, "_synthesize_with_llm", synth),
-            patch.object(agent, "_code_generation_tool", new_callable=AsyncMock, return_value=code_result) as code_tool,
+            patch.object(
+                agent, "_code_generation_tool", new_callable=AsyncMock, return_value=code_result
+            ) as code_tool,
             patch.object(
                 agent,
                 "_multi_entity_retrieval",
@@ -570,7 +572,9 @@ class TestTemporalCodeGeneration:
                 },
             ),
             patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
-            patch.object(agent, "_code_generation_tool", new_callable=AsyncMock, return_value=code_result),
+            patch.object(
+                agent, "_code_generation_tool", new_callable=AsyncMock, return_value=code_result
+            ),
             patch.object(agent, "_synthesize_with_llm", synth),
             patch.object(
                 agent,
@@ -634,7 +638,9 @@ class TestTemporalCodeGeneration:
                 },
             ),
             patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
-            patch.object(agent, "_code_generation_tool", new_callable=AsyncMock, return_value=code_result) as code_tool,
+            patch.object(
+                agent, "_code_generation_tool", new_callable=AsyncMock, return_value=code_result
+            ) as code_tool,
             patch.object(agent, "_synthesize_with_llm", synth),
             patch.object(
                 agent,
@@ -721,7 +727,9 @@ class TestTemporalCodeGeneration:
             patch.object(agent, "_aggregation_retrieval", return_value=facts),
             patch.object(agent, "_synthesize_with_llm", new_callable=AsyncMock) as synth,
         ):
-            answer = await agent.answer_question("How many different projects have I told you about?")
+            answer = await agent.answer_question(
+                "How many different projects have I told you about?"
+            )
 
         synth.assert_not_called()
         assert "5 different projects" in answer
@@ -819,5 +827,3 @@ class TestTemporalCodeGeneration:
             assert person in answer
         for noise in ("Atlas Team", "Customer Success Team", "Professional Information"):
             assert noise not in answer
-
-

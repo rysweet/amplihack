@@ -584,6 +584,7 @@ Additionally, the recipe-runner-rs binary had a bug where relative worktree path
 **PR #3778**: Added `working_dir: {{worktree_path}}` to all 75 agent steps across `default-workflow.yaml` and `consensus-workflow.yaml`.
 
 **PRs #3771, #3779, #3781**: Bumped `MIN_RUNNER_VERSION` to 0.3.1 → 0.3.2 → 0.3.3 to pick up:
+
 - 0.3.1: Orchestrator resolved from `AMPLIHACK_HOME` (not CWD)
 - 0.3.2: Relative worktree path resolution fix
 - 0.3.3: Template rendering for the `working_dir` field
@@ -617,6 +618,7 @@ A secondary issue: the `USER_PREFERENCES` parser used an older key-value format,
 ### Solution
 
 **PR #3792**:
+
 - Added nested-session detection to `workflow_classification_reminder.py` — skips injection when inside a recipe-managed child session
 - Added nested-session detection to `user_prompt_submit.py` — skips `AMPLIHACK.md` framework reinjection while preserving normal preference injection
 - Updated the `USER_PREFERENCES` parser to read the current markdown-table format; added regression tests

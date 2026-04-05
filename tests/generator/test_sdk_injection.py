@@ -12,16 +12,16 @@ from pathlib import Path
 
 import pytest
 
-from src.amplihack.goal_agent_generator.agent_assembler import AgentAssembler
-from src.amplihack.goal_agent_generator.models import (
+from amplihack.goal_agent_generator.agent_assembler import AgentAssembler
+from amplihack.goal_agent_generator.models import (
     ExecutionPlan,
     GoalDefinition,
     PlanPhase,
     SDKToolConfig,
     SkillDefinition,
 )
-from src.amplihack.goal_agent_generator.packager import GoalAgentPackager
-from src.amplihack.goal_agent_generator.skill_synthesizer import (
+from amplihack.goal_agent_generator.packager import GoalAgentPackager
+from amplihack.goal_agent_generator.skill_synthesizer import (
     SDK_NATIVE_TOOLS,
     SkillSynthesizer,
 )

@@ -100,13 +100,13 @@ Existing code that still reads `worktree_path` should be scheduled for migration
 
 ## 5. Recognize the Failure Modes
 
-| Condition | Where it fails | What to do |
-| --- | --- | --- |
-| `expected_gh_account` missing | First in-scope `gh` mutation step | Supply `expected_gh_account` in workflow context. |
-| `gh` unauthenticated | Pre-flight or first mutation gate | Run `gh auth login` and retry. |
-| Authenticated login does not match `expected_gh_account` | First in-scope `gh` mutation step | Re-authenticate as the correct account or correct the context value. |
-| Unsafe execution root | Step 04 execution-root setup | Use a real repository root and remove wrapper/tmp indirection. |
-| 300 seconds of silence with no transition | Observer layer | Inspect recipe logs and progress output; do not weaken execution-root or identity rules. |
+| Condition                                                | Where it fails                    | What to do                                                                               |
+| -------------------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------- |
+| `expected_gh_account` missing                            | First in-scope `gh` mutation step | Supply `expected_gh_account` in workflow context.                                        |
+| `gh` unauthenticated                                     | Pre-flight or first mutation gate | Run `gh auth login` and retry.                                                           |
+| Authenticated login does not match `expected_gh_account` | First in-scope `gh` mutation step | Re-authenticate as the correct account or correct the context value.                     |
+| Unsafe execution root                                    | Step 04 execution-root setup      | Use a real repository root and remove wrapper/tmp indirection.                           |
+| 300 seconds of silence with no transition                | Observer layer                    | Inspect recipe logs and progress output; do not weaken execution-root or identity rules. |
 
 Example mismatch failure:
 

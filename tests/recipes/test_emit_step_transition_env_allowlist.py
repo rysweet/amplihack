@@ -19,7 +19,6 @@ from __future__ import annotations
 import io
 import json
 import os
-import sys
 import tempfile
 from unittest.mock import patch
 
@@ -30,10 +29,10 @@ from amplihack.recipes.rust_runner_execution import (
     emit_step_transition,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _capture_stderr(fn, *args, **kwargs):
     """Run *fn* and return whatever it wrote to sys.stderr as a string."""
@@ -57,6 +56,7 @@ def _make_env(extras: dict[str, str]) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 # emit_step_transition — basic contract (should PASS with current impl)
 # ---------------------------------------------------------------------------
+
 
 class TestEmitStepTransitionContract:
     """emit_step_transition must write a single valid JSONL object to stderr."""
@@ -121,6 +121,7 @@ class TestEmitStepTransitionContract:
 # emit_step_transition — input validation (FAILING — not yet implemented)
 # ---------------------------------------------------------------------------
 
+
 class TestEmitStepTransitionValidation:
     """These tests specify DESIRED behaviour that is not yet implemented.
 
@@ -159,6 +160,7 @@ class TestEmitStepTransitionValidation:
 # build_rust_env — env allowlist (PASSING — basic secret exclusion)
 # ---------------------------------------------------------------------------
 
+
 class TestBuildRustEnvSecretExclusion:
     """build_rust_env must NEVER forward secret variables to the subprocess."""
 
@@ -170,9 +172,7 @@ class TestBuildRustEnvSecretExclusion:
 
     def test_excludes_gh_token(self):
         env = _make_env({"GH_TOKEN": "ghp_secret"})
-        assert "GH_TOKEN" not in env, (
-            "GH_TOKEN must never be forwarded to the Rust subprocess"
-        )
+        assert "GH_TOKEN" not in env, "GH_TOKEN must never be forwarded to the Rust subprocess"
 
     def test_excludes_gh_aw_github_mcp_server_token(self):
         env = _make_env({"GH_AW_GITHUB_MCP_SERVER_TOKEN": "ghs_mcp_secret"})
@@ -190,6 +190,7 @@ class TestBuildRustEnvSecretExclusion:
 # ---------------------------------------------------------------------------
 # build_rust_env — token forwarding
 # ---------------------------------------------------------------------------
+
 
 class TestBuildRustEnvTokenForwarding:
     """GH_AW_GITHUB_TOKEN and GITHUB_TOKEN must be forwarded to the Rust subprocess.
@@ -218,6 +219,7 @@ class TestBuildRustEnvTokenForwarding:
 # build_rust_env — safe vars that MUST be forwarded (PASSING)
 # ---------------------------------------------------------------------------
 
+
 class TestBuildRustEnvSafeVarForwarding:
     """Variables in _ALLOWED_RUST_ENV_VARS must be present when set in the parent env."""
 
@@ -245,6 +247,7 @@ class TestBuildRustEnvSafeVarForwarding:
 # Log file size cap (FAILING — MAX_LOG_BYTES not yet implemented)
 # ---------------------------------------------------------------------------
 
+
 class TestLogFileSizeCap:
     """The log file written during progress-mode execution must be bounded.
 
@@ -258,7 +261,7 @@ class TestLogFileSizeCap:
     )
     def test_max_log_bytes_constant_exists(self):
         """A MAX_LOG_BYTES sentinel must be importable from the module."""
-        import amplihack.recipes.rust_runner_execution as m  # noqa: PLC0415
+        import amplihack.recipes.rust_runner_execution as m
 
         assert hasattr(m, "MAX_LOG_BYTES"), (
             "Define MAX_LOG_BYTES (e.g. 10 * 1024 * 1024) to cap log file growth"
@@ -271,8 +274,9 @@ class TestLogFileSizeCap:
     )
     def test_write_progress_mode_does_not_exceed_max_log_bytes(self, tmp_path):
         """Simulated large output must not produce a log file larger than MAX_LOG_BYTES."""
-        import amplihack.recipes.rust_runner_execution as m  # noqa: PLC0415
-        import subprocess  # noqa: PLC0415
+        import subprocess
+
+        import amplihack.recipes.rust_runner_execution as m
 
         huge_line = "x" * 1024 + "\n"
         # Simulate a process that produces 12 MB of stdout (above any sensible cap).

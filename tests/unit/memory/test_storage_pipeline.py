@@ -26,7 +26,6 @@ try:
         StorageRequest,
         StorageResult,
     )
-    from amplihack.memory.models import MemoryType
 except ImportError:
     pytest.skip("Storage pipeline not implemented yet", allow_module_level=True)
 

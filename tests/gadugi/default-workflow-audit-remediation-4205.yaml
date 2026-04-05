@@ -1,0 +1,450 @@
+# Outside-in QA scenario: default-workflow audit remediations (issue-4205 / PR #4212)
+#
+# Verifies the concrete blockers identified by the quality-audit-cycle are fixed:
+#   1. step-17a uses a quoted heredoc for local_testing_gate capture
+#   2. step-17f and step-18e enforce real captured outputs
+#   3. git pull --rebase failures surface explicit recovery guidance in step-15, step-18c, and step-20b
+#   4. step-21 PR ready/comment logic uses explicit if/else instead of A && B || C
+#   5. workflow-complete version matches the recipe header version
+#   6. truncation warnings are emitted for provider-facing titles and searches
+#   7. step-18c uses explicit upstream detection instead of brittle @{u} probing
+#   8. step-18d is agentic, not an echo-only no-op
+#   9. step-22b uses explicit if/else instead of A && B || C
+#  10. stale step-number references are corrected
+#  11. GitHub label creation failures are surfaced instead of silently ignored
+#  12. step-08c requires a real worktree instead of silently falling back to repo_path
+#  13. branch slug truncation is configurable and visible
+#  14. step-19c uses strict shell mode
+#  15. step-20c uses durable quality-audit wording
+#  16. step-16 ADO PR creation keeps stderr visible
+#  17. step-18a references Step 17 review feedback
+#  18. step-04 uses a dynamic worktree base instead of hardcoded origin/main
+#  19. final status avoids a stale hardcoded step count
+
+name: "Default Workflow Audit Remediation 4205"
+description: |
+  Verifies that default-workflow.yaml contains the hardening changes required to
+  close the merge-ready quality-audit blockers for issue #4205 / PR #4212.
+version: "1.0.0"
+config:
+  timeout: 120000
+  retries: 0
+  parallel: false
+
+agents:
+  - name: "verifier"
+    type: "system"
+    config:
+      shell: "bash"
+      cwd: "."
+      timeout: 60000
+      capture_output: true
+
+steps:
+  - name: "Step-17a uses quoted EOFGATE heredoc"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c \"<<'EOFGATE'\" amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-17a still reads local_testing_gate"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'local_testing_gate' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-17f requires reviewer output"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'GATE FAIL: step-17b (reviewer) produced no output' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Step-18e requires feedback analysis output"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: "grep -c 'GATE FAIL: step-18a (analyze-feedback) produced no output' amplifier-bundle/recipes/default-workflow.yaml"
+    expect:
+      exit_code: 0
+
+  - name: "Rebase failures use explicit guarded recovery guidance"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        python3 - <<'PY'
+        from pathlib import Path
+        import yaml
+
+        data = yaml.safe_load(Path("amplifier-bundle/recipes/default-workflow.yaml").read_text())
+        step_ids = [
+            "step-15-commit-push",
+            "step-18c-push-feedback-changes",
+            "step-20b-push-cleanup",
+        ]
+        failure_modes = ["merge conflict", "auth", "network", "diverged history"]
+        remedies = ["git rebase --abort", "git rebase --continue"]
+
+        for step_id in step_ids:
+            step = next(s for s in data["steps"] if s["id"] == step_id)
+            cmd = step["command"]
+            if "git pull --rebase 2>/dev/null" in cmd:
+                raise SystemExit(f"FAIL: {step_id} still suppresses stderr")
+            if "git pull --rebase && git push" in cmd:
+                raise SystemExit(f"FAIL: {step_id} still uses bare && chaining")
+            if "if ! git pull --rebase; then" not in cmd:
+                raise SystemExit(f"FAIL: {step_id} missing guarded rebase handling")
+            if "exit 1" not in cmd:
+                raise SystemExit(f"FAIL: {step_id} missing explicit failure exit")
+            for token in failure_modes:
+                if token not in cmd.lower():
+                    raise SystemExit(f"FAIL: {step_id} missing failure mode '{token}'")
+            for token in remedies:
+                if token not in cmd:
+                    raise SystemExit(f"FAIL: {step_id} missing remediation '{token}'")
+
+        print("PASS: explicit guarded rebase recovery guidance present in step-15, step-18c, and step-20b")
+        PY
+    expect:
+      stdout_contains: ["PASS: explicit guarded rebase recovery guidance present in step-15, step-18c, and step-20b"]
+      exit_code: 0
+
+  - name: "Step-18c uses explicit upstream detection"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        if grep -Fq "git rev-list --count @{u}..HEAD 2>/dev/null" "$FILE"; then
+          echo "FAIL: brittle @{u} upstream check still present"
+          exit 1
+        fi
+        grep -Fq "UPSTREAM_REF=\"\"" "$FILE" &&
+        grep -Fq "git push --set-upstream origin \"\$BRANCH_NAME\"" "$FILE" &&
+        echo "PASS: explicit upstream detection present"
+        '
+    expect:
+      stdout_contains: ["PASS: explicit upstream detection present"]
+      exit_code: 0
+
+  - name: "Step-18d is agentic rather than echo-only"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        python3 - <<'PY'
+        from pathlib import Path
+        import yaml
+
+        data = yaml.safe_load(Path("amplifier-bundle/recipes/default-workflow.yaml").read_text())
+        step = next(s for s in data["steps"] if s["id"] == "step-18d-respond-to-comments")
+        if step.get("agent") != "amplihack:builder":
+            raise SystemExit("FAIL: step-18d is not agentic")
+        if step.get("type") == "bash":
+            raise SystemExit("FAIL: step-18d is still a bash echo step")
+        print("PASS: step-18d is agentic")
+        PY
+    expect:
+      stdout_contains: ["PASS: step-18d is agentic"]
+      exit_code: 0
+
+  - name: "PR ready uses explicit conditionals"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        if grep -Fq "[ -n \"\$PR_URL\" ] && gh pr ready ||" "$FILE"; then
+          echo "FAIL: old gh pr ready short-circuit pattern still present"
+          exit 1
+        fi
+        if grep -Fq "[ -n \"\$PR_URL\" ] && gh pr comment --body \"\$PR_BODY\" ||" "$FILE"; then
+          echo "FAIL: old gh pr comment short-circuit pattern still present"
+          exit 1
+        fi
+        if grep -Fq "gh pr ready \"\$PR_URL\"" "$FILE" &&
+           grep -Fq "gh pr comment \"\$PR_URL\" --body \"\$PR_BODY\"" "$FILE" &&
+           grep -Fq "if [ -n \"\$PR_URL\" ]; then" "$FILE"; then
+          echo "PASS: explicit PR_URL conditionals present"
+        else
+          echo "FAIL: explicit PR_URL conditionals missing"
+          exit 1
+        fi
+        '
+    expect:
+      stdout_contains: ["PASS: explicit PR_URL conditionals present"]
+      exit_code: 0
+
+  - name: "Final status uses explicit PR_URL conditional"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        if grep -Fq "[ -n \"\$PR_URL\" ] && gh pr view --json state,mergeable,reviews,statusCheckRollup ||" "$FILE"; then
+          echo "FAIL: old gh pr view short-circuit pattern still present"
+          exit 1
+        fi
+        grep -Fq "gh pr view --json state,mergeable,reviews,statusCheckRollup" "$FILE" &&
+        echo "PASS: final status uses explicit conditional"
+        '
+    expect:
+      stdout_contains: ["PASS: final status uses explicit conditional"]
+      exit_code: 0
+
+  - name: "workflow-complete version matches header"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        python3 - <<'PY'
+        from pathlib import Path
+        import yaml
+
+        path = Path("amplifier-bundle/recipes/default-workflow.yaml")
+        data = yaml.safe_load(path.read_text())
+        header_version = data["version"]
+        cmd = next(step["command"] for step in data["steps"] if step["id"] == "workflow-complete")
+        needle = f'"version": "{header_version}"'
+        if needle not in cmd:
+            raise SystemExit(f"FAIL: workflow-complete missing {needle}")
+        print(f"PASS: workflow-complete version matches header ({header_version})")
+        PY
+    expect:
+      stdout_contains: ["PASS: workflow-complete version matches header"]
+      exit_code: 0
+
+  - name: "Step-03 truncation warnings are present"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        grep -q "Truncating issue/work item title to 200 characters" "$FILE" &&
+        grep -q "Truncating GitHub issue search query to 100 characters" "$FILE" &&
+        echo "PASS: step-03 truncation warnings present"
+        '
+    expect:
+      stdout_contains: ["PASS: step-03 truncation warnings present"]
+      exit_code: 0
+
+  - name: "Step-16 truncation warnings are present"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        grep -q "Truncating ADO work item search title to 100 characters" "$FILE" &&
+        grep -q "Truncating PR title to 200 characters" "$FILE" &&
+        echo "PASS: step-16 truncation warnings present"
+        '
+    expect:
+      stdout_contains: ["PASS: step-16 truncation warnings present"]
+      exit_code: 0
+
+  - name: "Commit title truncation warning is present"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        grep -Fq "COMMIT_TITLE_MAX_LENGTH" "$FILE" &&
+        grep -Fq "TOTAL_SUBJECT_LENGTH=\$((COMMIT_TITLE_MAX_LENGTH + 6))" "$FILE" &&
+        grep -Fq "Truncating commit title to \${TOTAL_SUBJECT_LENGTH} characters including the '\''feat: '\'' prefix" "$FILE" &&
+        echo "PASS: commit title truncation is configurable and visible"
+        '
+    expect:
+      stdout_contains: ["PASS: commit title truncation is configurable and visible"]
+      exit_code: 0
+
+  - name: "Step-03 label creation failure is not silenced"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        if grep -Fq -- "--description \"Created by default-workflow recipe\" 2>/dev/null || true" "$FILE"; then
+          echo "FAIL: label creation failure is still silently ignored"
+          exit 1
+        fi
+        grep -Fq "ERROR: Failed to create GitHub label" "$FILE" &&
+        echo "PASS: label creation failures are surfaced"
+        '
+    expect:
+      stdout_contains: ["PASS: label creation failures are surfaced"]
+      exit_code: 0
+
+  - name: "Step-08c requires a real worktree path"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        if grep -Fq "cd \"{{worktree_setup.worktree_path}}\" 2>/dev/null || cd \"{{repo_path}}\"" "$FILE"; then
+          echo "FAIL: step-08c still falls back to repo_path"
+          exit 1
+        fi
+        grep -Fq "ERROR: Worktree path '\''\$WORKTREE_DIR'\'' does not exist for hollow success guard" "$FILE" &&
+        echo "PASS: step-08c requires a real worktree"
+        '
+    expect:
+      stdout_contains: ["PASS: step-08c requires a real worktree"]
+      exit_code: 0
+
+  - name: "Branch slug limit is configurable and visible"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        grep -Fq "branch_slug_max_length: \"50\"" "$FILE" &&
+        grep -Fq "WARN: Truncating branch slug to \$BRANCH_SLUG_MAX_LENGTH characters" "$FILE" &&
+        echo "PASS: branch slug limit is configurable and visible"
+        '
+    expect:
+      stdout_contains: ["PASS: branch slug limit is configurable and visible"]
+      exit_code: 0
+
+  - name: "Step-19c uses strict shell mode"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        python3 - <<'PY'
+        from pathlib import Path
+        import yaml
+
+        data = yaml.safe_load(Path("amplifier-bundle/recipes/default-workflow.yaml").read_text())
+        cmd = next(step["command"] for step in data["steps"] if step["id"] == "step-19c-zero-bs-verification")
+        if "set -euo pipefail" not in cmd:
+            raise SystemExit("FAIL: step-19c missing set -euo pipefail")
+        print("PASS: step-19c uses strict shell mode")
+        PY
+    expect:
+      stdout_contains: ["PASS: step-19c uses strict shell mode"]
+      exit_code: 0
+
+  - name: "Step-20c uses durable quality-audit wording"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        ! grep -Fq "When recipe-in-recipe support is available" "$FILE" &&
+        ! grep -Fq "Until then, execute the audit inline following these instructions." "$FILE" &&
+        grep -Fq "Preserve the quality-audit-cycle semantics inline here" "$FILE" &&
+        echo "PASS: step-20c uses durable wording"
+        '
+    expect:
+      stdout_contains: ["PASS: step-20c uses durable wording"]
+      exit_code: 0
+
+  - name: "Step-16 ADO PR creation keeps stderr visible"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        python3 - <<'PY'
+        import re
+        from pathlib import Path
+
+        cmd = Path("amplifier-bundle/recipes/default-workflow.yaml").read_text()
+        match = re.search(r'ADO_PR_URL=\$\(timeout 120 az repos pr create --draft \\\n.*?-o tsv\)', cmd, re.DOTALL)
+        if not match:
+            raise SystemExit("FAIL: ADO PR creation block not found")
+        if "2>/dev/null" in match.group(0):
+            raise SystemExit("FAIL: ADO PR creation still suppresses stderr")
+        print("PASS: ADO PR creation keeps stderr visible")
+        PY
+    expect:
+      stdout_contains: ["PASS: ADO PR creation keeps stderr visible"]
+      exit_code: 0
+
+  - name: "Step-18a references Step 17 reviews"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        ! grep -Fq "Analyze ALL feedback from Step 16 reviews:" "$FILE" &&
+        grep -Fq "Analyze ALL feedback from Step 17 reviews:" "$FILE" &&
+        echo "PASS: step-18a references Step 17 reviews"
+        '
+    expect:
+      stdout_contains: ["PASS: step-18a references Step 17 reviews"]
+      exit_code: 0
+
+  - name: "Step-04 uses dynamic worktree base"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        ! grep -Fq "git worktree add \"\${WORKTREE_PATH}\" -b \"\${BRANCH_NAME}\" origin/main" "$FILE" &&
+        grep -Fq "BASE_WORKTREE_REF=\"HEAD\"" "$FILE" &&
+        grep -Fq "git worktree add \"\${WORKTREE_PATH}\" -b \"\${BRANCH_NAME}\" \"\$BASE_WORKTREE_REF\"" "$FILE" &&
+        echo "PASS: step-04 uses dynamic worktree base"
+        '
+    expect:
+      stdout_contains: ["PASS: step-04 uses dynamic worktree base"]
+      exit_code: 0
+
+  - name: "Final status avoids stale hardcoded step count"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        ! grep -Fq "All 23 workflow steps completed successfully." "$FILE" &&
+        grep -Fq "Default workflow completed successfully." "$FILE" &&
+        echo "PASS: final status avoids stale hardcoded step count"
+        '
+    expect:
+      stdout_contains: ["PASS: final status avoids stale hardcoded step count"]
+      exit_code: 0
+
+  - name: "Stale step-number references are corrected"
+    agent: "verifier"
+    action: "execute_command"
+    params:
+      command: |
+        bash -c '
+        FILE="amplifier-bundle/recipes/default-workflow.yaml"
+        ! grep -q "Steps 16a-16d" "$FILE" &&
+        ! grep -q "# Step 21: Ensure PR is Mergeable" "$FILE" &&
+        grep -q "Steps 17b-17d" "$FILE" &&
+        grep -q "# Step 22: Ensure PR is Mergeable" "$FILE" &&
+        echo "PASS: stale step labels corrected"
+        '
+    expect:
+      stdout_contains: ["PASS: stale step labels corrected"]
+      exit_code: 0
+
+cleanup:
+  - name: "Capture verification output"
+    agent: "verifier"
+    action: "capture_output"
+
+metadata:
+  tags: [workflow, qa, regression, audit, issue-4205, pr-4212]
+  priority: "high"
+  issue: "issue-4205"

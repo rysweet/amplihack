@@ -40,6 +40,13 @@ class AnthropicBackend:
         api_key: str = "",
         max_tokens: int = DEFAULT_LLM_MAX_TOKENS,
     ):
+        if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+            from amplihack.exceptions import ConfigurationError
+
+            raise ConfigurationError(
+                "Anthropic is disabled (ANTHROPIC_DISABLED=true). "
+                "Use --backend copilot or unset ANTHROPIC_DISABLED."
+            )
         self.model = model
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
         self.max_tokens = max_tokens
@@ -87,11 +94,13 @@ class CopilotBackend:
             response_parts: list[str] = []
             done = asyncio.Event()
 
-            session = await client.create_session({
-                "model": self.model,
-                "system_message": {"content": system_prompt},
-                "on_permission_request": PermissionHandler.approve_all,
-            })
+            session = await client.create_session(
+                {
+                    "model": self.model,
+                    "system_message": {"content": system_prompt},
+                    "on_permission_request": PermissionHandler.approve_all,
+                }
+            )
 
             def on_event(event):
                 etype = event.type.value if hasattr(event.type, "value") else str(event.type)
@@ -109,6 +118,7 @@ class CopilotBackend:
                 await asyncio.wait_for(done.wait(), timeout=SUBPROCESS_TIMEOUT_SECONDS)
             except TimeoutError:
                 import logging as _logging
+
                 _logging.getLogger(__name__).warning(
                     "Copilot session timed out after %ds", SUBPROCESS_TIMEOUT_SECONDS
                 )
@@ -123,11 +133,14 @@ def auto_detect_backend() -> LLMBackend:
     """Auto-detect the best available LLM backend.
 
     Priority:
-    1. Anthropic (if ANTHROPIC_API_KEY set)
+    1. Anthropic (if ANTHROPIC_API_KEY set and ANTHROPIC_DISABLED is not true)
     2. Copilot (fallback -- uses GitHub Copilot subscription)
 
     Always returns a backend; falls back to CopilotBackend.
     """
+    if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+        return CopilotBackend()
+
     if os.environ.get("ANTHROPIC_API_KEY"):
         return AnthropicBackend()
 

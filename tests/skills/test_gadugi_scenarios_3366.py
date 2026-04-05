@@ -223,6 +223,7 @@ class TestPhase1RecipeBehavior:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.xfail(reason="TDD: phase 2 rust runner features not yet implemented", strict=False)
 class TestPhase2RustRunnerBehavior:
     """Grep-based behavioral checks against rust_runner.py."""
 

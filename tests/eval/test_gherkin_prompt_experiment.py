@@ -21,6 +21,7 @@ from amplihack.eval.gherkin_agent_evaluator import (
     AgentVote,
     ConsensusEvaluation,
     _extract_vote,
+    _has_anthropic_api_key,
     _parse_agent_response,
 )
 from amplihack.eval.gherkin_prompt_experiment import (
@@ -135,6 +136,26 @@ class TestExtractVote:
         raw = {f: {"pass": True, "reasoning": f"reason_{f}"} for f in FEATURES}
         vote = _extract_vote(raw, "agent_0", "test")
         assert vote.reasoning["retry_logic"] == "reason_retry_logic"
+
+
+class TestHasAnthropicApiKey:
+    """Test direct API availability helper."""
+
+    def test_returns_false_when_disabled(self, monkeypatch):
+        monkeypatch.setenv(
+            "ANTHROPIC_API_KEY", "test-key-for-unit-tests"
+        )  # pragma: allowlist secret
+        monkeypatch.setenv("ANTHROPIC_DISABLED", "true")
+
+        assert _has_anthropic_api_key() is False
+
+    def test_returns_true_when_key_present_and_enabled(self, monkeypatch):
+        monkeypatch.setenv(
+            "ANTHROPIC_API_KEY", "test-key-for-unit-tests"
+        )  # pragma: allowlist secret
+        monkeypatch.delenv("ANTHROPIC_DISABLED", raising=False)
+
+        assert _has_anthropic_api_key() is True
 
 
 # ---------------------------------------------------------------------------

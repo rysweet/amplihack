@@ -7,9 +7,24 @@ Tests complete plugin workflows from outside-in perspective:
 - Error scenarios
 """
 
+import subprocess
+import sys
+
 import pytest
 
 from tests.harness import PluginTestHarness
+
+# Skip entire module if 'amplihack plugin install' doesn't support --plugin-dir
+_plugin_available = subprocess.run(
+    [sys.executable, "-m", "amplihack.cli", "plugin", "install", "--help"],
+    capture_output=True,
+    text=True,
+    timeout=10,
+)
+pytestmark = pytest.mark.skipif(
+    "--plugin-dir" not in _plugin_available.stdout,
+    reason="amplihack plugin subcommand does not support --plugin-dir",
+)
 
 
 class TestPluginLifecycle:

@@ -8,7 +8,6 @@ project/session management live in _tui_workers.py (_WorkersMixin).
 from __future__ import annotations
 
 import logging
-import os
 from typing import TYPE_CHECKING
 
 from textual.widgets import (
@@ -26,7 +25,7 @@ from amplihack.fleet._validation import DANGEROUS_PATTERNS, is_dangerous_input
 from amplihack.fleet.fleet_session_reasoner import SessionDecision
 
 if TYPE_CHECKING:
-    from amplihack.fleet._tui_refresh import _CachedSession
+    pass
 
 __all__ = ["_ActionsMixin"]
 
@@ -192,13 +191,6 @@ class _ActionsMixin(_WorkersMixin):
         if not self._selected_key:
             self.notify("No session selected", severity="warning")
             return
-        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-        if not api_key:
-            self.notify("ANTHROPIC_API_KEY not set -- cannot run reasoning", severity="error")
-            self.query_one("#proposal-text", Static).update(
-                "[red]No ANTHROPIC_API_KEY. Set the env var to enable director proposals.[/red]"
-            )
-            return
         entry = self._cache.get(self._selected_key)
         if entry is None:
             return
@@ -287,9 +279,12 @@ class _ActionsMixin(_WorkersMixin):
         editor = self.query_one("#input-editor", TextArea)
         action_type = str(select.value) if select.value is not Select.BLANK else "wait"
         decision = SessionDecision(
-            session_name=entry.view.session_name, vm_name=entry.view.vm_name,
-            action=action_type, input_text=editor.text.strip(),
-            reasoning="Manually edited by operator", confidence=1.0,
+            session_name=entry.view.session_name,
+            vm_name=entry.view.vm_name,
+            action=action_type,
+            input_text=editor.text.strip(),
+            reasoning="Manually edited by operator",
+            confidence=1.0,
         )
         self._apply_decision(decision)
         self.query_one("#tabs", TabbedContent).active = "detail-tab"
@@ -301,7 +296,8 @@ class _ActionsMixin(_WorkersMixin):
                 self.notify(
                     f"BLOCKED: Input contains dangerous pattern. "
                     f"Matches against: {', '.join(p.pattern for p in DANGEROUS_PATTERNS[:3])}...",
-                    severity="error", timeout=8,
+                    severity="error",
+                    timeout=8,
                 )
                 return
         self._execute_decision_bg(decision)

@@ -119,16 +119,30 @@ class TestNoRecoveryOnFailure:
             )
 
     def test_execute_single_round_1_no_recovery(self, smart_orchestrator):
-        step = _get_step(smart_orchestrator, "execute-single-round-1")
-        assert "recovery_on_failure" not in step, (
-            "execute-single-round-1 must not use recovery_on_failure"
-        )
+        matching = [
+            step
+            for step in smart_orchestrator["steps"]
+            if step.get("id", "").startswith("execute-single-round-1")
+        ]
+        assert matching, "No steps matching 'execute-single-round-1*' found in smart-orchestrator"
+        for step in matching:
+            assert "recovery_on_failure" not in step, (
+                f"Step '{step.get('id')}' must not use recovery_on_failure"
+            )
 
     def test_execute_single_fallback_blocked_no_recovery(self, smart_orchestrator):
-        step = _get_step(smart_orchestrator, "execute-single-fallback-blocked")
-        assert "recovery_on_failure" not in step, (
-            "execute-single-fallback-blocked must not use recovery_on_failure"
+        matching = [
+            step
+            for step in smart_orchestrator["steps"]
+            if step.get("id", "").startswith("execute-single-fallback-blocked")
+        ]
+        assert matching, (
+            "No steps matching 'execute-single-fallback-blocked*' found in smart-orchestrator"
         )
+        for step in matching:
+            assert "recovery_on_failure" not in step, (
+                f"Step '{step.get('id')}' must not use recovery_on_failure"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -277,10 +291,12 @@ class TestSlugPipeline:
             "$RECIPE_VAR_task_description\n"
             "EOFTASKDESC\n"
             ")\n"
-            "printf '%s' \"$TASK_DESC\" | tr '\\n\\r' '  ' | "
-            "tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | "
-            "sed 's/[^a-z0-9-]//g' | sed 's/-\\{2,\\}/-/g' | "
-            "sed 's/^-//;s/-$//' | cut -c1-50 | sed 's/-$//'"
+            "BRANCH_SLUG_MAX_LENGTH=\"${BRANCH_SLUG_MAX_LENGTH:-50}\"\n"
+            "RAW_TASK_SLUG=$(printf '%s' \"$TASK_DESC\" | tr '\\n\\r' '  ' | "
+            "tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-' | "
+            "sed 's/-\\{2,\\}/-/g' | sed 's/^-//;s/-$//')\n"
+            "TASK_SLUG=$(printf '%.*s' \"$BRANCH_SLUG_MAX_LENGTH\" \"$RAW_TASK_SLUG\")\n"
+            "printf '%s' \"${TASK_SLUG%-}\""
         )
         env = {"RECIPE_VAR_task_description": task_desc}
         result = subprocess.run(
@@ -305,10 +321,12 @@ class TestSlugPipeline:
             "$RECIPE_VAR_task_description\n"
             "EOFTASKDESC\n"
             ")\n"
-            "printf '%s' \"$TASK_DESC\" | tr '\\n\\r' '  ' | "
-            "tr '[:upper:]' '[:lower:]' | tr -s ' ' '-' | "
-            "sed 's/[^a-z0-9-]//g' | sed 's/-\\{2,\\}/-/g' | "
-            "sed 's/^-//;s/-$//' | cut -c1-50 | sed 's/-$//'"
+            "BRANCH_SLUG_MAX_LENGTH=\"${BRANCH_SLUG_MAX_LENGTH:-50}\"\n"
+            "RAW_TASK_SLUG=$(printf '%s' \"$TASK_DESC\" | tr '\\n\\r' '  ' | "
+            "tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9-' | "
+            "sed 's/-\\{2,\\}/-/g' | sed 's/^-//;s/-$//')\n"
+            "TASK_SLUG=$(printf '%.*s' \"$BRANCH_SLUG_MAX_LENGTH\" \"$RAW_TASK_SLUG\")\n"
+            "printf '%s' \"${TASK_SLUG%-}\""
         )
         env = {"RECIPE_VAR_task_description": task_desc}
         result = subprocess.run(

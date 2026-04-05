@@ -125,4 +125,4 @@ When complete:
 
 **Core Techniques**: [File Crawling](../core_concepts/file_crawling.md)
 
-**Philosophy**: [MODULAR_DESIGN_PHILOSOPHY.md](../../.claude/context/PHILOSOPHY.md)
+**Philosophy**: [MODULAR_DESIGN_PHILOSOPHY.md](../../claude/context/PHILOSOPHY.md)

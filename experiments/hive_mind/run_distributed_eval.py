@@ -31,17 +31,18 @@ _EVAL_SRC = os.environ.get("AMPLIHACK_EVAL_SRC_PATH", "")
 if _EVAL_SRC:
     sys.path.insert(0, _EVAL_SRC)
 
-from amplihack.agents.goal_seeking.hive_mind.unified import (  # type: ignore[import-not-found]
-    HiveMindAgent,
-    HiveMindConfig,
-    UnifiedHiveMind,
-)
 from amplihack_eval.data.long_horizon import (  # type: ignore[import-not-found]
     GroundTruth,
     Question,
     Turn,
     generate_dialogue,
     generate_questions,
+)
+
+from amplihack.agents.goal_seeking.hive_mind.unified import (  # type: ignore[import-not-found]
+    HiveMindAgent,
+    HiveMindConfig,
+    UnifiedHiveMind,
 )
 
 # ---------------------------------------------------------------------------

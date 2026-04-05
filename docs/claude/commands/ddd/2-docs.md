@@ -302,11 +302,10 @@ auth:
   type: jwt
   expiry: 24h
 ```
-````
 
 See [Authentication Guide](auth.md) for details.
 
-```
+````
 
 ---
 

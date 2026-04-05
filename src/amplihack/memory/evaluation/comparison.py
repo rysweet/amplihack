@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from ..sqlite_backend import create_backend
 from ..coordinator import MemoryCoordinator
 from ..sqlite_backend import create_backend
 from .performance_evaluator import PerformanceEvaluator, PerformanceMetrics

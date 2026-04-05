@@ -266,6 +266,49 @@ class TestClassifyAntiRecursion:
 
 
 # ===========================================================================
+# BUG #4169: step-02b-analyze-codebase indefinite hang (no timeout)
+# ===========================================================================
+
+
+class TestStep02bAnalyzeCodebaseTimeout:
+    """Verify step-02b-analyze-codebase has a timeout to prevent indefinite hangs.
+
+    Root cause: The step has no `timeout` field. The Rust recipe runner enforces
+    timeouts only when the field is present. Without it, the amplihack:architect
+    agent invocation waits forever in AMPLIHACK_NONINTERACTIVE=1 mode.
+
+    Reproduction log: /tmp/amplihack-recipe-smart-orchestrator-2773659.log shows
+    step-02b-analyze-codebase emitting "start" but never "done" or "error".
+
+    Fix: Add `timeout: 600` to step-02b-analyze-codebase in default-workflow.yaml.
+    """
+
+    def _get_step_02b(self) -> dict:
+        """Extract step-02b from default-workflow.yaml."""
+        recipe = _load_yaml(DEFAULT_WORKFLOW)
+        step = _find_step(recipe, "step-02b-analyze-codebase")
+        assert step is not None, "step-02b-analyze-codebase not found"
+        return step
+
+    def test_step_has_timeout(self) -> None:
+        """step-02b must have a timeout field to prevent indefinite hangs.
+
+        Without a timeout, the Rust runner waits forever for the agent subprocess.
+        PASSES: timeout field is present and positive.
+        """
+        step = self._get_step_02b()
+        assert "timeout" in step, (
+            "step-02b-analyze-codebase must have a 'timeout' field to prevent hangs. "
+            "Issue #4169: step starts but never emits 'done' or 'error' in non-interactive mode."
+        )
+        timeout_val = step["timeout"]
+        assert isinstance(timeout_val, (int, float)), (
+            f"timeout must be numeric, got {type(timeout_val).__name__}"
+        )
+        assert timeout_val > 0, "timeout must be positive"
+
+
+# ===========================================================================
 # BUG #3291: step-02c context size guard and timeout
 # ===========================================================================
 

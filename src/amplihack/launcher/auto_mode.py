@@ -382,9 +382,18 @@ class AutoMode:
         Returns:
             (exit_code, output)
         """
-        if self.sdk == "copilot":
+        # Resolve the effective agent: known sdk values take priority,
+        # otherwise fall back to AMPLIHACK_AGENT_BINARY env var.
+        _KNOWN_AGENTS = {"copilot", "codex", "claude"}
+        agent = (
+            self.sdk
+            if self.sdk in _KNOWN_AGENTS
+            else os.environ.get("AMPLIHACK_AGENT_BINARY", self.sdk or "claude")
+        )
+
+        if agent == "copilot":
             cmd = ["amplihack", "copilot", "--allow-all-tools", "--add-dir", "/", "-p", prompt]
-        elif self.sdk == "codex":
+        elif agent == "codex":
             cmd = [
                 "amplihack",
                 "codex",
@@ -392,24 +401,20 @@ class AutoMode:
                 "exec",
                 prompt,
             ]
+        elif agent == "claude":
+            cmd = [
+                "amplihack",
+                agent,
+                "--dangerously-skip-permissions",
+                "--verbose",
+                "-p",
+                prompt,
+            ]
         else:
-            agent = os.environ.get("AMPLIHACK_AGENT_BINARY", self.sdk or "claude")
-            if agent == "copilot":
-                cmd = ["amplihack", "copilot", "--allow-all-tools", "--add-dir", "/", "-p", prompt]
-            elif agent == "claude":
-                cmd = [
-                    "amplihack",
-                    agent,
-                    "--dangerously-skip-permissions",
-                    "--verbose",
-                    "-p",
-                    prompt,
-                ]
-            else:
-                raise RuntimeError(
-                    f"Unsupported agent binary '{agent}' in _run_sdk_subprocess(). "
-                    f"Set AMPLIHACK_AGENT_BINARY to 'claude' or 'copilot'."
-                )
+            raise RuntimeError(
+                f"Unsupported agent binary '{agent}' in _run_sdk_subprocess(). "
+                f"Set AMPLIHACK_AGENT_BINARY to 'claude' or 'copilot'."
+            )
 
         self.log(f"Running: {cmd[0]} ...")
 

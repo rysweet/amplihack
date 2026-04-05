@@ -99,12 +99,20 @@ class MemoryRetriever:
         if not query or not query.strip():
             return []
 
+        normalized_query = _normalize_fts_query(query)
         experiences = self.store.search(
-            query=_normalize_fts_query(query),
+            query=normalized_query,
             limit=limit,
             min_confidence=min_confidence,
             experience_type=experience_type,
         )
+        if not experiences and normalized_query != query:
+            experiences = self.store.search(
+                query=query,
+                limit=limit,
+                min_confidence=min_confidence,
+                experience_type=experience_type,
+            )
 
         # Convert to dictionaries for easier consumption
         results = []

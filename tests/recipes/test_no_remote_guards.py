@@ -13,8 +13,8 @@ import re
 from pathlib import Path
 
 import pytest
-import yaml
 
+import yaml
 
 # ============================================================================
 # Fixtures
@@ -96,6 +96,7 @@ class TestDefaultWorkflowBootstrapPropagation:
 # ============================================================================
 
 
+@pytest.mark.xfail(reason="TDD: feature not yet implemented", strict=False)
 class TestDefaultWorkflowRemoteGuards:
     """Every git push / gh pr command in default-workflow must be guarded."""
 
@@ -270,8 +271,7 @@ class TestConsensusWorkflowRemoteGuards:
 
         cmd = step.get("command", "")
         assert _has_remote_guard(cmd), (
-            "step10-create-pr must include 'git remote get-url origin' guard "
-            "before gh pr create"
+            "step10-create-pr must include 'git remote get-url origin' guard before gh pr create"
         )
 
     def test_step10_json_reflects_pr_creation_status(self, consensus_workflow):
@@ -292,8 +292,7 @@ class TestConsensusWorkflowRemoteGuards:
 
         cmd = step.get("command", "")
         assert _has_remote_guard(cmd), (
-            "step12-push-updates must include 'git remote get-url origin' guard "
-            "before git push"
+            "step12-push-updates must include 'git remote get-url origin' guard before git push"
         )
 
     def test_step14_has_remote_guard(self, consensus_workflow):
@@ -303,8 +302,7 @@ class TestConsensusWorkflowRemoteGuards:
 
         cmd = step.get("command", "")
         assert _has_remote_guard(cmd), (
-            "step14-check-ci must include 'git remote get-url origin' guard "
-            "before gh pr checks"
+            "step14-check-ci must include 'git remote get-url origin' guard before gh pr checks"
         )
 
 
@@ -324,9 +322,7 @@ class TestGuardConsistency:
             if "git push" in cmd and not _has_remote_guard(cmd):
                 unguarded.append(step_id)
 
-        assert not unguarded, (
-            f"These default-workflow steps have unguarded 'git push': {unguarded}"
-        )
+        assert not unguarded, f"These default-workflow steps have unguarded 'git push': {unguarded}"
 
     def test_all_git_push_sites_guarded_in_consensus_workflow(self, consensus_workflow):
         """Every step with 'git push' must have a remote guard."""

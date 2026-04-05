@@ -1012,6 +1012,17 @@ class TestFleetDryRun:
         result = runner.invoke(fleet_cli, ["dry-run"], catch_exceptions=False)
         assert result.exit_code == 0
 
+    def test_dry_run_explicit_anthropic_backend_respects_disable_flag(self, runner):
+        """Explicit anthropic backend should fail fast when disabled."""
+        from amplihack.exceptions import ConfigurationError
+
+        with patch.dict("os.environ", {"ANTHROPIC_DISABLED": "true"}):
+            result = runner.invoke(fleet_cli, ["dry-run", "--backend", "anthropic"])
+
+        assert result.exit_code != 0
+        assert isinstance(result.exception, ConfigurationError)
+        assert "ANTHROPIC_DISABLED=true" in str(result.exception)
+
 
 class TestFleetVmNameValidation:
     """VM name validation in commands."""

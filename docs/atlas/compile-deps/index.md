@@ -9,7 +9,7 @@ title: "Layer 3: Compile-time Dependencies"
 # Layer 3: Compile-time Dependencies
 
 <div class="atlas-metadata">
-Category: <strong>Structural</strong> | Generated: 2026-04-01T20:44:44Z
+Category: <strong>Structural</strong> | Generated: 2026-04-04T22:00:00Z
 </div>
 
 ## Map

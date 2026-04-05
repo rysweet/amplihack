@@ -23,7 +23,9 @@ sys.path.insert(0, str(_REPO_ROOT))
 from scripts.atlas.common import build_manifest
 
 
-def run_layer(script_path: str, args: list[str], label: str, timeout: int = 120) -> tuple[bool, float]:
+def run_layer(
+    script_path: str, args: list[str], label: str, timeout: int = 120
+) -> tuple[bool, float]:
     """Run a layer script and return (success, elapsed_seconds).
 
     Args:
@@ -106,8 +108,12 @@ def main():
         _abort("layer1_repo_surface", timings, total_start)
 
     # layer2: ast bindings (full LSP build)
-    ok, elapsed = run_layer(str(python_dir / "ast_bindings.py"), common_args,
-                            "layer2_ast_bindings", timeout=layer2_timeout)
+    ok, elapsed = run_layer(
+        str(python_dir / "ast_bindings.py"),
+        common_args,
+        "layer2_ast_bindings",
+        timeout=layer2_timeout,
+    )
     timings.append(("layer2_ast_bindings", elapsed))
     if not ok:
         _abort("layer2_ast_bindings", timings, total_start)
@@ -169,9 +175,9 @@ def main():
 
     # --- Summary ---
     total_elapsed = time.monotonic() - total_start
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Atlas extraction complete in {total_elapsed:.1f}s")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print("\nTiming breakdown:")
     for label, elapsed in timings:
         bar = "#" * int(elapsed * 2)

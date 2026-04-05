@@ -658,9 +658,5 @@ class TestSessionIdSanitizationInStopHook:
 
         reason, owner_id = hook._get_lock_recovery_reason("current-session")
         if owner_id is not None:
-            assert ".." not in owner_id, (
-                f"Dotdot survived in owner_id: {owner_id!r}"
-            )
-            assert "/" not in owner_id, (
-                f"Slash survived in owner_id: {owner_id!r}"
-            )
+            assert ".." not in owner_id, f"Dotdot survived in owner_id: {owner_id!r}"
+            assert "/" not in owner_id, f"Slash survived in owner_id: {owner_id!r}"

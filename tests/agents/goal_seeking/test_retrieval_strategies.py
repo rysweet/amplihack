@@ -9,13 +9,11 @@ Philosophy:
 import shutil
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from amplihack.agents.goal_seeking import LearningAgent
-
-
 
 
 class TestEntityLinkedRetrieval:
@@ -130,8 +128,6 @@ class TestEntityLinkedRetrieval:
         }
         agent.memory.search_local.assert_called()
         agent.memory.search_by_concept_local.assert_called()
-
-
 
 
 class TestMultiEntityRetrieval:

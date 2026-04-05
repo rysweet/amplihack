@@ -87,7 +87,7 @@ def _parse_set(text: str) -> frozenset[str]:
 def _parse_function(text: str) -> dict[str, frozenset[str]]:
     """Parse TLA+ function notation like (a1 :> {f1} @@ a2 :> {})."""
     result = {}
-    for match in re.finditer(r'(\w+)\s*:>\s*(\{[^}]*\})', text):
+    for match in re.finditer(r"(\w+)\s*:>\s*(\{[^}]*\})", text):
         agent, facts_str = match.group(1), match.group(2)
         result[agent] = _parse_set(facts_str)
     return result
@@ -155,7 +155,7 @@ def parse_dot_states(dot_path: Path) -> tuple[dict[str, TLCState], dict[str, lis
         )
 
     # Parse edges: src -> dst
-    for match in re.finditer(r'(-?\d+)\s*->\s*(-?\d+)', content):
+    for match in re.finditer(r"(-?\d+)\s*->\s*(-?\d+)", content):
         src, dst = match.group(1), match.group(2)
         if src in states and dst in states:
             edges[src].append(dst)
@@ -217,7 +217,9 @@ def trace_to_pytest(trace: TLCTrace, index: int) -> str:
         elif event["type"] == "complete":
             lines.append("    request.complete()")
             lines.append('    assert request.phase == "complete"')
-            lines.append("    assert request.merged_result_set == set(request.responded_facts_union)")
+            lines.append(
+                "    assert request.merged_result_set == set(request.responded_facts_union)"
+            )
         elif event["type"] == "fail":
             lines.append("    request.fail()")
             lines.append('    assert request.phase == "failed"')
@@ -324,7 +326,9 @@ def main() -> None:
     parser.add_argument("--dot", required=True, help="Path to TLC DOT state dump")
     parser.add_argument("--output", required=True, help="Output pytest file")
     parser.add_argument("--max-traces", type=int, default=50, help="Maximum traces to extract")
-    parser.add_argument("--spec-name", default="DistributedRetrievalBestEffort", help="Spec module name")
+    parser.add_argument(
+        "--spec-name", default="DistributedRetrievalBestEffort", help="Spec module name"
+    )
     args = parser.parse_args()
 
     dot_path = Path(args.dot)

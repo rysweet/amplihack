@@ -6,13 +6,12 @@ log entry with the classification result, matched keywords, and confidence.
 """
 
 import json
-import shutil
 import time
 from pathlib import Path
 
 import pytest
 
-from amplihack.workflows.classifier import WorkflowClassifier, _LOG_PROMPT_MAX_CHARS
+from amplihack.workflows.classifier import _LOG_PROMPT_MAX_CHARS, WorkflowClassifier
 
 
 @pytest.fixture
@@ -63,10 +62,17 @@ class TestClassificationLogged:
         classifier_with_logging.classify("Fix the login bug")
         entries = _read_log_entries(log_dir)
         entry = entries[0]
-        required = {"timestamp", "event", "workflow", "reason", "confidence",
-                     "keywords", "prompt_preview", "prompt_length"}
-        assert required.issubset(entry.keys()), \
-            f"Missing fields: {required - entry.keys()}"
+        required = {
+            "timestamp",
+            "event",
+            "workflow",
+            "reason",
+            "confidence",
+            "keywords",
+            "prompt_preview",
+            "prompt_length",
+        }
+        assert required.issubset(entry.keys()), f"Missing fields: {required - entry.keys()}"
 
     def test_log_captures_workflow(self, classifier_with_logging, log_dir):
         """Log entry contains the classified workflow."""
@@ -146,6 +152,7 @@ class TestClassificationLogFormat:
         classifier_with_logging.classify("Add authentication")
         entries = _read_log_entries(log_dir)
         from datetime import datetime
+
         datetime.fromisoformat(entries[0]["timestamp"])
 
     def test_prompt_truncated_at_200_chars(self, classifier_with_logging, log_dir):

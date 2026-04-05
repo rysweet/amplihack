@@ -8,7 +8,12 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import numpy as np
+import pytest
+
+try:
+    import numpy as np
+except ImportError:  # pragma: no cover - exercised in CI environments without numpy
+    np = None
 
 
 class TestEmbeddingGeneratorAvailability:
@@ -71,6 +76,17 @@ class TestEmbeddingGeneratorAvailability:
 class TestCosineSimilarity:
     """Test cosine similarity computation (no model needed)."""
 
+    def test_cosine_similarity_requires_numpy_when_missing(self, monkeypatch):
+        """cosine_similarity raises a clear error when numpy is unavailable."""
+        from amplihack.agents.goal_seeking.hive_mind import embeddings as embeddings_module
+
+        monkeypatch.setattr(embeddings_module, "HAS_NUMPY", False)
+        monkeypatch.setattr(embeddings_module, "np", None)
+
+        with pytest.raises(ImportError, match="numpy is required for cosine_similarity"):
+            embeddings_module.EmbeddingGenerator.cosine_similarity(object(), object())
+
+    @pytest.mark.skipif(np is None, reason="numpy not installed")
     def test_identical_vectors(self):
         """Identical normalized vectors have similarity 1.0."""
         from amplihack.agents.goal_seeking.hive_mind.embeddings import EmbeddingGenerator
@@ -79,6 +95,7 @@ class TestCosineSimilarity:
         sim = EmbeddingGenerator.cosine_similarity(v, v)
         assert abs(sim - 1.0) < 1e-5
 
+    @pytest.mark.skipif(np is None, reason="numpy not installed")
     def test_orthogonal_vectors(self):
         """Orthogonal vectors have similarity ~0.0."""
         from amplihack.agents.goal_seeking.hive_mind.embeddings import EmbeddingGenerator
@@ -88,6 +105,7 @@ class TestCosineSimilarity:
         sim = EmbeddingGenerator.cosine_similarity(a, b)
         assert abs(sim) < 1e-5
 
+    @pytest.mark.skipif(np is None, reason="numpy not installed")
     def test_opposite_vectors(self):
         """Opposite vectors have similarity -1.0."""
         from amplihack.agents.goal_seeking.hive_mind.embeddings import EmbeddingGenerator
@@ -97,6 +115,17 @@ class TestCosineSimilarity:
         sim = EmbeddingGenerator.cosine_similarity(a, b)
         assert abs(sim - (-1.0)) < 1e-5
 
+    def test_cosine_similarity_batch_requires_numpy_when_missing(self, monkeypatch):
+        """cosine_similarity_batch raises a clear error when numpy is unavailable."""
+        from amplihack.agents.goal_seeking.hive_mind import embeddings as embeddings_module
+
+        monkeypatch.setattr(embeddings_module, "HAS_NUMPY", False)
+        monkeypatch.setattr(embeddings_module, "np", None)
+
+        with pytest.raises(ImportError, match="numpy is required for cosine_similarity_batch"):
+            embeddings_module.EmbeddingGenerator.cosine_similarity_batch(object(), [])
+
+    @pytest.mark.skipif(np is None, reason="numpy not installed")
     def test_cosine_similarity_batch(self):
         """Batch similarity returns correct scores."""
         from amplihack.agents.goal_seeking.hive_mind.embeddings import EmbeddingGenerator
@@ -113,6 +142,7 @@ class TestCosineSimilarity:
         assert abs(scores[1]) < 1e-5
         assert abs(scores[2] - (-1.0)) < 1e-5
 
+    @pytest.mark.skipif(np is None, reason="numpy not installed")
     def test_cosine_similarity_batch_empty(self):
         """Batch similarity returns empty list for empty input."""
         from amplihack.agents.goal_seeking.hive_mind.embeddings import EmbeddingGenerator
@@ -131,7 +161,7 @@ class TestEmbeddingGeneratorWithMockModel:
 
         gen = EmbeddingGenerator.__new__(EmbeddingGenerator)
         mock_model = MagicMock()
-        expected = np.array([0.5, 0.5, 0.5], dtype=np.float32)
+        expected = [0.5, 0.5, 0.5]
         mock_model.encode.return_value = expected
         gen._model = mock_model
         gen._dimension = 3
@@ -139,7 +169,7 @@ class TestEmbeddingGeneratorWithMockModel:
 
         result = gen.embed("test text")
         mock_model.encode.assert_called_once_with("test text", normalize_embeddings=True)
-        np.testing.assert_array_equal(result, expected)
+        assert result == expected
 
     def test_embed_batch_with_mock_model(self):
         """embed_batch() delegates to model.encode for batch."""
@@ -147,7 +177,7 @@ class TestEmbeddingGeneratorWithMockModel:
 
         gen = EmbeddingGenerator.__new__(EmbeddingGenerator)
         mock_model = MagicMock()
-        embeddings = np.array([[0.1, 0.2], [0.3, 0.4]], dtype=np.float32)
+        embeddings = [[0.1, 0.2], [0.3, 0.4]]
         mock_model.encode.return_value = embeddings
         gen._model = mock_model
         gen._dimension = 2
@@ -156,8 +186,8 @@ class TestEmbeddingGeneratorWithMockModel:
         result = gen.embed_batch(["text1", "text2"])
         assert result is not None
         assert len(result) == 2
-        np.testing.assert_array_equal(result[0], embeddings[0])
-        np.testing.assert_array_equal(result[1], embeddings[1])
+        assert result[0] == embeddings[0]
+        assert result[1] == embeddings[1]
 
     def test_available_true_when_model_loaded(self):
         """available is True when model is loaded."""
@@ -191,12 +221,12 @@ class TestHiveFactEmbeddingField:
         assert fact.embedding is None
 
     def test_hivefact_stores_embedding(self):
-        """HiveFact can store a numpy array embedding."""
+        """HiveFact can store an embedding payload."""
         from amplihack.agents.goal_seeking.hive_mind.hive_graph import HiveFact
 
-        embedding = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+        embedding = [0.1, 0.2, 0.3]
         fact = HiveFact(fact_id="f1", content="test", embedding=embedding)
-        np.testing.assert_array_equal(fact.embedding, embedding)
+        assert fact.embedding == embedding
 
 
 class TestVectorSearchInQueryFacts:

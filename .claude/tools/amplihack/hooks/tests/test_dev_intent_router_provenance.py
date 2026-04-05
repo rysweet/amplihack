@@ -23,7 +23,6 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from dev_intent_router import (
     _LOG_PROMPT_MAX_CHARS,
-    _MIN_PROMPT_LENGTH,
     should_auto_route,
 )
 
@@ -100,10 +99,18 @@ class TestRoutingDecisionLogged(unittest.TestCase):
         should_auto_route("investigate the build pipeline")
         entries = self._read_log_entries()
         entry = entries[0]
-        required_fields = {"timestamp", "event", "should_inject", "reason",
-                           "prompt_preview", "prompt_length"}
-        self.assertTrue(required_fields.issubset(entry.keys()),
-                        f"Missing fields: {required_fields - entry.keys()}")
+        required_fields = {
+            "timestamp",
+            "event",
+            "should_inject",
+            "reason",
+            "prompt_preview",
+            "prompt_length",
+        }
+        self.assertTrue(
+            required_fields.issubset(entry.keys()),
+            f"Missing fields: {required_fields - entry.keys()}",
+        )
 
     def test_inject_log_contains_prompt_preview(self):
         """Log entry includes truncated prompt text."""
@@ -155,10 +162,15 @@ class TestSkipReasonLogged(unittest.TestCase):
     def test_skip_workflow_active_logged(self):
         """Active workflow is logged with reason 'skip:workflow_active'."""
         wf_path = Path(self._tmp) / ".workflow_active"
-        wf_data = json.dumps({
-            "active": True, "task_type": "Dev", "workstreams": 1,
-            "started_at": time.time(), "pid": os.getpid(),
-        })
+        wf_data = json.dumps(
+            {
+                "active": True,
+                "task_type": "Dev",
+                "workstreams": 1,
+                "started_at": time.time(),
+                "pid": os.getpid(),
+            }
+        )
         wf_path.write_text(wf_data + "\n")
         ok, _ = should_auto_route("fix the login bug")
         self.assertFalse(ok)
@@ -244,6 +256,7 @@ class TestLogFormatCorrectness(unittest.TestCase):
         ts = entry["timestamp"]
         # Should parse without error
         from datetime import datetime
+
         datetime.fromisoformat(ts)
 
     def test_prompt_truncated_at_200_chars(self):
@@ -303,8 +316,7 @@ class TestLoggingPerformance(unittest.TestCase):
         avg_ms = total_ms / iterations
 
         # The total call includes routing logic; we just verify it's reasonable
-        self.assertLess(avg_ms, 10,
-                        f"Average call time {avg_ms:.2f}ms is too high")
+        self.assertLess(avg_ms, 10, f"Average call time {avg_ms:.2f}ms is too high")
 
 
 class TestLoggingFailOpen(unittest.TestCase):

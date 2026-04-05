@@ -835,6 +835,8 @@ class TestProgressFiles:
         sidecar = json.loads(progress_sidecar.read_text(encoding="utf-8"))
         assert read_count == 2
         assert sidecar["checkpoint_id"] == "checkpoint-two"
+
+
 class TestPathTraversalPrevention:
     """Verify that crafted recipe names cannot escape the temp directory."""
 

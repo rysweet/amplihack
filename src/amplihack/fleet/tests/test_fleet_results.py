@@ -10,12 +10,10 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
 from amplihack.fleet.fleet_results import ResultCollector, TaskResult
-
 
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — TaskResult
@@ -239,17 +237,21 @@ class TestResultCollectorSummary:
 
     def test_summary_with_data(self, tmp_path):
         collector = ResultCollector(results_dir=tmp_path / "results")
-        collector.record(TaskResult(
-            task_id="t1",
-            status="success",
-            pr_url="https://github.com/org/repo/pull/1",
-            completed_at=datetime(2025, 6, 1),
-        ))
-        collector.record(TaskResult(
-            task_id="t2",
-            status="failure",
-            completed_at=datetime(2025, 6, 2),
-        ))
+        collector.record(
+            TaskResult(
+                task_id="t1",
+                status="success",
+                pr_url="https://github.com/org/repo/pull/1",
+                completed_at=datetime(2025, 6, 1),
+            )
+        )
+        collector.record(
+            TaskResult(
+                task_id="t2",
+                status="failure",
+                completed_at=datetime(2025, 6, 2),
+            )
+        )
 
         text = collector.summary()
         assert "2 tasks" in text

@@ -6,9 +6,22 @@ Tests complete hook workflows from outside-in perspective:
 - Hook lifecycle management
 """
 
+import subprocess
+
 import pytest
 
 from tests.harness import HookTestHarness
+
+# Skip entire module if 'amplihack hooks' subcommand is not available
+_hooks_available = subprocess.run(
+    ["amplihack", "hooks", "--help"],
+    capture_output=True,
+    timeout=10,
+).returncode == 0
+pytestmark = pytest.mark.skipif(
+    not _hooks_available,
+    reason="amplihack hooks subcommand not available",
+)
 
 
 class TestHookExecution:

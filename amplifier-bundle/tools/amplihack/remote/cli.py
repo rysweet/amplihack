@@ -53,7 +53,9 @@ def remote_cli():
 @click.option("--no-reuse", is_flag=True, help="Always provision fresh VM")
 @click.option("--timeout", default=120, type=int, help="Max execution time in minutes")
 @click.option("--region", default=None, help="Azure region")
-@click.option("--port", default=None, type=int, help="Reuse existing bastion tunnel on this local port")
+@click.option(
+    "--port", default=None, type=int, help="Reuse existing bastion tunnel on this local port"
+)
 @click.argument("azlin_args", nargs=-1, type=click.UNPROCESSED)
 def remote_execute(
     command: str,
@@ -92,6 +94,15 @@ def remote_execute(
 
     if timeout < 5 or timeout > 480:
         click.echo("Error: timeout must be between 5 and 480 minutes", err=True)
+        sys.exit(1)
+
+    # Fail immediately when Anthropic is disabled — remote execution is Anthropic-only
+    if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+        click.echo(
+            "Error: Remote execution requires Anthropic but ANTHROPIC_DISABLED=true. "
+            "Unset ANTHROPIC_DISABLED to use remote execution.",
+            err=True,
+        )
         sys.exit(1)
 
     # Get repository path (current directory)
@@ -406,8 +417,12 @@ def cmd_list(status: str | None, output_json: bool):
     help="VM size tier (s=1, m=2, l=4, xl=8 sessions) [default: l]",
 )
 @click.option("--region", default=None, help="Azure region")
-@click.option("--port", default=None, type=int, help="Reuse existing bastion tunnel on this local port")
-def cmd_start(prompts: tuple, command: str, max_turns: int, size: str, region: str | None, port: int | None):
+@click.option(
+    "--port", default=None, type=int, help="Reuse existing bastion tunnel on this local port"
+)
+def cmd_start(
+    prompts: tuple, command: str, max_turns: int, size: str, region: str | None, port: int | None
+):
     """Start one or more detached remote sessions.
 
     Usage: amplihack remote start [options] "<prompt1>" "<prompt2>" ...
@@ -427,6 +442,15 @@ def cmd_start(prompts: tuple, command: str, max_turns: int, size: str, region: s
         # Validate arguments
         if not prompts:
             click.echo("Error: At least one prompt is required", err=True)
+            sys.exit(1)
+
+        # Fail immediately when Anthropic is disabled — remote execution is Anthropic-only
+        if os.environ.get("ANTHROPIC_DISABLED", "").lower() == "true":
+            click.echo(
+                "Error: Remote execution requires Anthropic but ANTHROPIC_DISABLED=true. "
+                "Unset ANTHROPIC_DISABLED to use remote execution.",
+                err=True,
+            )
             sys.exit(1)
 
         # Convert size to VMSize enum

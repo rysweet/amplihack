@@ -18,9 +18,131 @@ Philosophy:
 
 import re
 from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path
 
 import pytest
+import yaml
+
+
+FENCED_CODE_BLOCK_RE = re.compile(
+    r"(?ms)^(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^\s*(?P=fence)\s*$"
+)
+HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+INLINE_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+REFERENCE_LINK_RE = re.compile(r"^\[([^\]]+)\]:\s*(.+)$", re.MULTILINE)
+PLACEHOLDER_LINK_RE = re.compile(r"^\{[^}]+\}$")
+IGNORED_LINK_TARGETS = {"link", "url", "{url}", "{homepageUrl}", "{pr_url}", "{docs_url}"}
+FILESYSTEM_LINK_PREFIXES = ("~/", "/Users/", "/home/")
+
+
+def _strip_non_navigational_content(content: str) -> str:
+    """Remove content that can contain example-only links."""
+    content = FENCED_CODE_BLOCK_RE.sub("", content)
+    content = HTML_COMMENT_RE.sub("", content)
+    return content
+
+
+def _extract_markdown_links(content: str) -> list[str]:
+    """Extract markdown links after removing non-navigational content."""
+    cleaned = _strip_non_navigational_content(content)
+    inline_links = INLINE_LINK_RE.findall(cleaned)
+    reference_links = REFERENCE_LINK_RE.findall(cleaned)
+    return [link for _, link in inline_links + reference_links]
+
+
+def _normalize_link_target(link: str) -> str:
+    """Normalize a link target for resolution checks."""
+    return link.strip().removeprefix("<").removesuffix(">")
+
+
+def _should_skip_link_target(link: str) -> bool:
+    """Skip placeholder or environment-specific links that are not publishable docs targets."""
+    normalized_link = _normalize_link_target(link)
+    if normalized_link.startswith(("http://", "https://", "mailto:", "#")):
+        return True
+    if normalized_link.startswith(FILESYSTEM_LINK_PREFIXES):
+        return True
+    if normalized_link in IGNORED_LINK_TARGETS:
+        return True
+    return bool(PLACEHOLDER_LINK_RE.fullmatch(normalized_link))
+
+
+def _resolve_existing_markdown_target(target: Path) -> Path:
+    """Resolve directory targets to README.md or index.md when present."""
+    if target.is_dir():
+        for candidate_name in ("README.md", "index.md"):
+            candidate = target / candidate_name
+            if candidate.exists():
+                return candidate
+    return target
+
+
+def _extract_mkdocs_nav_text(config_path: Path) -> str | None:
+    """Extract the nav block from mkdocs.yml so it can be parsed independently."""
+    if not config_path.exists():
+        return None
+
+    lines = config_path.read_text(encoding="utf-8").splitlines()
+    nav_start = next((i for i, line in enumerate(lines) if line.startswith("nav:")), None)
+    if nav_start is None:
+        return None
+
+    nav_end = len(lines)
+    for i, line in enumerate(lines[nav_start + 1 :], nav_start + 1):
+        if line and not line.startswith((" ", "#")):
+            nav_end = i
+            break
+
+    return "\n".join(lines[nav_start:nav_end])
+
+
+@lru_cache(maxsize=4)
+def _load_mkdocs_nav_docs(docs_dir: Path) -> tuple[Path, ...]:
+    """Return the markdown documents that are part of the published MkDocs site."""
+    nav_text = _extract_mkdocs_nav_text(docs_dir.parent / "mkdocs.yml")
+    if not nav_text:
+        return ()
+
+    nav_block = yaml.safe_load(nav_text) or {}
+    nav = nav_block.get("nav", [])
+    docs: set[Path] = set()
+
+    def walk(node: object) -> None:
+        if isinstance(node, str):
+            if node.endswith(".md"):
+                candidate = (docs_dir / node).resolve()
+                if candidate.exists():
+                    docs.add(candidate)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+        elif isinstance(node, dict):
+            for value in node.values():
+                walk(value)
+
+    walk(nav)
+    return tuple(sorted(docs))
+
+
+def _find_published_docs(docs_dir: Path) -> list[Path]:
+    """Use MkDocs navigation as the source of truth when available."""
+    published_docs = list(_load_mkdocs_nav_docs(docs_dir))
+    if published_docs:
+        return published_docs
+    return list(docs_dir.rglob("*.md"))
+
+
+def _resolve_internal_link(source_file: Path, docs_dir: Path, link: str) -> Path:
+    """Resolve an internal docs link to a repository path."""
+    if link.startswith("/"):
+        if link.startswith("/.claude/"):
+            target = Path(docs_dir.parent) / link.lstrip("/")
+        else:
+            target = docs_dir / link.lstrip("/")
+    else:
+        target = (source_file.parent / link).resolve()
+    return _resolve_existing_markdown_target(target)
 
 
 class DocLinkValidator:
@@ -33,14 +155,11 @@ class DocLinkValidator:
 
     def _find_all_docs(self) -> list[Path]:
         """Find all markdown files in docs directory."""
-        return list(self.docs_dir.rglob("*.md"))
+        return _find_published_docs(self.docs_dir)
 
     def _extract_links(self, content: str) -> list[str]:
         """Extract all markdown links from content."""
-        # Match [text](link) and [text]: link patterns
-        inline_links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
-        reference_links = re.findall(r"^\[([^\]]+)\]:\s*(.+)$", content, re.MULTILINE)
-        return [link for _, link in inline_links + reference_links]
+        return _extract_markdown_links(content)
 
     def _resolve_link(self, source_file: Path, link: str) -> tuple[bool, str]:
         """
@@ -50,25 +169,18 @@ class DocLinkValidator:
             Tuple of (is_valid, reason_if_invalid)
         """
         # Skip external links
-        if link.startswith(("http://", "https://", "mailto:", "#")):
-            return (True, "")
+        normalized_link = _normalize_link_target(link)
 
-        # Handle anchor-only links
-        if link.startswith("#"):
+        if _should_skip_link_target(normalized_link):
             return (True, "")
 
         # Remove anchor fragments
-        link_without_anchor = link.split("#")[0]
+        link_without_anchor = normalized_link.split("#")[0]
         if not link_without_anchor:
             return (True, "")
 
         # Resolve relative path
-        if link.startswith("/"):
-            # Absolute path from repo root
-            target = Path(self.docs_dir.parent) / link.lstrip("/")
-        else:
-            # Relative to current file
-            target = (source_file.parent / link_without_anchor).resolve()
+        target = _resolve_internal_link(source_file, self.docs_dir, link_without_anchor)
 
         # Check if target exists
         if not target.exists():
@@ -127,21 +239,19 @@ class OrphanDetector:
 
     def _find_all_docs(self) -> list[Path]:
         """Find all markdown files in docs directory."""
-        return list(self.docs_dir.rglob("*.md"))
+        return _find_published_docs(self.docs_dir)
 
     def _extract_internal_links(self, content: str) -> list[str]:
         """Extract internal (non-http) links from content."""
-        inline_links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
-        reference_links = re.findall(r"^\[([^\]]+)\]:\s*(.+)$", content, re.MULTILINE)
-
-        all_links = [link for _, link in inline_links + reference_links]
+        all_links = _extract_markdown_links(content)
 
         # Filter to internal links only
         internal = []
         for link in all_links:
-            if not link.startswith(("http://", "https://", "mailto:")):
+            normalized_link = _normalize_link_target(link)
+            if not _should_skip_link_target(normalized_link):
                 # Remove anchor fragments
-                link_without_anchor = link.split("#")[0]
+                link_without_anchor = normalized_link.split("#")[0]
                 if link_without_anchor:
                     internal.append(link_without_anchor)
 
@@ -149,16 +259,7 @@ class OrphanDetector:
 
     def _resolve_link_to_file(self, source_file: Path, link: str) -> Path | None:
         """Resolve a link to an actual file path."""
-        if link.startswith("/"):
-            # Absolute from docs root - handle /.claude/ prefix specially
-            if link.startswith("/.claude/"):
-                # Links like /.claude/workflow/DEFAULT_WORKFLOW.md
-                target = Path(self.docs_dir.parent) / link.lstrip("/")
-            else:
-                target = self.docs_dir / link.lstrip("/")
-        else:
-            # Relative to current file
-            target = (source_file.parent / link).resolve()
+        target = _resolve_internal_link(source_file, self.docs_dir, link)
 
         return target if target.exists() else None
 
@@ -171,6 +272,11 @@ class OrphanDetector:
         """
         if not self.index_file.exists():
             return set()
+
+        published_docs = _load_mkdocs_nav_docs(self.docs_dir)
+        if published_docs:
+            self.reachable = set(published_docs)
+            return self.reachable
 
         to_visit = [self.index_file]
         visited = set()
@@ -299,15 +405,13 @@ class NavigationDepthChecker:
 
     def _extract_internal_links(self, content: str) -> list[str]:
         """Extract internal links from content."""
-        inline_links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
-        reference_links = re.findall(r"^\[([^\]]+)\]:\s*(.+)$", content, re.MULTILINE)
-
-        all_links = [link for _, link in inline_links + reference_links]
+        all_links = _extract_markdown_links(content)
 
         internal = []
         for link in all_links:
-            if not link.startswith(("http://", "https://", "mailto:")):
-                link_without_anchor = link.split("#")[0]
+            normalized_link = _normalize_link_target(link)
+            if not _should_skip_link_target(normalized_link):
+                link_without_anchor = normalized_link.split("#")[0]
                 if link_without_anchor:
                     internal.append(link_without_anchor)
 
@@ -315,13 +419,7 @@ class NavigationDepthChecker:
 
     def _resolve_link_to_file(self, source_file: Path, link: str) -> Path | None:
         """Resolve a link to an actual file path."""
-        if link.startswith("/"):
-            if link.startswith("/.claude/"):
-                target = Path(self.docs_dir.parent) / link.lstrip("/")
-            else:
-                target = self.docs_dir / link.lstrip("/")
-        else:
-            target = (source_file.parent / link).resolve()
+        target = _resolve_internal_link(source_file, self.docs_dir, link)
 
         return target if target.exists() and target.suffix == ".md" else None
 
@@ -375,7 +473,12 @@ class NavigationDepthChecker:
         """
         self.calculate_depths()
 
-        deep_docs = [(doc, depth) for doc, depth in self.depths.items() if depth > threshold]
+        published_docs = set(_load_mkdocs_nav_docs(self.docs_dir))
+        deep_docs = [
+            (doc, depth)
+            for doc, depth in self.depths.items()
+            if depth > threshold and (not published_docs or doc in published_docs)
+        ]
 
         return sorted(deep_docs, key=lambda x: x[1], reverse=True)
 

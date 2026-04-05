@@ -19,11 +19,11 @@ Field-level contract for canonical execution roots, GitHub identity gating, and 
 
 These inputs matter to the issue 107 guardrails.
 
-| Field | Type | Required | Meaning |
-| --- | --- | --- | --- |
-| `task_description` | `str` | Yes | Human-readable description used by the workflow and branch naming logic. |
-| `repo_path` | `str` | Yes | Repository root from which the execution root is derived. |
-| `branch_prefix` | `str` | No | Branch prefix such as `feat`, `fix`, or `docs`. |
+| Field                 | Type  | Required                           | Meaning                                                                                                 |
+| --------------------- | ----- | ---------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `task_description`    | `str` | Yes                                | Human-readable description used by the workflow and branch naming logic.                                |
+| `repo_path`           | `str` | Yes                                | Repository root from which the execution root is derived.                                               |
+| `branch_prefix`       | `str` | No                                 | Branch prefix such as `feat`, `fix`, or `docs`.                                                         |
 | `expected_gh_account` | `str` | Required for GitHub mutation steps | The exact GitHub login that is allowed to create issues, PRs, or perform other in-scope `gh` mutations. |
 
 `expected_gh_account` is the only new feature-specific input. The rest of the contract hardens how existing workflow context is interpreted.
@@ -36,13 +36,13 @@ After `default-workflow` step 04, downstream code reads `worktree_setup`.
 
 ### Required Fields
 
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `execution_root` | `str` | Canonical absolute path used by every downstream workflow step. |
-| `worktree_path` | `str` | Temporary compatibility alias that points to the same location as `execution_root`. |
-| `branch_name` | `str` | Branch associated with the execution root. |
-| `created` | `bool` | `true` when the workflow created a new worktree or branch for the run. |
-| `bootstrap` | `bool` | `true` when the run had to fall back to `HEAD` because a normal remote base was unavailable. |
+| Field            | Type   | Meaning                                                                                      |
+| ---------------- | ------ | -------------------------------------------------------------------------------------------- |
+| `execution_root` | `str`  | Canonical absolute path used by every downstream workflow step.                              |
+| `worktree_path`  | `str`  | Temporary compatibility alias that points to the same location as `execution_root`.          |
+| `branch_name`    | `str`  | Branch associated with the execution root.                                                   |
+| `created`        | `bool` | `true` when the workflow created a new worktree or branch for the run.                       |
+| `bootstrap`      | `bool` | `true` when the run had to fall back to `HEAD` because a normal remote base was unavailable. |
 
 ### Example
 
@@ -82,13 +82,13 @@ Read-only commands such as `gh auth status` remain part of pre-flight validation
 
 ### Gate Behavior
 
-| Condition | Result |
-| --- | --- |
-| `expected_gh_account` missing | Fail closed before the mutation runs. |
-| `gh` unauthenticated | Fail closed. |
-| Authenticated login cannot be resolved | Fail closed. |
-| Authenticated login does not match `expected_gh_account` | Fail closed. |
-| Authenticated login matches `expected_gh_account` | Mutation step may proceed. |
+| Condition                                                | Result                                |
+| -------------------------------------------------------- | ------------------------------------- |
+| `expected_gh_account` missing                            | Fail closed before the mutation runs. |
+| `gh` unauthenticated                                     | Fail closed.                          |
+| Authenticated login cannot be resolved                   | Fail closed.                          |
+| Authenticated login does not match `expected_gh_account` | Fail closed.                          |
+| Authenticated login matches `expected_gh_account`        | Mutation step may proceed.            |
 
 ### Example Failure
 
@@ -113,7 +113,12 @@ Observer code reports liveness. It does not choose a directory, rewrite context,
 `rust_runner_execution.py` emits structured step-transition records:
 
 ```json
-{"type":"step_transition","step":"step-04-setup-worktree","status":"start","ts":1774905059.2169325}
+{
+  "type": "step_transition",
+  "step": "step-04-setup-worktree",
+  "status": "start",
+  "ts": 1774905059.2169325
+}
 ```
 
 Status values:

@@ -17,10 +17,15 @@ References: #3638, #3046 (heredoc safety), #3002 (working_dir forwarding)
 from __future__ import annotations
 
 import re
+import json
+import os
+import subprocess
+import textwrap
 from pathlib import Path
 
 import pytest
 import yaml
+from amplihack.recipes.models import Step, StepType
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RECIPE_PATH = REPO_ROOT / "amplifier-bundle" / "recipes" / "quality-audit-cycle.yaml"
@@ -337,6 +342,173 @@ class TestRecursiveCycleStep:
             "target_path",
         ):
             assert key in final_report, f"final_report missing {key!r}."
+
+
+# ============================================================================
+# BUG 4: fix step skips confirmed findings due to wrong condition
+# ============================================================================
+
+
+class TestBug4FixCondition:
+    """The fix step must run when confirmed_count > 0 and skip when it is 0."""
+
+    def _fix_step(self, steps_by_id):
+        return Step(
+            id="fix",
+            step_type=StepType.AGENT,
+            condition=steps_by_id["fix"]["condition"],
+        )
+
+    def test_fix_condition_uses_confirmed_count(self, steps_by_id):
+        condition = steps_by_id["fix"]["condition"]
+        assert "confirmed_count" in condition
+        assert "'confirmed' in validated_findings" not in condition
+
+    def test_fix_runs_when_confirmed_findings_exist(self, steps_by_id):
+        step = self._fix_step(steps_by_id)
+        assert step.evaluate_condition({"validated_findings": {"confirmed_count": 2}})
+
+    def test_fix_skips_when_no_confirmed_findings_exist(self, steps_by_id):
+        step = self._fix_step(steps_by_id)
+        assert not step.evaluate_condition({"validated_findings": {"confirmed_count": 0}})
+
+
+class TestBug4NoisyJsonParsing:
+    """merge-validations / verify-fixes must tolerate noisy LLM-style JSON output."""
+
+    def _step(self, recipe: dict, step_id: str) -> dict:
+        for step in recipe["steps"]:
+            if step["id"] == step_id:
+                return step
+        pytest.fail(f"Step '{step_id}' not found")
+
+    def _render_templates(self, text: str, values: dict[str, str]) -> str:
+        rendered = text
+        for key, value in values.items():
+            rendered = rendered.replace(f"{{{{{key}}}}}", value)
+        return rendered
+
+    def _run_bash(
+        self,
+        script: str,
+        tmp_path: Path,
+        *,
+        env: dict[str, str] | None = None,
+        timeout: int = 20,
+    ) -> subprocess.CompletedProcess[str]:
+        runtime_env = os.environ.copy()
+        runtime_env["PYTHONPATH"] = str(REPO_ROOT / "src")
+        if env:
+            runtime_env.update(env)
+        return subprocess.run(
+            ["/bin/bash", "-c", script],
+            capture_output=True,
+            text=True,
+            cwd=str(tmp_path),
+            env=runtime_env,
+            timeout=timeout,
+        )
+
+    def test_merge_validations_extracts_json_from_noisy_validator_output(self, recipe, tmp_path):
+        merge_step = self._step(recipe, "merge-validations")
+        fix_step = self._step(recipe, "fix")
+        validator_payload = textwrap.dedent(
+            """\
+            I checked the code and here is the result.
+
+            ```json
+            {
+              "validator": "agent-1",
+              "cycle": 1,
+              "validated": [
+                {
+                  "finding_id": 1,
+                  "verdict": "confirmed",
+                  "new_severity": "medium",
+                  "reasoning": "confirmed with direct evidence"
+                }
+              ],
+              "confirmed_count": 1,
+              "false_positive_count": 0
+            }
+            ```
+            """
+        )
+        reviewer_payload = textwrap.dedent(
+            """\
+            Final verdict after review:
+            {"validator":"agent-2","cycle":1,"validated":[{"finding_id":1,"verdict":"confirmed","new_severity":"medium","reasoning":"same issue confirmed"}],"confirmed_count":1,"false_positive_count":0}
+            """
+        )
+        architect_payload = "No JSON here on purpose."
+        result = self._run_bash(
+            self._render_templates(
+                merge_step["command"],
+                {
+                    "validation_agent_1": validator_payload,
+                    "validation_agent_2": reviewer_payload,
+                    "validation_agent_3": architect_payload,
+                    "validation_threshold": "2",
+                    "cycle_number": "1",
+                },
+            ),
+            tmp_path,
+        )
+        assert result.returncode == 0, (
+            "merge-validations should parse noisy validator output.\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+        merged = json.loads(result.stdout)
+        assert merged["confirmed_count"] == 1
+        fix_condition = Step(id="fix", step_type=StepType.AGENT, condition=fix_step["condition"])
+        assert fix_condition.evaluate_condition({"validated_findings": merged})
+
+    def test_verify_fixes_parses_noisy_fix_agent_output(self, recipe, tmp_path):
+        verify_step = self._step(recipe, "verify-fixes")
+        validated_findings = json.dumps(
+            {
+                "validated": [
+                    {"finding_id": 1, "verdict": "confirmed"},
+                    {"finding_id": 2, "verdict": "false_positive"},
+                ]
+            },
+            indent=2,
+        )
+        fix_results = textwrap.dedent(
+            """\
+            Builder completed the batch.
+
+            ```json
+            {
+              "fixes_applied": [
+                {"finding_id": 1, "status": "fixed"}
+              ],
+              "fixes_skipped": [
+                {"finding_id": 2, "reason": "false positive"}
+              ],
+              "total_fixed": 1,
+              "total_skipped": 1,
+              "status": "COMPLETE"
+            }
+            ```
+            """
+        )
+        command = self._render_templates(
+            verify_step["command"],
+            {
+                "validated_findings": validated_findings,
+                "fix_results": fix_results,
+                "fix_all_per_cycle": "true",
+            },
+        )
+        result = self._run_bash(command, tmp_path)
+        assert result.returncode == 0, (
+            "verify-fixes should accept noisy fix-agent JSON output.\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+        assert "VERIFY: SKIP (unparseable)" not in result.stdout
+        assert "Confirmed findings: 1" in result.stdout
+        assert "VERIFY: PASS" in result.stdout
 
 
 # ============================================================================

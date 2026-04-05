@@ -8,15 +8,12 @@ Testing pyramid:
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
 from amplihack.fleet.fleet_dashboard import FleetDashboard, ProjectInfo
-from amplihack.fleet.fleet_tasks import FleetTask, TaskPriority, TaskQueue, TaskStatus
-
+from amplihack.fleet.fleet_tasks import TaskQueue
 
 # ────────────────────────────────────────────
 # UNIT TESTS (60%) — ProjectInfo
@@ -262,8 +259,8 @@ class TestFleetDashboardUpdateFromState:
 
     def test_update_cost_no_started_at(self):
         """Without started_at, default to 1 hour."""
-        from amplihack.fleet.fleet_state import FleetState, VMInfo
         from amplihack.fleet.fleet_dashboard import DEFAULT_COST_PER_HOUR
+        from amplihack.fleet.fleet_state import FleetState, VMInfo
 
         dashboard = FleetDashboard()
         proj = dashboard.add_project(repo_url="https://github.com/org/repo")

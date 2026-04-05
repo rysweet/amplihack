@@ -54,7 +54,9 @@ class TestLearningAgent:
                 new_callable=AsyncMock,
                 side_effect=[overloaded, "answer"],
             ) as completion,
-            patch("amplihack.agents.goal_seeking.learning_agent.asyncio.sleep", new_callable=AsyncMock) as sleep,
+            patch(
+                "amplihack.agents.goal_seeking.learning_agent.asyncio.sleep", new_callable=AsyncMock
+            ) as sleep,
         ):
             result = await agent._llm_completion_with_retry(
                 [{"role": "user", "content": "hello"}],
@@ -137,7 +139,10 @@ class TestLearningAgent:
         agent.memory.store_episode = MagicMock(return_value="episode-1")
         with (
             patch.object(
-                agent, "_detect_temporal_metadata", new_callable=AsyncMock, return_value={"source_date": "2025-01-02"}
+                agent,
+                "_detect_temporal_metadata",
+                new_callable=AsyncMock,
+                return_value={"source_date": "2025-01-02"},
             ),
             patch.object(
                 agent,
@@ -178,7 +183,9 @@ class TestLearningAgent:
     @pytest.mark.asyncio
     async def test_prepare_fact_batch_skips_summary_when_disabled(self, agent):
         with (
-            patch.object(agent, "_detect_temporal_metadata", new_callable=AsyncMock, return_value={}),
+            patch.object(
+                agent, "_detect_temporal_metadata", new_callable=AsyncMock, return_value={}
+            ),
             patch.object(
                 agent,
                 "_extract_facts_with_llm",
@@ -192,7 +199,9 @@ class TestLearningAgent:
                     }
                 ],
             ),
-            patch.object(agent, "_build_summary_store_kwargs", new_callable=AsyncMock) as build_summary,
+            patch.object(
+                agent, "_build_summary_store_kwargs", new_callable=AsyncMock
+            ) as build_summary,
         ):
             batch = await agent.prepare_fact_batch("Campaign content", include_summary=False)
 
@@ -444,7 +453,9 @@ class TestLearningAgent:
                 },
             ),
             patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
-            patch.object(agent, "_synthesize_with_llm", new_callable=AsyncMock, return_value="answer"),
+            patch.object(
+                agent, "_synthesize_with_llm", new_callable=AsyncMock, return_value="answer"
+            ),
             patch.object(
                 agent,
                 "_entity_linked_retrieval",
@@ -678,7 +689,9 @@ class TestLearningAgent:
         assert [fact["experience_id"] for fact in synth_context[2:4]] == ["noise-1", "noise-2"]
 
     @pytest.mark.asyncio
-    async def test_synthesize_with_llm_includes_temporal_markers_for_incremental_update(self, agent):
+    async def test_synthesize_with_llm_includes_temporal_markers_for_incremental_update(
+        self, agent
+    ):
         """incremental_update synthesis should show temporal markers even when needs_temporal is false."""
         context = [
             {
@@ -691,7 +704,9 @@ class TestLearningAgent:
             }
         ]
 
-        with patch.object(agent, "_llm_completion_with_retry", new_callable=AsyncMock, return_value="answer") as llm:
+        with patch.object(
+            agent, "_llm_completion_with_retry", new_callable=AsyncMock, return_value="answer"
+        ) as llm:
             answer = await agent._synthesize_with_llm(
                 "How did the Atlas average response time change over time?",
                 context,
@@ -928,7 +943,9 @@ class TestLearningAgent:
                 },
             ),
             patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
-            patch.object(agent, "_synthesize_with_llm", new_callable=AsyncMock, return_value="answer"),
+            patch.object(
+                agent, "_synthesize_with_llm", new_callable=AsyncMock, return_value="answer"
+            ),
             patch.object(
                 agent,
                 "_entity_linked_retrieval",
@@ -1033,7 +1050,9 @@ class TestLearningAgent:
                 },
             ),
             patch.object(agent, "_simple_retrieval", side_effect=simple_retrieval),
-            patch.object(agent, "_synthesize_with_llm", new_callable=AsyncMock, return_value="answer"),
+            patch.object(
+                agent, "_synthesize_with_llm", new_callable=AsyncMock, return_value="answer"
+            ),
             patch.object(
                 agent,
                 "_keyword_expanded_retrieval",
@@ -1079,5 +1098,3 @@ class TestLearningAgent:
         answer = await agent._synthesize_with_llm("Question?", context, "L1")
 
         assert "unable" in answer.lower() or "error" in answer.lower()
-
-

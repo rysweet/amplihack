@@ -186,4 +186,3 @@ class CodeSynthesisMixin:
             logger.warning("Entity/field extraction failed: %s", e)
 
         return {"code": "", "index_expr": "", "transitions": [], "result": None}
-

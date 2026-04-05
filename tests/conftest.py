@@ -708,11 +708,9 @@ def validate_no_merge_conflicts():
         Returns:
             Tuple of (is_clean, line_numbers_with_conflicts)
         """
-        conflict_markers = [
-            "<<<<<<<",  # Conflict start
-            "=======",  # Conflict middle
-            ">>>>>>>",  # Conflict end
-        ]
+        import re
+        # Match real conflict markers: exactly 7 chars at start of line
+        conflict_re = re.compile(r"^(<{7}|={7}(?!=)|>{7})")
 
         try:
             content = file_path.read_text(encoding="utf-8")
@@ -720,7 +718,7 @@ def validate_no_merge_conflicts():
 
             conflict_lines = []
             for line_num, line in enumerate(lines, start=1):
-                if any(marker in line for marker in conflict_markers):
+                if conflict_re.match(line):
                     conflict_lines.append(line_num)
 
             return len(conflict_lines) == 0, conflict_lines
@@ -763,14 +761,15 @@ def validate_no_todos_in_production():
             return True, []
 
         todo_patterns = [
-            "TODO",
-            "FIXME",
-            "XXX",
-            "HACK",
-            "NotImplementedError",  # Catch stub implementations
+            r"\bTODO\b",
+            r"\bFIXME\b",
+            r"\bXXX\b",
+            r"\bHACK\b",
+            r"\bNotImplementedError\b",  # Catch stub implementations
         ]
 
         try:
+            import re
             content = file_path.read_text(encoding="utf-8")
             lines = content.split("\n")
 
@@ -778,7 +777,7 @@ def validate_no_todos_in_production():
             for line_num, line in enumerate(lines, start=1):
                 # Skip comments about TODOs (like this docstring)
                 if any(
-                    pattern in line and not line.strip().startswith("#")
+                    re.search(pattern, line) and not line.strip().startswith("#")
                     for pattern in todo_patterns
                 ):
                     todos.append((line_num, line.strip()))

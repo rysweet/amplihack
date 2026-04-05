@@ -155,6 +155,62 @@ SETTINGS_TEMPLATE = {
 }
 
 
+def migrate_legacy_hook_paths(settings: dict) -> int:
+    """Rewrite legacy amplihack hook paths in-place.
+
+    Migrates commands that still point at the old
+    ``$HOME/.claude/tools/amplihack/hooks/`` location to the modern
+    ``$HOME/.amplihack/.claude/tools/amplihack/hooks/`` location.
+
+    Also handles already-expanded absolute HOME paths.
+
+    Args:
+        settings: Parsed settings.json structure to update in-place.
+
+    Returns:
+        Number of hook command strings migrated.
+    """
+    hooks = settings.get("hooks")
+    if not isinstance(hooks, dict):
+        return 0
+
+    home = os.path.expanduser("~")
+    legacy_prefixes = (
+        "$HOME/.claude/tools/amplihack/hooks/",
+        os.path.join(home, ".claude", "tools", "amplihack", "hooks") + os.sep,
+    )
+    modern_prefixes = (
+        "$HOME/.amplihack/.claude/tools/amplihack/hooks/",
+        os.path.join(home, ".amplihack", ".claude", "tools", "amplihack", "hooks") + os.sep,
+    )
+
+    migrated = 0
+    for hook_configs in hooks.values():
+        if not isinstance(hook_configs, list):
+            continue
+        for config in hook_configs:
+            if not isinstance(config, dict):
+                continue
+            nested_hooks = config.get("hooks")
+            if not isinstance(nested_hooks, list):
+                continue
+            for hook in nested_hooks:
+                if not isinstance(hook, dict):
+                    continue
+                command = hook.get("command")
+                if not isinstance(command, str):
+                    continue
+                if command.startswith(modern_prefixes):
+                    continue
+                for legacy_prefix, modern_prefix in zip(legacy_prefixes, modern_prefixes, strict=True):
+                    if command.startswith(legacy_prefix):
+                        hook["command"] = modern_prefix + command[len(legacy_prefix) :]
+                        migrated += 1
+                        break
+
+    return migrated
+
+
 def _strip_managed_hooks(hooks_dict):
     """Remove amplihack/xpia-managed hook entries, preserving user-added hooks.
 
@@ -454,6 +510,9 @@ def ensure_settings_json():
             with open(settings_path, encoding="utf-8") as f:
                 settings = json.load(f)
             print("  📋 Found existing settings.json")
+            migrated_legacy_paths = migrate_legacy_hook_paths(settings)
+            if migrated_legacy_paths:
+                print(f"  🔄 Migrated {migrated_legacy_paths} legacy hook path(s)")
         except Exception as e:
             print(f"  ⚠️  Could not read existing settings.json: {e}")
             print("  🔧 Creating new settings.json from template")
@@ -559,6 +618,7 @@ def ensure_settings_json():
 
 __all__ = [
     "ensure_settings_json",
+    "migrate_legacy_hook_paths",
     "update_hook_paths",
     "validate_hook_paths",
     "write_json_atomic",

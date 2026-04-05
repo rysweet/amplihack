@@ -3,6 +3,7 @@
 **Type**: Reference (Information-Oriented)
 **Last Updated**: 2026-02-28
 **Source Files**:
+
 - `src/amplihack/agents/goal_seeking/learning_agent.py`
 - `src/amplihack/eval/long_horizon_memory.py`
 
@@ -12,11 +13,11 @@ This reference documents the retrieval methods added to the amplihack evaluation
 
 ## Retrieval Method Comparison
 
-| Method | Use Case | ID Pattern | Context Scope | Multi-Entity | Performance |
-|--------|----------|------------|---------------|--------------|-------------|
-| `_entity_linked_retrieval` | Structured entity IDs | INC-*, CVE-*, PROJ-* | All contexts | No | O(n×e) where n=facts, e=entities |
-| `_multi_entity_retrieval` | Multi-hop reasoning | Named entities | Per entity | Yes | O(n×e×k) where k=facts per entity |
-| `_standard_retrieval` | General questions | N/A | Single context | No | O(n) |
+| Method                     | Use Case              | ID Pattern            | Context Scope  | Multi-Entity | Performance                       |
+| -------------------------- | --------------------- | --------------------- | -------------- | ------------ | --------------------------------- |
+| `_entity_linked_retrieval` | Structured entity IDs | INC-_, CVE-_, PROJ-\* | All contexts   | No           | O(n×e) where n=facts, e=entities  |
+| `_multi_entity_retrieval`  | Multi-hop reasoning   | Named entities        | Per entity     | Yes          | O(n×e×k) where k=facts per entity |
+| `_standard_retrieval`      | General questions     | N/A                   | Single context | No           | O(n)                              |
 
 ## Entity-Linked Retrieval
 
@@ -50,12 +51,12 @@ def _entity_linked_retrieval(
 
 The method recognizes these structured ID formats:
 
-| Pattern | Description | Example | Use Case |
-|---------|-------------|---------|----------|
-| `INC-YYYY-NNN` | Incident reports | INC-2024-089 | Security incidents, outages |
-| `CVE-YYYY-NNNNN` | CVE identifiers | CVE-2024-12345 | Vulnerability tracking |
-| `PROJ-NNN` | Project codes | PROJ-456 | Project management |
-| `SRV-NNN` | Server IDs | SRV-789 | Infrastructure inventory |
+| Pattern          | Description      | Example        | Use Case                    |
+| ---------------- | ---------------- | -------------- | --------------------------- |
+| `INC-YYYY-NNN`   | Incident reports | INC-2024-089   | Security incidents, outages |
+| `CVE-YYYY-NNNNN` | CVE identifiers  | CVE-2024-12345 | Vulnerability tracking      |
+| `PROJ-NNN`       | Project codes    | PROJ-456       | Project management          |
+| `SRV-NNN`        | Server IDs       | SRV-789        | Infrastructure inventory    |
 
 ### Algorithm
 
@@ -95,12 +96,14 @@ facts = agent._entity_linked_retrieval(question)
 ### When to Use
 
 ✅ **Use entity-linked retrieval when:**
+
 - Question contains structured entity IDs
 - Facts are distributed across multiple context tags
 - Standard retrieval misses related information
 - Entity ID is more reliable than semantic similarity
 
 ❌ **Don't use when:**
+
 - Question has no structured IDs
 - All facts are in a single context
 - Entity IDs are ambiguous or non-unique
@@ -138,11 +141,11 @@ def _multi_entity_retrieval(
 
 The method detects entities using these patterns:
 
-| Pattern Type | Regex | Example | Priority |
-|--------------|-------|---------|----------|
-| Quoted terms | `"([^"]+)"` | "Snowfall incident" | High |
-| Capitalized phrases | `[A-Z][a-z]+(?: [A-Z][a-z]+){1,3}` | Alpine Lodge | Medium |
-| Structured IDs | Entity ID patterns | INC-2024-089 | High |
+| Pattern Type        | Regex                              | Example             | Priority |
+| ------------------- | ---------------------------------- | ------------------- | -------- |
+| Quoted terms        | `"([^"]+)"`                        | "Snowfall incident" | High     |
+| Capitalized phrases | `[A-Z][a-z]+(?: [A-Z][a-z]+){1,3}` | Alpine Lodge        | Medium   |
+| Structured IDs      | Entity ID patterns                 | INC-2024-089        | High     |
 
 ### Algorithm
 
@@ -189,12 +192,14 @@ facts = agent._multi_entity_retrieval(question)
 ### When to Use
 
 ✅ **Use multi-entity retrieval when:**
+
 - Question mentions 2+ distinct entities
 - Question asks about relationships or comparisons
 - Facts about entities are stored separately
 - Need comprehensive coverage for multi-hop reasoning
 
 ❌ **Don't use when:**
+
 - Question has only 1 entity
 - All facts are about a single topic
 - Entities are too generic ("system", "process")
@@ -260,12 +265,12 @@ def _select_retrieval_strategy(self, question: str) -> str:
 
 ### Example Selection
 
-| Question | Detected Pattern | Strategy | Rationale |
-|----------|------------------|----------|-----------|
-| "What was the root cause of INC-2024-089?" | INC-2024-089 | entity_linked | Structured ID detected |
-| "How did Snowfall affect Alpine Lodge?" | 2 entities | multi_entity | Multiple named entities |
-| "What's the project budget?" | No patterns | standard | Generic question |
-| "Compare CVE-2024-001 and CVE-2024-002" | 2 CVE IDs | entity_linked | Structured IDs (not multi-entity) |
+| Question                                   | Detected Pattern | Strategy      | Rationale                         |
+| ------------------------------------------ | ---------------- | ------------- | --------------------------------- |
+| "What was the root cause of INC-2024-089?" | INC-2024-089     | entity_linked | Structured ID detected            |
+| "How did Snowfall affect Alpine Lodge?"    | 2 entities       | multi_entity  | Multiple named entities           |
+| "What's the project budget?"               | No patterns      | standard      | Generic question                  |
+| "Compare CVE-2024-001 and CVE-2024-002"    | 2 CVE IDs        | entity_linked | Structured IDs (not multi-entity) |
 
 ## Combined Retrieval Pattern
 
@@ -376,12 +381,12 @@ Multiple retrieval strategies can return the same facts:
 
 ### Recommended Parameters
 
-| Scenario | Method | limit_per_entity | facts_per_entity | min_entities |
-|----------|--------|------------------|------------------|--------------|
-| Low memory | entity_linked | 5 | 3 | 2 |
-| Balanced | entity_linked | 10 | 5 | 2 |
-| High recall | entity_linked | 20 | 10 | 2 |
-| Multi-hop | multi_entity | N/A | 8 | 2 |
+| Scenario    | Method        | limit_per_entity | facts_per_entity | min_entities |
+| ----------- | ------------- | ---------------- | ---------------- | ------------ |
+| Low memory  | entity_linked | 5                | 3                | 2            |
+| Balanced    | entity_linked | 10               | 5                | 2            |
+| High recall | entity_linked | 20               | 10               | 2            |
+| Multi-hop   | multi_entity  | N/A              | 8                | 2            |
 
 ### Memory vs Accuracy Trade-off
 

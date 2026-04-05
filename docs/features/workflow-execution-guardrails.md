@@ -72,13 +72,13 @@ print(result.context["worktree_setup"]["branch_name"])
 
 ## Operational Guarantees
 
-| Guarantee | Behavior | Why it matters |
-| --- | --- | --- |
-| Single execution root | Step 04 emits `worktree_setup.execution_root` and downstream steps use that path only. | Prevents hidden dependence on ambient `cwd`. |
-| No post-step-04 fallback | Workflow steps do not drop back to `repo_path` or another shell working directory after the execution root is established. | Eliminates accidental execution in the wrong checkout. |
-| Exact GitHub identity | `gh issue create`, `gh pr create`, and other in-scope mutation paths fail closed unless `gh` resolves to the expected login. | Prevents mutations from the wrong GitHub account. |
-| Observer-only stall detection | A run is stalled only after 300 seconds with no stdout/stderr activity and no step/status transition. | Keeps liveness separate from workflow safety rules. |
-| Compatibility alias | `worktree_path` remains available during migration, but it points at the same location as `execution_root`. | Gives existing integrations time to migrate without adding a second source of truth. |
+| Guarantee                     | Behavior                                                                                                                     | Why it matters                                                                       |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Single execution root         | Step 04 emits `worktree_setup.execution_root` and downstream steps use that path only.                                       | Prevents hidden dependence on ambient `cwd`.                                         |
+| No post-step-04 fallback      | Workflow steps do not drop back to `repo_path` or another shell working directory after the execution root is established.   | Eliminates accidental execution in the wrong checkout.                               |
+| Exact GitHub identity         | `gh issue create`, `gh pr create`, and other in-scope mutation paths fail closed unless `gh` resolves to the expected login. | Prevents mutations from the wrong GitHub account.                                    |
+| Observer-only stall detection | A run is stalled only after 300 seconds with no stdout/stderr activity and no step/status transition.                        | Keeps liveness separate from workflow safety rules.                                  |
+| Compatibility alias           | `worktree_path` remains available during migration, but it points at the same location as `execution_root`.                  | Gives existing integrations time to migrate without adding a second source of truth. |
 
 ---
 
@@ -86,9 +86,9 @@ print(result.context["worktree_setup"]["branch_name"])
 
 Issue 107 deliberately separates **workflow safety enforcement** from **observer liveness detection**.
 
-| Plane | Responsibilities | Does not do |
-| --- | --- | --- |
-| Workflow plane | Choose the execution root, create or reuse the worktree, thread `expected_gh_account`, gate GitHub mutations. | Decide whether silence means a stall. |
+| Plane          | Responsibilities                                                                                                                 | Does not do                                                                  |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Workflow plane | Choose the execution root, create or reuse the worktree, thread `expected_gh_account`, gate GitHub mutations.                    | Decide whether silence means a stall.                                        |
 | Observer plane | Watch stdout/stderr activity, progress records, and `step_transition` events; mark the run stalled after the contract threshold. | Relax workflow policy, pick a fallback directory, or bypass identity checks. |
 
 That split is the reason the feature remains predictable under failure: observers report health, workflows enforce safety.

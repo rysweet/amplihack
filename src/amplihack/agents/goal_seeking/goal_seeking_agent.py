@@ -27,6 +27,7 @@ Backward compatibility:
 """
 
 import asyncio
+import inspect
 import logging
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,13 @@ from typing import Any
 from .retrieval_constants import ORIENT_SEARCH_LIMIT
 
 logger = logging.getLogger(__name__)
+
+
+def _run_maybe_async(value: Any) -> Any:
+    """Run coroutine-like values, otherwise return them unchanged."""
+    if inspect.isawaitable(value):
+        return asyncio.run(value)
+    return value
 
 # Minimal sentinel so orient/decide/act can be called without prior observe()
 _NO_INPUT = object()
@@ -301,7 +309,7 @@ class GoalSeekingAgent:
             except ImportError:
                 pass
             try:
-                result = asyncio.run(self._learning_agent.answer_question(text))
+                result = self._learning_agent.answer_question(text)
                 output = result[0] if isinstance(result, tuple) else str(result)
             except Exception:
                 logger.exception("Agent %s act() answer_question failed", self._agent_name)
@@ -318,7 +326,7 @@ class GoalSeekingAgent:
 
         else:  # "store" (or empty / unknown)
             try:
-                result_dict = asyncio.run(self._learning_agent.learn_from_content(text))
+                result_dict = _run_maybe_async(self._learning_agent.learn_from_content(text))
                 stored = result_dict.get("facts_stored", 0)
                 output = f"Stored {stored} facts from input."
             except Exception:
@@ -370,21 +378,21 @@ class GoalSeekingAgent:
 
     def learn_from_content(self, input_data: str) -> dict[str, Any]:
         """Compatibility delegate for benchmark/eval surfaces."""
-        return asyncio.run(self._learning_agent.learn_from_content(input_data))
+        return _run_maybe_async(self._learning_agent.learn_from_content(input_data))
 
     def answer_question(self, question: str, answer_mode: str = "single-shot") -> str:
         """Compatibility delegate for benchmark/eval surfaces."""
         if answer_mode == "agentic":
-            return asyncio.run(self._learning_agent.answer_question_agentic(question))
+            return self._learning_agent.answer_question_agentic(question)
 
-        result = asyncio.run(self._learning_agent.answer_question(question))
+        result = self._learning_agent.answer_question(question)
         if isinstance(result, tuple):
             return result[0]
         return result
 
     def prepare_fact_batch(self, input_data: str, include_summary: bool = True) -> dict[str, Any]:
         """Prepare a reusable fact batch from raw content."""
-        return asyncio.run(
+        return _run_maybe_async(
             self._learning_agent.prepare_fact_batch(
                 input_data,
                 include_summary=include_summary,

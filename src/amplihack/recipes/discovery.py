@@ -222,8 +222,6 @@ def discover_recipes(
         RecipeCache of qualified key -> RecipeInfo (bare-name lookup supported).
     """
     dirs = search_dirs or _get_default_search_dirs()
-    recipes: dict[str, RecipeInfo] = {}
-    dirs = search_dirs or _DEFAULT_SEARCH_DIRS
     recipes = RecipeCache()
 
     logger.debug("Searching for recipes in %d directories", len(dirs))
@@ -348,14 +346,12 @@ def find_recipe(name: str, search_dirs: list[Path] | None = None) -> Path | None
         candidate = Path(dir_part) / f"{bare_name}.yaml"
         return candidate if candidate.is_file() else None
 
-    # Bare-name lookup: last-wins
-    dirs = search_dirs or _DEFAULT_SEARCH_DIRS
-    found: Path | None = None
-    for search_dir in dirs:
+    # Bare-name lookup: reverse-iterate for last-wins with early exit
+    for search_dir in reversed(dirs):
         candidate = search_dir / f"{name}.yaml"
         if candidate.is_file():
-            found = candidate
-    return found
+            return candidate
+    return None
 
 
 def check_upstream_changes(
@@ -532,8 +528,8 @@ def update_manifest(local_dir: Path | None = None) -> Path:
 def _load_recipe_info(yaml_path: Path) -> RecipeInfo | None:
     """Load minimal metadata from a recipe YAML file without full parsing."""
     try:
-        text = yaml_path.read_text(encoding="utf-8")
-        data = yaml.safe_load(text)
+        raw = yaml_path.read_bytes()
+        data = yaml.safe_load(raw.decode("utf-8"))
         if not isinstance(data, dict) or "name" not in data:
             return None
 
@@ -545,7 +541,7 @@ def _load_recipe_info(yaml_path: Path) -> RecipeInfo | None:
             version=data.get("version", ""),
             step_count=len(steps) if isinstance(steps, list) else 0,
             tags=data.get("tags", []),
-            sha256=_file_hash(yaml_path),
+            sha256=hashlib.sha256(raw).hexdigest()[:16],
         )
     except Exception:
         logger.debug("Failed to load recipe info from %s", yaml_path)

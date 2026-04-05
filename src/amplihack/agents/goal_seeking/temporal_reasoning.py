@@ -70,6 +70,7 @@ class TemporalReasoningMixin:
         r"\s+\b(?:before|after|when|as of)\b.*$",
         re.IGNORECASE,
     )
+
     def _transition_chain_from_facts(
         self, entity: str, field: str, facts: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
@@ -464,4 +465,3 @@ class TemporalReasoningMixin:
         if temporal_code.get("operation") != "state_lookup":
             return False
         return bool(cls._DIRECT_TEMPORAL_LOOKUP_PATTERN.match(question.strip()))
-

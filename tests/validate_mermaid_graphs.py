@@ -17,7 +17,12 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 TARGETS = {
     ".claude/skills/dev-orchestrator/SKILL.md": {
         "type": "flowchart",
-        "required_nodes": ["Classify Task", "Recursion Guard", "Decompose Workstreams", "Reflect on Round 1"],
+        "required_nodes": [
+            "Classify Task",
+            "Recursion Guard",
+            "Decompose Workstreams",
+            "Reflect on Round 1",
+        ],
         "required_edges": ["Development", "Investigation", "Q&A", "Operations"],
     },
     ".claude/skills/default-workflow/SKILL.md": {
@@ -71,9 +76,15 @@ def validate_mermaid_syntax(block: str, expected_type: str) -> list[str]:
         errors.append(f"Expected stateDiagram declaration, got: {first_line}")
 
     # Check balanced brackets
-    for char_open, char_close, name in [("[", "]", "square brackets"), ("{", "}", "curly braces"), ("(", ")", "parentheses")]:
+    for char_open, char_close, name in [
+        ("[", "]", "square brackets"),
+        ("{", "}", "curly braces"),
+        ("(", ")", "parentheses"),
+    ]:
         if block.count(char_open) != block.count(char_close):
-            errors.append(f"Unbalanced {name}: {block.count(char_open)} open, {block.count(char_close)} close")
+            errors.append(
+                f"Unbalanced {name}: {block.count(char_open)} open, {block.count(char_close)} close"
+            )
 
     # Check for common syntax errors
     if "```" in block:
@@ -160,9 +171,8 @@ def main():
     if total_fail > 0:
         print(f"\nFAILED: {total_fail} file(s) have issues")
         return 1
-    else:
-        print("\nALL PASSED: All mermaid graphs are valid and complete")
-        return 0
+    print("\nALL PASSED: All mermaid graphs are valid and complete")
+    return 0
 
 
 if __name__ == "__main__":

@@ -14,12 +14,11 @@ from textual import work
 from textual.widgets import DataTable, Input, Select
 from textual.worker import get_current_worker
 
+from amplihack.fleet._backends import auto_detect_backend
+from amplihack.fleet._session_context import SessionDecision
 from amplihack.fleet._validation import (
-    validate_session_name,
     validate_vm_name,
 )
-from amplihack.fleet._backends import AnthropicBackend
-from amplihack.fleet._session_context import SessionDecision
 from amplihack.fleet.fleet_session_reasoner import SessionReasoner
 
 __all__ = ["_WorkersMixin"]
@@ -69,17 +68,22 @@ class _WorkersMixin:
         key = f"{vm_name}/{session_name}"
 
         from amplihack.fleet._constants import DEFAULT_DETAIL_CAPTURE_LINES
+
         cmd = f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -{DEFAULT_DETAIL_CAPTURE_LINES}"
         capture_text = ""
         try:
             result = subprocess.run(
                 [self._fleet.azlin_path, "connect", vm_name, "--no-tmux", "--", cmd],
-                capture_output=True, text=True, timeout=60,
+                capture_output=True,
+                text=True,
+                timeout=60,
             )
             if result.returncode == 0:
                 capture_text = result.stdout
         except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as exc:
-            logger.warning("Failed to capture tmux output for %s/%s: %s", vm_name, session_name, exc)
+            logger.warning(
+                "Failed to capture tmux output for %s/%s: %s", vm_name, session_name, exc
+            )
             capture_text = "(failed to capture tmux output)"
         if worker.is_cancelled:
             return
@@ -95,13 +99,18 @@ class _WorkersMixin:
         key = f"{vm_name}/{session_name}"
         try:
             reasoner = SessionReasoner(
-                azlin_path=self._fleet.azlin_path, backend=AnthropicBackend(), dry_run=True,
+                azlin_path=self._fleet.azlin_path,
+                backend=auto_detect_backend(),
+                dry_run=True,
             )
             decision = reasoner.reason_about_session(vm_name=vm_name, session_name=session_name)
         except Exception as exc:
             decision = SessionDecision(
-                session_name=session_name, vm_name=vm_name,
-                action="escalate", reasoning=f"Reasoning failed: {exc}", confidence=0.0,
+                session_name=session_name,
+                vm_name=vm_name,
+                action="escalate",
+                reasoning=f"Reasoning failed: {exc}",
+                confidence=0.0,
             )
         if worker.is_cancelled:
             return
@@ -136,7 +145,9 @@ class _WorkersMixin:
         try:
             result = subprocess.run(
                 [self._fleet.azlin_path, "connect", vm_name, "--no-tmux", "--", remote_cmd],
-                capture_output=True, text=True, timeout=60,
+                capture_output=True,
+                text=True,
+                timeout=60,
             )
             if result.returncode == 0:
                 msg = f"Created session '{session_name}' on {vm_name} running {agent_type}"
@@ -158,7 +169,9 @@ class _WorkersMixin:
         worker = get_current_worker()
         try:
             reasoner = SessionReasoner(
-                azlin_path=self._fleet.azlin_path, backend=AnthropicBackend(), dry_run=False,
+                azlin_path=self._fleet.azlin_path,
+                backend=auto_detect_backend(),
+                dry_run=False,
             )
             reasoner.execute_decision(decision)
             msg = f"Applied: {decision.action}"

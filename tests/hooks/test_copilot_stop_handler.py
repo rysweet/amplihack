@@ -77,7 +77,10 @@ def test_sanitize_session_id_accessible_from_impl():
     # Import the implementation module directly
     impl_path = (
         Path(__file__).resolve().parent.parent.parent
-        / "src" / "amplihack" / "hooks" / "_copilot_stop_handler_impl.py"
+        / "src"
+        / "amplihack"
+        / "hooks"
+        / "_copilot_stop_handler_impl.py"
     )
     spec = importlib.util.spec_from_file_location("_csh_impl_test", impl_path)
     module = importlib.util.module_from_spec(spec)

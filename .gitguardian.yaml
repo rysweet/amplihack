@@ -39,7 +39,6 @@ secret:
     - ".github.copilot.env"
     - "proxy_config_*.env.example"
 
-
     # Test files with mock credentials
     - "tests/**/*.py"
     - "tests/**/*.sh"
