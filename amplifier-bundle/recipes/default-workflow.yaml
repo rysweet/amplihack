@@ -316,23 +316,22 @@ steps:
       GIT_PROVIDER=$(detect_git_provider)
       echo "=== Step 3: Creating Issue/Work Item (provider: $GIT_PROVIDER) ===" >&2
 
-      # FIX (#3045/#3076/#3117): heredoc capture — prevents echo metacharacter injection.
-      # SECURITY FIX: quoted delimiter (<<'EOF') prevents bash from expanding $() / backticks
-      # in template-substituted content. Step-03b already uses this pattern correctly.
-      # {{variable}} substitution is performed by the recipe runner before bash executes,
-      # so quoted delimiters are safe and correct here.
-      TASK_DESC=$(cat <<'EOFTASKDESC'
-      {{task_description}}
-      EOFTASKDESC
-      )
+      # FIX (#469): Use direct env-var assignment instead of quoted heredoc capture.
+      # The recipe runner's render_shell replaces {{var}} with "$RECIPE_VAR_var" which is
+      # then injected via the subprocess environment. Direct assignment is immune to:
+      #   1. Heredoc terminator injection (if final_requirements contains "EOFREQS" on
+      #      its own line it would terminate the heredoc early, then odd single-quote
+      #      counts in the remaining content cause "unexpected EOF while looking for
+      #      matching ''" — the exact failure in issue #469).
+      #   2. Command substitution injection: bash does NOT re-execute $() or backticks
+      #      when expanding a variable reference, so task_description/final_requirements
+      #      values containing $(evil) are never executed.
+      TASK_DESC={{task_description}}
       # Bash builtins replace tr|cut pipeline — avoids 2 subprocess spawns (matches step-16)
       ISSUE_TITLE="${TASK_DESC//$'\n'/ }"
       ISSUE_TITLE="${ISSUE_TITLE//$'\r'/ }"
       ISSUE_TITLE="${ISSUE_TITLE:0:200}"
-      ISSUE_REQS=$(cat <<'EOFREQS'
-      {{final_requirements}}
-      EOFREQS
-      )
+      ISSUE_REQS={{final_requirements}}
       ISSUE_BODY=$(printf '## Task Description\n%s\n\n## Requirements\n%s\n\n## Acceptance Criteria\n- [ ] All explicit requirements met\n- [ ] Tests passing\n- [ ] Philosophy compliant\n- [ ] Documentation updated\n\n## Classification\nGenerated via default-workflow recipe\n' "$TASK_DESC" "$ISSUE_REQS")
 
       if [ "$GIT_PROVIDER" = "ado" ]; then
@@ -457,16 +456,13 @@ steps:
       # noise number captured via 2>&1 in step-03a.  Also scan task_description
       # and PR metadata so mixed PR URLs, issue URLs, and #NNNN references resolve
       # to the actual issue number instead of a related PR number.
-      # EOFISSUECREATION delimiter is intentionally long/specific to prevent accidental
-      # collision with issue body text that might contain common delimiters like "EOF".
-      ISSUE_CREATION=$(cat <<'EOFISSUECREATION'
-      {{issue_creation}}
-      EOFISSUECREATION
-      )
-      TASK_DESC=$(cat <<'EOFTASKDESC'
-      {{task_description}}
-      EOFTASKDESC
-      )
+      # FIX (#469): Direct env-var assignment — same fix as step-03.
+      # Quoted heredoc would inline-substitute the value; if issue_creation or
+      # task_description contains the heredoc terminator on its own line and the
+      # remaining content has an unmatched single quote, bash throws
+      # "unexpected EOF while looking for matching '".
+      ISSUE_CREATION={{issue_creation}}
+      TASK_DESC={{task_description}}
       # Use a Python timeout wrapper instead of GNU `timeout` so local macOS runs
       # do not silently skip issue resolution when coreutils is absent.
       GH_TIMEOUT_SECONDS="${AMPLIHACK_WORKFLOW_GH_TIMEOUT_SECONDS:-60}"
@@ -1883,22 +1879,13 @@ steps:
           exit 1
       fi
 
-      # FIX (#3045/#3076/#3117): heredoc capture — prevents echo metacharacter injection.
-      # SECURITY FIX: quoted delimiter (<<'EOF') prevents bash from expanding $() / backticks
-      # in template-substituted content. {{variable}} substitution is performed by the recipe
-      # runner before bash executes, so quoted delimiters are safe and correct here.
-      TASK_DESC=$(cat <<'EOFTASKDESC'
-      {{task_description}}
-      EOFTASKDESC
-      )
+      # FIX (#469): Direct env-var assignment — same fix as step-03.
+      TASK_DESC={{task_description}}
       # Bash builtins replace the `tr | cut` pipeline — avoids 2 subprocess spawns
       PR_TITLE="${TASK_DESC//$'\n'/ }"
       PR_TITLE="${PR_TITLE//$'\r'/ }"
       PR_TITLE="${PR_TITLE:0:200}"
-      PR_DESIGN=$(cat <<'EOFDESIGN'
-      {{design_spec}}
-      EOFDESIGN
-      )
+      PR_DESIGN={{design_spec}}
       PR_BODY=$(printf '## Summary\n%s\n\n## Issue\nCloses #%s\n\n## Changes\n%s\n\n## Testing\n- Unit tests added\n- Local testing completed\n- Pre-commit hooks pass\n\n## Checklist\n- [x] Tests pass\n- [x] Documentation updated\n- [x] No stubs or TODOs\n- [ ] Code review completed\n- [ ] Philosophy check passed\n\n---\n*This PR was created as a draft for review before merging.*\n' "$TASK_DESC" "$ISSUE_NUM" "$PR_DESIGN")
 
       if [ "$GIT_PROVIDER" = "ado" ]; then
@@ -2366,17 +2353,14 @@ steps:
   - id: "step-19d-verification-gate"
     type: "bash"
     command: |
-      # ARG_MAX guard: large template variables (philosophy_check, patterns_check)
-      # are captured via heredoc and truncated to 1 KB summaries.  Echoing them
-      # raw caused ARG_MAX overflow — see #3366 / b1f87112b.
-      PHIL_CHECK=$(cat <<'EOFPHILCHECK'
-      {{philosophy_check}}
-      EOFPHILCHECK
-      )
-      PAT_CHECK=$(cat <<'EOFPATCHECK'
-      {{patterns_check}}
-      EOFPATCHECK
-      )
+      # FIX (#469): Direct env-var assignment instead of quoted heredoc.
+      # The quoted heredoc approach inlines values and is vulnerable to heredoc
+      # terminator injection causing "unexpected EOF while looking for matching '".
+      # Direct assignment via env var reference avoids this. Note: the original
+      # ARG_MAX concern (#3366) was about echoing values as command args; env var
+      # assignment is immune to ARG_MAX limits.
+      PHIL_CHECK={{philosophy_check}}
+      PAT_CHECK={{patterns_check}}
       PHIL_SUMMARY=$(printf '%.1024s' "$PHIL_CHECK")
       PAT_SUMMARY=$(printf '%.1024s' "$PAT_CHECK")
 
