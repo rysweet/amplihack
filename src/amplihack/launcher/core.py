@@ -714,9 +714,10 @@ class ClaudeLauncher:
             # Set environment variables for UVX mode
             env = os.environ.copy()
 
-            # Set agent identity and home directory for Rust CLI parity
-            env["AMPLIHACK_AGENT_BINARY"] = "claude"
-            env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
+            # Set agent identity, home directory, and PYTHONPATH for Rust CLI parity
+            from amplihack.launcher import prepare_amplihack_env
+
+            prepare_amplihack_env(env, "claude")
 
             # Smart memory configuration
             from .memory_config import display_memory_config, get_memory_config
@@ -815,9 +816,10 @@ class ClaudeLauncher:
             # Set environment variables for UVX mode
             env = os.environ.copy()
 
-            # Set agent identity and home directory for Rust CLI parity
-            env["AMPLIHACK_AGENT_BINARY"] = "claude"
-            env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
+            # Set agent identity, home directory, and PYTHONPATH for Rust CLI parity
+            from amplihack.launcher import prepare_amplihack_env
+
+            prepare_amplihack_env(env, "claude")
 
             # Smart memory configuration
             from .memory_config import display_memory_config, get_memory_config

@@ -1548,8 +1548,9 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
 
     # Build explicit env with agent identity and home directory for Rust CLI parity
     env = os.environ.copy()
-    env["AMPLIHACK_AGENT_BINARY"] = "copilot"
-    env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
+    from amplihack.launcher import prepare_amplihack_env
+
+    prepare_amplihack_env(env, "copilot")
 
     # Launch using subprocess.run() for proper terminal handling
     # Note: os.execvp() doesn't work properly on Windows - it corrupts stdin/terminal state

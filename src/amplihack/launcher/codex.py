@@ -223,8 +223,9 @@ def launch_codex(args: list[str] | None = None, interactive: bool = True) -> int
 
     # Build explicit env with agent identity and home directory for Rust CLI parity
     env = os.environ.copy()
-    env["AMPLIHACK_AGENT_BINARY"] = "codex"
-    env.setdefault("AMPLIHACK_HOME", os.path.expanduser("~/.amplihack"))
+    from amplihack.launcher import prepare_amplihack_env
+
+    prepare_amplihack_env(env, "codex")
 
     # Launch using subprocess.run() for proper terminal handling
     # Note: os.execvp() doesn't work properly on Windows - it corrupts stdin/terminal state
