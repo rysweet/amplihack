@@ -1,0 +1,70 @@
+# Outside-in test: recipe runner can import amplihack.recipes via staged PYTHONPATH
+# Verifies that the staging deployment to ~/.amplihack/src/amplihack/ works and
+# that prepare_amplihack_env() sets PYTHONPATH correctly for subprocesses.
+
+scenario:
+  name: "Recipe Runner PYTHONPATH Staging"
+  description: |
+    When amplihack runs on a non-amplihack project, subprocesses need to import
+    amplihack.recipes. This requires:
+    1. _stage_home_runtime_assets() copies the Python package to ~/.amplihack/src/amplihack/
+    2. prepare_amplihack_env() prepends $AMPLIHACK_HOME/src to PYTHONPATH
+    3. The staged package includes amplihack.recipes with run_recipe_by_name
+    4. The tools __init__.py __path__ extension finds ~/.amplihack/src/amplihack/
+  type: cli
+  level: 1
+
+  tags: [cli, staging, recipe-runner, pythonpath, regression]
+
+  prerequisites:
+    - "Python 3.11+ with amplihack package importable"
+    - "src/amplihack/recipes/__init__.py exists"
+    - "src/amplihack/launcher/__init__.py exports prepare_amplihack_env"
+
+  agents:
+    - name: "cli-agent"
+      type: "cli"
+      config:
+        workingDirectory: "."
+        defaultTimeout: 10000
+
+  environment:
+    variables:
+      PYTHONPATH: "src"
+
+  steps:
+    - name: "Run staging smoke tests"
+      action: "execute_command"
+      params:
+        command: "PYTHONPATH=src python3 tests/gadugi/recipe_runner_staging_smoke.py"
+      timeout: 10000
+
+    - name: "Verify prepare_amplihack_env sets vars"
+      action: "wait_for_output"
+      params:
+        target: "PREPARE_ENV_OK"
+      timeout: 5000
+
+    - name: "Verify no PYTHONPATH duplication"
+      action: "wait_for_output"
+      params:
+        target: "NO_DUPLICATE_OK"
+      timeout: 5000
+
+    - name: "Verify recipes importable"
+      action: "wait_for_output"
+      params:
+        target: "RECIPES_IMPORT_OK"
+      timeout: 5000
+
+    - name: "Verify prepare_amplihack_env in __all__"
+      action: "wait_for_output"
+      params:
+        target: "IN_ALL_OK"
+      timeout: 5000
+
+    - name: "Verify all tests passed"
+      action: "wait_for_output"
+      params:
+        target: "ALL_STAGING_TESTS_PASSED"
+      timeout: 5000

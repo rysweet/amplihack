@@ -914,6 +914,11 @@ def _stage_home_runtime_assets(amplihack_src: Path) -> Path:
     bundle_source = source_root / "amplifier-bundle"
     _sync_home_runtime_directory(bundle_source, home_root / "amplifier-bundle", "amplifier-bundle/")
 
+    # Stage the Python package source so that subprocesses on non-amplihack
+    # projects can import amplihack.recipes (and other submodules) via
+    # PYTHONPATH=$AMPLIHACK_HOME/src or the tools __init__.py __path__ extension.
+    _sync_home_runtime_directory(amplihack_src, home_root / "src" / "amplihack", "src/amplihack/")
+
     for filename in ("CLAUDE.md", "AMPLIHACK.md"):
         source_file = source_root / filename
         if source_file.exists():

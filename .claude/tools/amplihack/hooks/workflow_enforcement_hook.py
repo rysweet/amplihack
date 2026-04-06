@@ -370,7 +370,7 @@ if __name__ == "__main__":
         "toolUse": {
             "name": "Bash",
             "input": {
-                "command": "PYTHONPATH=src python3 -c 'from amplihack.recipes import run_recipe_by_name'"
+                "command": "PYTHONPATH=${AMPLIHACK_HOME:-~/.amplihack}/src python3 -c 'from amplihack.recipes import run_recipe_by_name'"
             },
         },
         "result": {},

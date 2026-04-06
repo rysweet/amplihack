@@ -321,7 +321,7 @@ Category: <strong>Structural</strong> | Generated: 2026-04-04T16:07:23.959962+00
     | `src.amplihack.fleet.tests` | 32 | 0 | 0 | 0.00 | feature |
     | `tests.hive_mind` | 29 | 0 | 0 | 0.00 | feature |
     | `src.amplihack.eval` | 26 | 1 | 1 | 0.50 | feature |
-    | `src.amplihack.launcher` | 26 | 2 | 11 | 0.85 | feature |
+    | `src.amplihack.launcher` | 26 | 3 | 11 | 0.79 | feature |
     | `src.amplihack.utils` | 24 | 4 | 2 | 0.33 | feature |
     | `src.amplihack` | 23 | 2 | 16 | 0.89 | feature |
     | `src.amplihack.memory` | 23 | 2 | 2 | 0.50 | feature |
