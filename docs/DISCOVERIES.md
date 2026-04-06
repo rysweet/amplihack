@@ -706,3 +706,130 @@ Checklist validation gates (STOP checkpoints, pre-flight validation) trigger Son
 - **Test interventions across ALL target models** - what helps one can break another
 - **Validation gates harmful for autonomous models** - Sonnet needs zero checkpoints
 - **No universal CLAUDE.md solution** - different models need different approaches
+
+---
+
+## Heredoc Injection in Recipe Bash Steps (2026-04-05)
+
+### Issue
+
+`step-03-create-issue` and `step-16-create-draft-pr` in `default-workflow.yaml` used unquoted heredoc delimiters (`<<EOFTASKDESC`) to embed `task_description` into shell scripts. An attacker-controlled `task_description` containing shell metacharacters (e.g., `$(cmd)`, `` `cmd` ``) would be expanded by bash during heredoc processing, enabling arbitrary command injection.
+
+### Root Cause
+
+Unquoted heredoc delimiters (`<<WORD`) tell bash to perform parameter expansion, command substitution, and arithmetic expansion on the heredoc body. When `task_description` comes from user input (GitHub issue body, PR description), it is attacker-influenced data passed directly into the heredoc body without escaping.
+
+### Solution
+
+**PR #3952 / #4212**: Changed the heredoc delimiter to quoted form (`<<'EOFTASKDESC'`) in `step-03` and `step-16`. Single-quoting the delimiter tells bash to treat the entire heredoc body as a literal string — no substitution occurs.
+
+```bash
+# Unsafe: bash expands $(cmd) inside the heredoc body
+cat <<EOFTASKDESC
+$TASK_DESC
+EOFTASKDESC
+
+# Safe: bash treats body as literal, no expansion
+cat <<'EOFTASKDESC'
+$TASK_DESC
+EOFTASKDESC
+```
+
+The numeric issue ID extracted from ADO work item URLs is also validated with `[[ "$NEW_ITEM_ID" =~ ^[0-9]+$ ]]` to prevent non-numeric values from reaching downstream `az` CLI calls.
+
+### Key Learnings
+
+1. **Quote heredoc delimiters for user-controlled content**: Any heredoc that embeds externally-supplied data must use `<<'DELIMITER'`
+2. **Validate extracted IDs before CLI use**: Issue/work-item IDs extracted via regex should be checked as numeric before passing as CLI arguments
+3. **Conflicting test expectations are a code smell**: The coexistence of `test_recipe_steps_use_unquoted_heredoc` and `test_step_03_taskdesc_heredoc_is_quoted` signals a deliberate exception — document it in the test file rather than silently deleting the conflict
+
+### Prevention
+
+- Audit every recipe bash step that embeds template variables in heredocs; quote the delimiter unless expansion is explicitly needed
+- Add a CI check (or gadugi scenario) that scans for `<<[A-Z]` in recipe bash blocks that reference user-supplied variables
+
+---
+
+## CURRENT_BRANCH CLI Argument Injection Guard (2026-04-05)
+
+### Issue
+
+`step-16-create-draft-pr` in `default-workflow.yaml` used `$CURRENT_BRANCH` (the current git branch name) directly as a CLI argument to `gh pr create` and `az repos pr create`. A branch name containing shell-special characters (e.g., `;`, `$(`, backtick) could inject extra commands. A detached-HEAD state produces an empty branch name, causing the PR creation command to silently omit the `--head` argument.
+
+### Root Cause
+
+`git branch --show-current` can return an empty string in detached-HEAD state, and branch names are not restricted by git to safe characters for shell use. The recipe did not validate the branch name before embedding it in CLI calls.
+
+### Solution
+
+**PR #4212**: Added an explicit guard immediately after `CURRENT_BRANCH` is captured:
+
+```bash
+CURRENT_BRANCH=$(git branch --show-current)
+if [ -z "$CURRENT_BRANCH" ]; then
+    echo "ERROR: detached HEAD — cannot determine branch name for PR creation" >&2
+    exit 1
+fi
+case $CURRENT_BRANCH in
+    *[^a-zA-Z0-9/_.-]*)
+        echo "ERROR: unsafe characters in branch name: $CURRENT_BRANCH" >&2
+        exit 1
+        ;;
+esac
+```
+
+### Key Learnings
+
+1. **Validate shell-derived values before CLI use**: Any value sourced from git (branch names, remote URLs, commit SHAs) should be validated against an allowlist before use as a CLI argument
+2. **Detached HEAD is a real workflow state**: CI environments and shallow clones frequently produce detached-HEAD checkouts; recipe steps must handle the empty-branch case explicitly
+3. **Allowlist over denylist**: The pattern `*[^a-zA-Z0-9/_.-]*` rejects everything outside the known-safe set; denylist patterns miss exotic edge cases
+
+### Prevention
+
+- Add branch-name validation as a reusable shell function in the recipe preamble, callable from any step that creates a PR or pushes to a named branch
+- Include a gadugi test scenario that runs step-16 with a branch name containing `$(echo injected)` and verifies the step exits 1 without executing the injected command
+
+---
+
+## ARG_MAX Bypass via Agent Steps (2026-04-05)
+
+### Issue
+
+`step-19d-verification-gate` in `default-workflow.yaml` was implemented as a bash step that echoed large checklist templates (populated via `{{philosophy_check}}` and `{{patterns_check}}` template variables). When these variables grew large, the resulting environment variable exceeded bash's `ARG_MAX` / `E2BIG` limit, causing the step to fail at launch.
+
+### Root Cause
+
+Recipe template resolution for bash steps injects variable values as environment variables. The Linux kernel limits the total size of all environment variables passed to an `execve()` call (typically 128 KB–2 MB depending on kernel config). Large template values — common when `{{philosophy_check}}` contains full file contents — routinely exceed this limit.
+
+### Solution
+
+**PR #4212**: Converted `step-19d` from a `bash` step to an `agent` step (using the `amplihack:reviewer` agent). Agent steps receive template variables through recipe context resolution (in-process, not via `execve()`), bypassing the kernel ARG_MAX limit entirely.
+
+```yaml
+# Before (bash step — subject to ARG_MAX)
+- id: step-19d-verification-gate
+  type: bash
+  command: |
+    echo "{{philosophy_check}}"
+    echo "{{patterns_check}}"
+
+# After (agent step — no ARG_MAX constraint)
+- id: step-19d-verification-gate
+  type: agent
+  agent: amplihack:reviewer
+  prompt: |
+    {{philosophy_check}}
+    {{patterns_check}}
+    Provide GATE_PASSED or GATE_BLOCKED verdict.
+```
+
+### Key Learnings
+
+1. **Bash steps have a hard env-size ceiling**: Any bash step that echoes or uses large template variables (>~100 KB total) should be migrated to an agent step
+2. **Agent steps bypass ARG_MAX**: The recipe runner resolves templates in-process before dispatching to the agent; no `execve()` is involved
+3. **Agent steps also provide richer output**: The reviewer agent returns structured GATE_PASSED/GATE_BLOCKED verdicts, which are more machine-readable than echoed bash output
+
+### Prevention
+
+- When a recipe bash step's primary role is to echo or summarize template content, prefer an agent step
+- Add a recipe linter check for bash steps with multiple large `{{variable}}` references; flag them as ARG_MAX candidates
