@@ -671,6 +671,57 @@ Two distinct failures around pre-commit hooks in workflow-generated commits:
 
 ---
 
+## Python Package Staging Required for Recipe Imports on Non-Amplihack Projects (2026-04-06)
+
+### Issue
+
+`from amplihack.recipes import run_recipe_by_name` (and all other `amplihack.*` imports) failed
+with `ModuleNotFoundError` when amplihack was run via `uvx` from git on a **non-amplihack**
+project directory.
+
+### Root Cause
+
+`_stage_home_runtime_assets()` in `cli.py` copied `.claude/` and `amplifier-bundle/` to
+`~/.amplihack/` but never staged the Python package source. The tools entry point at
+`~/.amplihack/.claude/tools/amplihack/__init__.py` walks up to `~/.amplihack/` and expects
+the package at `~/.amplihack/src/amplihack/` — which was never deployed.
+
+Separately, `PYTHONPATH=src` in `SKILL.md` resolved relative to the **user project** `./src/`,
+not amplihack's source tree. In an amplihack project the two happened to coincide; on any other
+project `./src/` either doesn't exist or doesn't contain `amplihack/`.
+
+### Solution
+
+**PR #4265**:
+
+1. `cli.py` — `_stage_home_runtime_assets()` now copies the amplihack Python package source to
+   `~/.amplihack/src/amplihack/` (in addition to `.claude/` and `amplifier-bundle/`).
+2. `launcher/__init__.py` — New shared `prepare_amplihack_env()` helper sets
+   `AMPLIHACK_AGENT_BINARY`, `AMPLIHACK_HOME`, and prepends `$AMPLIHACK_HOME/src` to
+   `PYTHONPATH`. All four launchers (copilot, claude, codex, amplifier) now call this helper.
+3. `SKILL.md` — `PYTHONPATH=src` replaced with `PYTHONPATH=${AMPLIHACK_HOME}/src`.
+
+### Key Learnings
+
+1. **Every runtime asset must be staged**: When copying the framework to `~/.amplihack/`, the
+   Python package source is just as essential as `.claude/` — any recipe or hook that does
+   `import amplihack.*` will fail without it.
+2. **Relative `PYTHONPATH` is fragile across project contexts**: Always anchor `PYTHONPATH` to
+   an absolute variable (`$AMPLIHACK_HOME/src`) rather than `./src` to prevent silent failures
+   on non-framework projects.
+3. **Centralise launcher env setup**: The `prepare_amplihack_env()` helper pattern ensures all
+   four launcher entry-points stay in sync; adding a new env var in one place propagates to all.
+
+### Prevention
+
+- Add the Python package directory to the explicit staging list in `_stage_home_runtime_assets()`
+  whenever new importable modules are added to `src/amplihack/`.
+- Use `${AMPLIHACK_HOME}/src` (not `./src`) in any template or skill that sets `PYTHONPATH`.
+- New launchers must call `prepare_amplihack_env()` from `launcher/__init__.py` rather than
+  duplicating env-var logic inline.
+
+---
+
 ## Checklist CLAUDE.md Breaks Sonnet 4.5 Autonomy (2025-11-30)
 
 ### Issue

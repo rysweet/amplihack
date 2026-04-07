@@ -113,7 +113,10 @@ uvx --from git+... amplihack launch --add-dir /path/from/helper
 
 3. **Safe File Staging:**
    - Never overwrites existing files
-   - Stages only essential files (`~/.amplihack/.claude/`, `CLAUDE.md`, `DISCOVERIES.md`)
+   - Stages essential files to `~/.amplihack/`:
+     - `.claude/` — skills, agents, workflows, tools
+     - `amplifier-bundle/` — recipe bundle
+     - `src/amplihack/` → `~/.amplihack/src/amplihack/` — Python package source (required for `import amplihack.*` from non-amplihack project directories; see [DISCOVERIES.md](DISCOVERIES.md#python-package-staging-required-for-recipe-imports-on-non-amplihack-projects-2026-04-06))
    - Automatic cleanup on exit
 
 4. **Graceful Fallbacks:**
