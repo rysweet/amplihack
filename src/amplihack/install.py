@@ -89,6 +89,16 @@ def copytree_manifest(
 
         target_dir = os.path.join(dst, dir_path)
 
+        # Guard: skip copy when source and target resolve to the same directory.
+        # This prevents shutil.SameFileError when AMPLIHACK_HOME points at the
+        # source tree itself (see issue #4296).
+        try:
+            if os.path.exists(target_dir) and os.path.samefile(source_dir, target_dir):
+                print(f"  ⚠️  Skipping {dir_path}: source and target are the same path")
+                continue
+        except (OSError, ValueError):
+            pass  # samefile can fail on some platforms; proceed with copy
+
         # Create parent directories if needed
         os.makedirs(os.path.dirname(target_dir), exist_ok=True)
 
