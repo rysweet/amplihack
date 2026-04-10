@@ -1,1 +1,20 @@
-{"run":"23505769191","date":"2026-03-24","prs":{"3531":"extreme/security-remove-litellm-supply-chain-attack","3520":"low/wip-fix-hollow-success-sub-pr","3519":"low/wip-supply-chain-audit-skill","3516":"low/feat-merge-ready-skill","3515":"low/docs-eval-mermaid-rendering","3512":"medium/fix-rust-runner-env-propagation-routing","3511":"low/fix-install-location-url","3510":"low/docs-daily-update","3500":"high/fix-copilot-parity-convergence","3484":"medium/fix-surface-hollow-success","3481":"medium/feat-supply-chain-audit","3419":"low/chore-trivy-disabled-workflow","3290":"medium/security-tdd-tests"}}
+{
+  "run": "24242854768",
+  "date": "2026-04-10",
+  "prs": {
+    "4297": "low/fix-install-samefile-guard",
+    "4245": "medium/fix-recipes-heredoc-direct-env-var",
+    "4236": "medium/fix-recipes-step03-quoting-pr-url",
+    "4234": "low/external-fix-issue-4233",
+    "4228": "medium/fix-recipes-step03-shell-quoting",
+    "4216": "medium/feat-anthropic-disabled-flag",
+    "4207": "low/fix-search-title-quoting",
+    "4203": "medium/fix-smart-orchestrator-teardown",
+    "4199": "low/fix-recipe-runner-auto-update",
+    "4198": "low/fix-knowledge-builder-copilot-flags",
+    "4190": "medium/fix-cli-entrypoint-patch-surfaces",
+    "4186": "low/docs-multitask-timeout-lifecycle",
+    "4112": "low/docs-api-keys-clarification-xingzihai",
+    "3984": "low/docs-api-keys-clarification-chaoxie"
+  }
+}
