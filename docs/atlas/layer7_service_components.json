@@ -2649,7 +2649,7 @@
         "src.amplihack.memory.facade",
         "src.amplihack.memory.graph_store",
         "src.amplihack.memory.kuzu",
-        "src.amplihack.memory.kuzu_store",
+        "src.amplihack.memory.ladybug_store",
         "src.amplihack.memory.manager",
         "src.amplihack.memory.memory_store",
         "src.amplihack.memory.models"
@@ -6450,7 +6450,7 @@
       "src.amplihack.memory.facade": 1,
       "src.amplihack.memory.graph_store": 1,
       "src.amplihack.memory.kuzu": 4,
-      "src.amplihack.memory.kuzu_store": 1,
+      "src.amplihack.memory.ladybug_store": 1,
       "src.amplihack.memory.manager": 1,
       "src.amplihack.memory.memory_store": 1,
       "src.amplihack.memory.models": 1
@@ -6458,7 +6458,7 @@
     "src.amplihack.memory.auto_backend": {
       "src.amplihack.memory.kuzu": 1
     },
-    "src.amplihack.memory.backends.kuzu_backend": {
+    "src.amplihack.memory.backends.ladybug_backend": {
       "src.amplihack.memory.kuzu.code_graph": 1,
       "src.amplihack.memory.kuzu.connector": 1,
       "src.amplihack.memory.models": 1
@@ -6481,7 +6481,7 @@
       "src.amplihack.memory.models": 1
     },
     "src.amplihack.memory.distributed_store": {
-      "src.amplihack.memory.kuzu_store": 1,
+      "src.amplihack.memory.ladybug_store": 1,
       "src.amplihack.memory.memory_store": 1
     },
     "src.amplihack.memory.evaluation": {
@@ -6514,7 +6514,7 @@
       "src.amplihack.memory.config": 1,
       "src.amplihack.memory.distributed_store": 1,
       "src.amplihack.memory.graph_store": 1,
-      "src.amplihack.memory.kuzu_store": 1,
+      "src.amplihack.memory.ladybug_store": 1,
       "src.amplihack.memory.network_store": 1
     },
     "src.amplihack.memory.kuzu": {

@@ -180,9 +180,9 @@
         "/home/azureuser/src/supply/src/amplihack/agents/goal_seeking/hive_mind/distributed.py",
         "/home/azureuser/src/supply/src/amplihack/eval/long_horizon_memory.py",
         "/home/azureuser/src/supply/src/amplihack/memory/auto_backend.py",
-        "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+        "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
         "/home/azureuser/src/supply/src/amplihack/memory/kuzu/connector.py",
-        "/home/azureuser/src/supply/src/amplihack/memory/kuzu_store.py",
+        "/home/azureuser/src/supply/src/amplihack/memory/ladybug_store.py",
         "/home/azureuser/src/supply/src/amplihack/vendor/blarify/repositories/graph_db_manager/kuzu_manager.py",
         "/home/azureuser/src/supply/tests/memory/test_code_context_injection.py",
         "/home/azureuser/src/supply/tests/test_kuzu_skip_guard.py"
@@ -2903,7 +2903,7 @@
       "src.amplihack.lsp_detector.detector",
       "src.amplihack.memory",
       "src.amplihack.memory.auto_backend",
-      "src.amplihack.memory.backends.kuzu_backend",
+      "src.amplihack.memory.backends.ladybug_backend",
       "src.amplihack.memory.bloom",
       "src.amplihack.memory.cli_evaluate",
       "src.amplihack.memory.cli_visualize",
@@ -2936,7 +2936,7 @@
       "src.amplihack.memory.kuzu.indexing.time_estimator",
       "src.amplihack.memory.kuzu.query_code_graph",
       "src.amplihack.memory.kuzu.session_integration",
-      "src.amplihack.memory.kuzu_store",
+      "src.amplihack.memory.ladybug_store",
       "src.amplihack.memory.maintenance",
       "src.amplihack.memory.manager",
       "src.amplihack.memory.memory_store",
@@ -9034,7 +9034,7 @@
       },
       {
         "from": "src.amplihack.memory",
-        "to": "src.amplihack.memory.kuzu_store",
+        "to": "src.amplihack.memory.ladybug_store",
         "import_count": 1
       },
       {
@@ -9058,17 +9058,17 @@
         "import_count": 1
       },
       {
-        "from": "src.amplihack.memory.backends.kuzu_backend",
+        "from": "src.amplihack.memory.backends.ladybug_backend",
         "to": "src.amplihack.memory.kuzu.code_graph",
         "import_count": 1
       },
       {
-        "from": "src.amplihack.memory.backends.kuzu_backend",
+        "from": "src.amplihack.memory.backends.ladybug_backend",
         "to": "src.amplihack.memory.kuzu.connector",
         "import_count": 1
       },
       {
-        "from": "src.amplihack.memory.backends.kuzu_backend",
+        "from": "src.amplihack.memory.backends.ladybug_backend",
         "to": "src.amplihack.memory.models",
         "import_count": 1
       },
@@ -9109,7 +9109,7 @@
       },
       {
         "from": "src.amplihack.memory.distributed_store",
-        "to": "src.amplihack.memory.kuzu_store",
+        "to": "src.amplihack.memory.ladybug_store",
         "import_count": 1
       },
       {
@@ -9209,7 +9209,7 @@
       },
       {
         "from": "src.amplihack.memory.facade",
-        "to": "src.amplihack.memory.kuzu_store",
+        "to": "src.amplihack.memory.ladybug_store",
         "import_count": 1
       },
       {

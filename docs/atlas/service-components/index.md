@@ -20,7 +20,7 @@ Category: <strong>Structural</strong> | Generated: 2026-04-04T16:07:23.959962+00
     graph TB
         subgraph utility["Utility Packages"]
             P0["amplihack<br/>1 files<br/>I=0.00"]
-            P1["kuzu<br/>5 files<br/>I=0.00"]
+            P1["ladybug<br/>5 files<br/>I=0.00"]
             P2["types<br/>2 files<br/>I=0.00"]
         end
 

@@ -27888,7 +27888,7 @@
       "call": "json.loads"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 654,
       "operation": "write",
       "format": "json",
@@ -27897,7 +27897,7 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 687,
       "operation": "write",
       "format": "json",
@@ -27906,7 +27906,7 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1166,
       "operation": "read",
       "format": "json",
@@ -27915,7 +27915,7 @@
       "call": "json.loads"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1167,
       "operation": "read",
       "format": "json",
@@ -27924,7 +27924,7 @@
       "call": "json.loads"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1438,
       "operation": "read",
       "format": "json",
@@ -27933,7 +27933,7 @@
       "call": "json.loads"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 739,
       "operation": "write",
       "format": "json",
@@ -27942,7 +27942,7 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 794,
       "operation": "write",
       "format": "json",
@@ -27951,7 +27951,7 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 795,
       "operation": "write",
       "format": "json",
@@ -27960,7 +27960,7 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 796,
       "operation": "write",
       "format": "json",
@@ -27969,7 +27969,7 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 802,
       "operation": "write",
       "format": "json",
@@ -27978,7 +27978,7 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1257,
       "operation": "read",
       "format": "json",
@@ -27987,7 +27987,7 @@
       "call": "json.loads"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1260,
       "operation": "read",
       "format": "json",
@@ -27996,7 +27996,7 @@
       "call": "json.loads"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1502,
       "operation": "read",
       "format": "json",
@@ -28005,7 +28005,7 @@
       "call": "json.loads"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 864,
       "operation": "write",
       "format": "json",
@@ -28014,7 +28014,7 @@
       "call": "json.dumps"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 914,
       "operation": "write",
       "format": "json",
@@ -39354,7 +39354,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "demonstrate_disabled_linking",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/examples/memory_code_auto_linking_example.py",
@@ -39381,7 +39381,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "main",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/examples/memory_code_auto_linking_example.py",
@@ -40191,7 +40191,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "_ensure_hive_store",
-      "call": "KuzuGraphStore"
+      "call": "LadybugGraphStore"
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/agents/goal_seeking/hive_mind/distributed.py",
@@ -40218,7 +40218,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "__init__",
-      "call": "KuzuGraphStore"
+      "call": "LadybugGraphStore"
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/agents/goal_seeking/learning_agent.py",
@@ -40347,7 +40347,7 @@
       "call": "KuzuConnector"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 111,
       "db_type": "kuzu",
       "operation": "schema",
@@ -40356,7 +40356,7 @@
       "call": "kuzu.Connection"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 978,
       "db_type": "kuzu",
       "operation": "write",
@@ -40365,7 +40365,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1002,
       "db_type": "kuzu",
       "operation": "write",
@@ -40374,7 +40374,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 171,
       "db_type": "kuzu",
       "operation": "write",
@@ -40383,7 +40383,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 187,
       "db_type": "kuzu",
       "operation": "write",
@@ -40392,7 +40392,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 198,
       "db_type": "kuzu",
       "operation": "write",
@@ -40401,7 +40401,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 218,
       "db_type": "kuzu",
       "operation": "write",
@@ -40410,7 +40410,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 238,
       "db_type": "kuzu",
       "operation": "write",
@@ -40419,7 +40419,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 261,
       "db_type": "kuzu",
       "operation": "write",
@@ -40428,7 +40428,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 284,
       "db_type": "kuzu",
       "operation": "write",
@@ -40437,7 +40437,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 303,
       "db_type": "kuzu",
       "operation": "write",
@@ -40446,7 +40446,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 310,
       "db_type": "kuzu",
       "operation": "write",
@@ -40455,7 +40455,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 317,
       "db_type": "kuzu",
       "operation": "write",
@@ -40464,7 +40464,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 326,
       "db_type": "kuzu",
       "operation": "write",
@@ -40473,7 +40473,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 335,
       "db_type": "kuzu",
       "operation": "write",
@@ -40482,7 +40482,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 343,
       "db_type": "kuzu",
       "operation": "write",
@@ -40491,7 +40491,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 351,
       "db_type": "kuzu",
       "operation": "write",
@@ -40500,7 +40500,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 359,
       "db_type": "kuzu",
       "operation": "write",
@@ -40509,7 +40509,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 367,
       "db_type": "kuzu",
       "operation": "write",
@@ -40518,7 +40518,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 375,
       "db_type": "kuzu",
       "operation": "write",
@@ -40527,7 +40527,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 383,
       "db_type": "kuzu",
       "operation": "write",
@@ -40536,7 +40536,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 391,
       "db_type": "kuzu",
       "operation": "write",
@@ -40545,7 +40545,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 402,
       "db_type": "kuzu",
       "operation": "write",
@@ -40554,7 +40554,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 416,
       "db_type": "kuzu",
       "operation": "write",
@@ -40563,7 +40563,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 430,
       "db_type": "kuzu",
       "operation": "write",
@@ -40572,7 +40572,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 446,
       "db_type": "kuzu",
       "operation": "write",
@@ -40581,7 +40581,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 455,
       "db_type": "kuzu",
       "operation": "write",
@@ -40590,7 +40590,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 464,
       "db_type": "kuzu",
       "operation": "write",
@@ -40599,7 +40599,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 473,
       "db_type": "kuzu",
       "operation": "write",
@@ -40608,7 +40608,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 482,
       "db_type": "kuzu",
       "operation": "write",
@@ -40617,7 +40617,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 491,
       "db_type": "kuzu",
       "operation": "write",
@@ -40626,7 +40626,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 500,
       "db_type": "kuzu",
       "operation": "write",
@@ -40635,7 +40635,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 509,
       "db_type": "kuzu",
       "operation": "write",
@@ -40644,7 +40644,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 517,
       "db_type": "kuzu",
       "operation": "write",
@@ -40653,7 +40653,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 526,
       "db_type": "kuzu",
       "operation": "write",
@@ -40662,7 +40662,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 535,
       "db_type": "kuzu",
       "operation": "write",
@@ -40671,7 +40671,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 544,
       "db_type": "kuzu",
       "operation": "write",
@@ -40680,7 +40680,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 553,
       "db_type": "kuzu",
       "operation": "write",
@@ -40689,7 +40689,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 563,
       "db_type": "kuzu",
       "operation": "write",
@@ -40698,7 +40698,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 572,
       "db_type": "kuzu",
       "operation": "write",
@@ -40707,7 +40707,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 581,
       "db_type": "kuzu",
       "operation": "write",
@@ -40716,7 +40716,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 590,
       "db_type": "kuzu",
       "operation": "write",
@@ -40725,7 +40725,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 599,
       "db_type": "kuzu",
       "operation": "write",
@@ -40734,7 +40734,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1142,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40743,7 +40743,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1414,
       "db_type": "kuzu",
       "operation": "read",
@@ -40752,7 +40752,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1486,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40761,7 +40761,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1561,
       "db_type": "kuzu",
       "operation": "read",
@@ -40770,7 +40770,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1632,
       "db_type": "kuzu",
       "operation": "read",
@@ -40779,7 +40779,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1637,
       "db_type": "kuzu",
       "operation": "read",
@@ -40788,7 +40788,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1727,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40797,7 +40797,7 @@
       "call": "KuzuConnector"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1730,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40806,7 +40806,7 @@
       "call": "KuzuCodeGraph"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1831,
       "db_type": "kuzu",
       "operation": "read",
@@ -40815,7 +40815,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1915,
       "db_type": "kuzu",
       "operation": "read",
@@ -40824,7 +40824,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1994,
       "db_type": "kuzu",
       "operation": "read",
@@ -40833,7 +40833,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 139,
       "db_type": "kuzu",
       "operation": "schema",
@@ -40842,7 +40842,7 @@
       "call": "kuzu.Database"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 661,
       "db_type": "kuzu",
       "operation": "write",
@@ -40851,7 +40851,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 698,
       "db_type": "kuzu",
       "operation": "read",
@@ -40860,7 +40860,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1180,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40869,7 +40869,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1227,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40878,7 +40878,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1316,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40887,7 +40887,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1372,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40896,7 +40896,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1552,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40905,7 +40905,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1621,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40914,7 +40914,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1652,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40923,7 +40923,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1848,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40932,7 +40932,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1862,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40941,7 +40941,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1937,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40950,7 +40950,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1951,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40959,7 +40959,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 86,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40968,7 +40968,7 @@
       "call": "KuzuConnector._validate_env_db_path"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 712,
       "db_type": "kuzu",
       "operation": "write",
@@ -40977,7 +40977,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 749,
       "db_type": "kuzu",
       "operation": "read",
@@ -40986,7 +40986,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1241,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -40995,7 +40995,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 1326,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -41004,7 +41004,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 95,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -41013,7 +41013,7 @@
       "call": "KuzuConnector._validate_env_db_path"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 769,
       "db_type": "kuzu",
       "operation": "write",
@@ -41022,7 +41022,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 812,
       "db_type": "kuzu",
       "operation": "read",
@@ -41031,7 +41031,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 832,
       "db_type": "kuzu",
       "operation": "write",
@@ -41040,7 +41040,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 875,
       "db_type": "kuzu",
       "operation": "read",
@@ -41049,7 +41049,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 889,
       "db_type": "kuzu",
       "operation": "write",
@@ -41058,7 +41058,7 @@
       "call": "self.connection.execute"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 924,
       "db_type": "kuzu",
       "operation": "read",
@@ -41397,7 +41397,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "_make_shard_store",
-      "call": "KuzuGraphStore"
+      "call": "LadybugGraphStore"
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/memory/facade.py",
@@ -41406,7 +41406,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "_build_graph_store",
-      "call": "KuzuGraphStore"
+      "call": "LadybugGraphStore"
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/memory/facade.py",
@@ -41415,7 +41415,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "_build_graph_store",
-      "call": "KuzuGraphStore"
+      "call": "LadybugGraphStore"
     },
     {
       "file": "/home/azureuser/src/supply/src/amplihack/memory/kuzu/code_graph.py",
@@ -41598,7 +41598,7 @@
       "call": "KuzuCodeGraph"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/kuzu_store.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/ladybug_store.py",
       "lineno": 38,
       "db_type": "kuzu",
       "operation": "unknown",
@@ -41607,7 +41607,7 @@
       "call": "kuzu_type.upper"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/kuzu_store.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/ladybug_store.py",
       "lineno": 72,
       "db_type": "kuzu",
       "operation": "schema",
@@ -41616,7 +41616,7 @@
       "call": "kuzu.Database"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/kuzu_store.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/ladybug_store.py",
       "lineno": 77,
       "db_type": "kuzu",
       "operation": "schema",
@@ -42288,7 +42288,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_store_memory_with_file_metadata_creates_file_link",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_auto_linking.py",
@@ -42297,7 +42297,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_store_memory_with_function_in_content_creates_function_link",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_auto_linking.py",
@@ -42306,7 +42306,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_auto_linking_can_be_disabled",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_auto_linking.py",
@@ -42315,7 +42315,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_metadata_file_match_scores_1_0",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_auto_linking.py",
@@ -42324,7 +42324,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_content_function_match_scores_0_8",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_auto_linking.py",
@@ -42333,7 +42333,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_duplicate_file_links_not_created",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_auto_linking.py",
@@ -42342,7 +42342,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_file_link_has_metadata_context",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_auto_linking.py",
@@ -42351,7 +42351,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_function_link_has_content_context",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_auto_linking.py",
@@ -42360,7 +42360,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_linking_failure_does_not_fail_storage",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_auto_linking.py",
@@ -42369,7 +42369,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_auto_linking_completes_quickly",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42378,7 +42378,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_codefile_node_table",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42387,7 +42387,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_class_node_table",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42396,7 +42396,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_function_node_table",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42405,7 +42405,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_all_7_code_relationships",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42414,7 +42414,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_all_10_memory_code_links",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42423,7 +42423,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_all_20_tables",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42432,7 +42432,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_twice_succeeds",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42441,7 +42441,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_uses_if_not_exists",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42450,7 +42450,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_codefile_has_all_required_properties",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42459,7 +42459,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_class_has_all_required_properties",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42468,7 +42468,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_function_has_all_required_properties",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42477,7 +42477,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_memory_code_links_have_relevance_score",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42486,7 +42486,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_existing_memory_nodes_still_created",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42495,7 +42495,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_existing_memory_relationships_still_created",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42504,7 +42504,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_store_memory_still_works",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42513,7 +42513,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_can_query_codefile_table_from_catalog",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42531,7 +42531,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_can_query_all_code_relationships",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42540,7 +42540,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_completes_in_reasonable_time",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42549,7 +42549,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_correct_number_of_statements",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_code_schema.py",
@@ -42567,7 +42567,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_episodic_memory_table",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42576,7 +42576,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_semantic_memory_table",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42585,7 +42585,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_procedural_memory_table",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42594,7 +42594,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_prospective_memory_table",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42603,7 +42603,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_working_memory_table",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42612,7 +42612,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_contains_episodic_relationship",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42621,7 +42621,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_initialize_creates_all_11_relationships",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42630,7 +42630,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_store_episodic_memory_creates_episodic_node",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42639,7 +42639,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_store_semantic_memory_creates_semantic_node",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42648,7 +42648,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_store_procedural_memory_creates_procedural_node",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42657,7 +42657,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_store_prospective_memory_creates_prospective_node",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42666,7 +42666,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_store_working_memory_creates_working_node",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42675,7 +42675,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_retrieve_memories_queries_all_node_types",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42684,7 +42684,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_retrieve_memories_filters_by_memory_type",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42693,7 +42693,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_store_episodic_creates_contains_relationship",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_schema_redesign.py",
@@ -42702,7 +42702,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_store_working_creates_contains_relationship",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_kuzu_session_isolation.py",
@@ -42711,7 +42711,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "backend",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_memory_type_filter_regression.py",
@@ -42720,7 +42720,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "backend",
-      "call": "KuzuBackend"
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_memory_type_filter_regression.py",
@@ -42729,7 +42729,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_retrieve_sync_routes_to_single_type_when_filter_set",
-      "call": "KuzuBackend.__new__"
+      "call": "LadybugBackend.__new__"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/backends/test_memory_type_filter_regression.py",
@@ -42738,7 +42738,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_retrieve_sync_queries_all_types_when_no_filter",
-      "call": "KuzuBackend.__new__"
+      "call": "LadybugBackend.__new__"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/kuzu/test_code_graph.py",
@@ -43061,8 +43061,8 @@
       "db_type": "kuzu",
       "operation": "unknown",
       "query_literal": null,
-      "function_context": "test_with_kuzu_backend",
-      "call": "KuzuBackend"
+      "function_context": "test_with_ladybug_backend",
+      "call": "LadybugBackend"
     },
     {
       "file": "/home/azureuser/src/supply/tests/memory/test_code_context_injection.py",
@@ -43088,8 +43088,8 @@
       "db_type": "kuzu",
       "operation": "unknown",
       "query_literal": null,
-      "function_context": "kuzu_store",
-      "call": "KuzuGraphStore"
+      "function_context": "ladybug_store",
+      "call": "LadybugGraphStore"
     },
     {
       "file": "/home/azureuser/src/supply/tests/test_memory_system.py",
@@ -43152,7 +43152,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_succeeds_on_first_attempt",
-      "call": "KuzuBackend._open_database_with_retry"
+      "call": "LadybugBackend._open_database_with_retry"
     },
     {
       "file": "/home/azureuser/src/supply/tests/unit/memory/test_kuzu_retry.py",
@@ -43161,7 +43161,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_retries_on_lock_contention",
-      "call": "KuzuBackend._open_database_with_retry"
+      "call": "LadybugBackend._open_database_with_retry"
     },
     {
       "file": "/home/azureuser/src/supply/tests/unit/memory/test_kuzu_retry.py",
@@ -43170,7 +43170,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_does_not_retry_non_lock_errors",
-      "call": "KuzuBackend._open_database_with_retry"
+      "call": "LadybugBackend._open_database_with_retry"
     },
     {
       "file": "/home/azureuser/src/supply/tests/unit/memory/test_kuzu_retry.py",
@@ -43179,7 +43179,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_raises_after_max_retries",
-      "call": "KuzuBackend._open_database_with_retry"
+      "call": "LadybugBackend._open_database_with_retry"
     },
     {
       "file": "/home/azureuser/src/supply/tests/unit/memory/test_kuzu_retry.py",
@@ -43188,7 +43188,7 @@
       "operation": "unknown",
       "query_literal": null,
       "function_context": "test_exponential_backoff_delays",
-      "call": "KuzuBackend._open_database_with_retry"
+      "call": "LadybugBackend._open_database_with_retry"
     }
   ],
   "network_io": [
@@ -44323,7 +44323,7 @@
       "writes": ["json file"]
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "function": "_store_memory_sync",
       "reads": ["kuzu database"],
       "writes": ["json file", "kuzu database"]

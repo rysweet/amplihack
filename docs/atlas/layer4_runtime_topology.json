@@ -12867,14 +12867,14 @@
       "function_context": "detect_best_backend"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 81,
       "variable": "AMPLIHACK_GRAPH_DB_PATH",
       "default": "",
       "function_context": "__init__"
     },
     {
-      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
+      "file": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
       "lineno": 82,
       "variable": "AMPLIHACK_KUZU_DB_PATH",
       "default": "",

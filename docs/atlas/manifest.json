@@ -44395,8 +44395,8 @@
       "classification": "source"
     },
     {
-      "path": "/home/azureuser/src/supply/src/amplihack/memory/backends/kuzu_backend.py",
-      "rel_path": "src/amplihack/memory/backends/kuzu_backend.py",
+      "path": "/home/azureuser/src/supply/src/amplihack/memory/backends/ladybug_backend.py",
+      "rel_path": "src/amplihack/memory/backends/ladybug_backend.py",
       "extension": ".py",
       "size_bytes": 75658,
       "line_count": 2035,
@@ -44769,8 +44769,8 @@
       "classification": "source"
     },
     {
-      "path": "/home/azureuser/src/supply/src/amplihack/memory/kuzu_store.py",
-      "rel_path": "src/amplihack/memory/kuzu_store.py",
+      "path": "/home/azureuser/src/supply/src/amplihack/memory/ladybug_store.py",
+      "rel_path": "src/amplihack/memory/ladybug_store.py",
       "extension": ".py",
       "size_bytes": 19078,
       "line_count": 483,
