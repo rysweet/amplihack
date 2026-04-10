@@ -139,7 +139,7 @@ class DistributedGraphStore:
         if self._shard_backend == "kuzu":
             from pathlib import Path
 
-            from .kuzu_store import KuzuGraphStore
+            from .ladybug_store import KuzuGraphStore
 
             shard_path = Path(self._storage_path) / "shards" / agent_id
             shard_path.parent.mkdir(parents=True, exist_ok=True)

@@ -23,7 +23,7 @@ from .memory_store import InMemoryGraphStore
 from .models import MemoryEntry, MemoryType, SessionInfo
 
 try:
-    from .kuzu_store import KuzuGraphStore
+    from .ladybug_store import KuzuGraphStore
 except ImportError:
     KuzuGraphStore = None  # type: ignore[assignment,misc]
 

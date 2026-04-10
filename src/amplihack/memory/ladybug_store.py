@@ -1,6 +1,6 @@
-"""KuzuGraphStore — kuzu.Database-backed GraphStore implementation.
+"""KuzuGraphStore — ladybug.Database-backed GraphStore implementation.
 
-Maps the GraphStore protocol to Kùzu Cypher queries:
+Maps the GraphStore protocol to Kùzu/Ladybug Cypher queries:
   - create_node  → CREATE (:table {properties})
   - get_node     → MATCH (n:table) WHERE n.node_id = $id RETURN n
   - query_nodes  → MATCH (n:table) WHERE ... RETURN n LIMIT k
@@ -8,16 +8,24 @@ Maps the GraphStore protocol to Kùzu Cypher queries:
   - create_edge  → MATCH (a), (b) CREATE (a)-[:rel]->(b)
   - get_edges    → MATCH (n)-[r:rel]->() WHERE ...
 
-Requires kuzu to be installed (`uv add kuzu`).
+Requires ladybug (or kuzu as fallback) to be installed (`uv add ladybug`).
 """
 
 from __future__ import annotations
 
+import fcntl
+import os
 import re
 import threading
+import time
 import uuid
 from pathlib import Path
 from typing import Any
+
+try:
+    import ladybug
+except ImportError:
+    import kuzu as ladybug  # type: ignore[no-redef]
 
 
 def _validate_identifier(name: str) -> None:
@@ -45,13 +53,54 @@ def _coerce(value: Any, kuzu_type: str) -> Any:
     return str(value) if not isinstance(value, str) else value
 
 
-class KuzuGraphStore:
-    """Kùzu-backed GraphStore.
+# Default flock timeout in seconds
+_FLOCK_TIMEOUT = 30
+
+
+def _acquire_flock(lock_path: str, shared: bool = False, timeout: float = _FLOCK_TIMEOUT) -> int:
+    """Acquire an flock on a sidecar .lock file.
 
     Args:
-        db_path: Path to the Kùzu database directory. Use None for in-memory.
+        lock_path: Path to the .lock sidecar file.
+        shared: If True, acquire LOCK_SH (read). Otherwise LOCK_EX (write).
+        timeout: Max seconds to wait for the lock.
+
+    Returns:
+        The file descriptor for the lock (caller must release with _release_flock).
+    """
+    op = fcntl.LOCK_SH if shared else fcntl.LOCK_EX
+    fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o644)
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            fcntl.flock(fd, op | fcntl.LOCK_NB)
+            return fd
+        except OSError:
+            if time.monotonic() >= deadline:
+                os.close(fd)
+                raise TimeoutError(
+                    f"Could not acquire {'shared' if shared else 'exclusive'} "
+                    f"flock on {lock_path} within {timeout}s"
+                )
+            time.sleep(0.05)
+
+
+def _release_flock(fd: int) -> None:
+    """Release an flock and close the file descriptor."""
+    try:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
+
+
+class KuzuGraphStore:
+    """Kùzu/Ladybug-backed GraphStore.
+
+    Args:
+        db_path: Path to the database directory. Use None for in-memory.
         buffer_pool_size: Buffer pool size in bytes (default 64 MB).
         max_db_size: Max database size in bytes (default 1 GB).
+        read_only: If True, open database in read-only mode (shared lock).
     """
 
     def __init__(
@@ -59,22 +108,39 @@ class KuzuGraphStore:
         db_path: str | Path | None = None,
         buffer_pool_size: int = 64 * 1024 * 1024,
         max_db_size: int = 1024 * 1024 * 1024,
+        read_only: bool = False,
     ) -> None:
-        import kuzu
+        self._read_only = read_only
+        self._lock_fd: int | None = None
 
         db_arg = str(db_path) if db_path is not None else None
         if db_path is not None:
             p = Path(db_path)
-            # Kuzu creates its own db directory; remove empty stale dir if present
+            # Create parent dirs and clean up empty stale dir
             if p.is_dir() and not any(p.iterdir()):
                 p.rmdir()
             p.parent.mkdir(parents=True, exist_ok=True)
-        self._db = kuzu.Database(
-            db_arg,
-            buffer_pool_size=buffer_pool_size,
-            max_db_size=max_db_size,
-        )
-        self._conn = kuzu.Connection(self._db)
+
+            # Acquire flock on sidecar .lock file before opening Database
+            lock_path = str(p) + ".lock"
+            self._lock_fd = _acquire_flock(lock_path, shared=read_only)
+
+        try:
+            db_kwargs: dict[str, Any] = {
+                "buffer_pool_size": buffer_pool_size,
+                "max_db_size": max_db_size,
+            }
+            if read_only:
+                db_kwargs["read_only"] = True
+            self._db = ladybug.Database(db_arg, **db_kwargs)
+            self._conn = ladybug.Connection(self._db)
+        except Exception:
+            # Release the flock if Database/Connection creation fails
+            if self._lock_fd is not None:
+                _release_flock(self._lock_fd)
+                self._lock_fd = None
+            raise
+
         self._lock = threading.RLock()
         # Track known tables to avoid duplicate CREATE TABLE
         self._known_tables: set[str] = set()
@@ -127,6 +193,7 @@ class KuzuGraphStore:
         clauses = []
         params: dict[str, Any] = {}
         for i, (k, v) in enumerate(filters.items()):
+            _validate_identifier(k)
             param_name = f"filter_{i}"
             clauses.append(f"n.{k} = ${param_name}")
             params[param_name] = v
@@ -141,7 +208,9 @@ class KuzuGraphStore:
         if table in self._known_tables:
             return
         _validate_identifier(table)
-        # Build column definitions
+        # Validate column names before building DDL
+        for col in schema:
+            _validate_identifier(col)
         cols = ", ".join(f"{col} {dtype}" for col, dtype in schema.items())
         # node_id is always the primary key
         if "node_id" in schema:
@@ -165,13 +234,18 @@ class KuzuGraphStore:
         _validate_identifier(from_table)
         _validate_identifier(to_table)
         if schema:
+            for col in schema:
+                _validate_identifier(col)
             cols = ", ".join(f"{col} {dtype}" for col, dtype in schema.items())
             query = (
                 f"CREATE REL TABLE IF NOT EXISTS {rel_type} "
                 f"(FROM {from_table} TO {to_table}, {cols})"
             )
         else:
-            query = f"CREATE REL TABLE IF NOT EXISTS {rel_type} (FROM {from_table} TO {to_table})"
+            query = (
+                f"CREATE REL TABLE IF NOT EXISTS {rel_type} "
+                f"(FROM {from_table} TO {to_table})"
+            )
         self._execute(query)
         self._known_rel_tables.add(rel_type)
         self._rel_table_map[rel_type] = (from_table, to_table)
@@ -187,6 +261,8 @@ class KuzuGraphStore:
         props["node_id"] = node_id
 
         schema = self._schemas.get(table, {})
+        for k in props:
+            _validate_identifier(k)
         coerced = {k: _coerce(v, schema.get(k, "STRING")) for k, v in props.items()}
 
         prop_str = ", ".join(f"{k}: ${k}" for k in coerced.keys())
@@ -207,6 +283,7 @@ class KuzuGraphStore:
         set_clauses = []
         params: dict[str, Any] = {"node_id": node_id}
         for i, (k, v) in enumerate(properties.items()):
+            _validate_identifier(k)
             pname = f"upd_{i}"
             set_clauses.append(f"n.{k} = ${pname}")
             params[pname] = _coerce(v, schema.get(k, "STRING"))
@@ -247,60 +324,30 @@ class KuzuGraphStore:
         _validate_identifier(table)
         schema = self._schemas.get(table, {})
         search_fields = fields or [
-            col for col, dtype in schema.items() if dtype.upper() in ("STRING", "VARCHAR")
+            col for col, dtype in schema.items()
+            if dtype.upper() in ("STRING", "VARCHAR")
         ]
         if not search_fields:
             # No schema info — fall back to node_id search
             search_fields = ["node_id"]
+        for f in search_fields:
+            _validate_identifier(f)
 
         # Tokenise the query into up to 6 meaningful keywords (len >= 3) so
         # that full natural-language questions still find relevant nodes even
         # when no node contains the entire question as a literal substring.
         # This mirrors SemanticMemory.search_facts keyword tokenisation.
         _STOP = frozenset(
-            {
-                "what",
-                "was",
-                "the",
-                "did",
-                "how",
-                "who",
-                "why",
-                "are",
-                "is",
-                "it",
-                "in",
-                "on",
-                "at",
-                "of",
-                "to",
-                "and",
-                "or",
-                "not",
-                "for",
-                "with",
-                "from",
-                "that",
-                "this",
-                "a",
-                "an",
-                "by",
-                "be",
-                "has",
-                "had",
-                "have",
-                "does",
-                "were",
-                "been",
-                "being",
-                "do",
-                "its",
-            }
+            {"what", "was", "the", "did", "how", "who", "why", "are", "is",
+             "it", "in", "on", "at", "of", "to", "and", "or", "not", "for",
+             "with", "from", "that", "this", "a", "an", "by", "be", "has",
+             "had", "have", "does", "were", "been", "being", "do", "its"}
         )
         tokens = [
             w.strip("?.,!;:'\"").lower()
             for w in text.split()
-            if len(w.strip("?.,!;:'\"")) >= 3 and w.strip("?.,!;:'\"").lower() not in _STOP
+            if len(w.strip("?.,!;:'\"")) >= 3
+            and w.strip("?.,!;:'\"").lower() not in _STOP
         ][:6]
 
         if tokens:
@@ -342,6 +389,8 @@ class KuzuGraphStore:
         _validate_identifier(to_table)
         params: dict[str, Any] = {"from_id": from_id, "to_id": to_id}
         if properties:
+            for k in properties:
+                _validate_identifier(k)
             prop_str = ", ".join(f"{k}: ${k}" for k in properties.keys())
             params.update(properties)
             query = (
@@ -449,9 +498,7 @@ class KuzuGraphStore:
                     result.append((tbl, nid, dict(node)))
         return result
 
-    def export_edges(
-        self, node_ids: list[str] | None = None
-    ) -> list[tuple[str, str, str, str, str, dict]]:
+    def export_edges(self, node_ids: list[str] | None = None) -> list[tuple[str, str, str, str, str, dict]]:
         """Export edges as (rel_type, from_table, from_id, to_table, to_id, properties) tuples."""
         result = []
         id_set = set(node_ids) if node_ids is not None else None
@@ -509,6 +556,10 @@ class KuzuGraphStore:
             self._conn.close()
         except Exception:
             pass
+        finally:
+            if self._lock_fd is not None:
+                _release_flock(self._lock_fd)
+                self._lock_fd = None
 
 
 __all__ = ["KuzuGraphStore"]
