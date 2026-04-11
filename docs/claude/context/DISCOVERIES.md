@@ -6,6 +6,10 @@ This file documents non-obvious problems, solutions, and patterns discovered dur
 
 ## Table of Contents
 
+### April 2026
+
+- [Ladybug Graph Store: Three Non-Obvious Migration Patterns](#ladybug-graph-store-three-non-obvious-migration-patterns-2026-04-11)
+
 ### Recent (December 2025)
 
 - [Mandatory User Testing Validates Its Own Value](#mandatory-user-testing-validates-value-2025-12-02)
@@ -28,6 +32,73 @@ This file documents non-obvious problems, solutions, and patterns discovered dur
 - [Pattern Applicability Framework](#pattern-applicability-analysis-framework-2025-10-20)
 - [Socratic Questioning Pattern](#socratic-questioning-pattern-2025-10-18)
 - [Expert Agent Creation Pattern](#expert-agent-creation-pattern-2025-10-18)
+
+---
+
+## Ladybug Graph Store: Three Non-Obvious Migration Patterns (2026-04-11)
+
+### Problem
+
+PR #4302 migrated the graph memory backend from `kuzu` to `ladybug`. Three non-obvious issues surfaced that will recur if contributors touch `src/amplihack/memory/ladybug_store.py` without knowing them.
+
+### Root Cause and Solutions
+
+**1. Ladybug `[]` vector reinterpretation**
+
+Ladybug parses JSON arrays stored in STRING columns as vector/list values rather than opaque strings. Any property containing a JSON array (`[...]`) — such as `tags` or `metadata` — is silently reinterpreted and corrupts round-trips.
+
+Fix: base64-encode structured JSON before writing; decode on read.
+
+```python
+import base64, json
+
+def _encode(value):
+    return base64.b64encode(json.dumps(value).encode()).decode()
+
+def _decode(raw):
+    return json.loads(base64.b64decode(raw).decode())
+```
+
+This applies to every property whose Python type is `list` or `dict`.
+
+**2. flock serialization for concurrent write-mode `Database()` creation**
+
+Multiple agent processes calling `ladybug.Database(path)` in write mode simultaneously corrupt the database. Ladybug does not handle concurrent openers.
+
+Fix: acquire `fcntl.LOCK_EX` on a sidecar `<db_path>.lock` file before constructing `Database()`. Release the lock only in `close()`. Read-only opens use `fcntl.LOCK_SH` (shared) instead, allowing concurrent readers.
+
+```python
+import fcntl, pathlib
+
+lock_path = pathlib.Path(db_path).with_suffix(".lock")
+lock_fd = open(lock_path, "w")
+fcntl.flock(lock_fd, fcntl.LOCK_EX)  # or LOCK_SH for read_only
+db = ladybug.Database(str(db_path))
+```
+
+**3. Two separate kuzu subsystems — only one was migrated**
+
+The repo contains two distinct kuzu integrations that must not be confused:
+
+| Subsystem | Path | Status |
+|---|---|---|
+| Session/agent memory graph store | `src/amplihack/memory/ladybug_store.py` | **Migrated to ladybug** |
+| Code-graph indexing | `src/amplihack/memory/kuzu/` | Still uses kuzu directly — not migrated |
+| 5-type memory backend | `src/amplihack/memory/backends/kuzu_backend.py` | Still uses kuzu directly — not migrated |
+
+PRs touching one subsystem do not affect the others.
+
+### Key Learnings
+
+1. **Test round-trips for every property type**: Ladybug (and kuzu) silently change representations for some Python types. Smoke-test `create_node → get_node` for dicts and lists.
+2. **File-level locking is necessary for multi-process graph DBs**: Threading locks (`RLock`) protect only intra-process concurrency; `flock` is needed across processes.
+3. **"kuzu" in a path no longer means kuzu the package**: After the migration, files under `memory/kuzu/` still use the original `kuzu` package; files under `memory/ladybug_store.py` use `ladybug`.
+
+### Prevention
+
+- When adding new node properties, check the Python type: if it is `list` or `dict`, encode before storing.
+- Never open the same `Database()` path in two processes without coordinating via `flock` or a single shared process.
+- Read the "Out of Scope" section of [LADYBUG_MIGRATION_GUIDE.md](../../LADYBUG_MIGRATION_GUIDE.md) before starting any kuzu-related work.
 
 ---
 
