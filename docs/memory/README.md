@@ -14,6 +14,8 @@ This is the landing page for the current memory documentation.
 - [How to integrate memory into agents](../howto/integrate-memory-into-agents.md) - practical guide for adding memory helpers to generated agent code
 - [Memory CLI reference](../reference/memory-cli-reference.md) - exact top-level command syntax and caveats
 - [Kuzu code schema](./KUZU_CODE_SCHEMA.md) - schema details for the lower-level Kuzu-backed graph store
+- [Ladybug Graph Store API](./LADYBUG_GRAPH_STORE.md) - API reference for `KuzuGraphStore` (ladybug-backed)
+- [Ladybug Migration Guide](../LADYBUG_MIGRATION_GUIDE.md) - migrating from `kuzu_store` to `ladybug_store`
 - [Memory diagrams](../../Specs/MEMORY_AGENTS_DIAGRAMS.md) - presentation-friendly architecture diagrams
 
 ## What "Memory" Means in This Repo

@@ -110,3 +110,9 @@ time pytest --collect-only -q tests/memory/ tests/unit/memory/
 - [conftest.py](../conftest.py) — Root pytest configuration (minimal, no kuzu-specific guards)
 - [pytest importorskip docs](https://docs.pytest.org/en/stable/reference/pytest.html#pytest.importorskip)
 - [kuzu Python bindings](https://docs.kuzudb.com/client-apis/python/) — upstream library
+- [Ladybug Migration Guide](LADYBUG_MIGRATION_GUIDE.md) — `kuzu_store` → `ladybug_store` upgrade
+
+> **Note:** The `KuzuGraphStore` class (in `amplihack.memory.ladybug_store`)
+> now imports `ladybug` with a fallback to `kuzu`. The backend-level test files
+> listed above still test `kuzu_backend.py` which imports `kuzu` directly — those
+> are separate from the `KuzuGraphStore` migration.

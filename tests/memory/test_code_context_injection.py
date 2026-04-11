@@ -66,7 +66,7 @@ async def test_retrieve_with_code_context_flag(coordinator_with_code_graph: Memo
     request = StorageRequest(
         content="Fixed bug in retrieve_memories function",
         memory_type=MemoryType.EPISODIC,
-        metadata={"file": "src/amplihack/memory/kuzu_store.py"},
+        metadata={"file": "src/amplihack/memory/ladybug_store.py"},
     )
 
     memory_id = await coordinator_with_code_graph.store(request)

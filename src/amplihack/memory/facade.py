@@ -160,7 +160,7 @@ class Memory:
             if transport != "local":
                 from pathlib import Path as _Path
 
-                from .kuzu_store import KuzuGraphStore
+                from .ladybug_store import KuzuGraphStore
                 from .network_store import NetworkGraphStore
 
                 db_path = _Path(cfg.storage_path) / "graph_store" if cfg.storage_path else None
@@ -197,7 +197,7 @@ class Memory:
         # cognitive (default) — requires Kuzu; raises ImportError if unavailable
         from pathlib import Path as _Path
 
-        from .kuzu_store import KuzuGraphStore
+        from .ladybug_store import KuzuGraphStore
 
         db_path = _Path(cfg.storage_path) / "graph_store" if cfg.storage_path else None
         buffer_bytes = cfg.kuzu_buffer_pool_mb * 1024 * 1024

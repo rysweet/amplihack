@@ -44,7 +44,7 @@ def in_memory_store() -> InMemoryGraphStore:
 def kuzu_store():
     """KuzuGraphStore using a temp directory."""
     pytest.importorskip("kuzu")
-    from amplihack.memory.kuzu_store import KuzuGraphStore
+    from amplihack.memory.ladybug_store import KuzuGraphStore
 
     with tempfile.TemporaryDirectory() as tmpdir:
         store = KuzuGraphStore(

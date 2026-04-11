@@ -248,7 +248,7 @@ async def visualize_memory_tree_async(
         ImportError: If Rich library not installed
 
     Example:
-        >>> from amplihack.memory.kuzu_store import KuzuGraphStore
+        >>> from amplihack.memory.ladybug_store import KuzuGraphStore
         >>> backend = KuzuBackend()
         >>> await visualize_memory_tree_async(backend)
 
@@ -338,7 +338,7 @@ def visualize_memory_tree(
         ImportError: If Rich library not installed
 
     Example:
-        >>> from amplihack.memory.kuzu_store import KuzuGraphStore
+        >>> from amplihack.memory.ladybug_store import KuzuGraphStore
         >>> backend = KuzuBackend()
         >>> visualize_memory_tree(backend)
 

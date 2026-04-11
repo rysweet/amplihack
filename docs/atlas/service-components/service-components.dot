@@ -48,8 +48,8 @@ digraph service_components {
         m_viz [label="cli_visualize.py"];
         m_clean [label="cli_cleanup.py"];
 
-        subgraph cluster_kuzu {
-            label="kuzu/";
+        subgraph cluster_ladybug {
+            label="ladybug/";
             style=filled; fillcolor="#ffe8cc";
             k_conn [label="connector.py"];
             k_code [label="code_graph.py"];
@@ -65,7 +65,7 @@ digraph service_components {
             style=filled; fillcolor="#ffe0cc";
             b_base [label="base.py"];
             b_sqlite [label="sqlite_backend.py"];
-            b_kuzu [label="kuzu_backend.py"];
+            b_ladybug [label="ladybug_backend.py"];
         }
     }
 
@@ -192,7 +192,7 @@ digraph service_components {
     k_orch -> k_scip;
     k_orch -> k_import;
     b_sqlite -> b_base;
-    b_kuzu -> b_base;
+    b_ladybug -> b_base;
 
     r_runner -> r_models;
     r_runner -> r_parser;

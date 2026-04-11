@@ -344,7 +344,7 @@ class TestIntegrationWithBackends:
         """Test with Kùzu backend (skipped if not installed)."""
         # Try to import real kuzu module
         try:
-            from amplihack.memory.kuzu_store import KuzuGraphStore
+            from amplihack.memory.ladybug_store import KuzuGraphStore
         except ImportError:
             pytest.skip("Kùzu not installed")
 
