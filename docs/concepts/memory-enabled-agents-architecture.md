@@ -10,7 +10,7 @@ There are two memory surfaces in the repo, and they serve different jobs.
 
 The package under `src/amplihack/memory` powers the top-level CLI memory commands and related graph-oriented features.
 
-It is centered around a Kuzu-backed graph store by default and supports these primary memory types:
+It is centered around a Ladybug-backed graph store by default (migrated from Kuzu in PR #4302) and supports these primary memory types:
 
 - `episodic`
 - `semantic`
@@ -54,13 +54,13 @@ That means you should not assume the CLI memory tree is a live view into a gener
 
 `amplihack memory tree` opens the top-level `MemoryDatabase`, which stores session data in SQLite at `~/.amplihack/memory.db` by default.
 
-## Agent-Local Kuzu Stores
+## Agent-Local Ladybug Stores
 
-`amplihack memory export` / `amplihack memory import` and generated goal-agent scaffolds work with agent-local hierarchical stores backed by Kuzu. When lower-level graph code resolves a Kuzu path directly, it checks:
+`amplihack memory export` / `amplihack memory import` and generated goal-agent scaffolds work with agent-local hierarchical stores backed by Ladybug (the successor to Kuzu). When lower-level graph code resolves a database path, it checks:
 
 1. `AMPLIHACK_GRAPH_DB_PATH`
 2. `AMPLIHACK_KUZU_DB_PATH` (deprecated)
-3. `~/.amplihack/memory_kuzu.db`
+3. `~/.amplihack/memory_kuzu.db` (deprecated path; still supported for backward compatibility)
 
 ## Current CLI Shape
 
@@ -81,7 +81,7 @@ flowchart LR
     RepoMemory --> SQLite[(~/.amplihack/memory.db)]
 
     Transfer[amplihack memory export/import] --> AgentStore[HierarchicalMemory export/import]
-    AgentStore --> AgentKuzu[(agent-local Kuzu store)]
+    AgentStore --> AgentLadybug[(agent-local Ladybug store)]
 
     Generator[amplihack new --enable-memory] --> Package[generated agent package]
     Package --> MainPy[main.py helpers]
@@ -107,3 +107,5 @@ Most confusion around the current docs came from mixing those two stories togeth
 - [How to integrate memory into agents](../howto/integrate-memory-into-agents.md)
 - [Memory CLI reference](../reference/memory-cli-reference.md)
 - [Memory diagrams](../../Specs/MEMORY_AGENTS_DIAGRAMS.md)
+- [Ladybug Graph Store API](../memory/LADYBUG_GRAPH_STORE.md)
+- [Ladybug Migration Guide](../LADYBUG_MIGRATION_GUIDE.md)

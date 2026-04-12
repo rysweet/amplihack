@@ -194,6 +194,10 @@ nav:
           - LearningAgent Refactor Tutorial: tutorials/learning-agent-refactor-tutorial.md
       - Agent Memory Integration: AGENT_MEMORY_INTEGRATION.md
       - Memory Quickstart: AGENT_MEMORY_QUICKSTART.md
+      - Memory:
+          - Overview: memory/README.md
+          - Ladybug Graph Store API: memory/LADYBUG_GRAPH_STORE.md
+          - Ladybug Migration Guide: LADYBUG_MIGRATION_GUIDE.md
       - External Knowledge: external_knowledge_integration.md
       - Documentation Graph: documentation_knowledge_graph.md
       - Blarify Integration: blarify_integration.md

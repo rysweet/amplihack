@@ -4,7 +4,7 @@
 
 | Store                    | Technology          | Path / URI                     | Used By                                    | Description                                                  |
 | ------------------------ | ------------------- | ------------------------------ | ------------------------------------------ | ------------------------------------------------------------ |
-| Memory Graph             | Kuzu (embedded)     | `~/.amplihack/memory/kuzu_db/` | `amplihack.memory`, `amplihack-memory-lib` | Persistent memory storage with CognitiveMemory 6-type system |
+| Memory Graph             | Ladybug (embedded)  | `~/.amplihack/memory/kuzu_db/` | `amplihack.memory`, `amplihack-memory-lib` | Persistent memory storage with CognitiveMemory 6-type system (migrated from Kuzu in #4302) |
 | Blarify Graph (Neo4j)    | Neo4j (external)    | `$NEO4J_URI`                   | `vendor/blarify/main.py`                   | Code knowledge graph for cross-file symbol analysis          |
 | Blarify Graph (FalkorDB) | FalkorDB (external) | configured via Blarify         | `vendor/blarify/`                          | Alternative graph backend for Blarify                        |
 
