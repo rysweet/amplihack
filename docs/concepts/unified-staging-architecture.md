@@ -70,7 +70,13 @@ Efficient file copying mechanism that:
 - Uses manifest to copy only essential files
 - Preserves directory structure
 - Skips unnecessary files (tests, examples, cache)
-- Idempotent - safe to run multiple times
+- Idempotent — safe to run multiple times
+- **Self-copy guard** — compares `os.path.realpath(source)` and
+  `os.path.realpath(dest)` before copying; returns immediately (no-op) when
+  they resolve to the same path. This prevents `shutil.SameFileError` in the
+  default deployment layout where `AMPLIHACK_HOME=~/.amplihack` causes the
+  grandparent directory search to resolve the source and destination to the
+  same directory (see PR #4325).
 
 **`STAGING_MANIFEST`**
 

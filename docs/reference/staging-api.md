@@ -24,7 +24,7 @@ def _ensure_amplihack_staged() -> None:
 1. Detects deployment mode via `deployment.get_deployment_mode()`
 2. Returns immediately if not in UVX mode (development uses source files)
 3. Creates `~/.amplihack/.claude/` if missing
-4. Calls `copytree_manifest()` to copy framework files
+4. Calls `copytree_manifest()` to copy framework files (no-op if source equals destination)
 5. Handles errors gracefully with user-friendly messages
 
 **Called by:**
@@ -72,6 +72,19 @@ def copytree_manifest(
 - `dest`: Destination directory (`~/.amplihack/.claude/`)
 - `manifest`: Dictionary mapping subdirectories to glob patterns
 - `overwrite`: Whether to replace existing files (default: True)
+
+**Self-copy guard:**
+
+When `AMPLIHACK_HOME=~/.amplihack` (the default), the grandparent search in
+`copytree_manifest()` may resolve `~/.amplihack/.claude` as both the source
+_and_ the destination. Copying a directory onto itself causes
+`shutil.SameFileError` and blocks all recipe runner agent steps.
+
+Since PR #4325, `copytree_manifest()` compares `os.path.realpath(source)` and
+`os.path.realpath(dest)` before copying. When they are equal the function
+returns immediately with the list of existing subdirectories (a no-op), so
+agents and tools launch without error even in the default single-directory
+layout.
 
 **Manifest Format:**
 
@@ -199,6 +212,23 @@ except FileNotFoundError as e:
     print("This indicates a corrupted package installation")
     sys.exit(1)
 ```
+
+### Self-copy (`shutil.SameFileError`)
+
+**Affected versions**: amplihack < PR #4325 (April 2026).
+
+**Symptom**: All recipe runner agent steps fail at startup with
+`shutil.SameFileError` when `AMPLIHACK_HOME=~/.amplihack` (the default).
+
+**Root cause**: `copytree_manifest()` searches grandparent directories to find
+the package's `.claude/` directory. With the default layout this resolves to
+`~/.amplihack/.claude` — the same path as the staging destination — so `shutil`
+raises `SameFileError` when attempting to copy a directory onto itself.
+
+**Fix (PR #4325)**: The function now compares `os.path.realpath(source)` and
+`os.path.realpath(dest)` before copying. When they resolve to the same path, it
+returns immediately (no-op) instead of attempting the copy. No manual workaround
+is needed on current versions.
 
 ## Testing
 
