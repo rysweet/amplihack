@@ -877,6 +877,12 @@ def _sync_home_runtime_directory(source_dir: Path, target_dir: Path, description
         print(f"❌ Required runtime directory missing: {source_dir}")
         sys.exit(1)
 
+    # Guard: skip when source and destination resolve to the same path.
+    # This happens when AMPLIHACK_HOME=~/.amplihack and the package is
+    # already installed there (amplihack_src == home_root/src/amplihack).
+    if os.path.realpath(source_dir) == os.path.realpath(target_dir):
+        return
+
     target_dir.parent.mkdir(parents=True, exist_ok=True)
     try:
         shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)

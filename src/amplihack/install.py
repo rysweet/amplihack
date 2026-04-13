@@ -73,6 +73,15 @@ def copytree_manifest(
             print(f"     {candidate}")
         return []
 
+    # Guard: skip copy when source and destination resolve to the same path.
+    # This happens when AMPLIHACK_HOME=~/.amplihack and the grandparent search
+    # finds ~/.amplihack/.claude which IS the staging_dir, causing SameFileError.
+    if os.path.realpath(base) == os.path.realpath(dst):
+        return list(
+            d for d in (manifest.dirs_to_stage if manifest else ESSENTIAL_DIRS)
+            if os.path.isdir(os.path.join(base, d))
+        )
+
     copied = []
 
     # Use manifest dirs if provided, otherwise use ESSENTIAL_DIRS
