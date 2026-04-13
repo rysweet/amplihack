@@ -29,6 +29,7 @@ Backward compatibility:
 import asyncio
 import inspect
 import logging
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -37,11 +38,53 @@ from .retrieval_constants import ORIENT_SEARCH_LIMIT
 logger = logging.getLogger(__name__)
 
 
+def _run_awaitable_in_background_thread(awaitable: Any) -> Any:
+    """Execute an awaitable to completion on a dedicated event loop thread.
+
+    GoalSeekingAgent exposes a synchronous API, but some backends now return
+    coroutines. When callers invoke that sync API from inside an already-running
+    event loop, ``asyncio.run()`` is not legal, so we bridge through a short-
+    lived thread with its own loop and surface the original result/exception.
+    """
+
+    state: dict[str, Any] = {}
+
+    def _runner() -> None:
+        try:
+            state["result"] = asyncio.run(awaitable)
+        except BaseException as exc:  # preserve original failure for the caller
+            state["exception"] = exc
+
+    thread = threading.Thread(
+        target=_runner,
+        name="goal-seeking-awaitable-runner",
+        daemon=True,
+    )
+    thread.start()
+    thread.join()
+
+    if "exception" in state:
+        raise state["exception"]
+    return state.get("result")
+
+
 def _run_maybe_async(value: Any) -> Any:
     """Run coroutine-like values, otherwise return them unchanged."""
     if inspect.isawaitable(value):
-        return asyncio.run(value)
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(value)
+        return _run_awaitable_in_background_thread(value)
     return value
+
+
+def _log_background_task_failure(agent_name: str, task: asyncio.Task[Any]) -> None:
+    """Log exceptions from fire-and-forget async callbacks."""
+    try:
+        task.result()
+    except Exception:
+        logger.exception("Agent %s on_answer callback failed", agent_name)
 
 # Minimal sentinel so orient/decide/act can be called without prior observe()
 _NO_INPUT = object()
@@ -139,16 +182,11 @@ class GoalSeekingAgent:
             return
 
         db_path = storage_path
-        if db_path is None:
-            return
 
         if self._memory_type == "hierarchical":
             from .flat_retriever_adapter import FlatRetrieverAdapter
 
-            try:
-                self._learning_agent.memory.close()
-            except Exception:
-                pass
+            self._close_existing_memory_backend("hierarchical")
             self._learning_agent.memory = FlatRetrieverAdapter(
                 agent_name=self._agent_name,
                 db_path=db_path,
@@ -159,15 +197,59 @@ class GoalSeekingAgent:
         if self._memory_type == "cognitive":
             from .cognitive_adapter import CognitiveAdapter
 
-            try:
-                self._learning_agent.memory.close()
-            except Exception:
-                pass
+            self._close_existing_memory_backend("cognitive")
             self._learning_agent.memory = CognitiveAdapter(
                 agent_name=self._agent_name,
                 db_path=db_path,
             )
             self._learning_agent.use_hierarchical = True
+
+    def _close_existing_memory_backend(self, target_memory_type: str) -> None:
+        """Close the current memory backend before swapping implementations."""
+        memory = self._learning_agent.memory
+        if not hasattr(memory, "close"):
+            return
+
+        try:
+            memory.close()
+        except Exception:
+            logger.exception(
+                "Agent %s failed to close existing memory backend before switching to %s",
+                self._agent_name,
+                target_memory_type,
+            )
+            raise
+
+    def _emit_answer_callback(self, answer: str) -> None:
+        """Invoke the optional answer callback without dropping async handlers."""
+        if not self.on_answer:
+            return
+
+        try:
+            callback_result = self.on_answer(self._agent_name, answer)
+        except Exception:
+            logger.exception("Agent %s on_answer callback failed", self._agent_name)
+            return
+
+        if not inspect.isawaitable(callback_result):
+            return
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            try:
+                _run_maybe_async(callback_result)
+            except Exception:
+                logger.exception("Agent %s async on_answer callback failed", self._agent_name)
+            return
+
+        task = loop.create_task(callback_result)
+        task.add_done_callback(
+            lambda done_task, agent_name=self._agent_name: _log_background_task_failure(
+                agent_name,
+                done_task,
+            )
+        )
 
     # ------------------------------------------------------------------
     # OODA loop — public API
@@ -292,6 +374,11 @@ class GoalSeekingAgent:
 
         Returns:
             Output string: answer text for ``'answer'``, summary for ``'store'``.
+
+        Raises:
+            Exception: Propagates underlying learning/answer failures after logging
+                so direct callers and user-like flows do not mistake them for
+                successful outputs.
         """
         text = self._current_input
         output = ""
@@ -313,16 +400,12 @@ class GoalSeekingAgent:
                 output = result[0] if isinstance(result, tuple) else str(result)
             except Exception:
                 logger.exception("Agent %s act() answer_question failed", self._agent_name)
-                output = "Error: could not synthesize answer."
+                raise
             # Write answer to stdout — Container Apps streams this to Log Analytics
             print(f"[{self._agent_name}] ANSWER: {output}", flush=True)
             logger.info("Agent %s ANSWER: %s", self._agent_name, output)
             # Fire callback for distributed eval answer collection
-            if self.on_answer:
-                try:
-                    self.on_answer(self._agent_name, output)
-                except Exception:
-                    pass  # Never let callback errors break the OODA loop
+            self._emit_answer_callback(output)
 
         else:  # "store" (or empty / unknown)
             try:
@@ -331,7 +414,7 @@ class GoalSeekingAgent:
                 output = f"Stored {stored} facts from input."
             except Exception:
                 logger.exception("Agent %s act() learn_from_content failed", self._agent_name)
-                output = "Error: could not store input."
+                raise
             logger.debug("Agent %s STORED: %s", self._agent_name, output)
 
         return output

@@ -977,6 +977,28 @@ class TestShardTransport:
 
         assert exc_info.value.code == 1
 
+    def test_main_exits_when_event_hubs_retrieval_is_enabled_but_hive_init_fails(
+        self, monkeypatch, tmp_path
+    ):
+        """Azure Event Hubs deployments must fail fast instead of silently degrading."""
+        mod = _load_entrypoint()
+
+        monkeypatch.setenv("AMPLIHACK_AGENT_NAME", "agent-0")
+        monkeypatch.setenv("AMPLIHACK_EH_CONNECTION_STRING", "Endpoint=sb://dummy/")
+        monkeypatch.setenv("AMPLIHACK_EH_NAME", "hive-shards-test")
+        monkeypatch.setenv("AMPLIHACK_EH_INPUT_HUB", "hive-events-test")
+        monkeypatch.setenv("AMPLIHACK_MEMORY_STORAGE_PATH", str(tmp_path / "agent-0"))
+
+        with patch.object(mod, "_init_dht_hive", return_value=None):
+            with patch(
+                "amplihack.agents.goal_seeking.runtime_factory.create_goal_agent_runtime",
+                side_effect=AssertionError("runtime startup should fail before agent creation"),
+            ):
+                with pytest.raises(SystemExit) as exc_info:
+                    mod.main()
+
+        assert exc_info.value.code == 1
+
     def test_main_skips_hive_init_when_distributed_retrieval_disabled(self, monkeypatch, tmp_path):
         mod = _load_entrypoint()
 

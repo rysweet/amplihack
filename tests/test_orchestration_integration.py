@@ -12,7 +12,9 @@ and worktree path handling are correct across all three components.
 
 from __future__ import annotations
 
+import ast
 import importlib.util
+import json
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -181,17 +183,15 @@ class TestDefaultWorkflowWorktree:
             f"expected at least 5: {step_ids_using_worktree}"
         )
 
-    def test_worktree_fallback_to_repo_path(self):
-        """Steps must fall back to repo_path when worktree is unavailable."""
-        # Several bash steps use: cd {{worktree_setup.worktree_path}} 2>/dev/null || cd {{repo_path}}
-        fallback_count = 0
-        for step in self.steps:
-            cmd = step.get("command", "")
-            if "worktree_setup.worktree_path" in cmd and "repo_path" in cmd:
-                fallback_count += 1
-        assert fallback_count >= 2, (
-            f"Only {fallback_count} steps have worktree -> repo_path fallback, expected >= 2"
-        )
+    def test_step_04b_validates_resolved_worktree_path(self):
+        """Workflow must validate the resolved worktree path instead of silently falling back."""
+        step = _find_step(self.steps, "step-04b-validate-worktree")
+        assert step is not None, "step-04b-validate-worktree missing"
+        command = step.get("command", "")
+        assert 'WORKTREE_DIR="{{worktree_setup.worktree_path}}"' in command
+        assert 'WORKTREE_DIR="{{resume_worktree_path}}"' in command
+        assert 'echo "ERROR: No worktree path available for validation" >&2' in command
+        assert 'echo "ERROR: Worktree directory does not exist: $WORKTREE_DIR" >&2' in command
 
     def test_step_04_idempotency_guards(self):
         """Worktree setup must handle existing branch/worktree idempotently."""
@@ -202,6 +202,21 @@ class TestDefaultWorkflowWorktree:
         assert "WORKTREE_EXISTS" in command
         assert "CREATED=false" in command  # reuse path
         assert "CREATED=true" in command  # create path
+
+    def test_step_04_roots_worktrees_in_git_common_dir(self):
+        """Worktree setup must target the canonical repo worktrees dir even from linked worktrees."""
+        step = _find_step(self.steps, "step-04-setup-worktree")
+        command = step.get("command", "")
+        assert "git rev-parse --git-common-dir" in command
+        assert 'WORKTREE_PATH="${WORKTREE_BASE_ROOT}/worktrees/${BRANCH_NAME}"' in command
+
+    def test_step_04_uses_current_head_as_base(self):
+        """Worktree setup must branch from the caller's current checkout, not origin/HEAD."""
+        step = _find_step(self.steps, "step-04-setup-worktree")
+        command = step.get("command", "")
+        assert 'BASE_WORKTREE_REF="HEAD"' in command
+        assert "CURRENT_HEAD=$(git rev-parse --short HEAD)" in command
+        assert "Detached HEAD" in command
 
 
 # ---------------------------------------------------------------------------
@@ -259,7 +274,12 @@ class TestMultitaskOrchestratorContextPropagation:
         orch._write_recipe_launcher(ws)
 
         launcher = (ws.work_dir / "launcher.py").read_text()
-        assert '"repo_path": "."' in launcher
+        prefix = "user_context = json.loads("
+        start = launcher.index(prefix) + len(prefix)
+        end = launcher.index(")", start)
+        embedded_json_literal = ast.literal_eval(launcher[start:end])
+        user_context = json.loads(embedded_json_literal)
+        assert user_context["repo_path"] == "."
 
     def test_recipe_launcher_uses_specified_recipe(self, tmp_path):
         """Generated launcher must use the workstream's recipe, not hardcoded default."""

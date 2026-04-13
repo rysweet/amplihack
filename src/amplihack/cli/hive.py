@@ -9,7 +9,7 @@ Commands:
 
 Hive config format (~/.amplihack/hives/NAME/config.yaml):
     name: my-hive
-    transport: azure_service_bus
+    transport: local
     connection_string: Endpoint=sb://...
     storage_path: /data/hive
     shard_backend: kuzu
@@ -240,6 +240,11 @@ def _start_local(hive_name: str, config: dict[str, Any]) -> int:
 
 def _start_azure(hive_name: str, config: dict[str, Any], args: argparse.Namespace) -> int:
     """Delegate Azure deployment to deploy.sh."""
+    agents = config.get("agents", [])
+    if not agents:
+        print(f"No agents defined in hive '{hive_name}'.", file=sys.stderr)
+        return 1
+
     # Find deploy.sh
     deploy_script = _find_deploy_script()
     if deploy_script is None:
@@ -250,11 +255,14 @@ def _start_azure(hive_name: str, config: dict[str, Any], args: argparse.Namespac
         return 1
 
     env = dict(os.environ)
+    agent_count = len(agents)
     env["HIVE_NAME"] = hive_name
-    env["HIVE_TRANSPORT"] = config.get("transport", "azure_service_bus")
+    env["HIVE_TRANSPORT"] = "azure_event_hubs"
     env["HIVE_CONNECTION_STRING"] = config.get("connection_string", "")
     env["HIVE_STORAGE_PATH"] = config.get("storage_path", f"/data/hive/{hive_name}")
-    env["HIVE_AGENT_COUNT"] = str(len(config.get("agents", [])))
+    env["HIVE_DEPLOYMENT_PROFILE"] = "custom"
+    env["HIVE_AGENT_COUNT"] = str(agent_count)
+    env.setdefault("HIVE_AGENTS_PER_APP", str(min(agent_count, 5)))
 
     print(f"Deploying hive '{hive_name}' to Azure...")
     result = subprocess.run(["bash", str(deploy_script)], env=env)

@@ -10,6 +10,7 @@ Covers:
 - Question inputs skip duplicate orient-time memory recall
 """
 
+import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -351,6 +352,116 @@ class TestGoalSeekingAgentFactBatch:
             record_learning=False,
         )
         assert result == expected
+
+
+class TestGoalSeekingAgentAct:
+    """Unit tests for GoalSeekingAgent.act() async bridge behavior."""
+
+    @pytest.fixture
+    def agent(self):
+        with patch(
+            "amplihack.agents.goal_seeking.goal_seeking_agent.GoalSeekingAgent.__init__",
+            lambda self, **kwargs: None,
+        ):
+            from amplihack.agents.goal_seeking.goal_seeking_agent import GoalSeekingAgent
+
+            ag = GoalSeekingAgent.__new__(GoalSeekingAgent)
+            ag._agent_name = "test_agent"
+            ag._current_input = ""
+            ag._oriented_facts = {"facts": []}
+            ag._decision = ""
+            ag._learning_agent = MagicMock()
+            ag.on_answer = None
+            return ag
+
+    @pytest.mark.asyncio
+    async def test_store_path_runs_async_learning_inside_running_loop(self, agent):
+        class AsyncLearningAgent:
+            async def learn_from_content(self, text: str):
+                assert text == "Store this from async context."
+                return {"facts_stored": 1}
+
+        agent._learning_agent = AsyncLearningAgent()
+        agent._current_input = "Store this from async context."
+        agent._decision = "store"
+
+        assert agent.act() == "Stored 1 facts from input."
+
+    @pytest.mark.asyncio
+    async def test_answer_path_schedules_async_callback_inside_running_loop(self, agent):
+        delivered: asyncio.Future[tuple[str, str]] = asyncio.Future()
+        agent._learning_agent.answer_question.return_value = "Answer text"
+        agent._current_input = "What happened?"
+        agent._decision = "answer"
+
+        async def on_answer(agent_name: str, output: str) -> None:
+            delivered.set_result((agent_name, output))
+
+        agent.on_answer = on_answer
+
+        assert agent.act() == "Answer text"
+        assert await asyncio.wait_for(delivered, timeout=1) == ("test_agent", "Answer text")
+
+    def test_store_path_propagates_learning_failures(self, agent):
+        agent._current_input = "Store this."
+        agent._decision = "store"
+        agent._learning_agent.learn_from_content.side_effect = RuntimeError("store exploded")
+
+        with pytest.raises(RuntimeError, match="store exploded"):
+            agent.act()
+
+    def test_answer_path_propagates_answer_failures(self, agent):
+        agent._current_input = "What happened?"
+        agent._decision = "answer"
+        agent._learning_agent.answer_question.side_effect = ValueError("answer exploded")
+
+        with pytest.raises(ValueError, match="answer exploded"):
+            agent.act()
+
+
+class TestGoalSeekingAgentMemoryBackendSelection:
+    """Unit tests for explicit memory backend override behavior."""
+
+    def test_explicit_hierarchical_memory_type_applies_without_storage_path(self):
+        backend = MagicMock()
+        backend.memory.close = MagicMock()
+
+        with (
+            patch(
+                "amplihack.agents.goal_seeking.learning_agent.LearningAgent",
+                return_value=backend,
+            ),
+            patch(
+                "amplihack.agents.goal_seeking.flat_retriever_adapter.FlatRetrieverAdapter",
+                return_value="hierarchical-memory",
+            ) as flat_adapter,
+        ):
+            from amplihack.agents.goal_seeking.goal_seeking_agent import GoalSeekingAgent
+
+            agent = GoalSeekingAgent(memory_type="hierarchical")
+
+        flat_adapter.assert_called_once_with(
+            agent_name="goal_seeking_agent",
+            db_path=None,
+        )
+        assert agent.memory == "hierarchical-memory"
+        assert backend.use_hierarchical is True
+
+    def test_explicit_hierarchical_memory_type_surfaces_close_failures(self):
+        backend = MagicMock()
+        backend.memory.close.side_effect = RuntimeError("close exploded")
+
+        with (
+            patch(
+                "amplihack.agents.goal_seeking.learning_agent.LearningAgent",
+                return_value=backend,
+            ),
+            patch("amplihack.agents.goal_seeking.flat_retriever_adapter.FlatRetrieverAdapter"),
+            pytest.raises(RuntimeError, match="close exploded"),
+        ):
+            from amplihack.agents.goal_seeking.goal_seeking_agent import GoalSeekingAgent
+
+            GoalSeekingAgent(memory_type="hierarchical")
 
 
 class TestGoalSeekingAgentCompatDelegates:

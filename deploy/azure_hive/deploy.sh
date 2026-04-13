@@ -88,11 +88,14 @@ esac
 # ============================================================
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
+warn() { echo "WARNING: $*" >&2; }
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "$1 is required but not installed."
 }
+
+require_cmd az
 
 # ============================================================
 # Cleanup
@@ -110,11 +113,14 @@ fi
 # ============================================================
 
 if [[ "$MODE" == "status" ]]; then
+  if ! az group show --name "${RESOURCE_GROUP}" --output none >/dev/null 2>&1; then
+    die "Resource group ${RESOURCE_GROUP} not found."
+  fi
   log "Deployment status for hive '${HIVE_NAME}' in ${RESOURCE_GROUP}:"
   az containerapp list \
     --resource-group "${RESOURCE_GROUP}" \
     --query "[?starts_with(name, '${HIVE_NAME}')].{name:name,status:properties.runningStatus,replicas:properties.template.scale.minReplicas}" \
-    --output table 2>/dev/null || echo "Resource group not found or no Container Apps deployed."
+    --output table
   exit 0
 fi
 
@@ -175,7 +181,6 @@ fi
 # Prerequisites
 # ============================================================
 
-require_cmd az
 [[ -n "${ANTHROPIC_API_KEY:-}" ]] || die "ANTHROPIC_API_KEY env var is required."
 
 # ============================================================
@@ -201,17 +206,41 @@ else
 fi
 
 log "Ensuring ACR ${ACR_NAME}..."
-az acr create \
-  --name "${ACR_NAME}" \
+ACR_LOGIN_SERVER="$(az acr list \
   --resource-group "${RESOURCE_GROUP}" \
-  --sku Basic \
-  --admin-enabled true \
-  --output none 2>/dev/null || true
+  --query "[?name=='${ACR_NAME}'].loginServer | [0]" \
+  -o tsv)"
 
-ACR_LOGIN_SERVER=$(az acr show \
-  --name "${ACR_NAME}" \
-  --resource-group "${RESOURCE_GROUP}" \
-  --query loginServer -o tsv)
+if [[ -z "${ACR_LOGIN_SERVER}" || "${ACR_LOGIN_SERVER}" == "null" ]]; then
+  ACR_NAME_STATUS="$(az acr check-name --name "${ACR_NAME}" --output json)"
+  ACR_NAME_AVAILABLE="$(
+    printf '%s' "${ACR_NAME_STATUS}" | python3 -c \
+      'import json,sys; data=json.load(sys.stdin); print(str(data.get("nameAvailable", False)).lower())'
+  )"
+  if [[ "${ACR_NAME_AVAILABLE}" != "true" ]]; then
+    ACR_NAME_REASON="$(
+      printf '%s' "${ACR_NAME_STATUS}" | python3 -c \
+        'import json,sys; data=json.load(sys.stdin); print(data.get("message") or data.get("reason") or "unknown reason")'
+    )"
+    die "ACR name '${ACR_NAME}' is unavailable: ${ACR_NAME_REASON}"
+  fi
+
+  if ! ACR_CREATE_OUTPUT="$(az acr create \
+    --name "${ACR_NAME}" \
+    --resource-group "${RESOURCE_GROUP}" \
+    --sku Basic \
+    --admin-enabled true \
+    --output none 2>&1)"; then
+    die "Failed to create ACR ${ACR_NAME}: ${ACR_CREATE_OUTPUT}"
+  fi
+
+  ACR_LOGIN_SERVER="$(az acr show \
+    --name "${ACR_NAME}" \
+    --resource-group "${RESOURCE_GROUP}" \
+    --query loginServer -o tsv)"
+else
+  log "Using existing ACR ${ACR_NAME} (${ACR_LOGIN_SERVER})"
+fi
 
 IMAGE="${ACR_LOGIN_SERVER}/${HIVE_NAME}:${IMAGE_TAG}"
 
@@ -256,7 +285,7 @@ log "Checking for existing Container Apps to tear down..."
 EXISTING_APPS=$(az containerapp list \
   --resource-group "${RESOURCE_GROUP}" \
   --query "[?starts_with(name, '${HIVE_NAME}')].name" \
-  -o tsv 2>/dev/null || true)
+  -o tsv)
 
 if [[ -n "${EXISTING_APPS}" ]]; then
   log "Tearing down existing Container Apps (clean deploy)..."
@@ -265,7 +294,7 @@ if [[ -n "${EXISTING_APPS}" ]]; then
     az containerapp delete \
       --name "${APP_NAME}" \
       --resource-group "${RESOURCE_GROUP}" \
-      --yes --no-wait 2>/dev/null || true
+      --yes --no-wait
   done
   # Wait for all deletions to complete
   log "Waiting for Container App deletions to complete..."
@@ -291,7 +320,7 @@ fi
 EH_NAMESPACE_NAME="$(az eventhubs namespace list \
   --resource-group "${RESOURCE_GROUP}" \
   --query "[?starts_with(name, 'hive-eh-')].name | [0]" \
-  -o tsv 2>/dev/null || true)"
+  -o tsv)"
 
 RESET_EVENT_HUBS=false
 RESET_REASON=""
@@ -301,12 +330,11 @@ if [[ "${FORCE_RECREATE_EVENT_HUBS,,}" == "true" && -n "${EH_NAMESPACE_NAME}" ]]
   RESET_REASON="forced by HIVE_FORCE_RECREATE_EVENT_HUBS=true"
 elif [[ -n "${EH_NAMESPACE_NAME}" ]]; then
   for HUB_NAME in "hive-events-${HIVE_NAME}" "hive-shards-${HIVE_NAME}" "eval-responses-${HIVE_NAME}"; do
-    CURRENT_PARTITIONS="$(az eventhubs eventhub show \
+    CURRENT_PARTITIONS="$(az eventhubs eventhub list \
       --resource-group "${RESOURCE_GROUP}" \
       --namespace-name "${EH_NAMESPACE_NAME}" \
-      --name "${HUB_NAME}" \
-      --query partitionCount \
-      -o tsv 2>/dev/null || true)"
+      --query "[?name=='${HUB_NAME}'].partitionCount | [0]" \
+      -o tsv)"
     if [[ -n "${CURRENT_PARTITIONS}" && "${CURRENT_PARTITIONS}" != "null" && "${CURRENT_PARTITIONS}" -lt "${DESIRED_EH_PARTITIONS}" ]]; then
       RESET_EVENT_HUBS=true
       RESET_REASON="hub ${HUB_NAME} has ${CURRENT_PARTITIONS} partition(s), needs ${DESIRED_EH_PARTITIONS}"
@@ -385,7 +413,14 @@ for _region in "${_REGIONS[@]}"; do
       log "All ${DEPLOY_MAX_RETRIES} attempts failed in ${_region}."
       # Clean up partial deployment before trying next region
       log "Cleaning up partial resources in ${_region}..."
-      az containerapp env delete -n "hive-env-${HIVE_NAME}" -g "${RESOURCE_GROUP}" --yes 2>/dev/null || true
+      if az containerapp env show -n "hive-env-${HIVE_NAME}" -g "${RESOURCE_GROUP}" --output none >/dev/null 2>&1; then
+        if ! CLEANUP_OUTPUT="$(az containerapp env delete \
+          -n "hive-env-${HIVE_NAME}" \
+          -g "${RESOURCE_GROUP}" \
+          --yes 2>&1)"; then
+          warn "Failed to clean up partial Container Apps environment hive-env-${HIVE_NAME}: ${CLEANUP_OUTPUT}"
+        fi
+      fi
     fi
   done
 done
@@ -399,8 +434,12 @@ fi
 log "Bicep deployment complete (region: ${LOCATION})."
 
 # Extract Event Hubs namespace name for reference
-EH_NAMESPACE=$(echo "${DEPLOY_OUTPUT}" | python3 -c \
-  "import json,sys; d=json.load(sys.stdin); print(d.get('properties',{}).get('outputs',{}).get('ehNamespaceName',{}).get('value',''))" 2>/dev/null || echo "")
+EH_NAMESPACE=""
+if ! EH_NAMESPACE="$(printf '%s' "${DEPLOY_OUTPUT}" | python3 -c \
+  "import json,sys; d=json.load(sys.stdin); print(d.get('properties',{}).get('outputs',{}).get('ehNamespaceName',{}).get('value',''))")"; then
+  warn "Could not parse Event Hubs namespace from deployment output."
+  EH_NAMESPACE=""
+fi
 
 # ============================================================
 # Summary

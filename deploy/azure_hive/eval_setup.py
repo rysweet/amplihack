@@ -123,7 +123,12 @@ def check_agent_apps(resource_group: str, hive_name: str, expected_agents: int) 
     )
 
 
-def check_event_hub_namespace(connection_string: str, hive_name: str) -> tuple[bool, str, str]:
+def check_event_hub_namespace(
+    connection_string: str,
+    hive_name: str,
+    *,
+    check_only: bool = False,
+) -> tuple[bool, str, str]:
     """Return (ok, input_hub, response_hub)."""
     input_hub = os.environ.get("AMPLIHACK_EH_INPUT_HUB", "") or f"hive-events-{hive_name}"
     response_hub = os.environ.get("AMPLIHACK_EH_RESPONSE_HUB", "") or f"eval-responses-{hive_name}"
@@ -135,10 +140,12 @@ def check_event_hub_namespace(connection_string: str, hive_name: str) -> tuple[b
     try:
         from azure.eventhub import EventHubConsumerClient  # type: ignore[import-unresolved]
     except ImportError:
-        _warn(
-            "azure-eventhub not installed — skipping hub connectivity check (pip install azure-eventhub)"
+        _step(
+            False,
+            "azure-eventhub not installed — install it to validate Event Hubs connectivity "
+            "(pip install azure-eventhub)",
         )
-        return True, input_hub, response_hub
+        return False, input_hub, response_hub
 
     # Check input hub
     try:
@@ -173,12 +180,21 @@ def check_event_hub_namespace(connection_string: str, hive_name: str) -> tuple[b
     _step(resp_ok, resp_msg)
 
     # Check response-hub consumer groups used by the eval harness and external monitor
-    cg_ok = _ensure_response_consumer_groups(connection_string, response_hub)
+    cg_ok = _ensure_response_consumer_groups(
+        connection_string,
+        response_hub,
+        check_only=check_only,
+    )
 
     return input_ok and resp_ok and cg_ok, input_hub, response_hub
 
 
-def _ensure_response_consumer_groups(connection_string: str, response_hub: str) -> bool:
+def _ensure_response_consumer_groups(
+    connection_string: str,
+    response_hub: str,
+    *,
+    check_only: bool = False,
+) -> bool:
     """Create the response-hub consumer groups used by eval tooling if needed."""
     # Extract namespace name from connection string
     ns = ""
@@ -195,8 +211,7 @@ def _ensure_response_consumer_groups(connection_string: str, response_hub: str) 
             break
 
     if not ns:
-        _warn("Could not parse namespace from connection string — skipping consumer group check")
-        return True
+        return _step(False, "Could not parse Event Hubs namespace from connection string")
 
     # Try to get resource group from env for az CLI calls
     resource_group = os.environ.get("HIVE_RESOURCE_GROUP", "hive-mind-rg")
@@ -219,10 +234,10 @@ def _ensure_response_consumer_groups(connection_string: str, response_hub: str) 
         "json",
     )
     if not ok:
-        _warn(
-            "Could not list consumer groups (az CLI needed) — ensure 'eval-reader' and 'eval-monitor' exist manually"
+        return _step(
+            False,
+            "Could not list consumer groups on response hub — ensure az CLI access to Event Hubs",
         )
-        return True
 
     try:
         groups = json.loads(out or "[]")
@@ -233,6 +248,11 @@ def _ensure_response_consumer_groups(connection_string: str, response_hub: str) 
     missing_groups = [group for group in required_groups if group not in groups]
     if not missing_groups:
         return _step(True, "Consumer groups 'eval-reader' and 'eval-monitor' exist on response hub")
+    if check_only:
+        return _step(
+            False,
+            "Missing response-hub consumer groups: " + ", ".join(missing_groups),
+        )
 
     all_ok = True
     for group_name in missing_groups:
@@ -377,7 +397,9 @@ def main() -> int:
     # --- Event Hubs ---
     print("\nEvent Hubs:")
     eh_ok, input_hub, response_hub = check_event_hub_namespace(
-        args.connection_string, args.hive_name
+        args.connection_string,
+        args.hive_name,
+        check_only=args.check_only,
     )
     if not eh_ok:
         failures.append("event_hubs")

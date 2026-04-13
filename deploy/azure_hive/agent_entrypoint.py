@@ -382,9 +382,12 @@ def main() -> None:
         if result:
             hive_store, hive_bus, shard_transport = result
 
-    if topology == "distributed" and hive_store is None:
+    distributed_runtime_required = topology == "distributed" or (
+        eh_connection_string and distributed_retrieval_enabled
+    )
+    if distributed_runtime_required and hive_store is None:
         logger.error(
-            "Agent %s requested distributed topology but distributed hive initialization failed",
+            "Agent %s requires distributed hive initialization but it failed",
             agent_name,
         )
         sys.exit(1)

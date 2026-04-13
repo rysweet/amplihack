@@ -263,7 +263,7 @@ The eval tests the production agent — same code, same OODA loop, same Memory f
 
 **Federated full (100 agents)**: 100 agents, same config. Learning parallelized (10 workers, 9x speedup: 21.6h → 2.4h). Gossip rounds after learning. Q&A with semantic expertise routing + consensus voting × 3 repeats. **Result: 45.8% median, 21.7% stddev.** Routing precision degrades at this scale.
 
-**Azure deployment context:** Production eval runs on 20 Container Apps (`amplihive-app-0`…`amplihive-app-19`) in `westus2` / `hive-mind-rg`, each hosting 5 agents (`agent-0`…`agent-99`). Transport: `azure_service_bus` via namespace `hive-sb-dj2qo2w7vu5zi`, topic `hive-graph`, 100 subscriptions. Memory backend: `cognitive` (Kuzu) on ephemeral volumes — POSIX file locks are supported, identical to local development.
+**Azure deployment context:** Production eval runs on 20 Container Apps (`amplihive-app-0`…`amplihive-app-19`) in `westus2` / `hive-mind-rg`, each hosting 5 agents (`agent-0`…`agent-99`). Transport: `azure_event_hubs` via the `hive-events-*`, `hive-shards-*`, and `eval-responses-*` hubs. Memory backend: `cognitive` (Kuzu) on ephemeral volumes — POSIX file locks are supported, identical to local development, and the live deployment fails fast if distributed retrieval cannot initialize.
 
 Scoring: LLM grader (multi-vote median) scores 0.0-1.0 across 12 cognitive levels (L1 direct recall through L12 far transfer).
 

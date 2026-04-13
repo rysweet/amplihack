@@ -399,10 +399,13 @@ amplihack-hive stop --hive my-hive
 
 ---
 
-### Azure Service Bus transport (multi-machine)
+### Legacy multi-machine transports
 
-For production deployments where agents run on separate machines (local VMs, Docker, Azure),
+For older/manual multi-machine deployments where agents run on separate machines,
 use `azure_service_bus` or `redis` transport.
+
+For current Azure Container Apps deployments, use `deploy/azure_hive/deploy.sh`,
+which provisions and uses Event Hubs.
 
 **Create hive with Service Bus:**
 
@@ -433,9 +436,8 @@ For cloud-scale deployments (100+ agents), use the `deploy/azure_hive/` scripts.
 | Resource                                                                                     | Purpose                                                                       |
 | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | Azure Container Registry (`hivacrhivemind.azurecr.io`)                                       | Stores the amplihack agent Docker image                                       |
-| **Event Hubs Namespace** + Event Hub `hive-shards-{hiveName}` + consumer groups `cg-agent-N` | **Shard transport** — SHARD_QUERY / SHARD_RESPONSE routing                    |
-| Service Bus Namespace (`hive-sb-dj2qo2w7vu5zi`) + Topic `hive-graph` + N subscriptions       | Gossip / `NetworkGraphStore` event transport (retained)                       |
-| Azure Storage Account (`hivesadj2qo2w7vu5zi`) + File Share                                   | Provisioned for persistence; **not mounted for Kuzu** (POSIX lock limitation) |
+| **Event Hubs Namespace** + hubs `hive-events-*`, `hive-shards-*`, `eval-responses-*`        | Input events, shard routing, and eval answer collection                       |
+| Azure Storage Account (`hivesadj2qo2w7vu5zi`) + File Share                                   | Provisioned for optional cleanup/recovery workflows                           |
 | Container Apps Environment                                                                   | Managed container runtime (westus2, hive-mind-rg)                             |
 | N Container Apps (`amplihive-app-0`…`amplihive-app-N`)                                       | Each app hosts up to 5 agent containers                                       |
 
@@ -444,9 +446,10 @@ For cloud-scale deployments (100+ agents), use the `deploy/azure_hive/` scripts.
 ```bash
 export ANTHROPIC_API_KEY="<your-api-key>"
 export HIVE_NAME="prod-hive"
+export HIVE_DEPLOYMENT_PROFILE="custom"
 export HIVE_AGENT_COUNT=20
 export HIVE_AGENTS_PER_APP=5        # 4 Container Apps total
-export HIVE_TRANSPORT=azure_service_bus
+export HIVE_TRANSPORT=azure_event_hubs
 
 bash deploy/azure_hive/deploy.sh
 ```
@@ -455,10 +458,10 @@ This will:
 
 1. Create resource group `hive-mind-rg` in `westus2`
 2. Build and push the Docker image to ACR (`hivacrhivemind.azurecr.io`)
-3. Deploy Bicep template: Service Bus namespace `hive-sb-dj2qo2w7vu5zi`, Storage account `hivesadj2qo2w7vu5zi`, Container Apps Environment
+3. Deploy Bicep template: Event Hubs namespace, Storage account `hivesadj2qo2w7vu5zi`, Container Apps Environment
 4. Launch 4 Container Apps (`amplihive-app-0` through `amplihive-app-3`) with 5 agents each (20 total)
 
-> **Note:** Containers now use **ephemeral volumes** (`EmptyDir`) at `/data` so Kuzu can acquire POSIX advisory file locks. Azure Files (SMB) does not support POSIX file locks. Agents use the `cognitive` (Kuzu) backend identically in containers and local development.
+> **Note:** Containers use **ephemeral volumes** (`EmptyDir`) at `/data` so Kuzu can acquire POSIX advisory file locks. Azure Files (SMB) does not support POSIX file locks, so the provisioned file share is **not** mounted for the live agent databases.
 
 **Check deployment status:**
 
@@ -480,14 +483,15 @@ Each container receives:
 | ------------------------------------ | ------------------------------------------------------------ |
 | `AMPLIHACK_AGENT_NAME`               | `agent-N` (unique per container)                             |
 | `AMPLIHACK_AGENT_PROMPT`             | Agent role prompt                                            |
-| `AMPLIHACK_MEMORY_TRANSPORT`         | `azure_service_bus` (for gossip/hive-graph)                  |
-| `AMPLIHACK_MEMORY_CONNECTION_STRING` | Service Bus connection string (from Key Vault secret)        |
-| `AMPLIHACK_MEMORY_STORAGE_PATH`      | `/data/agent-N` (on mounted Azure File Share)                |
-| `AMPLIHACK_EH_CONNECTION_STRING`     | **Event Hubs** namespace connection string (shard transport) |
-| `AMPLIHACK_EH_NAME`                  | Event Hub name (`hive-shards-{hiveName}`)                    |
+| `AMPLIHACK_MEMORY_TRANSPORT`         | `azure_event_hubs`                                           |
+| `AMPLIHACK_MEMORY_STORAGE_PATH`      | `/data/agent-N` (ephemeral EmptyDir volume)                  |
+| `AMPLIHACK_EH_CONNECTION_STRING`     | **Event Hubs** namespace connection string                   |
+| `AMPLIHACK_EH_NAME`                  | Shard hub name (`hive-shards-{hiveName}`)                    |
+| `AMPLIHACK_EH_INPUT_HUB`             | Input hub name (`hive-events-{hiveName}`)                    |
+| `AMPLIHACK_EVAL_RESPONSE_HUB`        | Eval response hub name (`eval-responses-{hiveName}`)         |
 | `ANTHROPIC_API_KEY`                  | From Container Apps secret                                   |
 
-When `AMPLIHACK_EH_CONNECTION_STRING` and `AMPLIHACK_EH_NAME` are set, `agent_entrypoint.py` automatically selects `EventHubsShardTransport`; otherwise it falls back to `ServiceBusShardTransport`.
+When distributed retrieval is enabled, `agent_entrypoint.py` now fails fast if the Event Hubs shard transport cannot initialize. Azure deployment no longer silently degrades to local-only retrieval.
 
 **Dockerfile highlights:**
 

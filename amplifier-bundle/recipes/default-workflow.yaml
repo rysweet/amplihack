@@ -623,34 +623,34 @@ steps:
         exit 1
       fi
       cd "{{repo_path}}"
+      COMMON_GIT_DIR=$(git rev-parse --git-common-dir 2>/dev/null || echo '')
+      if [ -z "$COMMON_GIT_DIR" ]; then
+        echo "ERROR: Unable to resolve git common dir for worktree setup" >&2
+        exit 1
+      fi
+      COMMON_GIT_DIR=$(cd "$COMMON_GIT_DIR" && pwd)
+      WORKTREE_BASE_ROOT=$(dirname "$COMMON_GIT_DIR")
 
       echo "=== Step 4: Creating Worktree and Branch ===" >&2
       echo "" >&2
 
-      # Fetch latest refs (guarded — skip if no remote configured)
+      # Create new worktrees from the caller's current checkout, not origin/HEAD.
+      # This preserves detached integration baselines and other non-default entry points.
       HAS_REMOTE=false
-      BASE_BRANCH="main"
       BASE_WORKTREE_REF="HEAD"
       if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
         echo "ERROR: No commits in repository — create an initial commit before running the workflow." >&2
         exit 1
       fi
+      CURRENT_HEAD=$(git rev-parse --short HEAD)
+      CURRENT_BRANCH=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || echo '')
       if git remote get-url origin >/dev/null 2>&1; then
         HAS_REMOTE=true
-        ORIGIN_HEAD_REF=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null || echo '')
-        if [ -n "$ORIGIN_HEAD_REF" ]; then
-          BASE_BRANCH="${ORIGIN_HEAD_REF##*/}"
-          BASE_WORKTREE_REF="origin/$BASE_BRANCH"
-          git fetch origin "$BASE_BRANCH" >&2
-        elif git show-ref --verify --quiet "refs/remotes/origin/main"; then
-          BASE_BRANCH="main"
-          BASE_WORKTREE_REF="origin/main"
-          git fetch origin main >&2
-        else
-          echo "INFO: origin/HEAD not configured and origin/main missing — using local HEAD as worktree base" >&2
-        fi
+      fi
+      if [ -n "$CURRENT_BRANCH" ]; then
+        echo "INFO: Using current branch '${CURRENT_BRANCH}' at ${CURRENT_HEAD} as worktree base" >&2
       else
-        echo "INFO: No remote configured — using local HEAD as worktree base" >&2
+        echo "INFO: Detached HEAD at ${CURRENT_HEAD} — using current commit as worktree base" >&2
       fi
 
       # NOTE: This slug pipeline is duplicated in consensus-workflow.yaml step3-setup-worktree
@@ -696,7 +696,7 @@ steps:
           BRANCH_NAME="feat/task-unnamed-$(date +%s)"
         fi
       fi
-      WORKTREE_PATH="{{repo_path}}/worktrees/${BRANCH_NAME}"
+      WORKTREE_PATH="${WORKTREE_BASE_ROOT}/worktrees/${BRANCH_NAME}"
 
       echo "Branch: ${BRANCH_NAME}" >&2
       echo "Worktree: ${WORKTREE_PATH}" >&2

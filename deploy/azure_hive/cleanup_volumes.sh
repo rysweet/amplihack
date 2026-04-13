@@ -30,6 +30,7 @@ case "${1:-}" in
 esac
 
 log()  { echo "[$(date '+%H:%M:%S')] $*"; }
+warn() { echo "WARNING: $*" >&2; }
 die()  { echo "ERROR: $*" >&2; exit 1; }
 
 command -v az >/dev/null 2>&1 || die "Azure CLI (az) is required."
@@ -39,7 +40,7 @@ if [[ -z "${STORAGE_ACCOUNT}" ]]; then
   STORAGE_ACCOUNT=$(az storage account list \
     --resource-group "${RESOURCE_GROUP}" \
     --query "[?starts_with(name, 'hivesa')].name | [0]" \
-    -o tsv 2>/dev/null)
+    -o tsv)
   [[ -n "${STORAGE_ACCOUNT}" ]] || die "Could not detect storage account in ${RESOURCE_GROUP}. Set HIVE_STORAGE_ACCOUNT."
   log "Detected storage account: ${STORAGE_ACCOUNT}"
 fi
@@ -47,7 +48,7 @@ fi
 ACCOUNT_KEY=$(az storage account keys list \
   --account-name "${STORAGE_ACCOUNT}" \
   --resource-group "${RESOURCE_GROUP}" \
-  --query "[0].value" -o tsv 2>/dev/null)
+  --query "[0].value" -o tsv)
 
 [[ -n "${ACCOUNT_KEY}" ]] || die "Could not retrieve storage account key for ${STORAGE_ACCOUNT}."
 
@@ -92,47 +93,75 @@ fi
 log "Enumerating files in share '${FILE_SHARE}'..."
 FILE_COUNT=0
 DIR_COUNT=0
+DELETE_FAILURES=0
+
+delete_share_path() {
+  local kind="$1"
+  local target="$2"
+  local delete_output=""
+
+  if [[ "${MODE}" == "dry-run" ]]; then
+    if [[ "${kind}" == "file" ]]; then
+      log "DRY-RUN: would delete: ${target}"
+    else
+      log "DRY-RUN: would delete directory: ${target}"
+    fi
+    return 0
+  fi
+
+  if [[ "${kind}" == "file" ]]; then
+    if ! delete_output="$(az storage file delete \
+      --path "${target}" \
+      --share-name "${FILE_SHARE}" \
+      --account-name "${STORAGE_ACCOUNT}" \
+      --account-key "${ACCOUNT_KEY}" \
+      --output none 2>&1)"; then
+      warn "Failed to delete file '${target}': ${delete_output}"
+      return 1
+    fi
+    return 0
+  fi
+
+  if ! delete_output="$(az storage directory delete \
+    --name "${target}" \
+    --share-name "${FILE_SHARE}" \
+    --account-name "${STORAGE_ACCOUNT}" \
+    --account-key "${ACCOUNT_KEY}" \
+    --output none 2>&1)"; then
+    warn "Failed to delete directory '${target}': ${delete_output}"
+    return 1
+  fi
+}
 
 while IFS= read -r item; do
   [[ -z "${item}" ]] && continue
-  if [[ "${MODE}" == "dry-run" ]]; then
-    log "DRY-RUN: would delete: ${item}"
-  else
-    az storage file delete \
-      --path "${item}" \
-      --share-name "${FILE_SHARE}" \
-      --account-name "${STORAGE_ACCOUNT}" \
-      --account-key "${ACCOUNT_KEY}" \
-      --output none 2>/dev/null || true
+  if ! delete_share_path "file" "${item}"; then
+    DELETE_FAILURES=$((DELETE_FAILURES + 1))
   fi
-  (( FILE_COUNT++ )) || true
+  FILE_COUNT=$((FILE_COUNT + 1))
 done < <(az storage file list \
   --share-name "${FILE_SHARE}" \
   --account-name "${STORAGE_ACCOUNT}" \
   --account-key "${ACCOUNT_KEY}" \
-  --query "[?type=='file'].name" -o tsv 2>/dev/null)
+  --query "[?type=='file'].name" -o tsv)
 
 while IFS= read -r dir; do
   [[ -z "${dir}" ]] && continue
-  if [[ "${MODE}" == "dry-run" ]]; then
-    log "DRY-RUN: would delete directory: ${dir}"
-  else
-    az storage directory delete \
-      --name "${dir}" \
-      --share-name "${FILE_SHARE}" \
-      --account-name "${STORAGE_ACCOUNT}" \
-      --account-key "${ACCOUNT_KEY}" \
-      --output none 2>/dev/null || true
+  if ! delete_share_path "dir" "${dir}"; then
+    DELETE_FAILURES=$((DELETE_FAILURES + 1))
   fi
-  (( DIR_COUNT++ )) || true
+  DIR_COUNT=$((DIR_COUNT + 1))
 done < <(az storage file list \
   --share-name "${FILE_SHARE}" \
   --account-name "${STORAGE_ACCOUNT}" \
   --account-key "${ACCOUNT_KEY}" \
-  --query "[?type=='dir'].name" -o tsv 2>/dev/null)
+  --query "[?type=='dir'].name" -o tsv)
 
 if [[ "${MODE}" == "dry-run" ]]; then
   log "DRY-RUN complete — ${FILE_COUNT} files and ${DIR_COUNT} directories would be removed."
 else
+  if [[ "${DELETE_FAILURES}" -gt 0 ]]; then
+    die "Cleanup incomplete — ${DELETE_FAILURES} delete operation(s) failed."
+  fi
   log "Cleanup complete — removed ${FILE_COUNT} files and ${DIR_COUNT} directories from '${FILE_SHARE}'."
 fi
