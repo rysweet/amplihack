@@ -214,6 +214,72 @@ class TestBuildCommandUsesDelegate:
             f"_build_command() must NOT include --dangerously-skip-permissions for Copilot. Got: {cmd}"
         )
 
+    def test_copilot_flags_placed_after_separator(self, tmp_path):
+        """For 'amplihack copilot', copilot-specific flags must come after '--' separator.
+
+        The Rust `amplihack copilot` subcommand does not recognise -p or
+        --allow-all-tools. These are copilot CLI flags that must be passed
+        through via the '--' separator. Without this, every recipe runner
+        agent step fails with 'unexpected argument -p'.
+        """
+        proc = make_process(tmp_path)
+
+        with patch.dict(os.environ, {"AMPLIHACK_DELEGATE": "amplihack copilot"}):
+            cmd = proc._build_command()
+
+        assert "--" in cmd, (
+            f"'amplihack copilot' command must include '--' separator to pass "
+            f"copilot-specific flags through the Rust CLI. Got: {cmd}"
+        )
+        sep_idx = cmd.index("--")
+        # Binary prefix (amplihack copilot) must be before the separator
+        assert cmd[:sep_idx] == ["amplihack", "copilot"], (
+            f"Binary prefix must be before '--'. Got before separator: {cmd[:sep_idx]}"
+        )
+        # -p and --allow-all-tools must be after the separator
+        after_sep = cmd[sep_idx + 1 :]
+        assert "-p" in after_sep, (
+            f"-p must be after '--' separator for copilot delegate. Got after '--': {after_sep}"
+        )
+        assert "--allow-all-tools" in after_sep, (
+            f"--allow-all-tools must be after '--' separator. Got after '--': {after_sep}"
+        )
+
+    def test_copilot_model_flag_after_separator(self, tmp_path):
+        """For 'amplihack copilot' with model, --model must also be after '--'."""
+        proc = ClaudeProcess(
+            prompt="test",
+            process_id="test-model",
+            working_dir=tmp_path / "work",
+            log_dir=tmp_path / "logs",
+            model="gpt-5.2",
+        )
+
+        with patch.dict(os.environ, {"AMPLIHACK_DELEGATE": "amplihack copilot"}):
+            cmd = proc._build_command()
+
+        sep_idx = cmd.index("--")
+        after_sep = cmd[sep_idx + 1 :]
+        assert "--model" in after_sep, (
+            f"--model must be after '--' separator for copilot. Got after '--': {after_sep}"
+        )
+        model_idx = after_sep.index("--model")
+        assert after_sep[model_idx + 1] == "gpt-5.2", (
+            f"--model value must follow the flag. Got: {after_sep[model_idx + 1]!r}"
+        )
+
+    def test_claude_delegate_no_separator(self, tmp_path):
+        """For 'amplihack claude', no '--' separator should be present."""
+        proc = make_process(tmp_path)
+
+        with patch.dict(os.environ, {"AMPLIHACK_DELEGATE": "amplihack claude"}):
+            cmd = proc._build_command()
+
+        assert "--" not in cmd, (
+            f"'amplihack claude' delegate must NOT use '--' separator "
+            f"(claude binary accepts -p directly). Got: {cmd}"
+        )
+
 
 # ---------------------------------------------------------------------------
 # 3. _build_command(): command mapping for each delegate

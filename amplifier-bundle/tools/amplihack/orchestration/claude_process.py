@@ -243,10 +243,19 @@ class ClaudeProcess:
         else:
             permission_flags = ["--dangerously-skip-permissions"]
 
-        cmd = [*binary_prefix, *permission_flags, "-p", self.prompt]
-
-        if self.model:
-            cmd.extend(["--model", self.model])
+        if delegate == "amplihack copilot":
+            # The Rust `amplihack copilot` subcommand only recognises its own
+            # flags (--auto, --max-turns, etc.).  Copilot-CLI-specific flags
+            # (--allow-all-tools, -p, --model) must go after "--" so the Rust
+            # binary passes them through to the underlying `copilot` process.
+            copilot_args = [*permission_flags, "-p", self.prompt]
+            if self.model:
+                copilot_args.extend(["--model", self.model])
+            cmd = [*binary_prefix, "--", *copilot_args]
+        else:
+            cmd = [*binary_prefix, *permission_flags, "-p", self.prompt]
+            if self.model:
+                cmd.extend(["--model", self.model])
 
         return cmd
 
