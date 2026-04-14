@@ -60,7 +60,12 @@ def test_step_04b_validate_worktree_uses_json_encoder(steps: dict[str, dict]):
 
 @pytest.mark.parametrize(
     "step_id",
-    ["step-07-write-tests", "step-08-implement", "checkpoint-after-implementation"],
+    [
+        "step-07-write-tests",
+        "step-08-implement",
+        "step-08b-integration",
+        "checkpoint-after-implementation",
+    ],
 )
 def test_pre_checkpoint_steps_skip_when_resume_checkpoint_exists(
     steps: dict[str, dict], step_id: str
@@ -68,6 +73,11 @@ def test_pre_checkpoint_steps_skip_when_resume_checkpoint_exists(
     condition = steps[step_id].get("condition", "")
     assert "resume_checkpoint" in condition
     assert "checkpoint-after-implementation" in condition
+    assert "checkpoint-after-review-feedback" in condition
+    assert "not in [" not in condition
+    assert "[" not in condition
+    assert "resume_checkpoint !=" in condition
+    assert " and " in condition
 
 
 @pytest.mark.parametrize(
