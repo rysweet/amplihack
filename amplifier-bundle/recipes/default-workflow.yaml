@@ -558,6 +558,7 @@ steps:
       # FIX (#4205): Also match ADO work item URLs: _workitems/edit/NNNN
       # Fallback: bare numeric ID (e.g. from az boards work-item create --query id output)
       EXTRACTED=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE '(issues|_workitems/edit)/[0-9]+|^[0-9]+$' | grep -oE '[0-9]+' | head -1)
+      PR_NUMBER=""
       if [ -z "$EXTRACTED" ]; then
         PR_NUMBER=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'pull/[0-9]+' | grep -oE '[0-9]+' | head -1)
         if [ -n "$PR_NUMBER" ]; then
@@ -593,6 +594,11 @@ steps:
             esac
           done < <(printf '%s\n' "$REF_CANDIDATES")
         fi
+      fi
+
+      if [ -z "$EXTRACTED" ] && [ -n "$PR_NUMBER" ]; then
+        echo "INFO: step-03b found no linked issue or task issue reference for PR #$PR_NUMBER — using PR number as reference" >&2
+        EXTRACTED="$PR_NUMBER"
       fi
 
       case "$EXTRACTED" in

@@ -103,6 +103,7 @@ _BL001_FIXED_CMD = textwrap.dedent("""\
     PY
     }}
     EXTRACTED=$(printf '%s\\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'issues/[0-9]+' | grep -oE '[0-9]+' | head -1)
+    PR_NUMBER=""
     if [ -z "$EXTRACTED" ]; then
       PR_NUMBER=$(printf '%s\\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'pull/[0-9]+' | grep -oE '[0-9]+' | head -1)
       if [ -n "$PR_NUMBER" ]; then
@@ -135,6 +136,9 @@ _BL001_FIXED_CMD = textwrap.dedent("""\
           esac
         done < <(printf '%s\\n' "$REF_CANDIDATES")
       fi
+    fi
+    if [ -z "$EXTRACTED" ] && [ -n "$PR_NUMBER" ]; then
+      EXTRACTED="$PR_NUMBER"
     fi
     case "$EXTRACTED" in
       ''|*[!0-9]*)
@@ -904,6 +908,44 @@ class TestYAMLBugRegression(unittest.TestCase):
             "Multi-line issue_creation must be handled correctly.",
         )
 
+    def test_yaml_step03b_pr_without_linked_issue_uses_pr_number(self):
+        """A PR URL with no linked issue must still yield a numeric reference."""
+        raw_cmd = _extract_step_command(_WORKFLOW_YAML, "step-03b-extract-issue-number")
+        issue_creation_value = "https://github.com/org/repo/pull/4000\n"
+        cmd = raw_cmd.replace("{{issue_creation}}", issue_creation_value)
+
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "pr" && "$2" == "view" && "$3" == "4000" ]]; then
+              echo ""
+              exit 0
+            fi
+            exit 1
+        """)
+
+        with tempfile.TemporaryDirectory(prefix="wf_step03b_yaml_") as tmpdir:
+            gh_path = Path(tmpdir) / "gh"
+            gh_path.write_text(gh_mock)
+            gh_path.chmod(0o755)
+
+            env = os.environ.copy()
+            env["PATH"] = f"{tmpdir}:{env['PATH']}"
+            env["RECIPE_VAR_task_description"] = ""
+
+            result = subprocess.run(
+                ["bash", "-c", cmd],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+        self.assertEqual(result.returncode, 0, f"Command failed:\n{result.stderr}")
+        self.assertEqual(
+            result.stdout.strip(),
+            "4000",
+            "Expected the raw PR number when no linked issue or task issue reference exists.",
+        )
+
     # -----------------------------------------------------------------------
     # BL-002: step-04 must be idempotent
     # -----------------------------------------------------------------------
@@ -1333,6 +1375,24 @@ class TestStep03bThreeTierEdgeCases(unittest.TestCase):
         """)
         result = _run_extraction_fixed(issue_creation, task_description, gh_mock)
         self.assertEqual(result, "3983", "Should fall through to Tier 3 and find #3983")
+
+    def test_tier2_without_linked_issue_or_task_ref_uses_pr_number(self):
+        """
+        Tier 2 terminal fallback: if a PR URL exists but there is no linked issue
+        and no valid task_description issue reference, step-03b must keep moving by
+        using the PR number as the numeric reference.
+        """
+        issue_creation = "https://github.com/org/repo/pull/4000\n"
+        gh_mock = textwrap.dedent("""\
+            #!/bin/bash
+            if [[ "$1" == "pr" && "$2" == "view" && "$3" == "4000" ]]; then
+              echo ""
+              exit 0
+            fi
+            exit 1
+        """)
+        result = _run_extraction_fixed(issue_creation, task_description="", gh_mock=gh_mock)
+        self.assertEqual(result, "4000", "Should fall back to the PR number when no issue exists")
 
     def test_tier3_skips_candidate_whose_gh_url_is_a_pr(self):
         """
