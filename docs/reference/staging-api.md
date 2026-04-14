@@ -52,57 +52,94 @@ def cmd_copilot(args):
 
 ### `copytree_manifest()`
 
-Copies files from source to destination based on manifest specification.
+Copies essential directories from the package source to the staging destination,
+using an optional manifest for profile-based filtering.
 
 **Signature:**
 
 ```python
 def copytree_manifest(
-    source: Path,
-    dest: Path,
-    manifest: Dict[str, List[str]],
-    overwrite: bool = True
-) -> None:
-    """Copy directory tree using manifest to filter files."""
+    repo_root: str,
+    dst: str,
+    rel_top: str = ".claude",
+    manifest=None,
+) -> list[str]:
+    """Copy all essential directories from repo to destination."""
 ```
 
 **Parameters:**
 
-- `source`: Source directory (package's `.claude/` directory)
-- `dest`: Destination directory (`~/.amplihack/.claude/`)
-- `manifest`: Dictionary mapping subdirectories to glob patterns
-- `overwrite`: Whether to replace existing files (default: True)
+- `repo_root`: Path to the repository root or package directory
+- `dst`: Destination directory (usually `~/.amplihack/.claude/`)
+- `rel_top`: Relative path to the `.claude` directory within `repo_root` (default: `".claude"`)
+- `manifest`: Optional `StagingManifest` for profile-based filtering; uses `ESSENTIAL_DIRS` when `None`
 
-**Manifest Format:**
+**Returns:**
 
-```python
-STAGING_MANIFEST = {
-    "agents": ["**/*.md"],              # All agent markdown files
-    "skills": ["**/*.md", "**/*.py"],   # Skill docs and Python files
-    "commands": ["**/*.py", "**/*.sh"], # Command scripts
-    "tools": ["**/*.py"],               # Tool utilities
-    "hooks": ["**/*.py", "**/*.sh"],    # Hook scripts
-    "context": ["**/*.md"],             # Context documentation
-    "workflow": ["**/*.md"],            # Workflow definitions
-}
-```
+List of directory paths (relative to `dst`) that were copied or confirmed present.
+
+**Source search order:**
+
+The function tries three candidate locations for `rel_top` before giving up:
+
+1. `repo_root/<rel_top>`
+2. `repo_root/../<rel_top>`
+3. `repo_root/../../<rel_top>`
+
+**Self-copy guard (added in #4325):**
+
+When the resolved source path equals the destination (both via `os.path.realpath`),
+the function **skips the copy entirely** and returns the list of existing directories.
+This prevents `shutil.SameFileError` in the default deployment layout where
+`AMPLIHACK_HOME=~/.amplihack` causes the grandparent search to resolve
+`~/.amplihack/.claude` as both source and `staging_dir`.
 
 **Example:**
 
 ```python
-from pathlib import Path
-from amplihack.deployment import copytree_manifest
+from amplihack.install import copytree_manifest
 
-source = Path(__file__).parent / ".claude"
-dest = Path.home() / ".amplihack" / ".claude"
-
-copytree_manifest(
-    source=source,
-    dest=dest,
-    manifest=STAGING_MANIFEST,
-    overwrite=True
+copied = copytree_manifest(
+    repo_root="/path/to/amplihack/src/amplihack",
+    dst=str(Path.home() / ".amplihack" / ".claude"),
 )
+print(f"Staged directories: {copied}")
 ```
+
+### `_sync_home_runtime_directory()`
+
+Syncs a non-`.claude` runtime directory into `~/.amplihack/`.
+
+**Signature:**
+
+```python
+def _sync_home_runtime_directory(
+    source_dir: Path,
+    target_dir: Path,
+    description: str,
+) -> None:
+    """Sync a non-.claude runtime directory into ~/.amplihack."""
+```
+
+**Parameters:**
+
+- `source_dir`: Source directory to copy from (must exist; exits with error if missing)
+- `target_dir`: Destination directory inside `~/.amplihack/`
+- `description`: Human-readable label used in error messages
+
+**Self-copy guard (added in #4325):**
+
+When `os.path.realpath(source_dir) == os.path.realpath(target_dir)`, the function
+returns immediately without copying. This handles the default deployment layout where
+`AMPLIHACK_HOME=~/.amplihack` causes `amplihack_src` and `home_root/src/amplihack`
+to resolve to the same path, which would otherwise raise `shutil.SameFileError`
+and block all recipe runner agent steps.
+
+**Called by:**
+
+- `_stage_home_runtime_assets()` — stages the Python package to `~/.amplihack/src/amplihack/`
+
+---
 
 ### `get_deployment_mode()`
 
@@ -283,6 +320,34 @@ rm -rf ~/.amplihack/.claude/
 # Re-run command
 uvx --from git+https://github.com/rysweet/amplihack@main amplihack copilot
 ```
+
+### `SameFileError` During Startup (Fixed in #4325)
+
+**Symptom**: Recipe runner agent steps fail immediately with:
+
+```
+amplihack copilot failed (exit 1): .../.amplihack/src/amplihack/worktree/__pycache__/git_utils.cpython-312.pyc 'are the same file'
+```
+
+**Root cause**: When `AMPLIHACK_HOME=~/.amplihack` (the default), two staging
+functions tried to copy directories onto themselves:
+
+1. `copytree_manifest()` — grandparent search resolved `~/.amplihack/.claude` as
+   both source and `staging_dir`
+2. `_sync_home_runtime_directory()` — `amplihack_src` and `home_root/src/amplihack`
+   both resolved to `~/.amplihack/src/amplihack`
+
+**Status**: Fixed in PR #4325. Both functions now check `os.path.realpath` equality
+and return without copying when source and destination are the same path. No user
+action is required.
+
+If you see this error on an older version, upgrade amplihack:
+
+```bash
+uvx --from git+https://github.com/rysweet/amplihack@main amplihack --version
+```
+
+---
 
 ### Partial Staging
 

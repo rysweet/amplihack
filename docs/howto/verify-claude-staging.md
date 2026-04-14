@@ -83,6 +83,26 @@ rm -rf ~/.amplihack/.claude/
 uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ```
 
+### SameFileError / Recipe Runner Fails on Startup
+
+**Symptom**: All nested `amplihack copilot` invocations fail immediately with an error like:
+
+```
+amplihack copilot failed (exit 1): .../.amplihack/src/amplihack/worktree/__pycache__/git_utils.cpython-312.pyc 'are the same file'
+```
+
+**Cause**: This was a bug in older versions where the staging functions tried to copy
+`~/.amplihack/.claude` onto itself when `AMPLIHACK_HOME=~/.amplihack` (the default).
+
+**Fix**: Upgrade to the version containing PR #4325 or later:
+
+```bash
+uvx --from git+https://github.com/rysweet/amplihack@main amplihack --version
+```
+
+The fix adds a `realpath` equality check so staging silently skips the copy
+when source and destination are the same directory.
+
 ### Permission Errors
 
 If staging fails with permission errors:
