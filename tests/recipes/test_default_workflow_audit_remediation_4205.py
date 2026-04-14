@@ -155,6 +155,13 @@ class TestReviewGateRemediations:
         assert 'BASE_WORKTREE_REF="HEAD"' in cmd
         assert 'git worktree add "${WORKTREE_PATH}" -b "${BRANCH_NAME}" "$BASE_WORKTREE_REF"' in cmd
 
+    def test_step_04_reuses_existing_checkout_before_adding_worktree(self, step_map):
+        cmd = _get_step(step_map, "step-04-setup-worktree").get("command", "")
+        assert 'git -C "$WORKTREE_PATH" rev-parse --is-inside-work-tree' in cmd
+        assert 'git -C "$WORKTREE_PATH" branch --show-current' in cmd
+        assert "already exists but is not a valid git worktree checkout" in cmd
+        assert "exists but no reusable checkout was found" in cmd
+
     def test_step_03_label_creation_failure_is_not_silenced(self, step_map):
         cmd = _get_step(step_map, "step-03-create-issue").get("command", "")
         assert '--description "Created by default-workflow recipe" 2>/dev/null || true' not in cmd
