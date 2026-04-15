@@ -1,12 +1,14 @@
 # GitHub Copilot CLI Integration with amplihack
 
-**Version**: 1.1.0
+**Version**: 1.2.0
 **Status**: Complete Integration (with Copilot CLI Transcript Support)
-**Last Updated**: 2026-03-07
+**Last Updated**: 2026-04-15
 
 ## Overview
 
 This document describes the complete integration between GitHub Copilot CLI and the amplihack agentic coding framework. The integration provides Copilot users with access to amplihack's agents, skills, workflows, and MCP servers.
+
+**New in v1.2.0 (2026-04-15)**: Fixed flag placement for the `amplihack copilot` delegate — Copilot-CLI-specific flags are now correctly placed after `--` so the Rust runner passes them through to the underlying copilot process. This resolves recipe runner failures with `error: unexpected argument '-p' found` (PR #4343).
 
 **New in v1.1.0 (2026-03-07)**: Native Copilot CLI transcript support in Power-Steering checker. The checker now auto-detects and parses both Claude Code and GitHub Copilot CLI transcript formats (real `events.jsonl` format), enabling session completion validation across both platforms.
 
@@ -153,6 +155,35 @@ pytest .claude/tools/amplihack/hooks/tests/test_power_steering_copilot_cli.py
 3. **No Duplication**: Single source of truth prevents drift
 4. **Safe for Build Tools**: Symlinks use `followlinks=True` in build scripts
 5. **Philosophy Aligned**: Ruthless simplicity, no complex sync systems
+
+### Delegate Command Architecture
+
+The recipe runner selects which agent binary to call via the `AMPLIHACK_DELEGATE` environment variable. Valid values and their binary prefixes are:
+
+| `AMPLIHACK_DELEGATE`  | Binary prefix              |
+| --------------------- | -------------------------- |
+| `amplihack claude`    | `claude`                   |
+| `amplihack copilot`   | `amplihack copilot`        |
+| `amplihack amplifier` | `amplihack amplifier`      |
+| *(unset)*             | `claude` (with warning)    |
+
+**Flag placement for Copilot (`amplihack copilot`)**
+
+The Rust `amplihack copilot` subcommand only recognises its own flags (`--auto`, `--max-turns`, etc.). Copilot-CLI-specific flags — `--allow-all-tools`, `-p`, and `--model` — must be placed **after `--`** so the Rust binary passes them through to the underlying `copilot` process.
+
+```
+amplihack copilot -- --allow-all-tools -p "<prompt>" [--model <model>]
+                 ^^
+                 Required separator
+```
+
+For all other delegates (Claude, Amplifier), flags are passed directly without a `--` separator:
+
+```
+claude --dangerously-skip-permissions -p "<prompt>" [--model <model>]
+```
+
+This behaviour is implemented in `amplifier-bundle/tools/amplihack/orchestration/claude_process.py` (`_build_command`).
 
 ### Symlink Architecture
 
@@ -1237,6 +1268,24 @@ cat .github/mcp-servers.json
 
 # Verify paths are absolute
 sed -i 's|/path/to/project|'$(pwd)'|g' .github/mcp-servers.json
+```
+
+#### Recipe Runner Steps Fail with `unexpected argument '-p' found`
+
+**Problem**: Every agent step in the recipe runner exits immediately with:
+
+```
+error: unexpected argument '-p' found
+```
+
+**Cause**: The `amplihack copilot` Rust subcommand does not accept Copilot-CLI flags directly. They must appear after a `--` separator. This was a bug in versions prior to the fix released in commit #4343 (2026-04-15).
+
+**Solution**: Upgrade to the latest version of amplihack. The fix is in `claude_process.py` and is applied automatically when `AMPLIHACK_DELEGATE=amplihack copilot`.
+
+```bash
+pip install --upgrade amplihack
+# or
+uv tool upgrade amplihack
 ```
 
 #### Copilot Not Finding Agents
