@@ -1,13 +1,15 @@
 ---
 name: default-workflow
-version: 1.1.0
-description: Development workflow for features, bugs, refactoring. Auto-activates for multi-file implementations.
+version: 2.0.0
+description: |
+  Development workflow for features, bugs, refactoring. Normally executed as a
+  sub-recipe by dev-orchestrator/smart-orchestrator. Supports direct invocation
+  via recipe runner for standalone use.
 auto_activates:
   - "implement feature spanning multiple files"
   - "complex integration across components"
   - "refactor affecting 5+ files"
 explicit_triggers:
-  - /ultrathink
   - /amplihack:default-workflow
 confirmation_required: true
 skip_confirmation_if_explicit: true
@@ -15,6 +17,21 @@ token_budget: 4500
 ---
 
 # Default Workflow Skill
+
+## Relationship to Dev Orchestrator
+
+**Normal execution path**: This workflow is invoked as a sub-recipe by the
+`dev-orchestrator` skill via `smart-orchestrator`. You do NOT normally need
+to activate this skill directly.
+
+```
+User request → dev-orchestrator → smart-orchestrator recipe
+    → default-workflow recipe (this skill's recipe)
+```
+
+**Direct invocation** is supported as a compatibility path when the
+dev-orchestrator is unavailable or when explicitly requested. In that case,
+use the recipe runner (see Execution Instructions below).
 
 ## Workflow Graph
 
@@ -100,56 +117,72 @@ flowchart TD
 
 ## Purpose
 
-This skill provides the standard development workflow for all non-trivial code changes in amplihack. It auto-activates when detecting multi-file implementations, complex integrations, or significant refactoring work.
+This skill provides the standard development workflow for all non-trivial code changes
+in amplihack. It is normally executed as a sub-recipe by the `dev-orchestrator` via
+`smart-orchestrator`, but can also be invoked directly via the recipe runner.
 
-The workflow defines the canonical execution process: from requirements clarification through design, implementation, testing, review, and merge. It ensures consistent quality by orchestrating specialized agents at each step and enforcing philosophy compliance throughout.
+The workflow defines the canonical execution process: from requirements clarification
+through design, implementation, testing, review, and merge. It ensures consistent
+quality by orchestrating specialized agents at each step and enforcing philosophy
+compliance throughout.
 
-This is a thin wrapper that references the complete workflow definition stored in a single canonical location, ensuring no duplication or drift between the skill interface and the workflow specification.
+## Canonical Sources
 
-## Canonical Source
+- **Executable source (recipe)**: `amplifier-bundle/recipes/default-workflow.yaml`
+- **Reference documentation**: `.claude/workflow/DEFAULT_WORKFLOW.md`
 
-**This skill is a thin wrapper that references the canonical workflow:**
-
-**Source**: `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md` (471+ lines)
-
-The canonical workflow contains the complete development process with all details, agent specifications, and execution guidance.
+The recipe YAML is the authoritative execution definition. The `.md` file serves as
+human-readable reference documentation for the workflow steps.
 
 ## Execution Instructions
 
-When this skill is activated, you MUST:
+### Normal path (via dev-orchestrator)
 
-1. **Read the canonical workflow** immediately:
+If you reached this skill via `dev-orchestrator` / `smart-orchestrator`, the recipe
+runner is already managing execution. **Do not re-invoke the recipe runner.** The
+orchestrator handles the full lifecycle including goal-seeking reflection loops.
 
-   ```
-   Read(file_path="~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md")
-   ```
+### Direct invocation (standalone)
 
-   Note: Path is relative to project root. Claude Code resolves this automatically.
+If this skill is activated directly (not via dev-orchestrator), you MUST use the
+recipe runner — **do NOT read the .md file and follow steps manually**:
 
-2. **Follow all steps** exactly as specified in the canonical workflow
+```python
+from amplihack.recipes import run_recipe_by_name
 
-3. **Use TodoWrite** to track progress through workflow steps with format:
-   - `Step N: [Step Name] - [Specific Action]`
-   - Example: `Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent`
-   - This helps users track exactly which workflow step is active
+result = run_recipe_by_name(
+    "default-workflow",
+    user_context={
+        "task_description": "TASK_DESCRIPTION_HERE",
+        "repo_path": ".",
+    },
+    progress=True,
+)
+```
 
-4. **Invoke specialized agents** as specified in each workflow step:
-   - Step 1: prompt-writer, analyzer, ambiguity agents
-   - Step 4: architect, api-designer, database, tester, security agents
-   - Step 5: builder, integration agents
-   - Step 6: cleanup, optimizer agents
-   - Step 7: pre-commit-diagnostic agent
-   - Step 9-15: Review and merge agents
+Or via shell:
 
-## Why This Pattern
+```bash
+cd /path/to/repo && env -u CLAUDECODE \
+  AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=${AMPLIHACK_HOME:-~/.amplihack}/src python3 -c "
+from amplihack.recipes import run_recipe_by_name
+result = run_recipe_by_name('default-workflow', user_context={
+    'task_description': '''TASK_DESCRIPTION_HERE''',
+    'repo_path': '.',
+}, progress=True)
+print(f'Recipe result: {result}')
+"
+```
 
-**Benefits:**
+**Do NOT** read `DEFAULT_WORKFLOW.md` and follow steps manually. The recipe runner
+enforces step ordering, recursion guards, checkpoints, and quality gates that manual
+execution cannot replicate.
 
-- Single source of truth for workflow definition
-- No content duplication or drift
-- Changes to workflow made once in canonical location
-- Clear delegation contract between skill and workflow
-- Reduced token usage (skill is ~60 lines vs 471+ in canonical source)
+### Preferred: Use dev-orchestrator instead
+
+For most tasks, invoke `Skill(skill="dev-orchestrator")` or use `/dev <task>` rather
+than activating this skill directly. The dev-orchestrator adds goal-seeking reflection,
+workstream decomposition, and adaptive error recovery on top of this workflow.
 
 ## Auto-Activation Triggers
 
@@ -159,6 +192,9 @@ This skill auto-activates for:
 - Complex integrations across components
 - Refactoring affecting 5+ files
 - Any non-trivial code changes requiring structured workflow
+
+**Note**: The `dev-orchestrator` skill has higher priority and broader triggers.
+In most cases, it will activate first and invoke this workflow as a sub-recipe.
 
 ## Known Failure Points & Resilience Guidance
 
@@ -204,17 +240,18 @@ MUST apply the documented resilience patterns when encountering these steps.
 
 The workflow creates automatic checkpoints at these points to prevent work loss:
 
-| Checkpoint | After Step | Preserves |
-|---|---|---|
-| `checkpoint-after-design` | 5e (Design Consolidation) | Architecture decisions, API design, DB schema |
-| `checkpoint-after-implementation` | 8b (Integration) | Tests, implementation code, integration work |
-| `checkpoint-after-review-feedback` | 11b (Implement Feedback) | Review-addressed changes |
+| Checkpoint                         | After Step                | Preserves                                     |
+| ---------------------------------- | ------------------------- | --------------------------------------------- |
+| `checkpoint-after-design`          | 5e (Design Consolidation) | Architecture decisions, API design, DB schema |
+| `checkpoint-after-implementation`  | 8b (Integration)          | Tests, implementation code, integration work  |
+| `checkpoint-after-review-feedback` | 11b (Implement Feedback)  | Review-addressed changes                      |
 
 If a step fails after a checkpoint, the worktree branch retains all committed work. Agents can resume from the latest checkpoint by re-running the workflow with the existing worktree.
 
 ## Related Files
 
-- **Canonical Workflow**: `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`
-- **Command Interface**: `~/.amplihack/.claude/commands/amplihack/ultrathink.md`
-- **Orchestrator Skill**: `~/.amplihack/.claude/skills/ultrathink-orchestrator/`
-- **Investigation Workflow**: `~/.amplihack/.claude/skills/investigation-workflow/`
+- **Recipe (executable)**: `amplifier-bundle/recipes/default-workflow.yaml`
+- **Reference docs**: `.claude/workflow/DEFAULT_WORKFLOW.md`
+- **Command Interface**: `.claude/commands/amplihack/dev.md`
+- **Orchestrator Skill**: `.claude/skills/dev-orchestrator/`
+- **Investigation Workflow**: `.claude/skills/investigation-workflow/`

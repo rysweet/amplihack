@@ -1,0 +1,105 @@
+# Workflow Skill Recipe Runner Alignment Test
+# Verifies that workflow skills direct agents to use the recipe runner
+# instead of manually reading .md workflow files.
+
+scenario:
+  name: "Workflow Skills Use Recipe Runner"
+  description: >
+    Verify default-workflow and investigation-workflow skills reference the recipe
+    runner (run_recipe_by_name) as the execution path, not manual .md file reading.
+    Also verifies no stale ultrathink references remain.
+  type: cli
+  level: 1
+
+  tags: [skills, workflow, recipe-runner, alignment, smoke]
+
+  prerequisites:
+    - "amplihack repo cloned"
+
+  agents:
+    - name: "cli-agent"
+      type: "system"
+      config:
+        shell: "bash"
+        timeout: 30000
+
+  steps:
+    - action: execute
+      params:
+        command: "grep -c 'run_recipe_by_name' .claude/skills/default-workflow/SKILL.md"
+      expect:
+        exit_code: 0
+      description: "default-workflow references run_recipe_by_name"
+
+    - action: execute
+      params:
+        command: "grep -c 'run_recipe_by_name' .claude/skills/investigation-workflow/SKILL.md"
+      expect:
+        exit_code: 0
+      description: "investigation-workflow references run_recipe_by_name"
+
+    - action: execute
+      params:
+        command: "! grep -qE 'Read\\(file_path.*DEFAULT_WORKFLOW|Read\\(file_path.*INVESTIGATION_WORKFLOW' .claude/skills/default-workflow/SKILL.md .claude/skills/investigation-workflow/SKILL.md 2>/dev/null && echo NO_STALE_READ"
+      expect:
+        stdout_contains: "NO_STALE_READ"
+      description: "No stale Read(file_path=...) instructions to manually read .md files"
+
+    - action: execute
+      params:
+        command: "! grep -q 'ultrathink-orchestrator' .claude/skills/default-workflow/SKILL.md .claude/skills/investigation-workflow/SKILL.md 2>/dev/null && echo NO_STALE_ULTRATHINK"
+      expect:
+        stdout_contains: "NO_STALE_ULTRATHINK"
+      description: "No stale ultrathink-orchestrator references"
+
+    - action: execute
+      params:
+        command: "grep 'recipes/default-workflow.yaml' .claude/skills/default-workflow/SKILL.md"
+      expect:
+        exit_code: 0
+        stdout_contains: "recipes/default-workflow.yaml"
+      description: "default-workflow canonical source points to recipe yaml"
+
+    - action: execute
+      params:
+        command: "grep 'recipes/investigation-workflow.yaml' .claude/skills/investigation-workflow/SKILL.md"
+      expect:
+        exit_code: 0
+        stdout_contains: "recipes/investigation-workflow.yaml"
+      description: "investigation-workflow canonical source points to recipe yaml"
+
+    - action: execute
+      params:
+        command: "grep -c 'dev-orchestrator' .claude/skills/default-workflow/SKILL.md"
+      expect:
+        exit_code: 0
+      description: "default-workflow references dev-orchestrator"
+
+    - action: execute
+      params:
+        command: "grep -c 'dev-orchestrator' .claude/skills/investigation-workflow/SKILL.md"
+      expect:
+        exit_code: 0
+      description: "investigation-workflow references dev-orchestrator"
+
+    - action: execute
+      params:
+        command: "grep 'run_recipe_by_name.*default-workflow' .claude/skills/default-workflow/SKILL.md"
+      expect:
+        exit_code: 0
+        stdout_contains: "default-workflow"
+      description: "default-workflow passes correct recipe name to run_recipe_by_name"
+
+    - action: execute
+      params:
+        command: "grep 'run_recipe_by_name.*investigation-workflow' .claude/skills/investigation-workflow/SKILL.md"
+      expect:
+        exit_code: 0
+        stdout_contains: "investigation-workflow"
+      description: "investigation-workflow passes correct recipe name to run_recipe_by_name"
+
+  success_criteria:
+    - "All workflow skills reference run_recipe_by_name as execution path"
+    - "No stale Read(file_path=...) instructions for manual .md reading"
+    - "No ultrathink-orchestrator references remain"
+    - "Canonical sources point to recipe yaml files"
