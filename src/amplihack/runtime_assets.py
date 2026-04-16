@@ -14,6 +14,10 @@ _ASSET_RELATIVE_PATHS: dict[str, tuple[str, ...]] = {
         ".claude/tools/amplihack/hooks",
         "amplifier-bundle/tools/amplihack/hooks",
     ),
+    "multitask-orchestrator": (
+        ".claude/skills/multitask/orchestrator.py",
+        "skills/multitask/orchestrator.py",
+    ),
 }
 
 
