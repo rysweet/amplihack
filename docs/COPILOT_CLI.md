@@ -1180,6 +1180,39 @@ def test_mcp_servers_config():
 
 ### Common Issues
 
+#### Recipe Runner Agent Steps All Failing ("unexpected argument '-p' found")
+
+**Problem**: Every recipe runner agent step fails immediately with:
+
+```
+error: unexpected argument '-p' found
+  tip: to pass '-p' as a value, use '-- -p'
+```
+
+This affects smart-orchestrator, quality-audit-cycle, default-workflow, and any other workflow that spawns agent steps via the recipe runner.
+
+**Root cause**: Versions of amplihack before 2026-04-14 placed Copilot CLI flags (such as `-p`, `--allow-all-tools`, `--model`) directly in the `amplihack copilot` command. The Rust `amplihack copilot` subcommand does not recognise these flags and fails immediately.
+
+**Fix**: Upgrade to the version that includes PR #4343 (merged 2026-04-14). The recipe runner now places those flags after a `--` separator:
+
+```bash
+# Upgrade
+uvx --from git+https://github.com/rysweet/amplihack@main amplihack --version
+
+# Verify the fix is in place (should be >= 2026-04-14 build)
+amplihack --version
+```
+
+After upgrading, the command shape becomes:
+
+```
+amplihack copilot -- --allow-all-tools -p "<prompt>"
+```
+
+which correctly passes the Copilot CLI flags through the Rust binary to `gh copilot`.
+
+**See also**: [Delegate Flag Passthrough](reference/cli.md#delegate-flag-passthrough) in the CLI reference.
+
 #### Symlinks Not Working
 
 **Problem**: Symlinks don't resolve correctly

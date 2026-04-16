@@ -95,9 +95,47 @@ These variables are read at startup. All are optional.
 | -------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `AMPLIHACK_AGENT_BINARY`   | set by launcher | Identifies the active tool in the child process environment. Set automatically to `claude`, `copilot`, `codex`, or `amplifier` by the corresponding launcher before spawning the subprocess. Read by skills and hooks to adapt behaviour to the active agent. |
 | `AMPLIHACK_DEBUG`          | unset           | Set to `true` to print debug messages during CLI execution.                                                                                                                                                                                                   |
+| `AMPLIHACK_DELEGATE`       | unset           | Selects which agent binary the recipe runner uses to spawn agent steps. Accepted values: `amplihack claude`, `amplihack copilot`, `amplihack amplifier`. When unset or unrecognised, falls back to `claude`. See [Delegate flag passthrough](#delegate-flag-passthrough) for Copilot-specific behaviour. |
 | `AMPLIHACK_ENABLE_BLARIFY` | unset           | Set to `1` to enable blarify code-graph indexing.                                                                                                                                                                                                             |
 | `AMPLIHACK_HOME`           | `~/.amplihack`  | Override the root directory for staged framework files and runtime data. Set automatically by each launcher when not already present in the environment; an existing value is always preserved.                                                               |
 | `AMPLIHACK_LOG_LEVEL`      | `WARNING`       | Python logging level for the launcher (`DEBUG`, `INFO`, `WARNING`, `ERROR`).                                                                                                                                                                                  |
+
+---
+
+## Delegate Flag Passthrough
+
+### `amplihack copilot` — `--` separator
+
+When `AMPLIHACK_DELEGATE=amplihack copilot`, the recipe runner builds agent-step commands differently from other delegates.
+
+**Why it is needed**: The Rust `amplihack copilot` subcommand only recognises its own flags (`--auto`, `--max-turns`, etc.). Copilot CLI flags such as `--allow-all-tools`, `-p`, and `--model` are not known to the Rust binary and must be forwarded to the underlying `gh copilot` process via the POSIX `--` end-of-options separator.
+
+**Command shape produced:**
+
+```
+amplihack copilot -- --allow-all-tools -p "<prompt>" [--model <model>]
+```
+
+Compare with the `amplihack claude` delegate (no separator needed):
+
+```
+claude --dangerously-skip-permissions -p "<prompt>" [--model <model>]
+```
+
+**Symptom if the separator is missing (versions before 2026-04-14):**
+
+```
+error: unexpected argument '-p' found
+  tip: to pass '-p' as a value, use '-- -p'
+```
+
+This error blocked every recipe runner agent step (smart-orchestrator, quality-audit-cycle, default-workflow) when running under Copilot CLI.
+
+**Fix**: Upgrade amplihack to the version that includes PR #4343 (merged 2026-04-14).
+
+```bash
+uvx --from git+https://github.com/rysweet/amplihack amplihack --version
+```
 
 ---
 
