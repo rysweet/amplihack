@@ -749,12 +749,18 @@ steps:
 
       # --- Idempotency: detect existing branch and/or worktree ---
       # FIX (issue #3023 / BL-002): Three-state guard makes re-runs safe.
+      # FIX (issue #4289): Added git worktree prune and orphaned directory cleanup
+      # to handle stale worktree state left by recovery runs.
       # State 1: branch + worktree both exist → reuse silently, emit created=false
       # State 2: branch exists but worktree missing → add worktree without -b
       # State 3: neither exists → full create path (original behaviour)
       #
       # Security note: grep -F is required (not -E/-P) so that filesystem path
       # characters (., +, *) in WORKTREE_PATH are not interpreted as regex metacharacters.
+
+      # Prune stale worktree references left by interrupted/recovery runs.
+      git worktree prune >&2
+
       BRANCH_EXISTS=$(git branch --list "${BRANCH_NAME}")
       WORKTREE_EXISTS=$(git worktree list --porcelain | grep -Fx "worktree ${WORKTREE_PATH}" || true)
 
@@ -763,10 +769,20 @@ steps:
         CREATED=false
       elif [ -n "$BRANCH_EXISTS" ] && [ -z "$WORKTREE_EXISTS" ]; then
         echo "INFO: Branch '${BRANCH_NAME}' exists but worktree is missing — adding worktree without -b." >&2
+        # Remove orphaned directory that git doesn't track (e.g., from a crashed run)
+        if [ -d "${WORKTREE_PATH}" ]; then
+          echo "INFO: Removing orphaned worktree directory '${WORKTREE_PATH}'" >&2
+          rm -rf "${WORKTREE_PATH}"
+        fi
         git worktree add "${WORKTREE_PATH}" "${BRANCH_NAME}" >&2
         CREATED=true
       else
         echo "INFO: Creating new branch and worktree." >&2
+        # Remove orphaned directory that git doesn't track (e.g., from a crashed run)
+        if [ -d "${WORKTREE_PATH}" ]; then
+          echo "INFO: Removing orphaned worktree directory '${WORKTREE_PATH}'" >&2
+          rm -rf "${WORKTREE_PATH}"
+        fi
         git worktree add "${WORKTREE_PATH}" -b "${BRANCH_NAME}" "$BASE_WORKTREE_REF" >&2
         CREATED=true
       fi
