@@ -635,14 +635,51 @@ steps:
       WORKTREE_EXISTS=$(git worktree list --porcelain | grep -Fx "worktree $WORKTREE_PATH" || true)
 
       if [ -n "$BRANCH_EXISTS" ] && [ -n "$WORKTREE_EXISTS" ]; then
-        echo "INFO: Branch '$BRANCH_NAME' and worktree already exist — reusing." >&2
+        # FIX (issue #4254): Verify the existing worktree tracks the correct base branch.
+        WORKTREE_BASE_OK=true
+        if [ "$BASE_REF" != "HEAD" ]; then
+          BRANCH_TIP=$(git rev-parse "$BRANCH_NAME" 2>/dev/null || echo "")
+          BASE_COMMIT=$(git rev-parse "$BASE_REF" 2>/dev/null || echo "")
+          if [ -n "$BRANCH_TIP" ] && [ -n "$BASE_COMMIT" ]; then
+            if ! git merge-base --is-ancestor "$BASE_COMMIT" "$BRANCH_TIP" 2>/dev/null; then
+              WORKTREE_BASE_OK=false
+              echo "WARN: Worktree was created from a different base branch — recreating." >&2
+            fi
+          fi
+        fi
+        if [ "$WORKTREE_BASE_OK" = true ]; then
+          echo "INFO: Branch '$BRANCH_NAME' and worktree already exist — reusing." >&2
+        else
+          git worktree remove --force "$WORKTREE_PATH" >&2 2>/dev/null || rm -rf "$WORKTREE_PATH"
+          git branch -D "$BRANCH_NAME" >&2 2>/dev/null || true
+          git worktree prune >&2
+          git worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME" "$BASE_REF"
+        fi
       elif [ -n "$BRANCH_EXISTS" ] && [ -z "$WORKTREE_EXISTS" ]; then
         echo "INFO: Branch '$BRANCH_NAME' exists but worktree missing — adding without -b." >&2
+        # FIX (issue #4254): Verify base branch before reattaching
+        REATTACH_OK=true
+        if [ "$BASE_REF" != "HEAD" ]; then
+          BRANCH_TIP=$(git rev-parse "$BRANCH_NAME" 2>/dev/null || echo "")
+          BASE_COMMIT=$(git rev-parse "$BASE_REF" 2>/dev/null || echo "")
+          if [ -n "$BRANCH_TIP" ] && [ -n "$BASE_COMMIT" ]; then
+            if ! git merge-base --is-ancestor "$BASE_COMMIT" "$BRANCH_TIP" 2>/dev/null; then
+              REATTACH_OK=false
+              echo "WARN: Branch was created from a different base — deleting and recreating." >&2
+            fi
+          fi
+        fi
         if [ -d "$WORKTREE_PATH" ]; then
           echo "INFO: Removing orphaned worktree directory '$WORKTREE_PATH'" >&2
           rm -rf "$WORKTREE_PATH"
         fi
-        git worktree add "$WORKTREE_PATH" "$BRANCH_NAME"
+        if [ "$REATTACH_OK" = true ]; then
+          git worktree add "$WORKTREE_PATH" "$BRANCH_NAME"
+        else
+          git branch -D "$BRANCH_NAME" >&2 2>/dev/null || true
+          git worktree prune >&2
+          git worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME" "$BASE_REF"
+        fi
       else
         if [ -d "$WORKTREE_PATH" ]; then
           echo "INFO: Removing orphaned worktree directory '$WORKTREE_PATH'" >&2
