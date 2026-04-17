@@ -566,23 +566,14 @@ steps:
       fi
       cd "$REPO_PATH"
 
-      # Resolve multitask orchestrator from AMPLIHACK_HOME, not from repo root.
-      # The orchestrator.py is an amplihack asset, not a repo file (#3762).
-      ORCH_SCRIPT=""
-      for candidate in \
-        "${AMPLIHACK_HOME:+$AMPLIHACK_HOME/.claude/skills/multitask/orchestrator.py}" \
-        "${HOME}/.amplihack/.claude/skills/multitask/orchestrator.py" \
-        "${HOME}/.copilot/skills/multitask/orchestrator.py" \
-        ".claude/skills/multitask/orchestrator.py"; do
-        if [ -n "$candidate" ] && [ -f "$candidate" ]; then
-          ORCH_SCRIPT="$candidate"
-          break
-        fi
-      done
-      if [ -z "$ORCH_SCRIPT" ]; then
-        echo "ERROR: multitask orchestrator.py not found." >&2
-        echo "  Searched: AMPLIHACK_HOME/.claude/skills/multitask/orchestrator.py" >&2
-        echo "  Set AMPLIHACK_HOME or ensure amplihack is installed." >&2
+      # Resolve multitask orchestrator via runtime_assets (fixes #4349).
+      # Uses the same resolution as helper-path: AMPLIHACK_HOME > ~/.amplihack >
+      # package root > repo root, avoiding hard-coded relative paths that break
+      # when REPO_PATH is a non-amplihack repo.
+      ORCH_SCRIPT="$(python3 -m amplihack.runtime_assets multitask-orchestrator 2>/dev/null || true)"
+      if [ -z "$ORCH_SCRIPT" ] || [ ! -f "$ORCH_SCRIPT" ]; then
+        echo "ERROR: multitask orchestrator.py not found via runtime_assets." >&2
+        echo "  Ensure amplihack is installed or set AMPLIHACK_HOME." >&2
         emit_step_transition fail
         exit 1
       fi
@@ -598,11 +589,23 @@ steps:
       if [ -n "${RECIPE_VAR_timeout_policy:-}" ]; then
         ORCH_ARGS+=(--timeout-policy "$RECIPE_VAR_timeout_policy")
       fi
+
+      # Emit launch event to stderr so Copilot CLI (and other watchers)
+      # see immediate confirmation that the parallel handoff succeeded (#4324).
+      WS_COUNT_LAUNCH=$(python3 -c "import json,sys;print(len(json.load(open(sys.argv[1]))))" "$WS_FILE" 2>/dev/null || echo "?")
+      echo '{"type":"parallel_launch","step":"launch-parallel-round-1","workstream_count":'"$WS_COUNT_LAUNCH"',"orchestrator":"'"$ORCH_SCRIPT"'","timestamp":'"$(date +%s)"'}' >&2
+
       status=0
+      # Run orchestrator with stderr pass-through so heartbeats and progress
+      # events reach the parent immediately, not buffered through a pipe (#4324).
       AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$SESSION_DEPTH" \
         AMPLIHACK_PARENT_STEP="launch-parallel-round-1" \
         AMPLIHACK_REPO_PATH="$REPO_PATH" \
-        python3 -u "$ORCH_SCRIPT" "${ORCH_ARGS[@]}" "$WS_FILE" | tee /dev/stderr || status=$?
+        python3 -u "$ORCH_SCRIPT" "${ORCH_ARGS[@]}" "$WS_FILE" 2>&1 | \
+        while IFS= read -r line; do
+          echo "$line"
+          echo "$line" >&2
+        done || status=$?
       # Clean up workstreams file now, before this step's output inflates
       # the recipe context. Doing it here avoids the E2BIG error that
       # occurs when a later bash step inherits megabytes of env vars

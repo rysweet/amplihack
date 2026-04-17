@@ -557,31 +557,33 @@ steps:
       }
       # FIX (#4205): Also match ADO work item URLs: _workitems/edit/NNNN
       # Fallback: bare numeric ID (e.g. from az boards work-item create --query id output)
-      EXTRACTED=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE '(issues|_workitems/edit)/[0-9]+|^[0-9]+$' | grep -oE '[0-9]+' | head -1)
-      if [ -z "$EXTRACTED" ]; then
-        PR_NUMBER=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC" | grep -oE 'pull/[0-9]+' | grep -oE '[0-9]+' | head -1)
-        if [ -n "$PR_NUMBER" ]; then
-          echo "INFO: step-03b resolving linked issue from PR #$PR_NUMBER" >&2
-          EXTRACTED=$(gh_with_timeout gh pr view "$PR_NUMBER" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // ""')
-        fi
-      fi
+      # FIX (#4344, #4326, #4308, #4307, #4316, #4303): Improved priority chain:
+      #   1. Direct issue/ADO URL  2. #NNN hash refs (verified as issues)
+      #   3. PR URL → resolve linked issue  4. #NNN that are PRs → resolve linked issue
+      #   5. Bare numeric ID  6. Accept unresolved PR number as last resort
+      COMBINED_TEXT=$(printf '%s\n%s' "$ISSUE_CREATION" "$TASK_DESC")
 
+      # --- Priority 1: Direct issue URL or ADO work item URL ---
+      EXTRACTED=$(printf '%s' "$COMBINED_TEXT" | grep -oE '(issues|_workitems/edit)/[0-9]+' | grep -oE '[0-9]+' | head -1)
+
+      # --- Priority 2: #NNN hash references — verify each is an issue (not a PR) ---
       if [ -z "$EXTRACTED" ]; then
-        REF_CANDIDATES=$(TASK_DESC="$TASK_DESC" python3 - <<'PY'
+        REF_CANDIDATES=$(COMBINED_TEXT="$COMBINED_TEXT" python3 - <<'PY'
       import os
       import re
 
-      task = os.environ.get("TASK_DESC", "")
+      text = os.environ.get("COMBINED_TEXT", "")
       seen = set()
-      for match in re.finditer(r'(?<![A-Za-z0-9_/-])#([0-9]+)\b', task):
+      for match in re.finditer(r'(?<![A-Za-z0-9_/-])#([0-9]+)\b', text):
           candidate = match.group(1)
           if candidate not in seen:
               print(candidate)
               seen.add(candidate)
       PY
         )
+        PR_CANDIDATES=""
         if [ -n "$REF_CANDIDATES" ]; then
-          echo "INFO: step-03b resolving issue number from task_description references" >&2
+          echo "INFO: step-03b resolving issue number from hash references" >&2
           while IFS= read -r candidate; do
             [ -n "$candidate" ] || continue
             CANDIDATE_URL=$(gh_with_timeout gh issue view "$candidate" --json url --jq '.url // ""')
@@ -590,9 +592,52 @@ steps:
                 EXTRACTED="$candidate"
                 break
                 ;;
+              */pull/*)
+                # Remember PR candidates for Priority 4 fallback
+                PR_CANDIDATES="${PR_CANDIDATES:+$PR_CANDIDATES
+      }$candidate"
+                ;;
             esac
           done < <(printf '%s\n' "$REF_CANDIDATES")
         fi
+      fi
+
+      # --- Priority 3: PR URL in text → resolve linked issue ---
+      if [ -z "$EXTRACTED" ]; then
+        PR_NUMBER=$(printf '%s' "$COMBINED_TEXT" | grep -oE 'pull/[0-9]+' | grep -oE '[0-9]+' | head -1)
+        if [ -n "$PR_NUMBER" ]; then
+          echo "INFO: step-03b resolving linked issue from PR URL #$PR_NUMBER" >&2
+          EXTRACTED=$(gh_with_timeout gh pr view "$PR_NUMBER" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // ""')
+          # If closingIssuesReferences is empty, remember this PR for last-resort
+          if [ -z "$EXTRACTED" ]; then
+            PR_CANDIDATES="${PR_CANDIDATES:+$PR_CANDIDATES
+      }$PR_NUMBER"
+          fi
+        fi
+      fi
+
+      # --- Priority 4: #NNN refs that were PRs → resolve their linked issues ---
+      if [ -z "$EXTRACTED" ] && [ -n "$PR_CANDIDATES" ]; then
+        echo "INFO: step-03b resolving linked issues from PR candidates" >&2
+        while IFS= read -r pr_candidate; do
+          [ -n "$pr_candidate" ] || continue
+          LINKED=$(gh_with_timeout gh pr view "$pr_candidate" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number // ""')
+          if [ -n "$LINKED" ]; then
+            EXTRACTED="$LINKED"
+            break
+          fi
+        done < <(printf '%s\n' "$PR_CANDIDATES")
+      fi
+
+      # --- Priority 5: Bare numeric ID on its own line ---
+      if [ -z "$EXTRACTED" ]; then
+        EXTRACTED=$(printf '%s' "$COMBINED_TEXT" | grep -oE '^[0-9]+$' | head -1)
+      fi
+
+      # --- Priority 6 (last resort): Accept first PR number with warning ---
+      if [ -z "$EXTRACTED" ] && [ -n "$PR_CANDIDATES" ]; then
+        EXTRACTED=$(printf '%s\n' "$PR_CANDIDATES" | head -1)
+        echo "WARNING: step-03b could not resolve a linked issue; using PR number #$EXTRACTED as issue reference" >&2
       fi
 
       case "$EXTRACTED" in
@@ -1871,7 +1916,9 @@ steps:
         echo "ERROR: commit_title_max_length must be a positive integer, got '$COMMIT_TITLE_MAX_LENGTH'" >&2
         exit 1
       fi
-      TASK_DESC=$(cat <<EOFTASKDESC
+      # Single-quoted heredoc prevents shell expansion of the task description
+      # (CWE-78 mitigation, fixes #4304).
+      TASK_DESC=$(cat <<'EOFTASKDESC'
       {{task_description}}
       EOFTASKDESC
       )
@@ -1881,19 +1928,10 @@ steps:
         echo "WARN: Truncating commit title to ${TOTAL_SUBJECT_LENGTH} characters including the 'feat: ' prefix" >&2
       fi
       COMMIT_TITLE=$(printf 'feat: %.*s' "$COMMIT_TITLE_MAX_LENGTH" "$RAW_COMMIT_TITLE")
-      COMMIT_MSG=$(cat <<EOF
-      $COMMIT_TITLE
-
-      Implements issue #{{issue_number}}
-
-      Changes:
-      - Implementation as per design specification
-      - Tests added for new functionality
-      - Documentation updated
-
-      Closes #{{issue_number}}
-      EOF
-      )
+      # Build commit message with printf to avoid heredoc delimiter collisions
+      # when $COMMIT_TITLE contains EOF-like strings (fixes #4309).
+      COMMIT_MSG="$(printf '%s\n\nImplements issue #%s\n\nChanges:\n- Implementation as per design specification\n- Tests added for new functionality\n- Documentation updated\n\nCloses #%s' \
+        "$COMMIT_TITLE" "{{issue_number}}" "{{issue_number}}")"
       if [ -n "$(git diff --cached --name-only)" ]; then
         # Scoped validation already ran above; avoid rerunning repo-wide check-imports.
         SKIP=check-imports${SKIP:+,$SKIP} git commit -m "$COMMIT_MSG"
