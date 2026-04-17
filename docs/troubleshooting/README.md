@@ -22,6 +22,11 @@ Ahoy, matey! Hit a snag? This be yer map to fix common issues and get back on co
 
 - [Stop Hook Exit Hang](stop-hook-exit-hang.md) - Fix 10-13 second hang on exit (resolved in v0.9.1)
 
+### Installation Issues
+
+- [Copytree Same-File Crash](copytree-same-file-crash.md) - Fix `SameFileError` when `AMPLIHACK_HOME` points at the source tree
+- [Copilot Installation False Negative](copilot-installation-false-negative.md) - Installation reports failure when it actually succeeded
+
 ### Startup Issues
 
 - [Startup Conflict Prompt](startup-conflict-prompt.md) - Fix "Uncommitted changes detected in .claude/" prompt on every startup
