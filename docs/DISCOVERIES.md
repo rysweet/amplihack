@@ -2,6 +2,169 @@
 
 This file documents non-obvious problems, solutions, and patterns discovered during amplihack development. Review and update this regularly, removing outdated entries or those replaced by better practices, code, or tools. Update entries where best practices have evolved.
 
+## Rust Recipe Runner Rejects Python-Style List Membership in Conditions (2026-04-17)
+
+### Issue
+
+Condition expressions in `default-workflow.yaml` using Python-style list membership (`x in ['a', 'b']`) fail with an `LBracket` parser error when executed by the Rust recipe runner (`recipe-runner-rs`).
+
+### Root Cause
+
+The Rust recipe runner evaluates `condition` fields with a custom mini-evaluator that supports basic boolean algebra and string comparisons but does not support Python's `in [...]` list-membership syntax. The parser sees the `[` token and raises `LBracket`.
+
+### Solution
+
+Replace `in [...]` expressions with equivalent `!=` chains (PR #4367):
+
+```yaml
+# Before (Python-style, raises LBracket in Rust runner)
+condition: "task_type in ['feature', 'bugfix']"
+
+# After (compatible)
+condition: "task_type != 'hotfix' and task_type != 'docs'"
+```
+
+Four conditions were updated in `default-workflow.yaml`: `step-07-write-tests`, `step-08-implement`, `step-08b-integration`, and `checkpoint-after-implementation`.
+
+### Key Learnings
+
+1. **Rust runner condition syntax is not Python**: Only `==`, `!=`, `and`, `or`, `not`, and parentheses are supported
+2. **Failures are silent at validation time**: `amplihack recipe validate` passes; the error only surfaces at runtime
+3. **Prefer positive conditions**: `status == 'active'` over `status != 'inactive'` where possible
+
+### Prevention
+
+- Never use `in [...]`, `not in`, list comprehensions, or any Python-specific syntax in recipe `condition` fields
+- Use `!=` chains or explicit `==` comparisons only
+- Test conditions with `amplihack recipe run --dry-run` under the Rust engine before committing
+
+---
+
+## Step-03b Issue/PR Reference Extraction: 6-Level Priority Chain (2026-04-17)
+
+### Issue
+
+`step-03b-extract-issue-number` previously used ad-hoc regex matching to find an issue or PR number in the output of `step-03`. This produced inconsistent results: it would sometimes extract PR numbers when an issue was available, miss closing-issue links, or fail silently when `step-03` returned only a PR URL.
+
+### Root Cause
+
+No explicit priority order existed. The extractor tried patterns in an undefined sequence, and the first match won regardless of how authoritative it was.
+
+### Solution
+
+PR #4368 redesigned `step-03b` with a deterministic 6-level priority chain:
+
+1. **Direct issue URL** in `step-03` output (`github.com/.../issues/N`)
+2. **GitHub API closing-issue** link for the returned PR URL
+3. **Issue reference in task description** (`#N` in the original task)
+4. **Issue reference in PR body** (`Closes #N`, `Fixes #N`)
+5. **Issue reference in branch name** (`issue-123-some-description`)
+6. **PR number as fallback** (when no issue can be found)
+
+### Key Learnings
+
+1. **Define priority order explicitly**: Implicit first-match semantics hide bugs
+2. **API lookups belong in higher-priority tiers**: A GitHub API result is more authoritative than regex over text
+3. **PR-only workflows are valid**: Not every task has an issue; the fallback to PR number prevents blocking
+
+### Prevention
+
+- When building reference extraction pipelines, enumerate all possible sources and rank them by authoritativeness before writing code
+- Write a test for each tier independently, not just the happy path
+
+---
+
+## Multitask Orchestrator Path Must Use runtime_assets Resolution (2026-04-17)
+
+### Issue
+
+`launch-parallel-round-1` in the multitask recipe hardcoded a relative path to the `multitask-orchestrator` script. This broke in any environment where amplihack is not running from its own repository root (non-amplihack projects, worktree layouts, `uvx` installs).
+
+### Root Cause
+
+The `multitask-orchestrator` is a staged runtime asset, but `launch-parallel-round-1` located it via a CWD-relative path instead of the `runtime_assets` resolution mechanism used by other orchestration tools.
+
+### Solution
+
+PR #4369 updated `launch-parallel-round-1` to resolve the orchestrator path via `runtime_assets` (respecting `AMPLIHACK_HOME` and staged asset directories). The fix also added:
+
+- **JSONL event logging** for each launched parallel task (enables post-hoc replay and debugging)
+- **Real-time heartbeat output** so operators can see that parallel tasks are alive
+
+### Key Learnings
+
+1. **Never hardcode paths to amplihack runtime assets**: Always use `runtime_assets` resolution
+2. **Heartbeats are cheap; silence is expensive**: Long-running parallel operations without output look frozen
+
+### Prevention
+
+- Any script that invokes an amplihack tool by path must use `runtime_assets` or `${AMPLIHACK_HOME}` — never a CWD-relative path
+- Add heartbeat logging to any step expected to run longer than 30 seconds
+
+---
+
+## Step-15 Bash Generation: Nested Heredocs and Worktree Path Failures (2026-04-17)
+
+### Issue
+
+`step-15-commit-push` generated bash code with three fragile failure modes that blocked commit/push in worktree layouts:
+
+1. Nested heredocs terminated early when variable values contained the heredoc delimiter string
+2. The pre-commit script path was repo-relative, resolving incorrectly when run from a worktree
+3. Repo root detection assumed `$PWD` was the repository root, which is false in worktrees
+
+### Root Cause
+
+Template variables containing multi-line content (e.g., commit messages from earlier steps) could include the exact heredoc terminator (`EOF`, `ENDMSG`) on a line by themselves. When nested inside an outer heredoc, the inner heredoc terminates early, corrupting the generated script and often raising a bash syntax error.
+
+### Solution
+
+PR #4370 applied three fixes:
+
+1. **Replace nested heredocs with process substitution**: `<(echo "$COMMIT_MSG")` instead of `<<'EOF' ... EOF`
+2. **Absolute pre-commit path**: Resolve via `git rev-parse --show-toplevel` at script generation time, not at runtime
+3. **Explicit repo root detection**: Set `REPO_ROOT=$(git rev-parse --show-toplevel)` as the first line of generated bash
+
+### Key Learnings
+
+1. **Never nest heredocs when variable values may contain the delimiter**: User-supplied text is arbitrary; any string can appear
+2. **`$PWD` is not the repo root inside a worktree**: Worktrees live in `.claude/worktrees/` subdirectories
+3. **Process substitution is safe for multi-line strings**: `<(echo "$VAR")` never misinterprets content as heredoc terminators
+
+### Prevention
+
+- In any bash step that generates further bash: use env vars or process substitution, never nested heredocs
+- Always derive repo paths from `git rev-parse --show-toplevel`, never from `$PWD` or relative paths
+- Test commit/push steps in both normal and worktree layouts before shipping
+
+---
+
+## Workflow Skills Must Call run_recipe_by_name(), Not Read Workflow Markdown (2026-04-17)
+
+### Issue
+
+The `default-workflow` and `investigation-workflow` SKILL.md files instructed Claude to `Read(file_path="...DEFAULT_WORKFLOW.md")` and manually follow the steps. This is equivalent to prompt-based enforcement — the model can read the markdown and still choose to skip, reorder, or abbreviate steps.
+
+### Root Cause
+
+The skills predated the recipe runner. When the recipe runner was introduced, the skills were not updated. Claude therefore bypassed code-enforced execution and fell back to prompt-only compliance.
+
+### Solution
+
+PR #4365 rewrote both skills (version 2.0.0) to call `run_recipe_by_name("default-workflow")` and `run_recipe_by_name("investigation-workflow")` respectively. All three copy locations were synced: `.claude/skills/`, `amplifier-bundle/skills/`, and `docs/claude/skills/`.
+
+### Key Learnings
+
+1. **Skills that read `.md` workflow files and ask Claude to "follow the steps" are prompt-based**: They provide no enforcement guarantee
+2. **`run_recipe_by_name()` is the enforcement boundary**: Once the recipe runner takes control, step skipping is physically prevented
+
+### Prevention
+
+- New skills that trigger multi-step workflows must call `run_recipe_by_name()` — never `Read()` a workflow markdown file and prompt the model to comply
+- When adding a new recipe, always pair it with an updated or new SKILL.md that invokes it via `run_recipe_by_name()`
+
+---
+
 ## Cleanup Agent Gap: Root Directory Organization (2026-01-12)
 
 ### Issue
