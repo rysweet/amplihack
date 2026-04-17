@@ -626,7 +626,11 @@ steps:
       fi
 
       # Idempotency guard (mirrors default-workflow three-state check)
+      # FIX (issue #4289): Added worktree prune and orphaned directory cleanup.
       WORKTREE_PATH="{{worktree_dir}}/$BRANCH_NAME"
+
+      git worktree prune >&2
+
       BRANCH_EXISTS=$(git branch --list "$BRANCH_NAME")
       WORKTREE_EXISTS=$(git worktree list --porcelain | grep -Fx "worktree $WORKTREE_PATH" || true)
 
@@ -634,8 +638,16 @@ steps:
         echo "INFO: Branch '$BRANCH_NAME' and worktree already exist — reusing." >&2
       elif [ -n "$BRANCH_EXISTS" ] && [ -z "$WORKTREE_EXISTS" ]; then
         echo "INFO: Branch '$BRANCH_NAME' exists but worktree missing — adding without -b." >&2
+        if [ -d "$WORKTREE_PATH" ]; then
+          echo "INFO: Removing orphaned worktree directory '$WORKTREE_PATH'" >&2
+          rm -rf "$WORKTREE_PATH"
+        fi
         git worktree add "$WORKTREE_PATH" "$BRANCH_NAME"
       else
+        if [ -d "$WORKTREE_PATH" ]; then
+          echo "INFO: Removing orphaned worktree directory '$WORKTREE_PATH'" >&2
+          rm -rf "$WORKTREE_PATH"
+        fi
         git worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME" "$BASE_REF"
       fi
 
