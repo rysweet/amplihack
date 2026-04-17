@@ -111,6 +111,14 @@ check_sec_01_09() {
     local file="$1"
     local passed=true
 
+    # Skip SVG files: they contain XML namespace URIs (xmlns:xlink=...) and
+    # CSS @-rules (@keyframes, @media) that span the single-line SVG body,
+    # causing the connection-string pattern to false-positive across unrelated
+    # segments (e.g. "://w3.org/...@keyframes").
+    case "$file" in
+        *.svg) log_ok "SEC-01/09" "$file"; return ;;
+    esac
+
     for pattern in "${SECRET_VALUE_PATTERNS[@]}"; do
         if grep -qE "$pattern" "$file" 2>/dev/null; then
             log_violation "SEC-01/09" "$file" "Possible credential/secret value matching pattern: ${pattern:0:50}..."
@@ -142,7 +150,9 @@ XSS_PATTERNS=(
 
 # Unescaped HTML in label context — catches labels like: A["<b>foo</b>"]
 # We look for angle brackets within Mermaid label delimiters ["..."] or DOT label="..."
+# Excludes <br/> and <br> which are legitimate Mermaid line-break syntax.
 LABEL_HTML_PATTERN='(\["[^"]*[<>][^"]*"\]|label="[^"]*[<>][^"]*")'
+LABEL_HTML_SAFE_BR='<br[ ]*[/]?>'
 
 check_sec_03_10() {
     local file="$1"
@@ -155,7 +165,10 @@ check_sec_03_10() {
         fi
     done
 
-    if grep -qE "$LABEL_HTML_PATTERN" "$file" 2>/dev/null; then
+    # Check for unescaped HTML in labels, but ignore safe Mermaid <br/> tags.
+    # Strip <br/> and <br> before testing so labels like E0["rich<br/>imports: 20"]
+    # don't false-positive.
+    if sed -E "s|${LABEL_HTML_SAFE_BR}||gi" "$file" | grep -qE "$LABEL_HTML_PATTERN" 2>/dev/null; then
         log_violation "SEC-03/10" "$file" "Unescaped HTML in diagram label (use &lt; &gt; instead of < >)"
         passed=false
     fi
