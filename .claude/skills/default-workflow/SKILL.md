@@ -147,20 +147,23 @@ orchestrator handles the full lifecycle including goal-seeking reflection loops.
 If this skill is activated directly (not via dev-orchestrator), you MUST use the
 recipe runner — **do NOT read the .md file and follow steps manually**:
 
-```python
-from amplihack.recipes import run_recipe_by_name
-
-result = run_recipe_by_name(
-    "default-workflow",
-    user_context={
-        "task_description": "TASK_DESCRIPTION_HERE",
-        "repo_path": ".",
-    },
-    progress=True,
-)
+```bash
+amplihack recipe run amplifier-bundle/recipes/default-workflow.yaml \
+  -c task_description="TASK_DESCRIPTION_HERE" \
+  -c repo_path="." \
+  --verbose
 ```
 
-Or via shell:
+> **Legacy Python API** (still supported but deprecated):
+>
+> ```python
+> from amplihack.recipes import run_recipe_by_name
+> result = run_recipe_by_name("default-workflow", user_context={
+>     "task_description": "TASK_DESCRIPTION_HERE", "repo_path": ".",
+> }, progress=True)
+> ```
+
+Or via shell (legacy Python wrapper):
 
 ```bash
 cd /path/to/repo && env -u CLAUDECODE \

@@ -44,14 +44,14 @@ is achieved, with quality audit and silent degradation checks on every iteration
 ### Via Recipe Runner
 
 ```bash
-recipe-runner-rs amplifier-bundle/recipes/oxidizer-workflow.yaml \
-  --set python_package_path=src/mypackage \
-  --set rust_target_path=rust/mypackage \
-  --set rust_repo_name=my-rust-package \
-  --set rust_repo_org=myorg
+amplihack recipe run amplifier-bundle/recipes/oxidizer-workflow.yaml \
+  -c python_package_path=src/mypackage \
+  -c rust_target_path=rust/mypackage \
+  -c rust_repo_name=my-rust-package \
+  -c rust_repo_org=myorg
 ```
 
-### Via Python API
+### Via Python API (deprecated — prefer CLI)
 
 ```python
 from amplihack.recipes import run_recipe_by_name
