@@ -96,14 +96,14 @@ class TestS1ValidDelegatesAllowlist:
         orc = make_orchestrator(tmp_path)
         assert hasattr(orc, "_detect_delegate"), "S1: _detect_delegate() must exist"
 
-        # Simulate LauncherDetector returning something not in VALID_DELEGATES
-        with patch("orchestrator.LauncherDetector") as mock_det_cls:
-            mock_det_cls.return_value.detect.return_value = "malicious-binary; rm -rf /"
-            env_without_delegate = {
-                k: v for k, v in os.environ.items() if k != "AMPLIHACK_DELEGATE"
-            }
-            with patch.dict(os.environ, env_without_delegate, clear=True):
-                result = orc._detect_delegate()
+        # Simulate AMPLIHACK_AGENT_BINARY set to something malicious
+        env_without_delegate = {
+            k: v for k, v in os.environ.items()
+            if k not in ("AMPLIHACK_DELEGATE", "AMPLIHACK_AGENT_BINARY")
+        }
+        env_without_delegate["AMPLIHACK_AGENT_BINARY"] = "malicious-binary; rm -rf /"
+        with patch.dict(os.environ, env_without_delegate, clear=True):
+            result = orc._detect_delegate()
 
         # Must fall back to a valid delegate
         assert result in orc_module.VALID_DELEGATES, (

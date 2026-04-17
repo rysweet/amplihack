@@ -27,7 +27,7 @@ pip install amplihack
 ### Verify Installation
 
 ```python
-from amplihack.goal_agent_generator import (
+use amplihack_agent_generator:: (
     PromptAnalyzer,
     ObjectivePlanner,
     SkillSynthesizer,
@@ -58,7 +58,7 @@ amplihack goal-agent-generator execute \
 ### Programmatic Usage: 5-Step Process
 
 ```python
-from amplihack.goal_agent_generator import (
+use amplihack_agent_generator:: (
     PromptAnalyzer,
     ObjectivePlanner,
     SkillSynthesizer,
@@ -436,7 +436,7 @@ amplihack goal-agent-generator list
 
 ```python
 # In your workflow orchestration code
-from amplihack.goal_agent_generator import PromptAnalyzer, ObjectivePlanner
+use amplihack_agent_generator:: PromptAnalyzer, ObjectivePlanner
 
 def create_goal_agent_for_task(task_description: str):
     """Dynamically create goal agent from task description"""
@@ -489,7 +489,7 @@ jobs:
 
 ```python
 # In existing agent code
-from amplihack.goal_agent_generator import PromptAnalyzer, ObjectivePlanner
+use amplihack_agent_generator:: PromptAnalyzer, ObjectivePlanner
 
 class ExistingAgent:
     def complex_task(self, task_description: str):
@@ -511,7 +511,7 @@ class ExistingAgent:
 ### Pattern 4: Custom Phase Templates
 
 ```python
-from amplihack.goal_agent_generator import ObjectivePlanner
+use amplihack_agent_generator:: ObjectivePlanner
 
 class CustomPlanner(ObjectivePlanner):
     """Custom planner with domain-specific phase templates"""
@@ -538,7 +538,7 @@ class CustomPlanner(ObjectivePlanner):
 ### Custom Goal Analysis
 
 ```python
-from amplihack.goal_agent_generator import PromptAnalyzer
+use amplihack_agent_generator:: PromptAnalyzer
 
 class CustomPromptAnalyzer(PromptAnalyzer):
     """Custom analyzer with additional domain keywords"""
@@ -563,7 +563,7 @@ class CustomPromptAnalyzer(PromptAnalyzer):
 ### Custom Skill Mapping
 
 ```python
-from amplihack.goal_agent_generator import SkillSynthesizer
+use amplihack_agent_generator:: SkillSynthesizer
 
 class CustomSkillSynthesizer(SkillSynthesizer):
     """Custom skill synthesizer with project-specific skills"""

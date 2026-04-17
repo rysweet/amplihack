@@ -101,7 +101,7 @@ for flaky failures, and verify coverage thresholds are met.
 ### Execution Plan
 
 ```python
-from amplihack.goal_agent_generator import PromptAnalyzer, ObjectivePlanner
+use amplihack_agent_generator:: PromptAnalyzer, ObjectivePlanner
 
 analyzer = PromptAnalyzer()
 goal_def = analyzer.analyze_text(goal_text)
@@ -181,7 +181,7 @@ Success indicators:
 ### Implementation
 
 ```python
-from amplihack.goal_agent_generator import (
+use amplihack_agent_generator:: (
     PromptAnalyzer,
     ObjectivePlanner,
     SkillSynthesizer,

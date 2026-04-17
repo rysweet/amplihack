@@ -104,13 +104,7 @@ amplihack recipe run amplifier-bundle/recipes/default-workflow.yaml \
   -c repo_path="."
 ```
 
-> **Legacy Python API** (still supported):
->
-> ```python
-> from amplihack.recipes import run_recipe_by_name
-> result = run_recipe_by_name("default-workflow",
->     user_context={"task_description": task, "repo_path": "."})
-> ```
+
 
 ### Classic Mode
 

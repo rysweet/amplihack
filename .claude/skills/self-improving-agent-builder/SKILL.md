@@ -62,7 +62,7 @@ python -m amplihack.eval.self_improve.runner \
   --dry-run  # evaluate only, don't apply changes
 ```
 
-**Source:** `src/amplihack/eval/self_improve/runner.py`
+**Source:** `crates/amplihack-eval/src/self_improve/runner.rs`
 
 ## The Loop (6 Phases per Iteration)
 
@@ -87,11 +87,9 @@ Classify failures using `error_analyzer.py`. Maps each failed question to a
 failure taxonomy (retrieval_insufficient, temporal_ordering_wrong, etc.) and
 the specific code component responsible.
 
-```python
-from amplihack.eval.self_improve import analyze_eval_results
-
-analyses = analyze_eval_results(level_results, score_threshold=0.6)
-# Each ErrorAnalysis maps to:
+```bash
+amplihack eval run --analyze --score-threshold 0.6
+# Classifies each failure by:
 #   failure_mode -> affected_component -> prompt_template
 ```
 
@@ -145,24 +143,16 @@ Re-run the same eval suite after applying fixes to measure impact.
 | `output_dir`            | `./eval_results/self_improve` | Results directory                        |
 | `dry_run`               | `false`                       | Evaluate only, don't apply changes       |
 
-## Programmatic Usage
+## CLI Usage
 
-```python
-from amplihack.eval.self_improve import run_self_improvement, RunnerConfig
-
-config = RunnerConfig(
-    sdk_type="mini",
-    max_iterations=3,
-    improvement_threshold=2.0,
-    regression_tolerance=5.0,
-    levels=["L1", "L2", "L3", "L4", "L5", "L6"],
-    output_dir="./eval_results/self_improve",
-    dry_run=False,
-)
-
-result = run_self_improvement(config)
-print(f"Total improvement: {result.total_improvement:+.1f}%")
-print(f"Final scores: {result.final_scores}")
+```bash
+amplihack eval run \
+  --sdk-type mini \
+  --max-iterations 3 \
+  --improvement-threshold 2.0 \
+  --regression-tolerance 5.0 \
+  --levels L1,L2,L3,L4,L5,L6 \
+  --output-dir ./eval_results/self_improve
 ```
 
 ## 4-Way Benchmark Mode
@@ -178,9 +168,9 @@ Skill: Runs eval suite on mini, claude, copilot, microsoft
 
 ## Integration Points
 
-- `src/amplihack/eval/self_improve/runner.py`: Self-improvement loop runner
-- `src/amplihack/eval/self_improve/error_analyzer.py`: Failure classification
-- `src/amplihack/eval/progressive_test_suite.py`: L1-L12 eval runner
-- `src/amplihack/agents/goal_seeking/sdk_adapters/`: All 4 SDK implementations
-- `src/amplihack/eval/metacognition_grader.py`: Advanced eval dimensions
-- `src/amplihack/eval/teaching_session.py`: L7 teaching quality eval
+- `crates/amplihack-eval/src/self_improve/runner.rs`: Self-improvement loop runner
+- `crates/amplihack-eval/src/self_improve/error_analyzer.rs`: Failure classification
+- `crates/amplihack-eval/src/progressive_test_suite.rs`: L1-L12 eval runner
+- `crates/amplihack-agents/src/goal_seeking/sdk_adapters/`: All 4 SDK implementations
+- `crates/amplihack-eval/src/metacognition_grader.rs`: Advanced eval dimensions
+- `crates/amplihack-eval/src/teaching_session.rs`: L7 teaching quality eval

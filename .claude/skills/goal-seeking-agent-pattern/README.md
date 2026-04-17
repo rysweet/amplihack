@@ -140,7 +140,7 @@ Example: AKS SRE automation combines Azure, Kubernetes, networking, and security
 ### Programmatic API
 
 ```python
-from amplihack.goal_agent_generator import (
+use amplihack_agent_generator:: (
     PromptAnalyzer,
     ObjectivePlanner,
     SkillSynthesizer,
@@ -372,7 +372,7 @@ When designing goal-seeking agents, verify:
 
 ### Code
 
-- **Module**: `src/amplihack/goal_agent_generator/` (implementation)
+- **Module**: `crates/amplihack-agent-generator/src/` (implementation)
 - **API**: `PromptAnalyzer`, `ObjectivePlanner`, `SkillSynthesizer`, `AgentAssembler`, `GoalAgentPackager`
 - **CLI**: `amplihack goal-agent-generator` (command-line interface)
 

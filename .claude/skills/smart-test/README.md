@@ -9,7 +9,7 @@ User: What tests should I run for my changes?
 
 Claude: Analyzing your changes...
 
-Changed: src/amplihack/core/processor.py
+Changed: crates/amplihack-core/src/processor.rs
 
 Tier 1 (Fast - 30s):
   pytest tests/unit/test_processor.py -v

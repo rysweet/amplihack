@@ -68,7 +68,7 @@ It provides four browsing modes:
 
 Before browsing, detect which tool is active to set default log paths.
 Prefer directory-based detection (more reliable than env vars); fall back to env vars
-from `src/amplihack/hooks/launcher_detector.py` when directories don't exist:
+via the `AMPLIHACK_AGENT_BINARY` env var when directories don't exist:
 
 ```bash
 # Primary: directory-based detection (most reliable)
