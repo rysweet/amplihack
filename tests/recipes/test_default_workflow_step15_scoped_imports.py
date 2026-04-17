@@ -27,7 +27,7 @@ def test_step_15_builds_publish_scope_before_running_import_validation(step_15: 
     command = step_15["command"]
 
     assert "build_publish_validation_scope.py" in command
-    assert re.search(r"check_imports\.py\s+--files-from\b", command), command
+    assert re.search(r'check_imports\.py["\s]+--files-from\b', command), command
     assert command.index("build_publish_validation_scope.py") < command.index("check_imports.py")
 
 

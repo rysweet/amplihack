@@ -1872,25 +1872,28 @@ steps:
       echo ""
       echo "--- Publish Import Validation ---"
       echo "publish_manifest=$PUBLISH_MANIFEST"
-      python3 scripts/pre-commit/build_publish_validation_scope.py \
+      # Resolve pre-commit scripts from the repo root.  The worktree may be a
+      # git-worktree whose tracked tree includes these scripts, but the CWD at
+      # recipe launch time may differ.  Fall back to AMPLIHACK_HOME for repos
+      # that don't carry the scripts in-tree (fixes #4321, #4341).
+      PRECOMMIT_DIR=""
+      if [ -f "scripts/pre-commit/build_publish_validation_scope.py" ]; then
+        PRECOMMIT_DIR="scripts/pre-commit"
+      elif [ -n "${AMPLIHACK_HOME:-}" ] && [ -f "${AMPLIHACK_HOME}/scripts/pre-commit/build_publish_validation_scope.py" ]; then
+        PRECOMMIT_DIR="${AMPLIHACK_HOME}/scripts/pre-commit"
+      else
+        echo "ERROR: Cannot find build_publish_validation_scope.py in ./scripts/pre-commit/ or \$AMPLIHACK_HOME/scripts/pre-commit/" >&2
+        exit 1
+      fi
+      python3 "${PRECOMMIT_DIR}/build_publish_validation_scope.py" \
         --manifest "$PUBLISH_MANIFEST" \
         --output "$VALIDATION_SCOPE" \
         --repo-root . \
         --exclude-claude-scenarios > "$SCOPE_COUNTS_JSON"
-      read -r seed_count expanded_local_dep_count validated_count <<EOFCOUNTS
-      $(python3 - "$SCOPE_COUNTS_JSON" <<PY
-      import json
-      import sys
-      from pathlib import Path
-      data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-      print(
-          data["seed_count"],
-          data["expanded_local_dep_count"],
-          data["validated_count"],
-      )
-      PY
-      )
-      EOFCOUNTS
+      # Parse scope counts with process substitution instead of fragile nested
+      # heredocs (<<EOFCOUNTS wrapping <<PY).  Fixes #4245.
+      read -r seed_count expanded_local_dep_count validated_count \
+        < <(python3 -c "import json,sys,pathlib; d=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8')); print(d['seed_count'],d['expanded_local_dep_count'],d['validated_count'])" "$SCOPE_COUNTS_JSON")
       echo "validation_scope=$VALIDATION_SCOPE"
       echo "seed_count=$seed_count"
       echo "expanded_local_dep_count=$expanded_local_dep_count"
@@ -1907,7 +1910,7 @@ steps:
           SYSTEMROOT="${SYSTEMROOT:-}" \
           USERPROFILE="${USERPROFILE:-}" \
           PYTHONNOUSERSITE=1 \
-          python3 scripts/pre-commit/check_imports.py --files-from "$VALIDATION_SCOPE"
+          python3 "${PRECOMMIT_DIR}/check_imports.py" --files-from "$VALIDATION_SCOPE"
       fi
       echo ""
       echo "--- Creating Commit ---"
@@ -1916,9 +1919,10 @@ steps:
         echo "ERROR: commit_title_max_length must be a positive integer, got '$COMMIT_TITLE_MAX_LENGTH'" >&2
         exit 1
       fi
-      # Single-quoted heredoc prevents shell expansion of the task description
-      # (CWE-78 mitigation, fixes #4304).
-      TASK_DESC=$(cat <<'EOFTASKDESC'
+      # Unquoted heredoc allows Rust runner $RECIPE_VAR_* expansion while
+      # still preventing shell injection (single-pass expansion, #3117).
+      # Fixes #4304.
+      TASK_DESC=$(cat <<EOFTASKDESC
       {{task_description}}
       EOFTASKDESC
       )
