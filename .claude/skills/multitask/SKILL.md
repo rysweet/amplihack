@@ -96,14 +96,21 @@ Report: PR numbers, success/failure, runtime
 
 ### Recipe Mode (Default)
 
-Each workstream runs `run_recipe_by_name()` through a Python launcher:
+Each workstream runs `amplihack recipe run` via a launcher script:
 
-```python
-from amplihack.recipes import run_recipe_by_name
-
-result = run_recipe_by_name("default-workflow",
-    user_context={"task_description": task, "repo_path": "."})
+```bash
+amplihack recipe run amplifier-bundle/recipes/default-workflow.yaml \
+  -c task_description="TASK_DESCRIPTION_HERE" \
+  -c repo_path="."
 ```
+
+> **Legacy Python API** (still supported):
+>
+> ```python
+> from amplihack.recipes import run_recipe_by_name
+> result = run_recipe_by_name("default-workflow",
+>     user_context={"task_description": task, "repo_path": "."})
+> ```
 
 ### Classic Mode
 

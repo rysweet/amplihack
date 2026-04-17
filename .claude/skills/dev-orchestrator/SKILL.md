@@ -143,9 +143,9 @@ that instructs Claude to invoke `Skill(skill="dev-orchestrator")` for dev/invest
 ## Execution Instructions
 
 **YOUR NEXT ACTION after reading this skill MUST include a Bash tool call that
-executes `run_recipe_by_name("smart-orchestrator")`.** If your runtime requires
-a `report_intent` call (e.g. Copilot CLI), emit it **in parallel** with the
-Bash launch — both tool calls in the same response. The constraint is that no
+executes the recipe runner.** If your runtime requires a `report_intent` call
+(e.g. Copilot CLI), emit it **in parallel** with the Bash launch — both tool
+calls in the same response. The constraint is that no
 _other_ substantive action (reading files, calling TodoWrite, invoking Agent,
 or typing a response) may precede or replace the Bash launch.
 
@@ -169,38 +169,34 @@ When this skill is activated:
 Your next tool call(s) must include the recipe runner launch (alongside
 `report_intent` if your runtime requires it).
 
-#### Default: Direct Execution
+#### Default: Direct Execution (Rust CLI)
 
-The recipe runner is a plain subprocess — it does **not** require tmux.
-Call `run_recipe_by_name()` directly:
+The recipe runner is the Rust `amplihack` binary — invoke it directly:
 
 ```bash
 cd /path/to/repo && env -u CLAUDECODE \
-  AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=${AMPLIHACK_HOME:-~/.amplihack}/src python3 -c "
-from amplihack.recipes import run_recipe_by_name
-
-result = run_recipe_by_name(
-    'smart-orchestrator',
-    user_context={
-        'task_description': '''TASK_DESCRIPTION_HERE''',
-        'repo_path': '.',
-    },
-    progress=True,
-)
-print(f'Recipe result: {result}')
-"
+  AMPLIHACK_HOME=/path/to/amplihack \
+  amplihack recipe run amplifier-bundle/recipes/smart-orchestrator.yaml \
+    -c task_description="TASK_DESCRIPTION_HERE" \
+    -c repo_path="." \
+    --verbose
 ```
 
 **Key points:**
 
-- `PYTHONPATH=${AMPLIHACK_HOME}/src python3` — uses the staged package at `$AMPLIHACK_HOME/src/amplihack/` so `amplihack.recipes` is importable on any project
-- `run_recipe_by_name` — delegates to the Rust binary via `subprocess.Popen`; no tmux involved
-- `progress=True` — streams recipe-runner stderr live so you see nested step activity
+- `amplihack recipe run` — the native Rust binary; no Python wrapper needed
+- `-c key=value` — passes context variables (equivalent to `user_context` dict)
+- `--verbose` — streams recipe-runner stderr live so you see nested step activity
 - The recipe runner manages its own child processes (agent sessions, bash steps) as direct subprocesses
 
 This is the preferred execution mode for most scenarios. It is simpler, has
-no external dependencies beyond Python and the Rust binary, works on all
-platforms, and makes output capture straightforward.
+no external dependencies beyond the Rust binary, works on all platforms,
+and makes output capture straightforward.
+
+> **Legacy Python API** (still supported but deprecated): If the Rust binary is
+> unavailable, you can fall back to the Python wrapper:
+> `PYTHONPATH=${AMPLIHACK_HOME}/src python3 -c "from amplihack.recipes import run_recipe_by_name; ..."`
+> This delegates to the Rust binary via `subprocess.Popen`.
 
 #### Durable Execution (tmux) — optional
 
@@ -213,30 +209,18 @@ Use tmux **only** when:
 
 ```bash
 LOG_FILE=$(mktemp /tmp/recipe-runner-output.XXXXXX.log)
-SCRIPT_FILE=$(mktemp /tmp/recipe-runner-script.XXXXXX.py)
-chmod 600 "$LOG_FILE" "$SCRIPT_FILE"
-cat > "$SCRIPT_FILE" << 'RECIPE_SCRIPT'
-from amplihack.recipes import run_recipe_by_name
-
-result = run_recipe_by_name(
-    "smart-orchestrator",
-    user_context={
-        "task_description": """TASK_DESCRIPTION_HERE""",
-        "repo_path": ".",
-    },
-    progress=True,
-)
-print(f"Recipe result: {result}")
-RECIPE_SCRIPT
+chmod 600 "$LOG_FILE"
 tmux new-session -d -s recipe-runner \
   "cd /path/to/repo && env -u CLAUDECODE \
-   AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=\${AMPLIHACK_HOME:-~/.amplihack}/src python3 $SCRIPT_FILE 2>&1 | tee $LOG_FILE"
+   AMPLIHACK_HOME=/path/to/amplihack \
+   amplihack recipe run amplifier-bundle/recipes/smart-orchestrator.yaml \
+     -c task_description='TASK_DESCRIPTION_HERE' \
+     -c repo_path='.' \
+     --verbose 2>&1 | tee $LOG_FILE"
 echo "Recipe runner log: $LOG_FILE"
 ```
 
-- The Python payload is written to a temp script to avoid nested quoting
-  issues that cause silent launch failures (see issue #3215)
-- `chmod 600 "$LOG_FILE" "$SCRIPT_FILE"` — keeps both files private
+- `chmod 600 "$LOG_FILE"` — keeps the log file private
 - `tmux new-session -d` — detached session, no timeout, survives disconnects
 - Monitor with: `tail -f "$LOG_FILE"` or `tmux attach -t recipe-runner`
 
@@ -266,12 +250,9 @@ Investigation tasks.** Always try `smart-orchestrator` first.
 - `AMPLIHACK_HOME` — Auto-detected from the current working directory by
   walking parent directories for an `amplifier-bundle/` folder, with fallback
   to `~/.amplihack`. If auto-detection fails, set manually to the directory
-  containing `amplifier-bundle/`. The recipe runner uses this to find
-  `amplifier-bundle/tools/orch_helper.py` and other orchestrator scripts.
+  containing `amplifier-bundle/`.
 - Preserve `AMPLIHACK_AGENT_BINARY` — nested workflow agents read this env var
   to stay on the caller's active binary (for example, Copilot in Copilot CLI).
-  The Python wrapper no longer forwards the removed `--agent-binary` CLI flag,
-  so keeping this env var set is now the correct behavior.
 - Unset `CLAUDECODE` — required so nested Claude Code sessions can launch.
 
 **Fallback: Direct recipe invocation when smart-orchestrator fails.**
@@ -291,10 +272,10 @@ recipe directly based on your classification:
 
 Example:
 
-```python
-run_recipe_by_name("investigation-workflow", user_context={
-    'task_description': task, 'repo_path': '.',
-}, progress=True)
+```bash
+amplihack recipe run amplifier-bundle/recipes/investigation-workflow.yaml \
+  -c task_description="TASK_DESCRIPTION_HERE" \
+  -c repo_path="."
 ```
 
 This is NOT a license to bypass `smart-orchestrator`. Only use direct
@@ -365,11 +346,13 @@ is wrong), you MAY invoke the specific workflow recipe directly. This is an
 
 Example:
 
-```python
+```bash
 # ANNOUNCE the strategy change first — never do this silently
-print("[ADAPTIVE] smart-orchestrator failed at parse-decomposition: <error>")
-print("[ADAPTIVE] Switching to direct investigation-workflow invocation")
-run_recipe_by_name("investigation-workflow", user_context={...}, progress=True)
+echo "[ADAPTIVE] smart-orchestrator failed at parse-decomposition: <error>"
+echo "[ADAPTIVE] Switching to direct investigation-workflow invocation"
+amplihack recipe run amplifier-bundle/recipes/investigation-workflow.yaml \
+  -c task_description="TASK_DESCRIPTION_HERE" \
+  -c repo_path="."
 ```
 
 **This is NOT a license to bypass smart-orchestrator.** Always try it first.
@@ -401,7 +384,7 @@ The recipe runner requires these environment variables to function:
 | `AMPLIHACK_NONINTERACTIVE` | Set to `1` to skip interactive prompts            | Unset           |
 
 If `AMPLIHACK_HOME` is not set and auto-detection fails, `parse-decomposition`
-and `activate-workflow` will fail with "orch_helper.py not found". Set it to
+and `activate-workflow` will fail with asset lookup errors. Set it to
 the directory containing `amplifier-bundle/`.
 
 ### After Execution: Reflect and verify
@@ -453,15 +436,11 @@ the mandatory workflow. State is stored in `/tmp/amplihack-workflow-state/`.
 recipe user_context to prevent automatic parallel decomposition regardless of
 task structure. This is a programmatic option (not directly settable from `/dev`):
 
-```python
-run_recipe_by_name(
-    "smart-orchestrator",
-    user_context={
-        "task_description": task,
-        "repo_path": ".",
-        "force_single_workstream": "true",  # disables parallel decomposition
-    }
-)
+```bash
+amplihack recipe run amplifier-bundle/recipes/smart-orchestrator.yaml \
+  -c task_description="TASK_DESCRIPTION_HERE" \
+  -c repo_path="." \
+  -c force_single_workstream="true"
 ```
 
 **To force single-workstream execution without modifying recipe context:**
