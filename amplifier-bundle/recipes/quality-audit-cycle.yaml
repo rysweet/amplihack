@@ -413,6 +413,7 @@ steps:
       print(json.dumps(result, indent=2))
       PYEOF
     output: "validated_findings"
+    parse_json: true
 
   # ========================================================================
   # STEP 4: FIX — Address confirmed findings using full DEFAULT_WORKFLOW

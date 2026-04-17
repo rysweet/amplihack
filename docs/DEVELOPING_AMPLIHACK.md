@@ -1378,7 +1378,7 @@ AMPLIHACK_UVX_MODE=1
 [project]
 name = "amplihack"
 version = "0.2.0"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 
 dependencies = [
     "flask>=2.0.0",
@@ -1595,7 +1595,7 @@ ignore-known-secrets: true
 
 **Prerequisites**:
 
-1. Python 3.8+
+1. Python 3.11+
 2. Node.js 18+
 3. npm
 4. git
@@ -1939,7 +1939,7 @@ repos:
     rev: 22.10.0
     hooks:
       - id: black
-        language_version: python3.8
+        language_version: python3.11
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: v0.1.0
@@ -1977,7 +1977,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, "3.10", "3.11"]
+        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v3
