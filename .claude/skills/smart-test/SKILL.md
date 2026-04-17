@@ -152,8 +152,8 @@ Smart Test Analysis
 ------------------------------------------
 
 Changed Files:
-- src/amplihack/core/processor.py
-- src/amplihack/utils/helpers.py
+- crates/amplihack-core/src/processor.rs
+- crates/amplihack-utils/src/helpers.rs
 
 Tier 1 (Fast - 45s estimated):
   pytest tests/unit/test_processor.py tests/unit/test_helpers.py -v
@@ -262,7 +262,7 @@ pytest
 version: 1
 last_updated: "2025-11-25T10:00:00Z"
 mappings:
-  src/amplihack/core/processor.py:
+  crates/amplihack-core/src/processor.rs:
     direct_tests:
       - tests/unit/test_processor.py
     indirect_tests:
@@ -270,7 +270,7 @@ mappings:
     transitive_tests:
       - tests/e2e/test_full_workflow.py
 
-  src/amplihack/utils/helpers.py:
+  crates/amplihack-utils/src/helpers.rs:
     direct_tests:
       - tests/unit/test_helpers.py
     indirect_tests:

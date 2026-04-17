@@ -49,7 +49,7 @@ This skill delegates to the `tla-plus-expert` agent which has deep knowledge of:
 
 ## Integration with Existing Infrastructure
 
-The amplihack repo includes a TLA+ experiment runner at `src/amplihack/eval/tla_prompt_experiment.py` with:
+The amplihack repo includes a TLA+ experiment runner at `crates/amplihack-eval/src/tla_prompt_experiment.rs` with:
 
 - Manifest-driven experiment matrix (models x prompt variants x repeats)
 - 6 heuristic scoring dimensions
@@ -80,6 +80,6 @@ TLA+ specs live in `experiments/hive_mind/tla_prompt_language/specs/`.
 ## Key Resources
 
 - TLA+ specs: `experiments/hive_mind/tla_prompt_language/specs/`
-- Experiment runner: `src/amplihack/eval/tla_prompt_experiment.py`
+- Experiment runner: `crates/amplihack-eval/src/tla_prompt_experiment.rs`
 - TLC binary: `/usr/local/bin/tlc` (if installed)
 - Issue #3939: TLA+ integration roadmap

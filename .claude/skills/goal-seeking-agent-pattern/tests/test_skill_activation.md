@@ -197,7 +197,7 @@ def test_api_import_examples():
     skill_content = read_skill_content("goal-seeking-agent-pattern")
 
     # Check import statement examples
-    assert "from amplihack.goal_agent_generator import" in skill_content
+    assert "use amplihack_agent_generator::" in skill_content
 ```
 
 **Expected**: All 5 API classes documented with import examples

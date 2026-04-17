@@ -7,9 +7,8 @@ SDK when the preferred SDK is unavailable, but surfaces query failures
 explicitly.
 
 Detection priority:
-  1. AMPLIHACK_AGENT_BINARY env var (set by CLI launcher)
-  2. LauncherDetector (reads .claude/runtime/launcher_context.json)
-  3. Default to whichever SDK is importable
+  1. AMPLIHACK_AGENT_BINARY env var (set by Rust CLI launcher)
+  2. Default to whichever SDK is importable
 
 Explicit failure: if neither SDK is available, or if the SDK query fails,
 query_agent() raises AgentQueryError.
@@ -60,20 +59,12 @@ def detect_runtime() -> str:
     Returns:
         "copilot", "claude", or "unknown"
     """
-    # 1. Explicit env var (set by amplihack CLI launcher)
+    # 1. AMPLIHACK_AGENT_BINARY env var (set by Rust CLI launcher)
     agent_binary = os.environ.get("AMPLIHACK_AGENT_BINARY", "").strip().lower()
     if agent_binary in ("copilot", "claude"):
         return agent_binary
 
-    # 2. LauncherDetector (reads runtime context file)
-    try:
-        from amplihack.context.adaptive.detector import LauncherDetector
-
-        return LauncherDetector(Path.cwd()).detect()
-    except Exception:
-        pass
-
-    # 3. Fallback: infer from available SDKs
+    # 2. Fallback: infer from available SDKs
     if _COPILOT_SDK_OK and not _CLAUDE_SDK_OK:
         return "copilot"
     if _CLAUDE_SDK_OK:

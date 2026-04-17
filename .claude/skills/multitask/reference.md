@@ -9,8 +9,7 @@
 orchestrator.py (ParallelOrchestrator)
     |
     +---> Workstream 1: /tmp/ws-123/
-    |         run.sh -> launcher.py
-    |         launcher.py -> run_recipe_by_name("default-workflow", adapter, context)
+    |         run.sh -> amplihack recipe run default-workflow -c ... -v
     |         CLISubprocessAdapter -> claude -p (per recipe step)
     |
     +---> Workstream 2: /tmp/ws-124/

@@ -92,17 +92,13 @@ class TestParallelOrchestrator:
 
         assert result.issue == 42
         assert result.branch == "feat/test-feature"
-        assert (ws_dir / "launcher.py").exists()
+        assert not (ws_dir / "launcher.py").exists()
         assert (ws_dir / "run.sh").exists()
 
-        # Verify launcher.py contains recipe runner import
-        launcher_content = (ws_dir / "launcher.py").read_text()
-        assert "run_recipe_by_name" in launcher_content
-        assert "progress=True" in launcher_content
-        assert "default-workflow" in launcher_content
-
-        # Verify run.sh sets session tree vars
+        # Verify run.sh calls amplihack recipe run
         run_content = (ws_dir / "run.sh").read_text()
+        assert "amplihack recipe run" in run_content
+        assert "default-workflow" in run_content
         assert "AMPLIHACK_TREE_ID" in run_content
 
     @patch("orchestrator.subprocess.run")

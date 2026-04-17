@@ -193,10 +193,7 @@ This is the preferred execution mode for most scenarios. It is simpler, has
 no external dependencies beyond the Rust binary, works on all platforms,
 and makes output capture straightforward.
 
-> **Legacy Python API** (still supported but deprecated): If the Rust binary is
-> unavailable, you can fall back to the Python wrapper:
-> `PYTHONPATH=${AMPLIHACK_HOME}/src python3 -c "from amplihack.recipes import run_recipe_by_name; ..."`
-> This delegates to the Rust binary via `subprocess.Popen`.
+
 
 #### Durable Execution (tmux) — optional
 

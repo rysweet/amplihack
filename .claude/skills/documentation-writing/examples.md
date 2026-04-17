@@ -380,13 +380,13 @@ export AUTH_API_KEY="your-api-key-here"  # pragma: allowlist secret
 
 ### 2. Initialize Authentication
 
-```python
-from amplihack.auth import Authenticator
+```rust
+use amplihack_core::auth::Authenticator;
 
-auth = Authenticator()
-token = auth.get_token()
-print(f"Token: {token[:20]}...")
-# Output: Token: eyJhbGciOiJIUzI1N...
+let auth = Authenticator::new();
+let token = auth.get_token();
+println!("Token: {}...", &token[..20]);
+// Output: Token: eyJhbGciOiJIUzI1N...
 ```
 
 ### 3. Use Token in Requests

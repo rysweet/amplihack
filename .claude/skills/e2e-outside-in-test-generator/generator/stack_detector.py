@@ -1,7 +1,7 @@
 """Stack detection for frontend, backend, and database.
 
 Analyzes project structure to detect application stack.
-Follows language_detector pattern from amplihack.
+Follows language_detector pattern.
 """
 
 import asyncio

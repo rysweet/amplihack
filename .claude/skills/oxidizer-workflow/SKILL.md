@@ -34,7 +34,7 @@ is achieved, with quality audit and silent degradation checks on every iteration
 
 | Input                 | Example                   | Description                           |
 | --------------------- | ------------------------- | ------------------------------------- |
-| `python_package_path` | `src/amplihack/recipes`   | Path to the Python package to migrate |
+| `python_package_path` | `crates/amplihack-recipe/src` | Path to the package to migrate |
 | `rust_target_path`    | `rust/recipe-runner`      | Where to create the Rust project      |
 | `rust_repo_name`      | `amplihack-recipe-runner` | GitHub repo name for the Rust project |
 | `rust_repo_org`       | `rysweet`                 | GitHub org or user for the repo       |
@@ -51,21 +51,7 @@ amplihack recipe run amplifier-bundle/recipes/oxidizer-workflow.yaml \
   -c rust_repo_org=myorg
 ```
 
-### Via Python API (deprecated — prefer CLI)
 
-```python
-from amplihack.recipes import run_recipe_by_name
-
-result = run_recipe_by_name(
-    "oxidizer-workflow",
-    user_context={
-        "python_package_path": "src/mypackage",
-        "rust_target_path": "rust/mypackage",
-        "rust_repo_name": "my-rust-package",
-        "rust_repo_org": "myorg",
-    },
-)
-```
 
 ## Workflow Phases
 

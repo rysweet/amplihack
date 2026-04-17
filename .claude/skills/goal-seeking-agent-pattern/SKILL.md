@@ -462,7 +462,7 @@ The `goal_agent_generator` module provides the implementation for goal-seeking a
 ### Core API
 
 ```python
-from amplihack.goal_agent_generator import (
+use amplihack_agent_generator:: (
     PromptAnalyzer,
     ObjectivePlanner,
     SkillSynthesizer,
@@ -530,7 +530,7 @@ amplihack goal-agent-generator test \
 Extracts structured information from natural language:
 
 ```python
-from amplihack.goal_agent_generator import PromptAnalyzer
+use amplihack_agent_generator:: PromptAnalyzer
 from pathlib import Path
 
 analyzer = PromptAnalyzer()
@@ -572,7 +572,7 @@ Complexity determination:
 Generates multi-phase execution plans:
 
 ```python
-from amplihack.goal_agent_generator import ObjectivePlanner
+use amplihack_agent_generator:: ObjectivePlanner
 
 planner = ObjectivePlanner()
 plan = planner.generate_plan(goal_definition)
@@ -607,7 +607,7 @@ Phase templates by domain:
 Maps capabilities to skills:
 
 ```python
-from amplihack.goal_agent_generator import SkillSynthesizer
+use amplihack_agent_generator:: SkillSynthesizer
 
 synthesizer = SkillSynthesizer()
 skills = synthesizer.synthesize(execution_plan)
@@ -636,7 +636,7 @@ Capability mapping:
 Combines components into executable bundle:
 
 ```python
-from amplihack.goal_agent_generator import AgentAssembler
+use amplihack_agent_generator:: AgentAssembler
 
 assembler = AgentAssembler()
 bundle = assembler.assemble(
@@ -675,7 +675,7 @@ Auto-mode configuration:
 Packages bundle for deployment:
 
 ```python
-from amplihack.goal_agent_generator import GoalAgentPackager
+use amplihack_agent_generator:: GoalAgentPackager
 from pathlib import Path
 
 packager = GoalAgentPackager()
@@ -742,7 +742,7 @@ Generate actionable report with recommendations.
 # Uses knowledge base: .claude/data/azure_aks_expert/
 
 # Integrates with goal_agent_generator:
-from amplihack.goal_agent_generator import (
+use amplihack_agent_generator:: (
     PromptAnalyzer, ObjectivePlanner, AgentAssembler
 )
 
@@ -1128,7 +1128,7 @@ context.metrics.record("transformation-accuracy", accuracy)
 
 ```python
 from claude_agent_sdk import AgentContext, create_agent
-from amplihack.goal_agent_generator import GoalAgentBundle
+use amplihack_agent_generator:: GoalAgentBundle
 
 # Create SDK-enabled goal-seeking agent
 def create_goal_agent(bundle: GoalAgentBundle) -> Agent:
@@ -1418,7 +1418,7 @@ Collect data from multiple sources (S3, database, API), transform to common sche
 ### Step 2: Analyze with PromptAnalyzer
 
 ```python
-from amplihack.goal_agent_generator import PromptAnalyzer
+use amplihack_agent_generator:: PromptAnalyzer
 
 analyzer = PromptAnalyzer()
 goal_definition = analyzer.analyze_text(goal_text)
@@ -1445,7 +1445,7 @@ goal_definition = analyzer.analyze_text(goal_text)
 ### Step 3: Generate Plan with ObjectivePlanner
 
 ```python
-from amplihack.goal_agent_generator import ObjectivePlanner
+use amplihack_agent_generator:: ObjectivePlanner
 
 planner = ObjectivePlanner()
 execution_plan = planner.generate_plan(goal_definition)
@@ -1483,7 +1483,7 @@ execution_plan = planner.generate_plan(goal_definition)
 ### Step 4: Synthesize Skills
 
 ```python
-from amplihack.goal_agent_generator import SkillSynthesizer
+use amplihack_agent_generator:: SkillSynthesizer
 
 synthesizer = SkillSynthesizer()
 skills = synthesizer.synthesize(execution_plan)
@@ -1505,7 +1505,7 @@ skills = synthesizer.synthesize(execution_plan)
 ### Step 5: Assemble Agent
 
 ```python
-from amplihack.goal_agent_generator import AgentAssembler
+use amplihack_agent_generator:: AgentAssembler
 
 assembler = AgentAssembler()
 agent_bundle = assembler.assemble(
@@ -1525,7 +1525,7 @@ agent_bundle = assembler.assemble(
 ### Step 6: Package Agent
 
 ```python
-from amplihack.goal_agent_generator import GoalAgentPackager
+use amplihack_agent_generator:: GoalAgentPackager
 from pathlib import Path
 
 packager = GoalAgentPackager()

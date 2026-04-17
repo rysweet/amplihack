@@ -135,28 +135,7 @@ amplihack recipe run amplifier-bundle/recipes/investigation-workflow.yaml \
   --verbose
 ```
 
-> **Legacy Python API** (still supported but deprecated):
->
-> ```python
-> from amplihack.recipes import run_recipe_by_name
-> result = run_recipe_by_name("investigation-workflow", user_context={
->     "task_description": "TASK_DESCRIPTION_HERE", "repo_path": ".",
-> }, progress=True)
-> ```
 
-Or via shell (legacy Python wrapper):
-
-```bash
-cd /path/to/repo && env -u CLAUDECODE \
-  AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=${AMPLIHACK_HOME:-~/.amplihack}/src python3 -c "
-from amplihack.recipes import run_recipe_by_name
-result = run_recipe_by_name('investigation-workflow', user_context={
-    'task_description': '''TASK_DESCRIPTION_HERE''',
-    'repo_path': '.',
-}, progress=True)
-print(f'Recipe result: {result}')
-"
-```
 
 **Do NOT** read `INVESTIGATION_WORKFLOW.md` and follow phases manually. The recipe
 runner enforces phase ordering, agent deployment, and quality gates that manual

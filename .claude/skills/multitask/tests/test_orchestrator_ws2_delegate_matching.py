@@ -7,7 +7,7 @@ These tests FAIL until the WS2 implementation is complete.
 
 Coverage:
   - VALID_DELEGATES: module-level frozenset allowlist
-  - _detect_delegate(): env var → LauncherDetector → fallback chain
+  - _detect_delegate(): env var → AMPLIHACK_AGENT_BINARY → fallback chain
   - launch(): passes AMPLIHACK_DELEGATE env var to Popen
   - launch_all(): detects delegate once and passes to launch()
   - _write_classic_launcher(): uses detected delegate (not hardcoded 'amplihack claude')
@@ -112,12 +112,12 @@ class TestValidDelegates:
 
 
 # ---------------------------------------------------------------------------
-# 2. _detect_delegate(): env var → LauncherDetector → fallback
+# 2. _detect_delegate(): env var → AMPLIHACK_AGENT_BINARY → fallback
 # ---------------------------------------------------------------------------
 
 
 class TestDetectDelegate:
-    """_detect_delegate() must resolve delegate via env var or LauncherDetector."""
+    """_detect_delegate() must resolve delegate via env var or AMPLIHACK_AGENT_BINARY."""
 
     def test_detect_delegate_method_exists(self, tmp_path):
         """_detect_delegate() must exist on ParallelOrchestrator."""
@@ -125,7 +125,7 @@ class TestDetectDelegate:
         assert hasattr(orc, "_detect_delegate"), (
             "ParallelOrchestrator is missing '_detect_delegate()' method. "
             "This method resolves the delegate from AMPLIHACK_DELEGATE env var → "
-            "LauncherDetector → 'amplihack claude' fallback."
+            "AMPLIHACK_AGENT_BINARY → 'amplihack claude' fallback."
         )
         assert callable(orc._detect_delegate)
 
@@ -161,60 +161,48 @@ class TestDetectDelegate:
                     f"Injection attempt {invalid!r} was not rejected by _detect_delegate()"
                 )
 
-    def test_detect_delegate_uses_launcher_detector_when_env_not_set(self, tmp_path):
-        """_detect_delegate() must call LauncherDetector when AMPLIHACK_DELEGATE not in env."""
+    def test_detect_delegate_uses_agent_binary_env_when_delegate_not_set(self, tmp_path):
+        """_detect_delegate() must check AMPLIHACK_AGENT_BINARY when AMPLIHACK_DELEGATE not in env."""
         orc = make_orchestrator(tmp_path)
 
         env_without_delegate = {k: v for k, v in os.environ.items() if k != "AMPLIHACK_DELEGATE"}
+        env_without_delegate["AMPLIHACK_AGENT_BINARY"] = "copilot"
 
         with patch.dict(os.environ, env_without_delegate, clear=True):
-            with patch(
-                "orchestrator.LauncherDetector",
-                autospec=True,
-            ) as mock_detector_cls:
-                mock_instance = mock_detector_cls.return_value
-                mock_instance.detect.return_value = "copilot"
-                orc._detect_delegate()
-
-            # LauncherDetector must have been instantiated and detect() called
-            assert mock_detector_cls.called or mock_instance.detect.called, (
-                "_detect_delegate() must use LauncherDetector when AMPLIHACK_DELEGATE "
-                "env var is not set."
-            )
-
-    def test_detect_delegate_maps_copilot_to_full_command(self, tmp_path):
-        """_detect_delegate() must map 'copilot' launcher type → 'amplihack copilot'."""
-        orc = make_orchestrator(tmp_path)
-
-        env_without_delegate = {k: v for k, v in os.environ.items() if k != "AMPLIHACK_DELEGATE"}
-
-        with patch.dict(os.environ, env_without_delegate, clear=True):
-            with patch("orchestrator.LauncherDetector") as mock_detector_cls:
-                mock_instance = mock_detector_cls.return_value
-                mock_instance.detect.return_value = "copilot"
-
-                result = orc._detect_delegate()
+            result = orc._detect_delegate()
 
         assert result == "amplihack copilot", (
-            f"LauncherDetector returning 'copilot' should map to 'amplihack copilot', "
+            "_detect_delegate() must use AMPLIHACK_AGENT_BINARY when AMPLIHACK_DELEGATE "
+            f"env var is not set. Got {result!r}"
+        )
+
+    def test_detect_delegate_maps_copilot_to_full_command(self, tmp_path):
+        """_detect_delegate() must map 'copilot' agent binary → 'amplihack copilot'."""
+        orc = make_orchestrator(tmp_path)
+
+        env_without_delegate = {k: v for k, v in os.environ.items() if k != "AMPLIHACK_DELEGATE"}
+        env_without_delegate["AMPLIHACK_AGENT_BINARY"] = "copilot"
+
+        with patch.dict(os.environ, env_without_delegate, clear=True):
+            result = orc._detect_delegate()
+
+        assert result == "amplihack copilot", (
+            f"AMPLIHACK_AGENT_BINARY='copilot' should map to 'amplihack copilot', "
             f"got {result!r}"
         )
 
     def test_detect_delegate_maps_amplifier_to_full_command(self, tmp_path):
-        """_detect_delegate() must map 'amplifier' launcher type → 'amplihack amplifier'."""
+        """_detect_delegate() must map 'amplifier' agent binary → 'amplihack amplifier'."""
         orc = make_orchestrator(tmp_path)
 
         env_without_delegate = {k: v for k, v in os.environ.items() if k != "AMPLIHACK_DELEGATE"}
+        env_without_delegate["AMPLIHACK_AGENT_BINARY"] = "amplifier"
 
         with patch.dict(os.environ, env_without_delegate, clear=True):
-            with patch("orchestrator.LauncherDetector") as mock_detector_cls:
-                mock_instance = mock_detector_cls.return_value
-                mock_instance.detect.return_value = "amplifier"
-
-                result = orc._detect_delegate()
+            result = orc._detect_delegate()
 
         assert result == "amplihack amplifier", (
-            f"LauncherDetector returning 'amplifier' should map to 'amplihack amplifier', "
+            f"AMPLIHACK_AGENT_BINARY='amplifier' should map to 'amplihack amplifier', "
             f"got {result!r}"
         )
 
@@ -222,14 +210,13 @@ class TestDetectDelegate:
         """_detect_delegate() must fall back to 'amplihack claude' when detection fails."""
         orc = make_orchestrator(tmp_path)
 
-        env_without_delegate = {k: v for k, v in os.environ.items() if k != "AMPLIHACK_DELEGATE"}
+        env_without_delegate = {
+            k: v for k, v in os.environ.items()
+            if k not in ("AMPLIHACK_DELEGATE", "AMPLIHACK_AGENT_BINARY")
+        }
 
         with patch.dict(os.environ, env_without_delegate, clear=True):
-            with patch("orchestrator.LauncherDetector") as mock_detector_cls:
-                mock_instance = mock_detector_cls.return_value
-                mock_instance.detect.side_effect = Exception("detection failed")
-
-                result = orc._detect_delegate()
+            result = orc._detect_delegate()
 
         assert result == "amplihack claude", (
             f"When detection fails completely, must fall back to 'amplihack claude', got {result!r}"
@@ -246,14 +233,10 @@ class TestDetectDelegate:
         captured_output = _io.StringIO()
 
         with patch.dict(os.environ, env_without_delegate, clear=True):
-            with patch("orchestrator.LauncherDetector") as mock_detector_cls:
-                mock_instance = mock_detector_cls.return_value
-                mock_instance.detect.return_value = "unknown"
-
-                with patch("sys.stdout", captured_output):
-                    with warnings.catch_warnings(record=True) as w:
-                        warnings.simplefilter("always")
-                        orc._detect_delegate()
+            with patch("sys.stdout", captured_output):
+                with warnings.catch_warnings(record=True) as w:
+                    warnings.simplefilter("always")
+                    orc._detect_delegate()
 
         # Warning must appear in either warnings.warn() OR print() output
         warning_texts = [str(warning.message) for warning in w]
@@ -394,12 +377,13 @@ class TestWriteClassicLauncher:
         orc = make_orchestrator(tmp_path)
         ws = make_workstream(tmp_path, issue=501)
 
-        env_without_delegate = {k: v for k, v in os.environ.items() if k != "AMPLIHACK_DELEGATE"}
+        env_without_delegate = {
+            k: v for k, v in os.environ.items()
+            if k not in ("AMPLIHACK_DELEGATE", "AMPLIHACK_AGENT_BINARY")
+        }
 
         with patch.dict(os.environ, env_without_delegate, clear=True):
-            with patch("orchestrator.LauncherDetector") as mock_det_cls:
-                mock_det_cls.return_value.detect.return_value = "unknown"
-                orc._write_classic_launcher(ws)
+            orc._write_classic_launcher(ws)
 
         run_sh_content = (ws.work_dir / "run.sh").read_text()
         assert "amplihack claude" in run_sh_content, (
@@ -509,18 +493,19 @@ class TestDelegateWarningContract:
         import io as _io
 
         captured = _io.StringIO()
-        env_without_delegate = {k: v for k, v in os.environ.items() if k != "AMPLIHACK_DELEGATE"}
+        env_without_delegate = {
+            k: v for k, v in os.environ.items()
+            if k not in ("AMPLIHACK_DELEGATE", "AMPLIHACK_AGENT_BINARY")
+        }
 
         with patch.dict(os.environ, env_without_delegate, clear=True):
-            with patch("orchestrator.LauncherDetector") as mock_det:
-                mock_det.return_value.detect.return_value = "unknown"
-                with patch("sys.stdout", captured):
-                    with warnings.catch_warnings(record=True) as w:
-                        warnings.simplefilter("always")
-                        try:
-                            orc._detect_delegate()
-                        except Exception:
-                            pass
+            with patch("sys.stdout", captured):
+                with warnings.catch_warnings(record=True) as w:
+                    warnings.simplefilter("always")
+                    try:
+                        orc._detect_delegate()
+                    except Exception:
+                        pass
 
         all_output = captured.getvalue() + " ".join(str(warning.message) for warning in w)
 
@@ -545,19 +530,20 @@ class TestDelegateWarningContract:
         root_logger.addHandler(handler)
 
         captured_stdout = _io.StringIO()
-        env_without_delegate = {k: v for k, v in os.environ.items() if k != "AMPLIHACK_DELEGATE"}
+        env_without_delegate = {
+            k: v for k, v in os.environ.items()
+            if k not in ("AMPLIHACK_DELEGATE", "AMPLIHACK_AGENT_BINARY")
+        }
 
         try:
             with patch.dict(os.environ, env_without_delegate, clear=True):
-                with patch("orchestrator.LauncherDetector") as mock_det:
-                    mock_det.return_value.detect.return_value = "unknown"
-                    with patch("sys.stdout", captured_stdout):
-                        with warnings.catch_warnings(record=True) as w:
-                            warnings.simplefilter("always")
-                            try:
-                                orc._detect_delegate()
-                            except Exception:
-                                pass
+                with patch("sys.stdout", captured_stdout):
+                    with warnings.catch_warnings(record=True) as w:
+                        warnings.simplefilter("always")
+                        try:
+                            orc._detect_delegate()
+                        except Exception:
+                            pass
         finally:
             root_logger.removeHandler(handler)
 

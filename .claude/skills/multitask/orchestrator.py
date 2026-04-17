@@ -38,10 +38,7 @@ from typing import Any
 _SAFE_ID_RE = re.compile(r"[^a-zA-Z0-9_-]")
 _SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9_]")
 
-try:
-    from amplihack.hooks.launcher_detector import LauncherDetector
-except ImportError:
-    LauncherDetector = None  # type: ignore[assignment,misc]
+_launcher_detector_available = bool(os.environ.get("AMPLIHACK_AGENT_BINARY"))
 
 # Allowlist of valid delegate values (single source of truth for injection prevention).
 # Only these exact strings may be used as subprocess delegates.
@@ -181,7 +178,7 @@ class ParallelOrchestrator:
 
         Resolution order:
         1. AMPLIHACK_DELEGATE env var (if set and in VALID_DELEGATES)
-        2. LauncherDetector.detect() → map launcher type to delegate
+        2. AMPLIHACK_AGENT_BINARY env var → map to delegate
         3. Fall back to "amplihack claude" with a warning
 
         Returns:
@@ -194,22 +191,16 @@ class ParallelOrchestrator:
             # Reject invalid env var (injection prevention) and fall through to detection
             warnings.warn(
                 f"AMPLIHACK_DELEGATE={env_delegate!r} is not in VALID_DELEGATES. "
-                "Falling back to LauncherDetector.",
+                "Falling back to AMPLIHACK_AGENT_BINARY detection.",
                 stacklevel=2,
             )
 
-        # Try LauncherDetector
-        if LauncherDetector is not None:
-            try:
-                launcher_info = LauncherDetector()
-                detected = launcher_info.detect()
-                # detect() returns a LauncherInfo or a string (mocked in tests)
-                launcher_type = detected if isinstance(detected, str) else detected.launcher_type
-                candidate = f"amplihack {launcher_type}"
-                if candidate in VALID_DELEGATES:
-                    return candidate
-            except Exception:
-                pass
+        # Try AMPLIHACK_AGENT_BINARY env var
+        agent_binary = os.environ.get("AMPLIHACK_AGENT_BINARY", "").strip().lower()
+        if agent_binary:
+            candidate = f"amplihack {agent_binary}"
+            if candidate in VALID_DELEGATES:
+                return candidate
 
         # Final fallback
         warnings.warn(
@@ -773,64 +764,20 @@ class ParallelOrchestrator:
     def _write_recipe_launcher(self, ws: Workstream) -> None:
         """Write launcher files for recipe-based execution.
 
-        Creates a Python script that uses run_recipe_by_name() via the Rust
-        recipe runner, and a shell wrapper that sets session tree vars.
+        Creates a shell script that invokes `amplihack recipe run` directly
+        (Rust CLI), and a shell wrapper that sets session tree vars.
         """
-        launcher_py = ws.work_dir / "launcher.py"
-        # Use json.dumps for proper escaping of all special characters
         import json
-
-        safe_recipe = json.dumps(ws.recipe)
-        safe_context = json.dumps(self._resume_context(ws))
-        launcher_py.write_text(
-            textwrap.dedent(f"""\
-            #!/usr/bin/env python3
-            \"\"\"Workstream launcher - Rust recipe runner execution.\"\"\"
-            import sys
-            import json
-            import logging
-            from pathlib import Path
-
-            repo_root = Path(__file__).resolve().parent
-            src_path = repo_root / "src"
-            if src_path.exists():
-                sys.path.insert(0, str(src_path))
-
-            logging.basicConfig(
-                level=logging.INFO,
-                format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-            )
-
-            try:
-                from amplihack.recipes import run_recipe_by_name
-            except ImportError:
-                print("ERROR: amplihack package not importable. Falling back to classic mode.")
-                sys.exit(2)
-
-            user_context = json.loads({json.dumps(safe_context)})
-            result = run_recipe_by_name(
-                {safe_recipe},
-                user_context=user_context,
-                progress=True,
-            )
-
-            print()
-            print("=" * 60)
-            print("RECIPE EXECUTION RESULTS")
-            print("=" * 60)
-            for sr in result.step_results:
-                print(f"  [{{sr.status.value:>9}}] {{sr.step_id}}")
-            print(f"\\nOverall: {{'SUCCESS' if result.success else 'FAILED'}}")
-            sys.exit(0 if result.success else 1)
-            """)
-        )
-        launcher_py.chmod(0o755)
-
-        # Shell wrapper: propagate session tree context
-        # AMPLIHACK_TREE_ID and AMPLIHACK_SESSION_DEPTH are inherited from the
-        # parent environment (set by the recipe that invoked this orchestrator).
-        # This ensures the session tree depth limit is enforced in child recipes.
         import uuid
+
+        safe_recipe = ws.recipe
+        safe_context = self._resume_context(ws)
+
+        # Build -c flags for each context key=value
+        context_flags = []
+        for k, v in safe_context.items():
+            context_flags.append(f"-c {shlex.quote(f'{k}={v}')}")
+        context_args = " \\\n            ".join(context_flags)
 
         current_depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
         tree_id = os.environ.get("AMPLIHACK_TREE_ID") or uuid.uuid4().hex[:8]
@@ -848,6 +795,7 @@ class ParallelOrchestrator:
         safe_progress_file = shlex.quote(str(ws.progress_file))
         safe_state_file = shlex.quote(str(ws.state_file))
         safe_worktree_path = shlex.quote(ws.worktree_path)
+        safe_recipe_name = shlex.quote(safe_recipe)
 
         run_sh = ws.work_dir / "run.sh"
         run_sh.write_text(
@@ -865,9 +813,10 @@ class ParallelOrchestrator:
             export AMPLIHACK_WORKSTREAM_PROGRESS_FILE={safe_progress_file}
             export AMPLIHACK_WORKSTREAM_STATE_FILE={safe_state_file}
             export AMPLIHACK_WORKTREE_PATH={safe_worktree_path}
-            # Unbuffered stdout/stderr is required so the parent multitask
-            # orchestrator can stream nested recipe progress live.
-            exec python3 -u launcher.py
+            # Invoke recipe runner directly via Rust CLI
+            exec amplihack recipe run {safe_recipe_name} \\
+            {context_args} \\
+            -v
             """)
         )
         run_sh.chmod(0o755)

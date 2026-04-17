@@ -154,28 +154,7 @@ amplihack recipe run amplifier-bundle/recipes/default-workflow.yaml \
   --verbose
 ```
 
-> **Legacy Python API** (still supported but deprecated):
->
-> ```python
-> from amplihack.recipes import run_recipe_by_name
-> result = run_recipe_by_name("default-workflow", user_context={
->     "task_description": "TASK_DESCRIPTION_HERE", "repo_path": ".",
-> }, progress=True)
-> ```
 
-Or via shell (legacy Python wrapper):
-
-```bash
-cd /path/to/repo && env -u CLAUDECODE \
-  AMPLIHACK_HOME=/path/to/amplihack PYTHONPATH=${AMPLIHACK_HOME:-~/.amplihack}/src python3 -c "
-from amplihack.recipes import run_recipe_by_name
-result = run_recipe_by_name('default-workflow', user_context={
-    'task_description': '''TASK_DESCRIPTION_HERE''',
-    'repo_path': '.',
-}, progress=True)
-print(f'Recipe result: {result}')
-"
-```
 
 **Do NOT** read `DEFAULT_WORKFLOW.md` and follow steps manually. The recipe runner
 enforces step ordering, recursion guards, checkpoints, and quality gates that manual

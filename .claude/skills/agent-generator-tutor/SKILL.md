@@ -31,7 +31,7 @@ Interactive teaching agent for the goal-seeking agent generator and eval system.
 
 ## What This Skill Does
 
-Loads the `GeneratorTeacher` from `src/amplihack/agents/teaching/generator_teacher.py`
+Loads the `GeneratorTeacher` from `crates/amplihack-agents/src/teaching/generator_teacher.rs`
 and guides users through a structured 14-lesson curriculum with exercises and quizzes.
 
 ## Curriculum (14 Lessons)
@@ -57,13 +57,13 @@ and guides users through a structured 14-lesson curriculum with exercises and qu
 
 ### Start the Tutorial
 
-```python
-from amplihack.agents.teaching.generator_teacher import GeneratorTeacher
+```rust
+use amplihack_agents::teaching::GeneratorTeacher;
 
-teacher = GeneratorTeacher()
-# See what lesson is next
-next_lesson = teacher.get_next_lesson()
-print(f"Start with: {next_lesson.title}")
+let teacher = GeneratorTeacher::new();
+// See what lesson is next
+let next_lesson = teacher.get_next_lesson();
+println!("Start with: {}", next_lesson.title);
 ```
 
 ### Teach a Lesson

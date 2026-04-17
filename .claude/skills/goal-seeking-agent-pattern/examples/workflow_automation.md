@@ -100,7 +100,7 @@ adapting strategy based on change type (hotfix/feature/patch) and environment he
 ### Execution Plan
 
 ```python
-from amplihack.goal_agent_generator import ObjectivePlanner, PromptAnalyzer
+use amplihack_agent_generator:: ObjectivePlanner, PromptAnalyzer
 
 # Analyze goal
 analyzer = PromptAnalyzer()
@@ -206,7 +206,7 @@ Success indicators:
 ### Implementation
 
 ```python
-from amplihack.goal_agent_generator import (
+use amplihack_agent_generator:: (
     PromptAnalyzer,
     ObjectivePlanner,
     SkillSynthesizer,
