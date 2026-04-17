@@ -73,9 +73,9 @@ cargo --version  # Should show 1.70 or higher
 #### Ubuntu/Debian
 
 ```bash
-# Node.js and npm
-sudo apt update
-sudo apt install nodejs npm
+# Node.js 18+ via NodeSource (Ubuntu ships an older version by default)
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt install -y nodejs
 
 # uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -140,9 +140,9 @@ WSL is detected automatically and will show appropriate Linux-based installation
 #### Ubuntu WSL
 
 ```bash
-# Node.js and npm
-sudo apt update
-sudo apt install nodejs npm
+# Node.js 18+ via NodeSource (Ubuntu ships an older version by default)
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt install -y nodejs
 
 # uv
 curl -LsSf https://astral.sh/uv/install.sh | sh

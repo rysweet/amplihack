@@ -11,6 +11,7 @@ you get started.
 - **Node.js 18+**
 - **[uv](https://docs.astral.sh/uv/)** — fast Python package manager
 - **git**
+- **[pre-commit](https://pre-commit.com/)** — Git hook framework (`pip install pre-commit` or `uv tool install pre-commit`)
 
 ### Setting Up Your Development Environment
 
