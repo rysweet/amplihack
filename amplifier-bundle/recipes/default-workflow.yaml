@@ -765,16 +765,63 @@ steps:
       WORKTREE_EXISTS=$(git worktree list --porcelain | grep -Fx "worktree ${WORKTREE_PATH}" || true)
 
       if [ -n "$BRANCH_EXISTS" ] && [ -n "$WORKTREE_EXISTS" ]; then
-        echo "INFO: Branch '${BRANCH_NAME}' and worktree '${WORKTREE_PATH}' already exist — reusing." >&2
-        CREATED=false
+        # FIX (issue #4254): Verify the existing worktree tracks the correct base branch.
+        # When a re-run targets the same issue from a different base (e.g., user switches
+        # from main to a feature branch), the stale worktree has wrong-base diffs.
+        # Detect by checking if BASE_WORKTREE_REF is an ancestor of the branch tip.
+        WORKTREE_BASE_OK=true
+        if [ "$BASE_WORKTREE_REF" != "HEAD" ]; then
+          BRANCH_TIP=$(git rev-parse "${BRANCH_NAME}" 2>/dev/null || echo "")
+          BASE_COMMIT=$(git rev-parse "${BASE_WORKTREE_REF}" 2>/dev/null || echo "")
+          if [ -n "$BRANCH_TIP" ] && [ -n "$BASE_COMMIT" ]; then
+            # Check if the base is an ancestor of the branch — if not, the worktree
+            # was created from a different base and must be recreated.
+            if ! git merge-base --is-ancestor "$BASE_COMMIT" "$BRANCH_TIP" 2>/dev/null; then
+              WORKTREE_BASE_OK=false
+              echo "WARN: Worktree '${WORKTREE_PATH}' was created from a different base branch." >&2
+              echo "WARN: Expected base '${BASE_WORKTREE_REF}' (${BASE_COMMIT:0:12}) is not an ancestor of branch tip (${BRANCH_TIP:0:12})." >&2
+              echo "INFO: Removing stale worktree and branch to recreate from correct base." >&2
+            fi
+          fi
+        fi
+        if [ "$WORKTREE_BASE_OK" = true ]; then
+          echo "INFO: Branch '${BRANCH_NAME}' and worktree '${WORKTREE_PATH}' already exist — reusing." >&2
+          CREATED=false
+        else
+          # Remove the stale worktree and branch, then fall through to State 3 (full create)
+          git worktree remove --force "${WORKTREE_PATH}" >&2 2>/dev/null || rm -rf "${WORKTREE_PATH}"
+          git branch -D "${BRANCH_NAME}" >&2 2>/dev/null || true
+          git worktree prune >&2
+          echo "INFO: Creating new branch and worktree from correct base." >&2
+          git worktree add "${WORKTREE_PATH}" -b "${BRANCH_NAME}" "$BASE_WORKTREE_REF" >&2
+          CREATED=true
+        fi
       elif [ -n "$BRANCH_EXISTS" ] && [ -z "$WORKTREE_EXISTS" ]; then
         echo "INFO: Branch '${BRANCH_NAME}' exists but worktree is missing — adding worktree without -b." >&2
+        # FIX (issue #4254): Also verify base branch before reattaching
+        REATTACH_OK=true
+        if [ "$BASE_WORKTREE_REF" != "HEAD" ]; then
+          BRANCH_TIP=$(git rev-parse "${BRANCH_NAME}" 2>/dev/null || echo "")
+          BASE_COMMIT=$(git rev-parse "${BASE_WORKTREE_REF}" 2>/dev/null || echo "")
+          if [ -n "$BRANCH_TIP" ] && [ -n "$BASE_COMMIT" ]; then
+            if ! git merge-base --is-ancestor "$BASE_COMMIT" "$BRANCH_TIP" 2>/dev/null; then
+              REATTACH_OK=false
+              echo "WARN: Branch '${BRANCH_NAME}' was created from a different base — deleting and recreating." >&2
+            fi
+          fi
+        fi
         # Remove orphaned directory that git doesn't track (e.g., from a crashed run)
         if [ -d "${WORKTREE_PATH}" ]; then
           echo "INFO: Removing orphaned worktree directory '${WORKTREE_PATH}'" >&2
           rm -rf "${WORKTREE_PATH}"
         fi
-        git worktree add "${WORKTREE_PATH}" "${BRANCH_NAME}" >&2
+        if [ "$REATTACH_OK" = true ]; then
+          git worktree add "${WORKTREE_PATH}" "${BRANCH_NAME}" >&2
+        else
+          git branch -D "${BRANCH_NAME}" >&2 2>/dev/null || true
+          git worktree prune >&2
+          git worktree add "${WORKTREE_PATH}" -b "${BRANCH_NAME}" "$BASE_WORKTREE_REF" >&2
+        fi
         CREATED=true
       else
         echo "INFO: Creating new branch and worktree." >&2
