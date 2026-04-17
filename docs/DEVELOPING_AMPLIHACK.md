@@ -109,7 +109,7 @@ amplihack claude --checkout-repo owner/repo
 amplihack copilot
 ```
 
-**Implementation**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/cli.py:30-150`
+**Implementation**: `/path/to/amplihack/src/amplihack/cli.py:30-150`
 
 #### Slash Commands
 
@@ -121,7 +121,7 @@ amplihack copilot
 | `/amplihack:improve [target]`   | Capture learnings                 | `~/.amplihack/.claude/commands/amplihack/improve.md`    |
 | `/amplihack:customize <action>` | Manage preferences                | `~/.amplihack/.claude/commands/amplihack/customize.md`  |
 
-**Implementation**: `/home/azureuser/src/amplihack-worktree-921-922/.claude/commands/amplihack/`
+**Implementation**: `/path/to/amplihack/.claude/commands/amplihack/`
 
 #### Key Modules
 
@@ -152,7 +152,7 @@ amplihack copilot
 #### Common File Paths
 
 ```
-Project Root: /home/azureuser/src/amplihack-worktree-921-922/
+Project Root: /path/to/amplihack/
 
 Key Directories:
 ├── .claude/                    # Claude configuration
@@ -245,7 +245,7 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 #### Component: Launcher
 
 **Purpose**: Manages Claude Code execution lifecycle
-**Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/launcher/`
+**Location**: `/path/to/amplihack/src/amplihack/launcher/`
 **Key Files**:
 
 - `core.py:20-543` - Main ClaudeLauncher class
@@ -267,7 +267,7 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 #### Component: Bundle Generator
 
 **Purpose**: Creates custom agent bundles from natural language
-**Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/bundle_generator/`
+**Location**: `/path/to/amplihack/src/amplihack/bundle_generator/`
 **Key Files**:
 
 - `generator.py:1-556` - Agent content generation
@@ -290,7 +290,7 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 #### Component: Security (XPIA Defense)
 
 **Purpose**: Cross-Prompt Injection Attack defense
-**Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/security/`
+**Location**: `/path/to/amplihack/src/amplihack/security/`
 **Key Files**:
 
 - `xpia_defender.py:1-673` - Core security validation
@@ -435,7 +435,7 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 
 ### 4.1 Launcher Module
 
-**Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/launcher/`
+**Location**: `/path/to/amplihack/src/amplihack/launcher/`
 
 #### 4.1.1 ClaudeLauncher Class
 
@@ -643,7 +643,7 @@ if repo_path:
 
 ### 4.2 Bundle Generator Module
 
-**Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/bundle_generator/`
+**Location**: `/path/to/amplihack/src/amplihack/bundle_generator/`
 
 **Search Terms**: bundle generator, agent creation, agent bundle, custom agents
 
@@ -888,7 +888,7 @@ bundle-name/
 
 ### 4.4 Security Module
 
-**Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/security/`
+**Location**: `/path/to/amplihack/src/amplihack/security/`
 
 **Search Terms**: security, xpia, validation, threat detection, cross-prompt injection
 
@@ -1216,7 +1216,7 @@ class ThreatType(str, Enum):
 
 ### 4.5 Memory Module
 
-**Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/memory/`
+**Location**: `/path/to/amplihack/src/amplihack/memory/`
 
 **Search Terms**: memory, session, persistence, database, conversation history
 
@@ -1235,7 +1235,7 @@ class ThreatType(str, Enum):
 
 ### 4.6 Utilities Module
 
-**Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/utils/`
+**Location**: `/path/to/amplihack/src/amplihack/utils/`
 
 **Search Terms**: utilities, helpers, tools, claude cli, prerequisites
 
@@ -1373,7 +1373,7 @@ AMPLIHACK_UVX_MODE=1
 **pyproject.toml**:
 
 ```toml
-# /home/azureuser/src/amplihack-worktree-921-922/pyproject.toml
+# /path/to/amplihack/pyproject.toml
 
 [project]
 name = "amplihack"
@@ -1397,11 +1397,11 @@ amplihack = "amplihack:main"
 
 ```bash
 # Development install
-cd /path/to/amplihack-worktree-921-922
+cd /path/to/amplihack
 uv pip install -e .
 
 # Or via uvx (no install)
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack
+uvx --from git+https://github.com/rysweet/amplihack amplihack
 ```
 
 ---
@@ -1410,7 +1410,7 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 
 #### 5.2.1 .claude Directory Structure
 
-**Location**: `/home/azureuser/src/amplihack-worktree-921-922/.claude/`
+**Location**: `/path/to/amplihack/.claude/`
 
 ```
 .claude/
@@ -1605,8 +1605,8 @@ ignore-known-secrets: true
 
 ```bash
 # Clone repository
-git clone https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git
-cd MicrosoftHackathon2025-AgenticCoding
+git clone https://github.com/rysweet/amplihack.git
+cd amplihack
 
 # Install dependencies
 uv pip install -e .
@@ -1640,7 +1640,7 @@ python -m amplihack claude
 #### 6.1.3 Directory Structure for Development
 
 ```
-amplihack-worktree-921-922/
+amplihack/
 ├── .claude/                    # Claude configuration (version controlled)
 ├── src/amplihack/              # Source code
 │   ├── launcher/
@@ -3154,7 +3154,7 @@ pyright src/amplihack
 **Created**: 2025-10-17
 **Authors**: Amplihack Development Team
 **License**: MIT
-**Repository**: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding
+**Repository**: https://github.com/rysweet/amplihack
 
 **Last Updated**: 2025-10-17
 
