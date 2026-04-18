@@ -815,6 +815,9 @@ steps:
           echo "INFO: Removing orphaned worktree directory '${WORKTREE_PATH}'" >&2
           rm -rf "${WORKTREE_PATH}"
         fi
+        # Re-prune in case the path is still registered in .git/worktrees/
+        # (rm -rf above can leave a stale registration that blocks `worktree add`)
+        git worktree prune >&2
         if [ "$REATTACH_OK" = true ]; then
           git worktree add "${WORKTREE_PATH}" "${BRANCH_NAME}" >&2
         else
@@ -830,6 +833,8 @@ steps:
           echo "INFO: Removing orphaned worktree directory '${WORKTREE_PATH}'" >&2
           rm -rf "${WORKTREE_PATH}"
         fi
+        # Re-prune in case the path is still registered in .git/worktrees/
+        git worktree prune >&2
         git worktree add "${WORKTREE_PATH}" -b "${BRANCH_NAME}" "$BASE_WORKTREE_REF" >&2
         CREATED=true
       fi
