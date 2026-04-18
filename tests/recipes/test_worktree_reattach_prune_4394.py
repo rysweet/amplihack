@@ -32,6 +32,15 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_RECIPE = _REPO_ROOT / "amplifier-bundle" / "recipes" / "default-workflow.yaml"
 
+# Cached env dict — avoids copying os.environ on every subprocess call
+_GIT_ENV = {
+    **os.environ,
+    "GIT_AUTHOR_NAME": "test",
+    "GIT_AUTHOR_EMAIL": "t@t",
+    "GIT_COMMITTER_NAME": "test",
+    "GIT_COMMITTER_EMAIL": "t@t",
+}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -40,20 +49,13 @@ _DEFAULT_RECIPE = _REPO_ROOT / "amplifier-bundle" / "recipes" / "default-workflo
 
 def _git(cmd: str, cwd: str) -> subprocess.CompletedProcess:
     """Run a git command in a temp repo with deterministic author config."""
-    env = {
-        **os.environ,
-        "GIT_AUTHOR_NAME": "test",
-        "GIT_AUTHOR_EMAIL": "t@t",
-        "GIT_COMMITTER_NAME": "test",
-        "GIT_COMMITTER_EMAIL": "t@t",
-    }
     return subprocess.run(
         cmd,
         shell=True,
         cwd=cwd,
         capture_output=True,
         text=True,
-        env=env,
+        env=_GIT_ENV,
     )
 
 
@@ -153,19 +155,20 @@ class TestYAMLPruneAfterRmRf(unittest.TestCase):
 class TestLivePruneAfterOrphanCleanup(unittest.TestCase):
     """Live git tests: verify prune enables worktree add after rm -rf."""
 
-    def setUp(self):
-        self.tmpdir = tempfile.mkdtemp(prefix="test_4394_")
-        self.repo = os.path.join(self.tmpdir, "repo")
-        os.makedirs(self.repo)
-        _git_ok("git init -b main", self.repo)
-        _git_ok("git commit --allow-empty -m 'initial'", self.repo)
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = tempfile.mkdtemp(prefix="test_4394_")
+        cls.repo = os.path.join(cls.tmpdir, "repo")
+        os.makedirs(cls.repo)
+        _git_ok("git init -b main", cls.repo)
+        _git_ok("git commit --allow-empty -m 'initial'", cls.repo)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmpdir, ignore_errors=True)
 
     def tearDown(self):
-        try:
-            _git("git worktree prune", self.repo)
-        except Exception:
-            pass
-        shutil.rmtree(self.tmpdir, ignore_errors=True)
+        _git("git worktree prune", self.repo)
 
     # --- State 2: branch exists, worktree removed by rm -rf ---
 
@@ -322,12 +325,6 @@ class TestLivePruneAfterOrphanCleanup(unittest.TestCase):
 
         # Create orphan dir (not a real worktree, just leftover directory)
         os.makedirs(wt_path)
-
-        # Also create a stale registration by adding and rm-rfing a different branch
-        _git_ok(f"git worktree add {wt_path}-tmp -b tmp-reg HEAD", self.repo)
-        # Properly remove worktree first so branch can be deleted
-        _git_ok(f"git worktree remove --force {wt_path}-tmp", self.repo)
-        _git_ok("git branch -D tmp-reg", self.repo)
 
         # Step sequence from YAML:
         if os.path.isdir(wt_path):
