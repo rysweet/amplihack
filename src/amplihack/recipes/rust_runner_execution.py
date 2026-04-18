@@ -61,6 +61,10 @@ _ALLOWED_RUST_ENV_VARS = {
     "AMPLIHACK_SESSION_ID",
     "AMPLIHACK_TREE_ID",
     "CLAUDE_PROJECT_DIR",
+    # Used by the Copilot launcher to override the default model — must be
+    # forwarded so nested agent steps can use larger-context models when the
+    # default rejects the staged prompt size.
+    "COPILOT_MODEL",
     "CURL_CA_BUNDLE",
     "FORCE_COLOR",
     # Preferred scoped token for gh CLI calls inside the Rust runner.
