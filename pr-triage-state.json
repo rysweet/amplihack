@@ -1,85 +1,14 @@
 {
-  "last_run": "2026-03-25T18:00:00Z",
-  "run_id": "23557297314",
-  "triaged_prs": {
-    "3561": {
-      "title": "fix: correct gadugi-agentic-test installation instructions in qa-team skill",
-      "risk": "low",
-      "draft": false,
-      "status": "triage:complete",
-      "labels_applied": ["documentation", "triage:low-risk", "triage:needs-review", "triage:complete"],
-      "recommendation": "Docs fix; CI drift failure needs resolution before merge (sync qa-team/SKILL.md to amplifier-bundle/skills/)",
-      "comment_posted": false,
-      "run": "23557297314"
-    },
-    "3556": {
-      "title": "[docs] docs: daily documentation update for March 25, 2026",
-      "risk": "low",
-      "draft": false,
-      "status": "triage:complete",
-      "labels_applied": ["documentation", "automation", "triage:low-risk", "triage:auto-merge-candidate", "triage:complete"],
-      "recommendation": "Auto-merge candidate; expires 2026-03-26 — review promptly",
-      "comment_posted": false,
-      "run": "23557297314"
-    },
-    "3549": {
-      "title": "docs(rust-trial): ship install/bootstrap follow-up",
-      "risk": "low",
-      "draft": false,
-      "status": "triage:complete",
-      "labels_applied": ["triage:low-risk", "triage:complete"],
-      "recommendation": "Needs rebase to current main before merge; 23 tests pass",
-      "comment_posted": false,
-      "run": "23557297314"
-    },
-    "3542": {
-      "title": "fix(startup): remove stderr warnings that violate no-silent-fallback philosophy",
-      "risk": "medium",
-      "draft": false,
-      "status": "triage:complete",
-      "labels_applied": ["triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
-      "recommendation": "Touches core startup path; all tests pass; ready for review",
-      "comment_posted": false,
-      "run": "23557297314"
-    },
-    "3484": {
-      "title": "fix: surface hollow-success failures instead of swallowing them (#3480)",
-      "risk": "medium",
-      "draft": true,
-      "status": "triage:complete",
-      "labels_applied": ["bug", "workflow", "triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests", "triage:high-priority"],
-      "recommendation": "High priority; 3 quality cycles complete; undraft and merge when ready",
-      "comment_posted": false,
-      "run": "23557297314"
-    },
-    "3520": {
-      "title": "[WIP] Fix: Surface hollow-success failures instead of swallowing them",
-      "risk": "low",
-      "draft": true,
-      "status": "triage:complete",
-      "labels_applied": ["triage:low-risk", "triage:complete"],
-      "recommendation": "Copilot sub-PR of #3484; awaiting parent branch resolution",
-      "comment_posted": false,
-      "run": "23557297314"
-    },
-    "3519": {
-      "title": "[WIP] Add supply-chain-audit skill",
-      "risk": "low",
-      "draft": true,
-      "status": "triage:complete",
-      "labels_applied": ["triage:low-risk", "triage:complete"],
-      "recommendation": "Copilot sub-PR; drift fixes still pending per checklist",
-      "comment_posted": false,
-      "run": "23557297314"
-    },
-    "3290": {
-      "title": "test(tdd): add failing security tests for SEC-01 through SEC-07 hardening",
-      "risk": "medium",
-      "status": "triage:complete",
-      "labels_applied": ["triage:complete", "triage:medium-risk", "triage:has-tests", "triage:high-priority", "triage:security-review"],
-      "recommendation": "Rebase required; coordinate with implementation PRs to avoid CI red period",
-      "comment_posted": true,
-      "run": "23232157458"
-    }
+  "last_run": "2026-04-18",
+  "run_id": "24598924788",
+  "open_prs": {
+    "4396": {"risk":"low","draft":true,"labels":["triage:low-risk","triage:complete","triage:auto-merge-candidate"],"note":"Docs; expires 2026-04-19"},
+    "4395": {"risk":"low","draft":false,"labels":["triage:low-risk","triage:complete","triage:needs-review"],"note":"Superset of #4394; close #4394"},
+    "4394": {"risk":"low","draft":false,"labels":["triage:low-risk","triage:complete","triage:needs-review","recommend-close"],"note":"Superseded by #4395"},
+    "4216": {"risk":"medium","draft":false,"labels":["triage:complete","triage:needs-review","triage:medium-risk","triage:has-tests"]},
+    "4199": {"risk":"low","draft":false,"labels":["triage:low-risk","triage:complete","triage:needs-review"]},
+    "4198": {"risk":"low","draft":false,"labels":["triage:low-risk","triage:complete","triage:needs-review"]},
+    "4186": {"risk":"low","draft":false,"labels":["triage:low-risk","triage:complete","triage:needs-review","triage:has-tests"]},
+    "4112": {"risk":"low","draft":false,"labels":["documentation","triage:low-risk","triage:complete","triage:needs-review"]}
   }
 }
