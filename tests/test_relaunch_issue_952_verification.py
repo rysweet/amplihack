@@ -19,9 +19,6 @@ These tests assert the contract for the documentation-only PR:
    ``--no-verify`` so we re-assert this invariant in tests.
 
 Run with: ``pytest tests/test_relaunch_issue_952_verification.py -q``
-
-These tests are expected to FAIL until the verification doc is added on
-branch ``fix/relaunch-issue-952``.
 """
 
 from __future__ import annotations
@@ -137,8 +134,6 @@ SECRET_PATTERNS = [
 
 class TestNoSecretsInDoc:
     def test_doc_has_no_secret_assignments(self):
-        if not VERIFICATION_DOC.is_file():
-            pytest.skip("doc not yet created; covered by existence test")
         text = VERIFICATION_DOC.read_text(encoding="utf-8")
         for pat in SECRET_PATTERNS:
             assert pat.search(text) is None, (
