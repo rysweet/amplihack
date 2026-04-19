@@ -14,6 +14,7 @@ Public API (the "studs"):
 import json
 import os
 import shutil
+from pathlib import Path
 
 # Import constants from package root
 from . import CLAUDE_DIR, MANIFEST_JSON
@@ -154,6 +155,16 @@ def uninstall():
                 removed_any = True
             except Exception as e:
                 print(f"  ⚠️  Could not remove {dir_path}: {e}")
+
+    # Remove staged amplifier-bundle from ~/.amplihack/amplifier-bundle/
+    bundle_dir = Path.home() / ".amplihack" / "amplifier-bundle"
+    if bundle_dir.exists():
+        try:
+            shutil.rmtree(bundle_dir)
+            removed_any = True
+            print(f"   • Removed staged amplifier-bundle at {bundle_dir}")
+        except Exception as e:
+            print(f"  ⚠️  Could not remove {bundle_dir}: {e}")
 
     # Remove manifest file
     try:

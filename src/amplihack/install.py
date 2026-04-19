@@ -301,6 +301,44 @@ def write_manifest(files: list[str], dirs: list[str]) -> None:
     write_json_atomic(MANIFEST_JSON, {"files": files, "dirs": dirs})
 
 
+def _stage_amplifier_bundle(repo_root) -> None:
+    """Stage the amplifier-bundle directory into ~/.amplihack/amplifier-bundle/.
+
+    Mirrors the Rust copy_amplifier_bundle helper in amplihack-rs
+    (install/directories.rs): recursively copies <repo_root>/amplifier-bundle/
+    into the user's ~/.amplihack/ runtime location so external-repo workflows
+    can locate bundled agents, recipes, and tools.
+
+    Args:
+        repo_root: Path to the repository root containing amplifier-bundle/.
+    """
+    repo_root_path = Path(repo_root)
+    candidates = [
+        repo_root_path / "amplifier-bundle",
+        repo_root_path.parent / "amplifier-bundle",
+    ]
+
+    source_dir = next((c for c in candidates if c.exists()), None)
+    if source_dir is None:
+        print(
+            f"   ⚠️  amplifier-bundle/ not found under {repo_root_path}; "
+            "skipping bundle staging"
+        )
+        return
+
+    target_dir = Path.home() / ".amplihack" / "amplifier-bundle"
+
+    if os.path.realpath(source_dir) == os.path.realpath(target_dir):
+        return
+
+    target_dir.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
+        print(f"   ✅ Staged amplifier-bundle to {target_dir}")
+    except OSError as exc:
+        print(f"   ⚠️  Failed to stage amplifier-bundle to {target_dir}: {exc}")
+
+
 def _local_install(repo_root, profile_uri=None):
     """Install amplihack files from the given repo_root directory.
 
@@ -418,6 +456,10 @@ def _local_install(repo_root, profile_uri=None):
     print("\n📂 Creating runtime directories:")
     create_runtime_dirs()
 
+    # Step 4.5: Stage amplifier-bundle into ~/.amplihack/amplifier-bundle/
+    print("\n📦 Staging amplifier-bundle:")
+    _stage_amplifier_bundle(repo_root)
+
     # Step 5: Configure settings.json
     print("\n⚙️  Configuring settings.json:")
     from .settings import ensure_settings_json
@@ -504,6 +546,7 @@ __all__ = [
     "copytree_manifest",
     "create_runtime_dirs",
     "_local_install",
+    "_stage_amplifier_bundle",
     "ensure_dirs",
     "get_all_files_and_dirs",
     "write_manifest",
