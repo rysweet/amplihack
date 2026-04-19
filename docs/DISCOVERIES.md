@@ -706,3 +706,52 @@ Checklist validation gates (STOP checkpoints, pre-flight validation) trigger Son
 - **Test interventions across ALL target models** - what helps one can break another
 - **Validation gates harmful for autonomous models** - Sonnet needs zero checkpoints
 - **No universal CLAUDE.md solution** - different models need different approaches
+
+---
+
+## Worktree Prune Must Follow Every `rm -rf` Before `git worktree add` (PR #4394, 2026-04-18)
+
+### Issue
+
+`step-04-setup-worktree` deleted orphaned worktree directories with `rm -rf` but immediately called `git worktree add` without pruning stale `.git/worktrees/` registrations first. This caused:
+
+```
+fatal: '' is a missing but already registered worktree;
+use 'add -f' to override, or 'prune' or 'remove' to clear
+```
+
+on any re-run after a crash or manual cleanup.
+
+### Root Cause
+
+Git tracks worktrees in two independent places: the `.git/worktrees/` internal registry and the filesystem. Deleting the directory removes only the filesystem entry — the registry entry survives until `git worktree prune` is run.
+
+### Solution
+
+Add `git worktree prune` immediately after every `rm -rf <worktree-dir>` and before every subsequent `git worktree add`. Applied symmetrically in `default-workflow.yaml` and `consensus-workflow.yaml`.
+
+### Prevention
+
+- **Never call `git worktree add` directly after `rm -rf`** — always interpose `git worktree prune`
+- Apply this pattern in all three setup states: REATTACH_OK=false, REATTACH_OK=true, and new-branch paths
+
+---
+
+## COPILOT_MODEL Must Be in `_ALLOWED_RUST_ENV_VARS` to Reach Recipe Subprocess (PR #4395, 2026-04-18)
+
+### Issue
+
+Users setting `COPILOT_MODEL` to select a larger-context Copilot model for recipe agent steps had no effect. The variable was filtered out by `build_rust_env()` before the subprocess was launched.
+
+### Root Cause
+
+`build_rust_env()` uses an explicit `_ALLOWED_RUST_ENV_VARS` allowlist to keep the Rust runner environment minimal. `COPILOT_MODEL` was missing from this list even though `launcher/copilot.py` already reads and honors it.
+
+### Solution
+
+Add `COPILOT_MODEL` to `_ALLOWED_RUST_ENV_VARS`. Any env var that must propagate to the recipe runner subprocess must appear in this list.
+
+### Prevention
+
+- When adding a new environment variable for agent/launcher behavior, check whether it also needs to be added to `_ALLOWED_RUST_ENV_VARS`
+- Document new env vars in `docs/recipes/README.md` Environment Variables table
