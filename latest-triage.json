@@ -1,9 +1,8 @@
 {
-  "run": "24708232079",
+  "run": "24722455285",
   "date": "2026-04-21",
   "prs": {
     "4422": "low/docs-contributing-code-style",
-    "4416": "low/docs-auto-draft-expired",
     "4410": "low/docs-verification-upstream-952",
     "4407": "low/bugfix-install-stage-amplifier-bundle",
     "4403": "low/tests-docs-worktree-reattach-prune",
@@ -12,5 +11,6 @@
     "4198": "low/fix-knowledge-builder-copilot-flags",
     "4186": "low/docs-multitask-timeout-lifecycle",
     "4112": "low/docs-api-keys-clarification-xingzihai"
-  }
+  },
+  "closed_since_last": ["4416"]
 }
