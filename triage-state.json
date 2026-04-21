@@ -1,107 +1,100 @@
 {
-  "ts": "2026-03-23T17:00:00Z",
-  "run": 23453339309,
-  "open_prs": [3430, 3425, 3423, 3419, 3418, 3416, 3415, 3412, 3398, 3389, 3290],
-  "closed_since_last": [3394],
+  "ts": "2026-04-21T00:00:00Z",
+  "run": 24739536039,
+  "run_number": 8,
+  "date": "2026-04-21",
+  "open_prs": [4422, 4410, 4407, 4403, 4216, 4199, 4198, 4186, 4112],
+  "closed_since_last": [],
   "prs": {
-    "3430": {
+    "4422": {
+      "risk": "low",
+      "priority": "medium",
+      "type": "docs-contributing",
+      "tests": false,
+      "labels": ["documentation", "triage:low-risk", "triage:needs-review"],
+      "status": "open",
+      "age_days": 2,
+      "note": "Community PR (yuchengpersonal). Improves CONTRIBUTING.md Code Style section with ruff commands, pre-commit info, typo fix. Docs-only."
+    },
+    "4410": {
       "risk": "low",
       "priority": "low",
-      "type": "docs-automated",
+      "type": "docs-verification",
       "tests": false,
-      "labels": ["triage:low-risk", "triage:complete", "documentation"],
+      "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "note": "Auto-generated docs mirror sync for PR #3401 dual-SDK support. Expires Mar 24 2026. Docs-only changes."
+      "age_days": 2.6,
+      "note": "Verification note PR — confirms issue #952 fixes already merged on main. No code changes. Audit artifact only."
     },
-    "3425": {
-      "risk": "medium",
+    "4407": {
+      "risk": "low",
       "priority": "medium",
-      "type": "bugfix-ci-workflow",
-      "tests": true,
-      "labels": ["triage:medium-risk", "triage:complete", "triage:needs-review", "triage:has-tests", "bug"],
+      "type": "bugfix-install",
+      "tests": false,
+      "labels": ["triage:low-risk", "triage:complete", "triage:needs-review", "triage:needs-testing"],
       "status": "open",
-      "note": "Makes version-check.yml advisory-only for PRs; stops auto-committing pyproject.toml bumps onto contributor branches. 14 unit tests + gadugi scenario. Stacked on feat/parity-distributed-hive-3410."
+      "age_days": 2.6,
+      "note": "Stages amplifier-bundle to ~/.amplihack on install via shutil.copytree. Mirrors Rust install/directories.rs. No tests in PR."
     },
-    "3423": {
-      "risk": "medium",
+    "4403": {
+      "risk": "low",
       "priority": "medium",
-      "type": "bugfix-deploy",
+      "type": "tests-docs",
       "tests": true,
-      "labels": ["triage:medium-risk", "triage:complete", "triage:needs-review", "triage:has-tests", "bug"],
+      "labels": ["triage:low-risk", "triage:complete", "triage:needs-review", "triage:has-tests"],
       "status": "open",
-      "note": "Lazy compatibility shim for azure_hive remote_agent_adapter; 44 passed, 25 intentionally skipped (external package gate). Stacked on feat/parity-distributed-hive-3410."
+      "age_days": 3,
+      "note": "Follow-up to merged #4394. 13 regression tests + docs for worktree reattach prune fix. Needs rebase onto current main; CI failures."
     },
-    "3419": {
+    "4216": {
+      "risk": "medium",
+      "priority": "high",
+      "type": "feat-anthropic-disablement",
+      "tests": true,
+      "labels": ["triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
+      "status": "open",
+      "age_days": 18.5,
+      "note": "ANTHROPIC_DISABLED env flag for fleet/_backends.py, eval, hive_mind, blarify vendor. 41 tests. Stale 18.5d — urgent merge decision needed."
+    },
+    "4199": {
+      "risk": "low",
+      "priority": "medium",
+      "type": "bugfix-recipe-runner",
+      "tests": false,
+      "labels": ["triage:low-risk", "triage:complete", "triage:needs-review"],
+      "status": "open",
+      "age_days": 18.5,
+      "note": "Upgrades outdated rust runner binary (not just absent). Stale 18.5d. Closes #4159."
+    },
+    "4198": {
+      "risk": "low",
+      "priority": "medium",
+      "type": "bugfix-copilot-flag-guard",
+      "tests": false,
+      "labels": ["triage:low-risk", "triage:complete", "triage:needs-review"],
+      "status": "open",
+      "age_days": 18.5,
+      "note": "Guards --dangerously-skip-permissions from copilot binary in knowledge_builder and launcher. Stale 18.5d. Closes #4188."
+    },
+    "4186": {
       "risk": "low",
       "priority": "low",
-      "type": "chore-ci",
+      "type": "docs-multitask-timeout",
+      "tests": true,
+      "labels": ["triage:low-risk", "triage:complete", "triage:needs-review", "triage:has-tests"],
+      "status": "open",
+      "age_days": 18.5,
+      "note": "TIMEOUT_LIFECYCLE.md docs for multitask orchestrator. 19 tests pass. Stale 18.5d. Closes #4183."
+    },
+    "4112": {
+      "risk": "low",
+      "priority": "low",
+      "type": "docs-env-setup",
       "tests": false,
-      "labels": ["triage:low-risk", "triage:complete", "triage:needs-review", "github-actions"],
+      "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "note": "Copilot-created PR adding a disabled Trivy filesystem scanner workflow (workflow_dispatch only). Low risk, CI-only change."
-    },
-    "3418": {
-      "risk": "medium",
-      "priority": "medium",
-      "type": "feat-parity-port",
-      "tests": true,
-      "labels": ["triage:medium-risk", "triage:has-tests", "triage:needs-review", "triage:complete", "enhancement"],
-      "status": "open",
-      "note": "Stacked parity port of upstream #3410 (distributed hive, memory facade, graph store, network store, hive CLI, deploy, docs); 203 tests passed; blocked by #3417 for deploy/azure_hive tests; stacked on #3416"
-    },
-    "3416": {
-      "risk": "medium",
-      "priority": "medium",
-      "type": "feat-parity-port",
-      "tests": true,
-      "labels": ["triage:medium-risk", "triage:has-tests", "triage:needs-review", "triage:complete", "enhancement"],
-      "status": "open",
-      "note": "Stacked parity port of upstream #3401 (dual-SDK PM Architect routing); 73 tests passed + YAML_OK; stacked on #3415"
-    },
-    "3415": {
-      "risk": "medium",
-      "priority": "medium",
-      "type": "bugfix-workflow-hardening",
-      "tests": true,
-      "labels": ["triage:medium-risk", "triage:has-tests", "triage:needs-review", "triage:complete", "bug"],
-      "status": "open",
-      "note": "Stacked parity port of upstream #3390 (safe issue-number extraction, idempotent step-4 worktree); 47 tests passed; stacked on #3412"
-    },
-    "3412": {
-      "risk": "medium",
-      "priority": "high",
-      "type": "bugfix-memory-optional",
-      "tests": true,
-      "labels": ["triage:medium-risk", "triage:has-tests", "triage:high-priority", "triage:needs-review", "triage:complete", "bug"],
-      "status": "open",
-      "note": "Reverts mandatory memory startup regression; 15 tests + outside-in E2E; fixes user-visible CLI startup breakage; stacked on #3389"
-    },
-    "3398": {
-      "risk": "medium",
-      "priority": "medium",
-      "type": "feat-copilot-triage",
-      "tests": false,
-      "labels": ["triage:medium-risk", "triage:needs-review", "triage:needs-testing", "triage:complete", "enhancement", "copilot"],
-      "status": "open",
-      "note": "Adds Copilot CLI runtime to triage_pr.py via AMPLIHACK_AGENT_BINARY env var; test plan described but not confirmed (unchecked boxes); direct to main"
-    },
-    "3389": {
-      "risk": "high",
-      "priority": "high",
-      "type": "bugfix-copilot",
-      "tests": true,
-      "labels": ["bug", "copilot", "triage:complete", "triage:needs-review", "triage:high-risk", "triage:has-tests"],
-      "status": "open",
-      "note": "Fix nested Copilot equals-style permission flags in rust_runner.py; 66 tests passed; gadugi outside-in evidence; quality-audit cycle complete"
-    },
-    "3290": {
-      "risk": "medium",
-      "priority": "high",
-      "type": "tdd-security",
-      "tests": true,
-      "labels": ["triage:complete", "triage:medium-risk", "triage:has-tests", "triage:high-priority", "triage:security-review"],
-      "status": "open",
-      "note": "TDD test files for SEC-01 through SEC-07 security hardening; 86 tests collected, 81 intentionally fail (target for follow-up PRs)"
+      "age_days": 20,
+      "note": "Community PR (xingzihai). Clarifies required vs optional API keys in .env docs. Fixes #3844. Stale 20d."
     }
   }
 }
