@@ -1520,6 +1520,7 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     cmd = [
         "copilot",
         "--allow-all-tools",
+        "--allow-all-paths",
     ]
     if not args:
         cmd.extend(
