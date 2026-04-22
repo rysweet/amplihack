@@ -1,7 +1,8 @@
 {
-  "run": "24722455285",
-  "date": "2026-04-21",
+  "run": "24778311627",
+  "date": "2026-04-22",
   "prs": {
+    "4433": "low/docs-automated-draft-expires-apr23-CRITICAL",
     "4422": "low/docs-contributing-code-style",
     "4410": "low/docs-verification-upstream-952",
     "4407": "low/bugfix-install-stage-amplifier-bundle",
@@ -12,5 +13,5 @@
     "4186": "low/docs-multitask-timeout-lifecycle",
     "4112": "low/docs-api-keys-clarification-xingzihai"
   },
-  "closed_since_last": ["4416"]
+  "closed_since_last": []
 }
