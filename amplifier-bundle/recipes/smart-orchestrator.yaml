@@ -98,7 +98,38 @@ steps:
   - id: "classify-and-decompose"
     type: "bash"
     command: |
-      AGENT_BIN="${AMPLIHACK_AGENT_BINARY:-claude}"
+      # FIX (#309): No silent fallback to `claude`. If AMPLIHACK_AGENT_BINARY
+      # is not propagated (tmux without -e, nohup, subprocess that clears env,
+      # systemd unit, GitHub Actions job), fail fast with a clear remediation
+      # message instead of silently switching to a different model vendor.
+      if [ -z "${AMPLIHACK_AGENT_BINARY:-}" ]; then
+        # Try to auto-detect a single installed binary as a courtesy fallback.
+        _DETECTED=""
+        for _b in copilot claude codex; do
+          if command -v "$_b" >/dev/null 2>&1; then
+            if [ -z "$_DETECTED" ]; then
+              _DETECTED="$_b"
+            else
+              # Multiple installed; cannot pick one safely.
+              _DETECTED="ambiguous"
+              break
+            fi
+          fi
+        done
+        if [ -z "$_DETECTED" ] || [ "$_DETECTED" = "ambiguous" ]; then
+          echo "ERROR: AMPLIHACK_AGENT_BINARY is not set and a unique agent binary could not be auto-detected." >&2
+          echo "       Set one of:" >&2
+          echo "         - export AMPLIHACK_AGENT_BINARY=copilot   (or claude / codex)" >&2
+          echo "         - tmux new-session -e AMPLIHACK_AGENT_BINARY=copilot ..." >&2
+          echo "         - systemd unit: Environment=AMPLIHACK_AGENT_BINARY=copilot" >&2
+          echo "       Refusing to silently fall back to 'claude' — see issue #309." >&2
+          exit 1
+        fi
+        echo "INFO: AMPLIHACK_AGENT_BINARY unset; auto-detected single installed binary: $_DETECTED" >&2
+        AGENT_BIN="$_DETECTED"
+      else
+        AGENT_BIN="$AMPLIHACK_AGENT_BINARY"
+      fi
       _PROMPT_FILE=$(mktemp)
       trap 'rm -f "$_PROMPT_FILE"' EXIT
       cat > "$_PROMPT_FILE" <<'__AMPLIHACK_CLASSIFY_EOF__'
