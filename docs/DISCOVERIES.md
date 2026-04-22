@@ -706,3 +706,137 @@ Checklist validation gates (STOP checkpoints, pre-flight validation) trigger Son
 - **Test interventions across ALL target models** - what helps one can break another
 - **Validation gates harmful for autonomous models** - Sonnet needs zero checkpoints
 - **No universal CLAUDE.md solution** - different models need different approaches
+
+## Worktree Prune Must Follow Every `rm -rf` Before `git worktree add` (2026-04-18)
+
+### Issue
+
+After `rm -rf <worktree_dir>`, the next `git worktree add` for the same path fails:
+
+```
+fatal: '<path>' is a missing but already registered worktree;
+use 'add -f' to override, or 'prune' or 'remove' to clear
+```
+
+This bites whenever a run is killed mid-stream or an operator deletes a worktree
+directory out of band.
+
+### Root Cause
+
+The filesystem and git's worktree registry (`.git/worktrees/`) are independent.
+Deleting the directory does not update the registry. Git sees the path registered
+but missing on disk and refuses to recreate it without an explicit prune.
+
+### Solution
+
+Add `git worktree prune` between every `rm -rf <worktree_dir>` and the subsequent
+`git worktree add`. Applied to all three `git worktree add` call sites in
+`step-04-setup-worktree` (PRs #4380, #4394, #4395).
+
+### Key Learnings
+
+1. **Prune is cheap and idempotent**: always safe to run before `worktree add`
+2. **Three sites, not one**: REATTACH_OK=false, REATTACH_OK=true, and new-branch
+   paths all need the guard independently
+3. **Recovery runs are the primary trigger**: fresh runs rarely hit this; partial
+   failures always do
+
+### Prevention
+
+- Add `git worktree prune` as a standard preamble before any `git worktree add`
+- Review new recipe steps that call `worktree add` for the prune guard
+
+## COPILOT_MODEL Must Be in `_ALLOWED_RUST_ENV_VARS` to Reach Recipe Subprocess (2026-04-18)
+
+### Issue
+
+Copilot users who set `COPILOT_MODEL` to select a larger-context model could not
+propagate it to nested agent steps inside recipes. The env var was silently dropped.
+
+### Root Cause
+
+`build_rust_env()` in `src/amplihack/recipes/rust_runner.py` filters the host
+environment through `_ALLOWED_RUST_ENV_VARS` to keep the Rust runner's subprocess
+environment minimal. `COPILOT_MODEL` was missing from the allowlist even though
+`launcher/copilot.py` already honored it.
+
+### Solution
+
+Added `COPILOT_MODEL` to `_ALLOWED_RUST_ENV_VARS` (PR #4395).
+
+### Key Learnings
+
+1. **The allowlist is the single gate**: if a variable is not in the list, it
+   never reaches the subprocess regardless of how the launcher consumes it
+2. **Silent drop is the failure mode**: no error, the variable is just absent
+
+### Prevention
+
+- When adding a new env var that recipe agents need, add it to `_ALLOWED_RUST_ENV_VARS`
+  in the same PR
+- Document the allowlist in the recipe runner reference
+
+## Recipe Step `parse_json: true` Required for Dict-Subscript Conditions (2026-04-17)
+
+### Issue
+
+Quality-audit-cycle skipped the fix step even when 2/3 validators confirmed a
+finding. The condition `validated_findings['confirmed_count'] > 0` evaluated
+silently to `false`.
+
+### Root Cause
+
+The `merge-validations` step output JSON via `json.dumps()` and stored it in
+`validated_findings` via the `output:` field, but lacked `parse_json: true`.
+The Rust runner stored the output as a raw JSON string. Subscripting a string
+with a string key fails, and the runner treated the exception as `false`.
+
+### Solution
+
+Added `parse_json: true` to the `merge-validations` step in
+`quality-audit-cycle.yaml` (PR #4378). Consistent with `investigation-workflow.yaml`,
+`consensus-workflow.yaml`, and others.
+
+### Key Learnings
+
+1. **String vs dict is silent**: no runtime error visible to the recipe author;
+   the condition just evaluates false
+2. **Grep for the pattern**: every `output:` field paired with downstream
+   dict subscript conditions needs `parse_json: true`
+
+### Prevention
+
+- Add `parse_json: true` to any step that emits a JSON object via `output:` and
+  whose output is consumed as a dict downstream
+
+## Wrong-Base Worktree Causes Silent Agent Correctness Failures (2026-04-17)
+
+### Issue
+
+When `main` advanced after a worktree was created, the existing worktree contained
+stale diffs from the old base. Agents in subsequent steps read wrong-base code and
+produced misleading output with no error.
+
+### Root Cause
+
+The State 1 guard (branch + worktree exist → reuse) in `step-04-setup-worktree`
+had no check that the worktree's base branch was still an ancestor of the current
+base ref. It reused any existing worktree unconditionally.
+
+### Solution
+
+Added `git merge-base --is-ancestor <base_ref> <branch_tip>` checks at State 1
+and State 2. If the base is no longer an ancestor, the worktree and branch are
+force-removed and recreated from the current base (PR #4387, fixes #4254).
+
+### Key Learnings
+
+1. **Reuse without base verification is unsafe**: idempotency ≠ correctness
+2. **The failure is silent**: no crash, just wrong context for downstream agents
+3. **Both states need the check**: State 2 (branch exists, no worktree dir) can
+   also have a stale base
+
+### Prevention
+
+- Any recipe step that reuses a long-lived worktree should verify
+  `git merge-base --is-ancestor <base> <branch_tip>` before proceeding

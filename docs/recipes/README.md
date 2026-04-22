@@ -78,6 +78,13 @@ Complete documentation for using the Recipe Runner:
 - **[Recipe CLI Reference](../reference/recipe-cli-reference.md)** - Complete command-line reference with all options and exit codes
 - **[Recipe CLI Examples](cli-examples.md)** - Real-world usage scenarios (development, testing, CI/CD, team workflows)
 
+## Resilience, Idempotency & Known Fixes
+
+Explanation-quadrant documents covering worktree hardening, recipe reliability fixes, and known failure modes:
+
+- **[Recent Fixes — April 2026](RECENT_FIXES_APRIL_2026.md)** — Worktree hardening series, COPILOT_MODEL forwarding, Python→Rust skill migration, quality-audit-cycle `parse_json` fix, atlas validation false positives
+- **[Recent Fixes — March 2026](RECENT_FIXES_MARCH_2026.md)** — Worktree execution CWD, nested recipe hook reinjection, step-15 pre-commit retry, ADO provider support
+
 ## Why It Exists
 
 Models frequently skip workflow steps when enforcement is purely prompt-based. A markdown file that says "you MUST follow all 22 steps" still relies on the model choosing to comply. The Recipe Runner moves enforcement from prompts to compiled code — a deterministic loop iterates over each step and calls the agent SDK, so the model never decides which step to run next.
