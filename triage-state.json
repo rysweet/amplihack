@@ -1,11 +1,24 @@
 {
-  "ts": "2026-04-22T00:00:00Z",
-  "run": 24778311627,
-  "run_number": 10,
+  "ts": "2026-04-22T07:30:00Z",
+  "run": 24795567763,
+  "run_number": 11,
   "date": "2026-04-22",
   "open_prs": [4433, 4422, 4410, 4407, 4403, 4216, 4199, 4198, 4186, 4112],
   "closed_since_last": [],
+  "new_since_last": [],
   "prs": {
+    "4433": {
+      "risk": "low",
+      "priority": "critical",
+      "type": "docs-automated",
+      "draft": true,
+      "tests": false,
+      "labels": ["documentation", "automation"],
+      "status": "open",
+      "age_days": 0.04,
+      "expires": "2026-04-23T06:39:00Z",
+      "note": "CRITICAL: Expires Apr 23 at 6:39 AM UTC. 4th daily-doc draft in series (prior: #4396, #4408, #4416 all expired). Must undraft+merge TODAY."
+    },
     "4422": {
       "risk": "low",
       "priority": "medium",
@@ -14,7 +27,8 @@
       "labels": ["documentation", "triage:low-risk", "triage:needs-review"],
       "status": "open",
       "age_days": 2,
-      "note": "Community PR (yuchengpersonal). Improves CONTRIBUTING.md Code Style section with ruff commands, pre-commit info, typo fix. Docs-only."
+      "ci": {"scan": "waiting", "gitguardian": "success"},
+      "note": "Community PR (yuchengpersonal). Improves CONTRIBUTING.md Code Style section with ruff commands, pre-commit info, typo fix. CI scan stuck/waiting."
     },
     "4410": {
       "risk": "low",
@@ -23,8 +37,8 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 2.6,
-      "note": "Verification note PR — confirms issue #952 fixes already merged on main. No code changes. Audit artifact only."
+      "age_days": 3,
+      "note": "Verification note PR — confirms issue #952 fixes already merged on main. No code changes. Quick merge candidate."
     },
     "4407": {
       "risk": "low",
@@ -33,8 +47,9 @@
       "tests": false,
       "labels": ["triage:low-risk", "triage:complete", "triage:needs-review", "triage:needs-testing"],
       "status": "open",
-      "age_days": 2.6,
-      "note": "Stages amplifier-bundle to ~/.amplihack on install via shutil.copytree. Mirrors Rust install/directories.rs. No tests in PR."
+      "age_days": 3,
+      "ci": {"atlas_pr_impact": "failure", "skill_agent_drift": "failure", "validate_code": "success", "gitguardian": "success"},
+      "note": "Adds _stage_amplifier_bundle() to install.py; mirrors Rust behavior. 2 CI failures (Atlas impact + skill drift — likely non-blocking noise)."
     },
     "4403": {
       "risk": "low",
@@ -43,8 +58,9 @@
       "tests": true,
       "labels": ["triage:low-risk", "triage:complete", "triage:needs-review", "triage:has-tests"],
       "status": "open",
-      "age_days": 3,
-      "note": "Follow-up to merged #4394. 13 regression tests + docs for worktree reattach prune fix. Needs rebase onto current main; CI failures."
+      "age_days": 4,
+      "ci": {"atlas_pr_impact": "failure", "skill_agent_drift": "failure"},
+      "note": "13 regression tests + retcon doc for #4394 worktree prune fix. Needs rebase onto current main; CI failures likely from stale base."
     },
     "4216": {
       "risk": "medium",
@@ -53,28 +69,29 @@
       "tests": true,
       "labels": ["triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
       "status": "open",
-      "age_days": 18.5,
-      "note": "ANTHROPIC_DISABLED env flag for fleet/_backends.py, eval, hive_mind, blarify vendor. 41 tests. Stale 18.5d — urgent merge decision needed."
+      "age_days": 19,
+      "ci": {"atlas_pr_impact": "failure", "validate_code": "success", "gitguardian": "success"},
+      "note": "ANTHROPIC_DISABLED=true env flag across fleet, eval, agents, vendor. 41 tests. 19d stale. Medium risk — needs deliberate review/merge-or-close decision."
     },
     "4199": {
       "risk": "low",
-      "priority": "medium",
+      "priority": "low",
       "type": "bugfix-recipe-runner",
       "tests": false,
       "labels": ["triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 18.5,
-      "note": "Upgrades outdated rust runner binary (not just absent). Stale 18.5d. Closes #4159."
+      "age_days": 19,
+      "note": "Auto-upgrades Rust runner binary when outdated (not just absent). 19d stale."
     },
     "4198": {
       "risk": "low",
-      "priority": "medium",
+      "priority": "low",
       "type": "bugfix-copilot-flag-guard",
       "tests": false,
       "labels": ["triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 18.5,
-      "note": "Guards --dangerously-skip-permissions from copilot binary in knowledge_builder and launcher. Stale 18.5d. Closes #4188."
+      "age_days": 19,
+      "note": "Guards --dangerously-skip-permissions from copilot binary. 19d stale."
     },
     "4186": {
       "risk": "low",
@@ -83,8 +100,8 @@
       "tests": true,
       "labels": ["triage:low-risk", "triage:complete", "triage:needs-review", "triage:has-tests"],
       "status": "open",
-      "age_days": 18.5,
-      "note": "TIMEOUT_LIFECYCLE.md docs for multitask orchestrator. 19 tests pass. Stale 18.5d. Closes #4183."
+      "age_days": 19,
+      "note": "TIMEOUT_LIFECYCLE.md retcon docs. All 19 tests pass. 19d stale."
     },
     "4112": {
       "risk": "low",
@@ -93,8 +110,8 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 20,
-      "note": "Community PR (xingzihai). Clarifies required vs optional API keys in .env docs. Fixes #3844. Stale 20d."
+      "age_days": 21,
+      "note": "Community PR (xingzihai). Clarifies required vs optional API keys in .env setup docs. 21d stale."
     }
   }
 }
