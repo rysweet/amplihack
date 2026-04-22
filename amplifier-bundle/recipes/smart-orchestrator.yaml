@@ -55,7 +55,7 @@ steps:
       elif ! git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1; then
         ERRORS="${ERRORS}\n  ✗ repo_path '$REPO' is not a git repository"
       fi
-      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
+      HELPER_PATH="$(amplihack resolve-bundle-asset helper-path 2>/dev/null || true)"
       if [ -z "$HELPER_PATH" ] || [ ! -f "$HELPER_PATH" ]; then
         ERRORS="${ERRORS}\n  ✗ Cannot find orch_helper.py — set AMPLIHACK_HOME to a valid amplihack root"
       fi
@@ -71,7 +71,7 @@ steps:
       # Set workflow-active semaphore EARLY so that nested agent steps
       # (classify-and-decompose) don't get routing/classification hook
       # injections that cause infinite recursion (fix #3971).
-      HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir 2>/dev/null || true)"
+      HOOKS_DIR="$(amplihack resolve-bundle-asset hooks-dir 2>/dev/null || true)"
       if [ -n "$HOOKS_DIR" ]; then
         # Pass $PPID (recipe-runner-rs) so the semaphore PID survives the
         # ephemeral bash step and is still alive when hooks check liveness.
@@ -203,7 +203,7 @@ steps:
   - id: "parse-decomposition"
     type: "bash"
     command: |
-      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
+      HELPER_PATH="$(amplihack resolve-bundle-asset helper-path 2>/dev/null || true)"
       if [ ! -f "$HELPER_PATH" ]; then
           echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
           echo "Ensure amplihack is installed correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
@@ -254,7 +254,7 @@ steps:
   - id: "activate-workflow"
     type: "bash"
     command: |
-      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
+      HELPER_PATH="$(amplihack resolve-bundle-asset helper-path 2>/dev/null || true)"
       if [ ! -f "$HELPER_PATH" ]; then
           echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
           echo "Ensure amplihack is installed correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
@@ -266,7 +266,7 @@ steps:
       )
       TASK_TYPE={{task_type}}
       FORCE_SINGLE={{force_single_workstream}}
-      HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir 2>/dev/null || true)"
+      HOOKS_DIR="$(amplihack resolve-bundle-asset hooks-dir 2>/dev/null || true)"
       _DECOMP_TMPFILE=$(mktemp)
       trap 'rm -f "$_DECOMP_TMPFILE"' EXIT
       cat > "$_DECOMP_TMPFILE" <<__DECOMP_EOF__
@@ -346,7 +346,7 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type or task_type == ''"
     command: |
-      TREE_SCRIPT="$(python3 -m amplihack.runtime_assets session-tree-path 2>/dev/null || true)"
+      TREE_SCRIPT="$(amplihack resolve-bundle-asset session-tree-path 2>/dev/null || true)"
       SESSION_ID=$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")
 
       if [ -f "$TREE_SCRIPT" ]; then
@@ -490,7 +490,7 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and workstream_count != 1 and workstream_count != '1' and workstream_count != '' and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      HELPER_PATH="$(python3 -m amplihack.runtime_assets helper-path 2>/dev/null || true)"
+      HELPER_PATH="$(amplihack resolve-bundle-asset helper-path 2>/dev/null || true)"
       if [ ! -f "$HELPER_PATH" ]; then
           echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
           echo "Ensure amplihack is installed correctly, or set AMPLIHACK_HOME to a valid runtime root." >&2
@@ -601,7 +601,7 @@ steps:
       # Uses the same resolution as helper-path: AMPLIHACK_HOME > ~/.amplihack >
       # package root > repo root, avoiding hard-coded relative paths that break
       # when REPO_PATH is a non-amplihack repo.
-      ORCH_SCRIPT="$(python3 -m amplihack.runtime_assets multitask-orchestrator 2>/dev/null || true)"
+      ORCH_SCRIPT="$(amplihack resolve-bundle-asset multitask-orchestrator 2>/dev/null || true)"
       if [ -z "$ORCH_SCRIPT" ] || [ ! -f "$ORCH_SCRIPT" ]; then
         echo "ERROR: multitask orchestrator.py not found via runtime_assets." >&2
         echo "  Ensure amplihack is installed or set AMPLIHACK_HOME." >&2
@@ -1060,8 +1060,8 @@ steps:
       {{session_info}}
       EOFSESSIONJSON
       )
-      TREE_SCRIPT="$(python3 -m amplihack.runtime_assets session-tree-path 2>/dev/null || true)"
-      HOOKS_DIR="$(python3 -m amplihack.runtime_assets hooks-dir 2>/dev/null || true)"
+      TREE_SCRIPT="$(amplihack resolve-bundle-asset session-tree-path 2>/dev/null || true)"
+      HOOKS_DIR="$(amplihack resolve-bundle-asset hooks-dir 2>/dev/null || true)"
       # Parse session fields and clear workflow semaphore in one Python subprocess.
       # Uses env vars instead of pipe+heredoc to avoid stdin conflict (issue #2581).
       export SESSION_JSON HOOKS_DIR
