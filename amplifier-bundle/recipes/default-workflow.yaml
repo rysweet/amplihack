@@ -145,10 +145,9 @@ steps:
       # FIX (issues #3045/#3076/#3117): unquoted heredoc for safe variable capture.
       # Unquoted heredoc allows Rust runner env-var expansion ($RECIPE_VAR_*).
       # Shell expansion is single-pass: expanded values are NOT re-processed.
-      TASK_DESC=$(cat <<EOFTASKDESC
-      {{task_description}}
-      EOFTASKDESC
-      )
+      # FIX (#4389): use RECIPE_VAR env var directly so set -u + arbitrary $VAR
+      # tokens in the user task description do not crash bash inside heredoc.
+      TASK_DESC="${RECIPE_VAR_task_description:-}"
       printf 'Task: %s\n' "$TASK_DESC"
       printf 'Repository: %s\n' {{repo_path}}
     output: "workflow_init"
@@ -709,10 +708,9 @@ steps:
       # garbled branch names like "feat/issue--recipevartaskdescription".
       # Security note: the sanitization pipeline (tr -cd 'a-z0-9-') strips all
       # shell metacharacters from the output, mitigating injection risk.
-      TASK_DESC=$(cat <<EOFTASKDESC
-      {{task_description}}
-      EOFTASKDESC
-      )
+      # FIX (#4389): use RECIPE_VAR env var directly so set -u + arbitrary $VAR
+      # tokens in the user task description do not crash bash inside heredoc.
+      TASK_DESC="${RECIPE_VAR_task_description:-}"
       BRANCH_SLUG_MAX_LENGTH="{{branch_slug_max_length}}"
       if ! [[ "$BRANCH_SLUG_MAX_LENGTH" =~ ^[0-9]+$ ]] || [ "$BRANCH_SLUG_MAX_LENGTH" -le 0 ]; then
         echo "ERROR: branch_slug_max_length must be a positive integer, got '$BRANCH_SLUG_MAX_LENGTH'" >&2
@@ -1222,10 +1220,9 @@ steps:
 
       if [ "$TOTAL" -eq 0 ]; then
         # Check if the task description contains action verbs that imply changes
-        TASK_DESC=$(cat <<EOFTASKDESC
-      {{task_description}}
-      EOFTASKDESC
-        )
+        # FIX (#4389): use RECIPE_VAR env var directly so set -u + arbitrary $VAR
+        # tokens in the user task description do not crash bash inside heredoc.
+        TASK_DESC="${RECIPE_VAR_task_description:-}"
         # Detect replace/rewrite/implement/fix/add/create/remove keywords
         if echo "$TASK_DESC" | grep -qiE '(replace|rewrite|implement|fix|add|create|remove|update|refactor|stub|placeholder|real implementation)'; then
           echo "ERROR: Hollow success detected." >&2
@@ -2007,10 +2004,9 @@ steps:
       # Unquoted heredoc allows Rust runner $RECIPE_VAR_* expansion while
       # still preventing shell injection (single-pass expansion, #3117).
       # Fixes #4304.
-      TASK_DESC=$(cat <<EOFTASKDESC
-      {{task_description}}
-      EOFTASKDESC
-      )
+      # FIX (#4389): use RECIPE_VAR env var directly so set -u + arbitrary $VAR
+      # tokens in the user task description do not crash bash inside heredoc.
+      TASK_DESC="${RECIPE_VAR_task_description:-}"
       RAW_COMMIT_TITLE="$(printf '%s' "$TASK_DESC" | tr '\n\r' ' ' | head -1)"
       if [ "${#RAW_COMMIT_TITLE}" -gt "$COMMIT_TITLE_MAX_LENGTH" ]; then
         TOTAL_SUBJECT_LENGTH=$((COMMIT_TITLE_MAX_LENGTH + 6))
@@ -3034,10 +3030,9 @@ steps:
         echo "INFO: No pr_url — skipping PR status check" >&2
       fi
       echo ""
-      TASK_DESC=$(cat <<EOFTASKDESC
-      {{task_description}}
-      EOFTASKDESC
-      )
+      # FIX (#4389): use RECIPE_VAR env var directly so set -u + arbitrary $VAR
+      # tokens in the user task description do not crash bash inside heredoc.
+      TASK_DESC="${RECIPE_VAR_task_description:-}"
       printf '=== Task: %s ===\n' "$TASK_DESC"
       printf '=== Issue: #%s ===\n' "{{issue_number}}"
       printf '=== PR: %s ===\n' "$PR_URL"
@@ -3053,10 +3048,9 @@ steps:
     parse_json: true
     command: |
       # FIX (#3045/#3076/#3117): unquoted heredoc — safe variable capture
-      TASK_DESC=$(cat <<EOFTASKDESC
-      {{task_description}}
-      EOFTASKDESC
-      )
+      # FIX (#4389): use RECIPE_VAR env var directly so set -u + arbitrary $VAR
+      # tokens in the user task description do not crash bash inside heredoc.
+      TASK_DESC="${RECIPE_VAR_task_description:-}"
       TASK_VAL=$(printf '%s' "$TASK_DESC")
       export TASK_VAL
       # {{issue_number}} and {{pr_url}} are system-generated integers/URLs —
