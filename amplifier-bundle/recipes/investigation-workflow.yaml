@@ -102,6 +102,26 @@ steps:
     output: "preflight_status"
 
   # ==========================================================================
+  # NORMALIZE QUESTION
+  # When this recipe is launched from smart-orchestrator's multitask path or
+  # any other caller that forwards `task_description` but not
+  # `investigation_question`, promote `task_description` so downstream prompts
+  # have a non-empty question. Without this, every deep-dive agent receives the
+  # literal empty default and reports "no investigation question was provided",
+  # producing hollow success (recipe exits 0 but no real investigation occurs).
+  # An explicitly-supplied `investigation_question` is preserved unchanged.
+  # ==========================================================================
+  - id: "normalize-question"
+    type: "bash"
+    command: |
+      if [ -z "${RECIPE_VAR_investigation_question:-}" ] && [ -n "${RECIPE_VAR_task_description:-}" ]; then
+        printf '%s' "${RECIPE_VAR_task_description}"
+      else
+        printf '%s' "${RECIPE_VAR_investigation_question:-}"
+      fi
+    output: "investigation_question"
+
+  # ==========================================================================
   # INITIALIZATION: Track start time for efficiency metrics
   # ==========================================================================
   - id: "init-tracking"
