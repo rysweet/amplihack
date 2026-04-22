@@ -28,25 +28,29 @@ orchestrator.py (ParallelOrchestrator)
     "branch": "feat/my-feature",
     "description": "Brief description shown in reports",
     "task": "Detailed task instructions for the agent",
-    "recipe": "default-workflow"
+    "recipe": "default-workflow",
+    "timeout_policy": "interrupt-preserve",
+    "max_runtime": 7200
   }
 ]
 ```
 
 ### Required Fields
 
-| Field    | Type   | Description                            |
-| -------- | ------ | -------------------------------------- |
-| `issue`  | int    | GitHub issue number                    |
-| `branch` | string | Git branch name (must exist in remote) |
-| `task`   | string | Detailed task instructions             |
+| Field    | Type         | Description                                            |
+| -------- | ------------ | ------------------------------------------------------ |
+| `issue`  | int or `"TBD"` | GitHub issue number; `"TBD"` auto-creates an issue   |
+| `branch` | string       | Git branch name (must exist in remote)                 |
+| `task`   | string       | Detailed task instructions                             |
 
 ### Optional Fields
 
-| Field         | Type   | Default              | Description                   |
-| ------------- | ------ | -------------------- | ----------------------------- |
-| `description` | string | `"Issue #N"`         | Short description for reports |
-| `recipe`      | string | `"default-workflow"` | Recipe to execute             |
+| Field            | Type   | Default              | Description                                                                 |
+| ---------------- | ------ | -------------------- | --------------------------------------------------------------------------- |
+| `description`    | string | `"Issue #N"`         | Short description for reports                                               |
+| `recipe`         | string | `"default-workflow"` | Recipe to execute                                                           |
+| `timeout_policy` | string | `"interrupt-preserve"` | What to do when `max_runtime` is exceeded: `"interrupt-preserve"` or `"continue-preserve"` |
+| `max_runtime`    | int    | `7200`               | Per-workstream wall-clock budget in seconds                                 |
 
 ## Orchestrator API
 
@@ -61,7 +65,7 @@ orchestrator.py (ParallelOrchestrator)
 ### Methods
 
 - `setup()` - Create clean temporary directory
-- `add(issue, branch, description, task, recipe)` - Add and clone a workstream
+- `add(issue, branch, description, task, recipe, *, max_runtime, timeout_policy)` - Add and clone a workstream
 - `launch(ws)` - Launch single workstream subprocess
 - `launch_all()` - Launch all workstreams in parallel
 - `get_status()` - Returns `{"running": [...], "completed": [...], "failed": [...]}`
@@ -137,6 +141,29 @@ To use classic mode as fallback, specify `--mode classic` when invoking the orch
 | Subprocess termination grace      | 10s           |
 | Agent step (CLISubprocessAdapter) | 300s per step |
 | Bash step (CLISubprocessAdapter)  | 120s per step |
+
+### Timeout Policies
+
+When a workstream reaches its `max_runtime`, the `timeout_policy` controls what happens:
+
+| Policy | Behaviour |
+| ---------------------- | --------------------------------------------------------------- |
+| `interrupt-preserve` | Terminate subprocess; save state as `timed_out_resumable` (default) |
+| `continue-preserve` | Let subprocess run; mark state `timed_out_resumable`; orchestrator moves on |
+
+Set per-workstream in the JSON config or in `add()`:
+
+```json
+{ "timeout_policy": "continue-preserve", "max_runtime": 10800 }
+```
+
+Set globally:
+
+```
+AMPLIHACK_TIMEOUT_POLICY=continue-preserve
+```
+
+See [`TIMEOUT_LIFECYCLE.md`](TIMEOUT_LIFECYCLE.md) for the full lifecycle state machine, resume behaviour, state file schema, and security details.
 
 ## Error Handling
 

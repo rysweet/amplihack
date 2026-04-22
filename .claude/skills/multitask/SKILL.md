@@ -152,11 +152,12 @@ cat /tmp/amplihack-workstreams/REPORT.md
 
 ## When to Read Supporting Files
 
-| Need                                   | File              |
-| -------------------------------------- | ----------------- |
-| Full API, config options, architecture | `reference.md`    |
-| Real-world usage examples              | `examples.md`     |
-| Python orchestrator source             | `orchestrator.py` |
+| Need                                   | File                   |
+| -------------------------------------- | ---------------------- |
+| Full API, config options, architecture | `reference.md`         |
+| Timeout policies & lifecycle states    | `TIMEOUT_LIFECYCLE.md` |
+| Real-world usage examples              | `examples.md`          |
+| Python orchestrator source             | `orchestrator.py`      |
 
 ## Disk Management & Cleanup
 
