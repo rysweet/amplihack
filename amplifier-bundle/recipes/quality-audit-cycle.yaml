@@ -445,6 +445,25 @@ steps:
       22-step development workflow (understand → design → implement → test →
       verify) for each confirmed finding, ensuring proper quality gates.
 
+      **HARD CONSTRAINT — DO NOT SILENTLY DEGRADE (issue #4388):** If
+      default-workflow CANNOT be invoked for any reason — including but not
+      limited to recursion-depth limits, missing skill, or recipe-runner
+      failure — you MUST NOT fall back to direct file edits. Instead:
+
+      1. Emit a clear diagnostic on stderr:
+         "ERROR: fix-agent cannot invoke default-workflow (reason: <reason>).
+         Refusing to silently degrade to inline edits."
+      2. Set STATUS: BLOCKED in the JSON output below
+      3. Populate `fixes_skipped` with each confirmed finding and reason
+         "blocked: default-workflow unavailable"
+      4. Exit the step — do NOT modify any files
+
+      Direct file edits on the current branch (without a default-workflow
+      invocation per finding, producing a branch + commit + PR) are a hard
+      quality-gate violation: they convert a 22-step PR-based workflow into
+      an unreviewed direct push, which is exactly the anti-pattern this
+      audit recipe is designed to detect.
+
       **Priority order (but ALL must be fixed):**
       1. Critical findings (security, silent security degradation)
       2. High findings (error swallowing in critical paths, reliability)
@@ -462,7 +481,8 @@ steps:
         is not a valid reason to skip
 
       End with STATUS: COMPLETE if all confirmed findings fixed,
-      STATUS: PARTIAL if some remain (with reasons for each unfixed finding).
+      STATUS: PARTIAL if some remain (with reasons for each unfixed finding),
+      STATUS: BLOCKED if default-workflow could not be invoked (issue #4388).
 
       Output as JSON:
       ```json
@@ -476,7 +496,7 @@ steps:
         ],
         "total_fixed": 0,
         "total_skipped": 0,
-        "status": "COMPLETE|PARTIAL"
+        "status": "COMPLETE|PARTIAL|BLOCKED"
       }
       ```
     output: "fix_results"
