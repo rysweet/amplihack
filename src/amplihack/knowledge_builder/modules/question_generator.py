@@ -1,8 +1,17 @@
 """Question generator using Socratic method."""
 
+import os
 import subprocess
 
 from amplihack.knowledge_builder.kb_types import Question
+
+
+def _build_agent_cmd(agent_cmd: str, prompt: str) -> list[str]:
+    """Build subprocess command list, routing copilot vs claude flags appropriately."""
+    effective_agent = os.environ.get("AMPLIHACK_AGENT_BINARY", agent_cmd)
+    if effective_agent == "copilot":
+        return ["amplihack", "copilot", "--allow-all-tools", "--add-dir", "/", "-p", prompt]
+    return [effective_agent, "--dangerously-skip-permissions", "-p", prompt]
 
 
 class QuestionGenerator:
@@ -35,7 +44,7 @@ Requirements:
 - No additional commentary"""
 
         result = subprocess.run(
-            [self.agent_cmd, "--dangerously-skip-permissions", "-p", prompt],
+            _build_agent_cmd(self.agent_cmd, prompt),
             capture_output=True,
             text=True,
             check=False,
@@ -92,7 +101,7 @@ Requirements:
 - No additional commentary"""
 
         result = subprocess.run(
-            [self.agent_cmd, "--dangerously-skip-permissions", "-p", prompt],
+            _build_agent_cmd(self.agent_cmd, prompt),
             capture_output=True,
             text=True,
             check=False,
