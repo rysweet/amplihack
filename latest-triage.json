@@ -1,11 +1,11 @@
 {
-  "run": "24810458120",
+  "run": "24835251488",
   "date": "2026-04-23",
   "prs": {
-    "4433": "low/docs-automated-draft-EXPIRED-4th-consecutive",
-    "4422": "low/docs-contributing-code-style-community",
-    "4216": "medium/feat-anthropic-disablement-flag-stale-needs-rebase",
-    "4112": "low/docs-api-keys-clarification-community-very-stale"
+    "4453": "low/docs-automated-draft-CRITICAL-expires-apr24-6:41utc-5th-consecutive",
+    "4422": "low/docs-contributing-code-style-community-4d-stale",
+    "4216": "medium/feat-anthropic-disablement-21d-stale-workstream-artifacts-needs-cleanup",
+    "4112": "low/docs-api-keys-clarification-community-23d-very-stale"
   },
-  "closed_since_last": ["4410", "4407", "4403", "4199", "4198", "4186"]
+  "closed_since_last": ["4433"]
 }
