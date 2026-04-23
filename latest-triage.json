@@ -1,17 +1,11 @@
 {
-  "run": "24778311627",
-  "date": "2026-04-22",
+  "run": "24810458120",
+  "date": "2026-04-23",
   "prs": {
-    "4433": "low/docs-automated-draft-expires-apr23-CRITICAL",
-    "4422": "low/docs-contributing-code-style",
-    "4410": "low/docs-verification-upstream-952",
-    "4407": "low/bugfix-install-stage-amplifier-bundle",
-    "4403": "low/tests-docs-worktree-reattach-prune",
-    "4216": "medium/feat-anthropic-disablement-flag",
-    "4199": "low/fix-recipe-runner-auto-update",
-    "4198": "low/fix-knowledge-builder-copilot-flags",
-    "4186": "low/docs-multitask-timeout-lifecycle",
-    "4112": "low/docs-api-keys-clarification-xingzihai"
+    "4433": "low/docs-automated-draft-EXPIRED-4th-consecutive",
+    "4422": "low/docs-contributing-code-style-community",
+    "4216": "medium/feat-anthropic-disablement-flag-stale-needs-rebase",
+    "4112": "low/docs-api-keys-clarification-community-very-stale"
   },
-  "closed_since_last": []
+  "closed_since_last": ["4410", "4407", "4403", "4199", "4198", "4186"]
 }
