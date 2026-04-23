@@ -78,6 +78,13 @@ Complete documentation for using the Recipe Runner:
 - **[Recipe CLI Reference](../reference/recipe-cli-reference.md)** - Complete command-line reference with all options and exit codes
 - **[Recipe CLI Examples](cli-examples.md)** - Real-world usage scenarios (development, testing, CI/CD, team workflows)
 
+### Resilience, Idempotency & Known Fixes
+
+- **[Recent Fixes — April 2026](RECENT_FIXES_APRIL_2026.md)** - 16 fixes merged April 22–23: default-workflow hardening, Copilot parity, hollow-success elimination, install infrastructure
+- **[Recent Fixes — March 2026](RECENT_FIXES_MARCH_2026.md)** - Worktree execution, hook isolation, workflow resilience fixes
+- **[step-04: Worktree Reattach Prune](step-04-worktree-reattach-prune.md)** - Re-prune after orphan directory cleanup (PR #4394)
+- **[step-04: Idempotency & State Handling](step-03-idempotency.md)** - Three-state idempotency model for setup steps
+
 ## Why It Exists
 
 Models frequently skip workflow steps when enforcement is purely prompt-based. A markdown file that says "you MUST follow all 22 steps" still relies on the model choosing to comply. The Recipe Runner moves enforcement from prompts to compiled code — a deterministic loop iterates over each step and calls the agent SDK, so the model never decides which step to run next.

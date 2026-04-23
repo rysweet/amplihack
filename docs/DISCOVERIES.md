@@ -2,6 +2,62 @@
 
 This file documents non-obvious problems, solutions, and patterns discovered during amplihack development. Review and update this regularly, removing outdated entries or those replaced by better practices, code, or tools. Update entries where best practices have evolved.
 
+## investigation_question Must Be Seeded from task_description (2026-04-22)
+
+**Discovery**: `investigation-workflow` exited with `✓ Success` while every
+agent output "no investigation question was provided" — a hollow-success failure.
+
+**Root cause**: The multitask orchestrator's `_resume_context()` populates
+`task_description` but not `investigation_question`. The investigation recipe's
+30+ template sites received the empty default `""`.
+
+**Fix** (PR #4444): A `normalize-question` bash step immediately after
+`preflight-validation` promotes `task_description` → `investigation_question`
+when the latter is empty.
+
+**Rule**: Normalize recipe variable aliases *inside the recipe* (not in the
+orchestrator) so the fix covers all callers — single workstream, parallel
+multitask, and direct `amplihack recipe run`.
+
+## Non-Interactive Copilot Needs Both `--allow-all-tools` and `--allow-all-paths` (2026-04-22)
+
+**Discovery**: Builder agents in recipe-runner runs reported `✓` exit codes but
+made zero file changes. Root cause: `launch_copilot()` only passed
+`--allow-all-tools`. Without `--allow-all-paths`, Copilot denies all writes when
+it cannot prompt the user interactively.
+
+**Fix** (PR #4447): Add `--allow-all-paths` to `launch_copilot()`.
+
+**Rule**: Any non-interactive Copilot invocation requires both flags. Missing
+either causes silent write failures without any error message to the caller.
+
+## AMPLIHACK_AGENT_BINARY Must Be Set Explicitly in Non-Interactive Contexts (2026-04-22)
+
+**Discovery**: `smart-orchestrator.yaml` defaulted `AGENT_BIN` to `claude` when
+`AMPLIHACK_AGENT_BINARY` was unset. In Copilot environments, this silently
+switched vendors and produced a misleading "claude binary not found" error instead
+of an env propagation failure.
+
+**Fix** (PR #4441): Fail fast with a clear remediation message if the variable is
+unset and auto-detection finds zero or multiple installed binaries.
+
+**Rule**: Set `AMPLIHACK_AGENT_BINARY` explicitly in any non-interactive context
+(tmux: `new-session -e AMPLIHACK_AGENT_BINARY=copilot`, systemd:
+`Environment=AMPLIHACK_AGENT_BINARY=copilot`, shell `.env`).
+
+## amplifier-bundle Must Be Staged on `amplihack install` (2026-04-22)
+
+**Discovery**: Running `amplihack` from outside the repo root could not find
+bundled recipes because `amplihack install` did not copy `amplifier-bundle/` to
+`~/.amplihack/`. Users had to manually point `AMPLIHACK_HOME` at the repo.
+
+**Fix** (PR #4407): `_stage_amplifier_bundle(repo_root)` now copies the bundle
+to `~/.amplihack/amplifier-bundle/` during `amplihack install`.
+
+**Rule**: After upgrading amplihack, always run `amplihack install` (or
+`/amplihack-update`) to stage the new bundle. `amplihack resolve-bundle-asset`
+searches the staged location.
+
 ## Cleanup Agent Gap: Root Directory Organization (2026-01-12)
 
 ### Issue
