@@ -148,12 +148,15 @@ test: add coverage for recipe validation
 
 ## Code Style
 
-- **Python**: Follow existing code conventions. Pre-commit hooks enforce
-  formatting.
+- **Python**: We use [`ruff`](https://docs.astral.sh/ruff/) for formatting and
+  linting. Run `uv run ruff check .` to check your code and `uv run ruff format .`
+  to auto-fix formatting issues before committing. Pre-commit hooks enforce
+  these checks.
 - **Markdown**: Follow
   [markdownlint](https://github.com/DavidAnson/markdownlint) rules (see
-  `.markdownlint.json`).
-- Keep functions focused and well-documented.
+  `.markdownlint.json`). Run `uv run markdownlint docs/` to check.
+- Keep functions focused and well-documented — aim for functions under 50 lines
+  with a docstring explaining purpose, args, and return value.
 
 ## Pull Request Guidelines
 
