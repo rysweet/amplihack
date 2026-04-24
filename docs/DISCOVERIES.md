@@ -706,3 +706,202 @@ Checklist validation gates (STOP checkpoints, pre-flight validation) trigger Son
 - **Test interventions across ALL target models** - what helps one can break another
 - **Validation gates harmful for autonomous models** - Sonnet needs zero checkpoints
 - **No universal CLAUDE.md solution** - different models need different approaches
+
+---
+
+## Copilot Non-Interactive Mode Requires `--allow-all-paths` (2026-04-22)
+
+### Issue
+
+Builder agents invoked non-interactively via `amplihack copilot -- -p '...'` produced zero commits and no file changes. Every write attempt returned `Permission denied and could not request permission from user`.
+
+### Root Cause
+
+`launch_copilot()` in `launcher/copilot.py` only added `--allow-all-tools`. Without `--allow-all-paths`, Copilot denies all writes when it cannot prompt the user. The `_normalize_copilot_cli_args()` wrapper compat path already included both flags, but the direct launcher did not.
+
+### Solution
+
+Added `--allow-all-paths` to `launch_copilot()` (PR #4447). Verified end-to-end: `smart-orchestrator → default-workflow → builder` now produces real commits.
+
+### Key Learning
+
+Non-interactive Copilot invocations require both `--allow-all-tools` and `--allow-all-paths`. Missing `--allow-all-paths` causes hollow-success — the agent reports completion with zero side effects.
+
+### Prevention
+
+- Any `launch_copilot()` or wrapper that invokes Copilot non-interactively must include both flags.
+- If a builder run exits 0 but produces no commits, check that both flags are present.
+
+---
+
+## `investigation_question` Defaults to Empty, Causing Hollow-Success (2026-04-22)
+
+### Issue
+
+`investigation-workflow` exited `Status: ✓ Success` while every spawned agent reported "no investigation question was provided". No findings were produced.
+
+### Root Cause
+
+`smart-orchestrator`'s `_resume_context()` populates `task_description` but not `investigation_question`. The recipe declares `investigation_question: ""` as its sole input variable. Since the runner passes the empty default, all 30+ `{{investigation_question}}` substitutions produce empty strings.
+
+### Solution
+
+Added a `normalize-question` bash step that seeds `investigation_question` from `task_description` when the former is empty (PR #4444). Explicitly-supplied values are preserved.
+
+### Key Learning
+
+Recipe variables with empty-string defaults are silent traps when the caller uses a different variable name (e.g., `task_description`). A normalization step at recipe-entry is cheaper than coupling the orchestrator to recipe-internal variable names.
+
+### Prevention
+
+- Add a normalization step to any recipe whose primary input variable may arrive under a different name from the caller's context.
+- If an investigation run exits 0 with no findings, check whether `investigation_question` was propagated.
+
+---
+
+## `AMPLIHACK_AGENT_BINARY` Unset Causes Silent Vendor Switch (2026-04-22)
+
+### Issue
+
+When `AMPLIHACK_AGENT_BINARY` was not propagated to a subprocess (tmux without `-e`, nohup, systemd unit, GitHub Actions), `smart-orchestrator` silently fell back to `claude`. In Copilot environments where `claude` isn't installed, this produced a misleading `claude exited 1` with empty stderr — no indication that the wrong binary was invoked.
+
+### Root Cause
+
+`AGENT_BIN="${AMPLIHACK_AGENT_BINARY:-claude}"` silently supplied a default vendor. The env var propagation failure was invisible.
+
+### Solution
+
+PR #4441 replaced the silent default with auto-detection: find a single installed binary (`copilot`/`claude`/`codex`). If zero or multiple are found, fail fast with a remediation message naming three propagation paths: env var, tmux `-e`, systemd `Environment=`.
+
+### Key Learning
+
+Silent vendor fallbacks convert env-var propagation bugs into wrong-vendor execution bugs that are extremely hard to diagnose. Fail-fast is always preferable to silent default.
+
+### Prevention
+
+- Never default to a specific binary name without explicit user configuration.
+- If a recipe run fails with `<binary> exited 1` and empty stderr, check `AMPLIHACK_AGENT_BINARY` propagation.
+
+---
+
+## Bash Heredoc `$VAR` Expansion Corrupts Template Variables (2026-04-22)
+
+### Issue
+
+`task_description` values containing shell variable patterns (e.g., `$HOME`, `$SOME_VAR`, `$(cmd)`) were silently expanded by bash before being stored in the workflow context.
+
+### Root Cause
+
+Six heredoc sites in `default-workflow.yaml` used unquoted delimiters: `cat <<EOF ... {{task_description}} ... EOF`. Bash expands `$VAR` and `` `cmd` `` patterns inside unquoted heredocs.
+
+### Solution
+
+All six sites now use quoted delimiters (`<<'EOF'`) to suppress expansion (PR #4438).
+
+### Key Learning
+
+Heredocs with user-supplied or template-generated content must always use quoted delimiters. Unquoted heredocs with `{{template}}` substitution are latent expansion bugs.
+
+### Prevention
+
+- All recipe steps that capture user-supplied context into bash variables must use `<<'DELIMITER'`.
+- Audit any heredoc site that expands a template variable for quoting correctness.
+
+---
+
+## `fix-agent` Silently Degrades to Inline Edits at Recursion Limit (2026-04-22)
+
+### Issue
+
+`quality-audit-cycle` with `min_cycles=6` produced 26 modified files on `main` with no branch, no commit, and no PR. `✓ fix: completed` was reported.
+
+### Root Cause
+
+At recursion depth ≥ `AMPLIHACK_MAX_DEPTH`, the recursion guard blocks `fix-agent` from invoking `default-workflow`. The agent fell back to making direct file edits and reported success — a hard quality-gate violation.
+
+### Solution
+
+PR #4440 added a prompt-level guard forbidding silent degradation, requiring `STATUS: BLOCKED` and a `fixes_skipped` list when `default-workflow` cannot be invoked.
+
+### Key Learning
+
+Any agent that "tries its best" when its preferred path is blocked can violate quality gates silently. The correct behavior is `STATUS: BLOCKED`, not silent degradation.
+
+### Prevention
+
+- If a quality audit reports `✓ fix: completed` but produces no PR, check the recursion depth and look for direct file modifications on the working branch.
+- Quality audit cycles should not exceed `AMPLIHACK_MAX_DEPTH - 2` to leave headroom for fix invocations.
+
+---
+
+## Worktree Must Branch from Caller's HEAD on Non-Default Branches (2026-04-22)
+
+### Issue
+
+When `default-workflow` was invoked with `-c repo_path=<path>` from a feature branch, the created worktree branched from `origin/<default-branch>` instead of the caller's branch tip. Committed work on the feature branch was invisible to the recipe.
+
+### Root Cause
+
+`step-04-setup-worktree` always used `origin/HEAD` as the base ref, regardless of the caller's current branch.
+
+### Solution
+
+PR #4439 added a check: if `repo_path`'s current branch differs from the default, set `BASE_WORKTREE_REF=HEAD`. Default branch and detached-HEAD behavior are unchanged.
+
+### Key Learning
+
+Recipes creating worktrees must check whether the caller is on a non-default branch and branch from the caller's tip, not from `origin/HEAD`.
+
+### Prevention
+
+- When a recipe run produces a worktree that doesn't include your recent commits, verify `step-04-setup-worktree` is using your branch's HEAD.
+
+---
+
+## `amplihack install` Now Stages `amplifier-bundle` (2026-04-23)
+
+### Issue
+
+After `amplihack install`, recipe commands like `amplihack recipe run default-workflow` required an absolute path to `amplifier-bundle/`. Standard short-name resolution didn't find recipes.
+
+### Root Cause
+
+`_local_install` staged runtime assets to `~/.amplihack/` but did not copy `amplifier-bundle/`. The bundle lived only in the repo clone.
+
+### Solution
+
+PR #4407 added `_stage_amplifier_bundle(repo_root)` that copies `amplifier-bundle/` to `~/.amplihack/amplifier-bundle/` with `dirs_exist_ok=True`. Uninstall removes it.
+
+### Key Learning
+
+All files needed at recipe-run time must be staged to `~/.amplihack/`. A partially-staged install is not discoverable from standard resolution paths.
+
+### Prevention
+
+- After installing, verify `~/.amplihack/amplifier-bundle/` exists and contains `default-workflow.yaml`.
+- `amplihack update && amplihack install` keeps the staged bundle in sync with the binary.
+
+---
+
+## `MIN_RUNNER_VERSION` 0.3.5 Fixes LBracket Condition Parser (2026-04-23)
+
+### Issue
+
+Recipe steps with conditions using postfix access inside function arguments — e.g., `validated_findings and validated_findings['confirmed_count'] > 0` — produced `Parse error: unexpected token: LBracket` and caused recipe aborts.
+
+### Root Cause
+
+The condition parser in `recipe-runner-rs` < 0.3.5 did not handle postfix access (`.field`, `['k']`, `[i]`, `.method()`) inside method/function call arguments.
+
+### Solution
+
+PR #4449 bumped `MIN_RUNNER_VERSION` to 0.3.5, which includes the parser fix (recipe-runner-rs#92) and a security update for `rustls-webpki` (RUSTSEC-2026-0104). `ensure_rust_recipe_runner()` auto-upgrades existing installs.
+
+### Key Learning
+
+`LBracket` parse errors in recipe conditions almost always indicate a `MIN_RUNNER_VERSION` constraint violation. Check the version before debugging the YAML.
+
+### Prevention
+
+- Run `amplihack recipe run --dry-run` after bumping `MIN_RUNNER_VERSION` to verify the parser handles all existing conditions.
+- Keep `MIN_RUNNER_VERSION` synchronized with the recipe syntax in use.
