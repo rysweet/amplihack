@@ -643,7 +643,7 @@ Contributing guide:
 git clone https://github.com/rysweet/amplihack.git
 cd amplihack
 uv pip install -e .
-amplihack launch
+amplihack claude
 ```
 
 ### Testing
