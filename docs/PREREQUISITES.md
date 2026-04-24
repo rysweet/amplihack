@@ -12,7 +12,7 @@ The amplihack framework requires the following tools. Each entry explains **what
 | **npm**     | (with Node.js) | Node.js package manager       | Installs Claude CLI                                                                                    |
 | **uv**      | latest         | Fast Python package installer | Installs amplihack itself and its Python dependencies                                                  |
 | **git**     | 2.0+           | Version control               | Branch management, PRs, and workflow automation                                                        |
-| **claude**  | latest         | Claude Code CLI               | Core AI coding assistant that amplihack extends                                                        |
+| **claude**  | latest         | [Claude Code CLI](https://docs.anthropic.com/enfo/docs/claude_code/overview) — run via `amplihack claude` after install via `npm install -g @anthropic-ai/claude-code` | Core AI coding assistant that amplihack extends                                                        |
 | **cargo**   | 1.70+          | Rust package manager          | Installs the Rust recipe runner for fast recipe execution. Install via [rustup.rs](https://rustup.rs/) |
 
 ## Quick Check
