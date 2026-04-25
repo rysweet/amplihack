@@ -106,6 +106,26 @@ The latest accepted Azure scores and the local reproduction commands are tracked
 
 - [Current validation results](../hive_mind/current-validation-results.md)
 
+## Async/Sync Contract for Eval Methods
+
+When adding calls to eval methods in `agent_subprocess.py` or
+`progressive_test_suite.py`, check whether the method is `async def` or `def`
+before deciding how to call it:
+
+| Method | Type | How to call from sync context |
+|--------|------|-------------------------------|
+| `agent.answer_question(...)` | sync (`def`) | Call directly — no `asyncio.run()` |
+| `agent.learn_from_content(...)` | async (`async def`) | `asyncio.run(agent.learn_from_content(...))` |
+| `grade_metacognition(...)` | async (`async def`) | `asyncio.run(grade_metacognition(...))` |
+
+Wrapping a sync method with `asyncio.run()` raises
+`ValueError: a coroutine was expected` because the resolved return value is
+not a coroutine. Omitting `asyncio.run()` from an async method leaves the
+coroutine unawaited and raises `AttributeError` when you access fields on it.
+
+See [April 2026 eval fixes](../recipes/RECENT_FIXES_APRIL_2026.md) for the
+full diagnosis (PRs #4471, #4472).
+
 ## Related Docs
 
 - [Distributed Hive Evaluation](../hive_mind/EVAL.md)

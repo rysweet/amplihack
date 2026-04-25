@@ -2,6 +2,89 @@
 
 This file documents non-obvious problems, solutions, and patterns discovered during amplihack development. Review and update this regularly, removing outdated entries or those replaced by better practices, code, or tools. Update entries where best practices have evolved.
 
+## Sync Method Called with asyncio.run() Passes Resolved Value, Not Coroutine (2026-04-25)
+
+### Issue
+
+`agent_subprocess.py` wrapped `agent.answer_question(...)` with `asyncio.run()`.
+Every L1–L12 level in the progressive test suite failed with:
+
+```
+ValueError: a coroutine was expected, got ('', ReasoningTrace(...))
+```
+
+### Root Cause
+
+`AnswerSynthesizerMixin.answer_question` is a **sync** method that internally
+calls `_run_async_or_return` and returns the already-resolved value. Passing
+the resolved tuple to `asyncio.run()` triggers `ValueError` because
+`asyncio.run()` expects a coroutine object, not a plain Python value.
+
+### Solution
+
+**PR #4471**: Call `agent.answer_question(...)` directly. `learn_from_content`
+on the same line is genuinely async and remains wrapped with `asyncio.run()`.
+
+### Key Learnings
+
+1. **Verify async status before wrapping**: Check `async def` in the method
+   signature — not just the module name — before using `asyncio.run()`
+2. **`_run_async_or_return` helpers return synchronously**: They are sync
+   wrappers around async dispatch; they do not return coroutines
+3. **Error message is misleading**: The bench logs reported a memory warning,
+   not the actual `ValueError`, making diagnosis harder
+
+### Prevention
+
+- Read the method signature (`async def` vs `def`) before adding `asyncio.run()`
+- Search for sibling calls in the same file to verify the async/sync pattern
+  used for other methods on the same object
+
+---
+
+## Shadowed Async Error in Progressive Eval Suite Exposed by Upstream Fix (2026-04-25)
+
+### Issue
+
+After PR #4471 fixed the `asyncio.run()` misuse on `answer_question`, a new
+failure appeared across all L1–L12 levels in the gym benchmark:
+
+```
+RuntimeWarning: coroutine 'grade_metacognition' was never awaited
+✗ L1 failed: 'coroutine' object has no attribute 'effort_calibration'
+```
+
+### Root Cause
+
+`grade_metacognition` (`metacognition_grader.py:280`) is `async def`, but
+`progressive_test_suite.run_single_level` is a **sync** method and called it
+without `asyncio.run()`. The coroutine was never awaited; accessing
+`.effort_calibration` on the unawaited coroutine object raised `AttributeError`.
+The bug was invisible before #4471 because the upstream failure masked it.
+
+### Solution
+
+**PR #4472**: Wrap the call with `asyncio.run(grade_metacognition(...))` and
+add `import asyncio` to `progressive_test_suite.py`.
+
+### Key Learnings
+
+1. **Upstream failures can mask downstream async bugs**: Fix root-cause errors
+   first; expect secondary async/sync mismatches to surface after
+2. **`RuntimeWarning: coroutine was never awaited` pinpoints the site**: The
+   warning names the exact coroutine function — go there first
+3. **`AttributeError` on coroutine object is a secondary symptom**: The real
+   error is the missing `asyncio.run()` one line earlier
+
+### Prevention
+
+- After fixing an async/sync mismatch, re-run the full test suite to catch
+  downstream bugs now exposed
+- Treat `RuntimeWarning: coroutine … was never awaited` as a hard error, not
+  a warning — it always indicates a broken async call path
+
+---
+
 ## Cleanup Agent Gap: Root Directory Organization (2026-01-12)
 
 ### Issue
