@@ -1,19 +1,19 @@
 {
-  "run": "24905119038",
-  "run_number": 18,
-  "date": "2026-04-24",
+  "run": "24918372753",
+  "run_number": 19,
+  "date": "2026-04-25",
   "open_prs": [4465, 4464, 4463, 4462, 4461, 4458, 4422, 4216, 4112],
   "closed_since_last": [],
   "new_since_last": [],
   "prs": {
     "4465": "low/docs-broken-link-fix-jah-yee-merge-ready",
-    "4464": "low/docs-automated-CRITICAL-expires-apr25-6:42utc-6th-consecutive",
+    "4464": "low/docs-automated-EXPIRED-apr25-6:42utc-6th-consecutive-close-needed",
     "4463": "low/docs-code-style-jah-yee-merge-conflicts-4422-4458",
     "4462": "low/docs-prerequisites-jah-yee-broken-url-enfo-overlaps-4463",
     "4461": "low/docs-readme-command-fix-jah-yee-merge-ready",
     "4458": "low/docs-code-style-findmail-main-branch-conflicts-4422-4463",
     "4422": "low/docs-code-style-yuchengpersonal-conflicts-4458-4463",
-    "4216": "medium/feat-anthropic-disablement-21d-stale-workstream-artifacts",
-    "4112": "low/docs-api-keys-clarification-community-23d-stale"
+    "4216": "medium/feat-anthropic-disablement-22d-stale-workstream-artifacts",
+    "4112": "low/docs-api-keys-clarification-community-24d-stale"
   }
 }
