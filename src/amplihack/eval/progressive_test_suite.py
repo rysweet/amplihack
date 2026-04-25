@@ -18,6 +18,7 @@ Philosophy: Comprehensive evaluation from simple to complex,
 measuring learning capability across multiple dimensions.
 """
 
+import asyncio
 import json
 import statistics
 import subprocess
@@ -488,14 +489,23 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
                 num_votes=config.grader_votes,
             )
 
-            # Grade metacognition if trace available
+            # Grade metacognition if trace available.
+            # NOTE: grade_metacognition is async; run_single_level is sync,
+            # so we must drive it with asyncio.run. Without the run() wrap
+            # the function returned a coroutine that was never awaited and
+            # the next line raised
+            #   AttributeError: 'coroutine' object has no attribute 'effort_calibration'
+            # while triggering RuntimeWarning: coroutine 'grade_metacognition'
+            # was never awaited (observed in Simard daemon journal).
             metacog = None
             trace = answer_data.get("reasoning_trace")
             if trace:
-                metacog_grade = grade_metacognition(
-                    trace=trace,
-                    answer_score=grade.score,
-                    level=question.level,
+                metacog_grade = asyncio.run(
+                    grade_metacognition(
+                        trace=trace,
+                        answer_score=grade.score,
+                        level=question.level,
+                    )
                 )
                 metacog = {
                     "effort_calibration": metacog_grade.effort_calibration,
