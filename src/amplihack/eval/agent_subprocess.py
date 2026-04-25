@@ -163,9 +163,13 @@ def testing_phase(quiz_questions: list[dict], agent_name: str, sdk: str = "mini"
             question = question_data["question"]
             level = question_data.get("level", "L1")
 
-            # Use agent's answer_question with LLM synthesis and trace
-            result = asyncio.run(
-                agent.answer_question(question, question_level=level, return_trace=True)
+            # Use agent's answer_question with LLM synthesis and trace.
+            # NOTE: answer_question is sync (it returns the value directly via
+            # _run_async_or_return); wrapping with asyncio.run() raised
+            # `ValueError: a coroutine was expected` because asyncio.run was
+            # being handed the already-resolved tuple.
+            result = agent.answer_question(
+                question, question_level=level, return_trace=True
             )
             if isinstance(result, tuple):
                 answer, trace = result
