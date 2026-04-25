@@ -32,7 +32,7 @@ except ImportError:
 _COPILOT_SDK_OK = False
 try:
     from copilot import CopilotClient  # type: ignore[import-not-found]
-    from copilot.types import MessageOptions, SessionConfig  # type: ignore[import-not-found]
+    from copilot.session import PermissionHandler  # type: ignore[import-not-found]
 
     _COPILOT_SDK_OK = True
 except ImportError:
@@ -46,14 +46,61 @@ QUERY_TIMEOUT = int(os.environ.get("AMPLIHACK_LLM_TIMEOUT", "60"))
 
 SDK_AVAILABLE = _CLAUDE_SDK_OK or _COPILOT_SDK_OK
 
+# Env vars that explicitly select an LLM provider, in priority order.
+# An explicit env override always beats file-based launcher detection so
+# that embedded callers (e.g. Simard's OODA daemon, which is a Rust binary
+# and never goes through `amplihack copilot` and therefore never writes a
+# launcher_context.json) can pin the SDK without faking a launcher context.
+#
+# Recognized values: "copilot", "claude". Anything else is ignored.
+_PROVIDER_ENV_VARS = (
+    "AMPLIHACK_LLM_PROVIDER",
+    "SIMARD_LLM_PROVIDER",
+)
+
 __all__ = ["completion", "SDK_AVAILABLE"]
 
 
+def _provider_from_env() -> str | None:
+    """Return an explicit provider override from env, or None.
+
+    Recognized values are normalized: any of {claude, copilot}. Other
+    values (e.g. Simard-specific aliases like "rustyclawd") are mapped
+    to copilot when the GitHub Copilot stack is intended, otherwise
+    ignored. Unrecognized values fall through to file-based detection.
+    """
+    for var in _PROVIDER_ENV_VARS:
+        raw = os.environ.get(var)
+        if not raw:
+            continue
+        v = raw.strip().lower()
+        if v in ("copilot", "github-copilot", "gh-copilot", "rustyclawd"):
+            return "copilot"
+        if v in ("claude", "anthropic", "claude-code"):
+            return "claude"
+        # Unrecognized — keep looking, then fall through to file detection.
+    return None
+
+
 def _detect_launcher(project_root: Path) -> str:
-    """Detect launcher type, cached per process."""
+    """Detect launcher type, cached per process.
+
+    Order:
+      1. Explicit env var override (AMPLIHACK_LLM_PROVIDER /
+         SIMARD_LLM_PROVIDER) — wins unconditionally.
+      2. File-based detection via LauncherDetector (reads
+         <project_root>/.claude/runtime/launcher_context.json).
+      3. Fall back to "claude" if both are absent.
+    """
     global _detector_cache
     if _detector_cache is not None:
         return _detector_cache
+
+    override = _provider_from_env()
+    if override is not None:
+        _detector_cache = override
+        return override
+
     try:
         from amplihack.context.adaptive.detector import LauncherDetector
 
@@ -92,11 +139,34 @@ async def completion(
     """
     project_root = _get_project_root()
     launcher = _detect_launcher(project_root)
+    explicit_override = _provider_from_env()
 
     # Build a single prompt from the messages list
     prompt = _messages_to_prompt(messages)
 
     try:
+        if explicit_override == "copilot":
+            if not _COPILOT_SDK_OK:
+                print(
+                    "WARNING: AMPLIHACK_LLM_PROVIDER/SIMARD_LLM_PROVIDER=copilot but "
+                    "the copilot SDK is not importable. Refusing to silently fall back "
+                    "to Claude.",
+                    file=sys.stderr,
+                )
+                return ""
+            return await _query_copilot(prompt, project_root)
+        if explicit_override == "claude":
+            if not _CLAUDE_SDK_OK:
+                print(
+                    "WARNING: AMPLIHACK_LLM_PROVIDER/SIMARD_LLM_PROVIDER=claude but "
+                    "the claude SDK is not importable. Refusing to silently fall back "
+                    "to Copilot.",
+                    file=sys.stderr,
+                )
+                return ""
+            return await _query_claude(prompt, project_root)
+
+        # No explicit override — use detected launcher with cross-SDK fallback.
         if launcher == "copilot" and _COPILOT_SDK_OK:
             return await _query_copilot(prompt, project_root)
         if _CLAUDE_SDK_OK:
@@ -150,21 +220,27 @@ async def _query_claude(prompt: str, project_root: Path) -> str:
 
 
 async def _query_copilot(prompt: str, project_root: Path) -> str:
-    """Query via GitHub Copilot SDK."""
-    client = CopilotClient()
-    try:
-        await client.start()
-        session = await client.create_session(SessionConfig())
-        async with asyncio.timeout(QUERY_TIMEOUT):
-            event = await session.send_and_wait(
-                MessageOptions(prompt=prompt),
-                timeout=float(QUERY_TIMEOUT),
-            )
-        if event and hasattr(event, "data") and event.data:
-            return event.data.content or ""
-        return ""
-    finally:
+    """Query via GitHub Copilot SDK (copilot >= 0.1.0)."""
+    async with CopilotClient() as client:
+        session = await client.create_session(
+            on_permission_request=PermissionHandler.approve_all,
+            working_directory=str(project_root),
+        )
         try:
-            await client.stop()
-        except Exception:
-            pass
+            async with asyncio.timeout(QUERY_TIMEOUT):
+                event = await session.send_and_wait(
+                    prompt,
+                    timeout=float(QUERY_TIMEOUT),
+                )
+            if event is None:
+                return ""
+            data = getattr(event, "data", None)
+            if data is None:
+                return ""
+            content = getattr(data, "content", None)
+            return content or ""
+        finally:
+            try:
+                await session.destroy()
+            except Exception:
+                pass
