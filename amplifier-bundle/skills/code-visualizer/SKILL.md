@@ -1,10 +1,12 @@
 ---
 name: code-visualizer
-version: 1.1.0
+version: 2.0.0
 description: |
-  Auto-generates code flow diagrams from Python module analysis.
+  Auto-generates code flow diagrams from multi-language module analysis.
   Detects when architecture diagrams become stale (code changed, diagram didn't).
-  Use when: creating new modules, reviewing PRs for architecture impact, or checking diagram freshness.
+  Supports Python, TypeScript/JavaScript, Rust, and Go out of the box.
+  Use when: creating new modules, reviewing PRs for architecture impact, or
+  checking diagram freshness across polyglot repositories.
   Generates mermaid diagrams showing imports, dependencies, and module relationships.
 invokes:
   skills:
@@ -17,562 +19,399 @@ invokes:
 
 ## Purpose
 
-Automatically generate and maintain visual code flow diagrams. This skill analyzes Python module structure, detects import relationships, and generates mermaid diagrams. It also monitors for staleness when code changes but diagrams don't.
+Automatically generate and maintain visual code flow diagrams across multiple
+programming languages. The skill auto-detects which languages are present in a
+target path, analyzes each one with a dedicated analyzer, and emits one
+mermaid diagram per language plus an optional combined high-level view. It
+also detects when committed diagrams are stale relative to the source they
+describe.
 
-## Philosophy Alignment
+## What's New in 2.0.0
 
-This skill embodies amplihack's core philosophy:
+- **Multi-language support**: Python, TypeScript/JavaScript, Rust, and Go.
+- **Language dispatcher**: Detects languages by file extension and routes to
+  per-language analyzers.
+- **Language-blind renderer**: A single mermaid renderer consumes a normalized
+  graph; the renderer never inspects language semantics.
+- **One diagram per language** plus an optional `--combined` view that places
+  each language in its own mermaid `subgraph`.
+- **Generalized staleness**: Walks all source files matching detected
+  languages' extensions and compares max-mtime against the diagram mtime.
+- **Brick-style architecture**: Each language analyzer is a self-contained
+  module that exposes a single `normalize()` function. No shared inheritance.
 
-### Ruthless Simplicity
+## Supported Languages
 
-- **Single responsibility**: Visualize code structure - nothing more
-- **Minimal dependencies**: Uses only Python AST for analysis, delegates diagram syntax to mermaid-diagram-generator
-- **No over-engineering**: Timestamp-based staleness is simple and "good enough" for 90% of cases
+| Language              | Extensions                                   | Analyzer          | Parser | Notes                                                            |
+| --------------------- | -------------------------------------------- | ----------------- | ------ | ---------------------------------------------------------------- |
+| Python                | `.py`                                        | `python_analyzer` | `ast`  | Extracts `import` and `from … import …`.                         |
+| TypeScript/JavaScript | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs` | `ts_analyzer`     | regex  | Extracts `import … from`, `require(...)`, dynamic `import(...)`. |
+| Rust                  | `.rs`                                        | `rust_analyzer`   | regex  | Extracts `use crate::…`, `use super::…`, `mod …`.                |
+| Go                    | `.go`                                        | `go_analyzer`     | regex  | Extracts single and grouped `import` declarations.               |
 
-### Zero-BS Implementation
+Languages outside this table are skipped silently. See **Extending** below to
+add new ones.
 
-- **Real analysis**: Actually parses Python AST to extract imports - no mock data
-- **Honest limitations**: Staleness detection is timestamp-based, not semantic (see Limitations section)
-- **Working code**: All algorithms shown are functional, not pseudocode
-
-### Modular Design (Bricks & Studs)
-
-- **This skill is one brick**: Code analysis and staleness detection
-- **Delegates to other bricks**: mermaid-diagram-generator for syntax, visualization-architect for complex diagrams
-- **Clear studs (public contract)**: Analyze modules, generate diagrams, check freshness
-
-## Skill Delegation Architecture
+## Architecture
 
 ```
-code-visualizer (this skill)
-├── Responsibilities:
-│   ├── Python module analysis (AST parsing)
-│   ├── Import relationship extraction
-│   ├── Staleness detection (timestamp-based)
-│   └── Orchestration of diagram generation
-│
-└── Delegates to:
-    ├── mermaid-diagram-generator skill
-    │   ├── Mermaid syntax generation
-    │   ├── Diagram formatting and styling
-    │   └── Markdown embedding
-    │
-    └── visualization-architect agent
-        ├── Complex multi-level architecture
-        ├── ASCII art alternatives
-        └── Cross-module dependency graphs
+amplifier-bundle/skills/code-visualizer/
+├── SKILL.md
+├── README.md
+└── scripts/
+    ├── __init__.py
+    ├── graph.py              # Normalized data contract (Node, Edge, Graph)
+    ├── python_analyzer.py    # normalize(paths) -> Graph
+    ├── ts_analyzer.py        # normalize(paths) -> Graph
+    ├── rust_analyzer.py      # normalize(paths) -> Graph
+    ├── go_analyzer.py        # normalize(paths) -> Graph
+    ├── dispatcher.py         # detect languages, route, return dict[lang, Graph]
+    ├── mermaid_renderer.py   # render(graph) / render_combined(graphs)
+    ├── staleness.py          # is_stale(target, diagram, languages)
+    └── visualizer.py         # CLI entry point
 ```
 
-**Invocation Pattern:**
+### Data Contract (`graph.py`)
 
 ```python
-# code-visualizer analyzes code structure
-modules = analyze_python_modules("src/")
-relationships = extract_import_relationships(modules)
+@dataclass(frozen=True)
+class Node:
+    id: str           # mermaid-safe identifier
+    label: str        # human-readable label (e.g. "src/auth/oauth.py")
+    language: str     # "python" | "typescript" | "rust" | "go"
+    file_path: str    # absolute path on disk
 
-# Then delegates to mermaid-diagram-generator for syntax
-Skill(skill="mermaid-diagram-generator")
-# Provide: Module relationships, diagram type (flowchart/class), styling preferences
-# Receive: Valid mermaid syntax ready for embedding
+@dataclass(frozen=True)
+class Edge:
+    src: str          # Node.id of source
+    dst: str          # Node.id of destination
+    kind: str         # "import" | "require" | "use" | "mod" | "dynamic_import"
 
-# For complex architectures, delegates to visualization-architect
-Task(subagent_type="visualization-architect", prompt="Create multi-level diagram for...")
+@dataclass(frozen=True)
+class Graph:
+    language: str
+    nodes: tuple[Node, ...]
+    edges: tuple[Edge, ...]
 ```
 
-## When to Use This Skill
+Analyzers may **import** these dataclasses but must not inherit from any
+shared class. The data contract is the only coupling.
 
-- **New Module Creation**: Auto-generate architecture diagram for new modules
-- **PR Reviews**: Show architecture impact of proposed changes
-- **Staleness Detection**: Check if existing diagrams reflect current code
-- **Dependency Analysis**: Visualize import relationships
-- **Refactoring**: Understand module dependencies before changes
+### Per-Language Analyzers
+
+Each analyzer is a self-contained brick exposing exactly one entry point:
+
+```python
+def normalize(paths: Iterable[Path]) -> Graph: ...
+```
+
+The function:
+
+1. Reads each file with `encoding="utf-8", errors="ignore"`.
+2. Skips files larger than ~5 MB.
+3. Wraps parsing in `try/except` and skips files that fail to parse.
+4. Returns a `Graph` whose `language` field matches the analyzer.
+
+### Dispatcher
+
+The dispatcher uses a registry that maps language name → extensions + module
+name (string). It loads analyzers lazily via `importlib.import_module` so
+adding a new language never requires touching the dispatcher's import
+statements.
+
+```python
+from scripts.dispatcher import analyze
+
+graphs: dict[str, Graph] = analyze(target_path)
+# {"python": Graph(...), "typescript": Graph(...)}
+```
+
+The dispatcher:
+
+- Walks `target_path` with `os.walk(..., followlinks=False)`.
+- Skips `IGNORE_DIRS` (`.git`, `node_modules`, `.venv`, `venv`, `__pycache__`,
+  `dist`, `build`, `target`, `.mypy_cache`, `.pytest_cache`, `.tox`).
+- Buckets files by extension into language groups.
+- Calls each language's `normalize()` with its file list.
+- Returns a `dict[language_name, Graph]` for languages that produced any
+  files.
+
+### Mermaid Renderer
+
+The renderer is language-blind:
+
+```python
+from scripts.mermaid_renderer import render, render_combined
+
+per_language: str = render(graph)            # one diagram for one language
+combined: str = render_combined(graphs)      # one diagram, one subgraph/lang
+```
+
+Node IDs are sanitized (`[^A-Za-z0-9_] -> _`) and labels with quotes are
+escaped to prevent diagram-syntax injection.
+
+### Staleness Detection
+
+```python
+from scripts.staleness import is_stale
+
+stale = is_stale(
+    target_path=Path("src/"),
+    diagram_path=Path("docs/architecture-python.mmd"),
+    languages=["python"],
+)
+```
+
+Returns `True` if any source file with a matching language extension has an
+mtime newer than `diagram_path`. Generalizes the previous Python-only
+behavior.
+
+## CLI
+
+The skill ships a single executable: `scripts/visualizer.py`.
+
+```
+python visualizer.py <path> [--output DIR] [--basename NAME]
+                            [--check-staleness] [--combined]
+```
+
+| Flag                | Default        | Purpose                                                               |
+| ------------------- | -------------- | --------------------------------------------------------------------- |
+| `<path>`            | _required_     | Directory to analyze. Must exist and be a directory.                  |
+| `--output DIR`      | `./diagrams`   | Output directory for `.mmd` files.                                    |
+| `--basename NAME`   | `architecture` | Filename stem. Validated against `^[A-Za-z0-9._-]+$`.                 |
+| `--check-staleness` | off            | Print staleness report for existing diagrams; exit non-zero if stale. |
+| `--combined`        | off            | Also write `<basename>-combined.mmd` containing all languages.        |
+
+### Output Files
+
+| File                                          | Contents                                               |
+| --------------------------------------------- | ------------------------------------------------------ |
+| `<basename>-python.mmd`                       | Mermaid diagram for Python modules and their imports.  |
+| `<basename>-typescript.mmd`                   | Mermaid diagram for TS/JS files and their imports.     |
+| `<basename>-rust.mmd`                         | Mermaid diagram for Rust modules and `use` edges.      |
+| `<basename>-go.mmd`                           | Mermaid diagram for Go packages and `import` edges.    |
+| `<basename>-combined.mmd` (with `--combined`) | One diagram with one `subgraph` per detected language. |
+
+Files are only written for languages that were actually detected.
 
 ## Quick Start
 
-### Generate Diagram for Module
+### Generate diagrams for a polyglot repo
 
-```
-User: Generate a code flow diagram for the authentication module
-```
-
-### Check Diagram Freshness
-
-```
-User: Are my architecture diagrams up to date?
+```bash
+python amplifier-bundle/skills/code-visualizer/scripts/visualizer.py . \
+    --output docs/diagrams --combined
 ```
 
-### Show PR Impact
+Output (for this repo, which contains Python and JS):
 
 ```
-User: What architecture changes does this PR introduce?
+docs/diagrams/architecture-python.mmd
+docs/diagrams/architecture-typescript.mmd
+docs/diagrams/architecture-combined.mmd
 ```
 
-## Core Capabilities
+### Check freshness in CI
 
-### 1. Module Analysis
-
-Analyzes Python files to extract:
-
-- Import statements (internal and external)
-- Class definitions and inheritance
-- Function exports (`__all__`)
-- Module dependencies
-
-### 2. Diagram Generation
-
-Creates mermaid diagrams showing:
-
-- Module relationships (flowchart)
-- Class hierarchies (class diagram)
-- Data flow between components
-- Dependency graphs
-
-### 3. Staleness Detection
-
-Compares:
-
-- File modification timestamps
-- Git history for changes
-- Diagram content vs actual code structure
-- Missing modules in diagrams
-
-## Analysis Process
-
-### Step 1: Discover Modules
-
-```python
-# Scan target directory for Python modules
-modules = glob("**/*.py")
-packages = identify_packages(modules)
+```bash
+python amplifier-bundle/skills/code-visualizer/scripts/visualizer.py src/ \
+    --output docs/diagrams --check-staleness
+# exits 1 if any per-language diagram is older than its source set
 ```
 
-### Step 2: Extract Relationships
+### Generate for a single language
 
-For each module:
+Provide a path that only contains files of one language; the dispatcher will
+detect a single language and emit a single `.mmd`:
 
-1. Parse import statements
-2. Identify local vs external imports
-3. Build dependency graph
-4. Detect circular dependencies
+```bash
+python visualizer.py src/auth/      # Python-only -> architecture-python.mmd
+```
 
-### Step 3: Generate Diagram
+## Auto-Detection Rules
+
+1. The dispatcher walks `<path>`, skipping `IGNORE_DIRS` and symlinks.
+2. Files are bucketed by extension into one of the supported languages.
+3. A language is "detected" if at least one file matches.
+4. Each detected language is analyzed independently.
+5. With `--combined`, the renderer composes one mermaid diagram with one
+   `subgraph` per detected language. Cross-language edges are not inferred in
+   the MVP.
+
+## Example Output
+
+For a repo with:
+
+- `src/api.py` importing `src/auth.py`
+- `web/index.ts` importing `web/utils.ts`
+
+`architecture-python.mmd`:
 
 ```mermaid
 flowchart TD
-    subgraph core["Core Modules"]
-        auth[auth.py]
-        users[users.py]
-        api[api.py]
-    end
-
-    subgraph utils["Utilities"]
-        helpers[helpers.py]
-        validators[validators.py]
-    end
-
-    api --> auth
-    api --> users
-    auth --> helpers
-    users --> validators
+    src_api_py["src/api.py"]
+    src_auth_py["src/auth.py"]
+    src_api_py --> src_auth_py
 ```
 
-### Step 4: Check Freshness
-
-Compare diagram timestamps with source files:
-
-- Diagram older than sources = STALE
-- Missing modules in diagram = INCOMPLETE
-- Extra modules in diagram = OUTDATED
-
-## Diagram Types
-
-### Module Dependency Graph
-
-Best for: Showing import relationships between files
-
-```mermaid
-flowchart LR
-    main[main.py] --> auth[auth/]
-    main --> api[api/]
-    auth --> models[models.py]
-    api --> auth
-```
-
-### Class Hierarchy
-
-Best for: Showing inheritance and composition
-
-```mermaid
-classDiagram
-    class BaseService {
-        +process()
-    }
-    class AuthService {
-        +login()
-        +logout()
-    }
-    BaseService <|-- AuthService
-```
-
-### Data Flow
-
-Best for: Showing how data moves through system
+`architecture-typescript.mmd`:
 
 ```mermaid
 flowchart TD
-    Request[HTTP Request] --> Validate{Validate}
-    Validate -->|Valid| Process[Process]
-    Validate -->|Invalid| Error[Return Error]
-    Process --> Response[HTTP Response]
+    web_index_ts["web/index.ts"]
+    web_utils_ts["web/utils.ts"]
+    web_index_ts --> web_utils_ts
 ```
 
-## Staleness Detection
-
-### How It Works
-
-1. **Find Diagrams**: Locate mermaid diagrams in README.md, ARCHITECTURE.md
-2. **Extract Modules**: Parse diagram for referenced modules
-3. **Compare**: Check if all current modules are represented
-4. **Report**: Generate freshness report
-
-### Freshness Report Format
-
-```markdown
-## Diagram Freshness Report
-
-### Status: STALE
-
-**Diagrams Checked**: 3
-**Fresh**: 1
-**Stale**: 2
-
-### Details
-
-| File         | Last Updated | Code Changed | Status |
-| ------------ | ------------ | ------------ | ------ |
-| README.md    | 2025-01-01   | 2025-01-15   | STALE  |
-| docs/ARCH.md | 2025-01-10   | 2025-01-10   | FRESH  |
-
-### Missing from Diagrams
-
-- `new_module.py` (added 2025-01-12)
-- `api/v2.py` (added 2025-01-14)
-
-### Recommended Actions
-
-1. Update README.md architecture diagram
-2. Add new_module.py to dependency graph
-```
-
-## PR Architecture Impact
-
-### What It Shows
-
-For a given PR or set of changes:
-
-1. New modules/files added
-2. Changed import relationships
-3. Deleted dependencies
-4. Modified class hierarchies
-
-### Impact Diagram
+`architecture-combined.mmd`:
 
 ```mermaid
 flowchart TD
-    subgraph added["New"]
-        style added fill:#90EE90
-        new_api[api/v2.py]
+    subgraph python ["python"]
+        src_api_py["src/api.py"]
+        src_auth_py["src/auth.py"]
+        src_api_py --> src_auth_py
     end
-
-    subgraph modified["Modified"]
-        style modified fill:#FFE4B5
-        auth[auth.py]
+    subgraph typescript ["typescript"]
+        web_index_ts["web/index.ts"]
+        web_utils_ts["web/utils.ts"]
+        web_index_ts --> web_utils_ts
     end
-
-    subgraph existing["Unchanged"]
-        users[users.py]
-        models[models.py]
-    end
-
-    new_api --> auth
-    auth --> models
-    users --> models
 ```
 
-## Integration with Other Skills
+> Note: the renderer emits the `subgraph <id> ["<label>"]` form (space
+> between id and bracketed label), which is the Mermaid-documented syntax
+> accepted across recent Mermaid versions. `test_mermaid_renderer.py` pins
+> the exact emitted form.
 
-### Mermaid Diagram Generator
+## Extending: Adding a New Language
 
-This skill uses `mermaid-diagram-generator` for:
+The skill follows the brick philosophy: a new language is a new self-contained
+module. There is **no base class to subclass**.
 
-- Syntax generation
-- Diagram formatting
-- Embedding in markdown
+1. Create `scripts/<lang>_analyzer.py` with the entry point:
 
-### Visualization Architect Agent
+   ```python
+   from collections.abc import Iterable
+   from pathlib import Path
+   from graph import Edge, Graph, Node  # sibling import; works under `python visualizer.py`
 
-Delegates to `visualization-architect` for:
+   def normalize(paths: Iterable[Path]) -> Graph:
+       nodes: list[Node] = []
+       edges: list[Edge] = []
+       for p in paths:
+           # parse file, append nodes/edges
+           ...
+       return Graph(language="<lang>", nodes=tuple(nodes), edges=tuple(edges))
+   ```
 
-- Complex architecture visualization
-- ASCII art alternatives
-- Multi-level diagrams
+2. Register the language in `scripts/dispatcher.py`:
 
-## Usage Examples
+   ```python
+   LANGUAGES = {
+       "python":     {"exts": {".py"},                          "module": "python_analyzer"},
+       "typescript": {"exts": {".ts", ".tsx", ".js", ".jsx",
+                               ".mjs", ".cjs"},                 "module": "ts_analyzer"},
+       "rust":       {"exts": {".rs"},                          "module": "rust_analyzer"},
+       "go":         {"exts": {".go"},                          "module": "go_analyzer"},
+       # add here:
+       "<lang>":     {"exts": {".ext"},                         "module": "<lang>_analyzer"},
+   }
+   ```
 
-### Example 1: New Module Diagram
+3. Add `tests/test_<lang>_analyzer.py` with `tmp_path` fixtures asserting
+   nodes and edges produced by representative source snippets.
 
-```
-User: I just created a new payment module. Generate an architecture diagram.
+4. Update the **Supported Languages** table above.
 
-Claude:
-1. Analyzes payment/ directory
-2. Extracts imports and dependencies
-3. Generates mermaid flowchart
-4. Suggests where to embed (README.md)
-```
+That's it. The renderer, dispatcher routing, staleness detector, and CLI all
+work without further changes because they consume the language-blind `Graph`
+data contract.
 
-### Example 2: Check Staleness
+## Testing
 
-```
-User: Are my diagrams up to date?
+Tests live under `amplifier-bundle/skills/code-visualizer/tests/` and run via
+`pytest`. The skill registers its `tests/` directory in the repo's
+`pytest.ini` `testpaths` so CI picks them up automatically.
 
-Claude:
-1. Finds all mermaid diagrams in docs
-2. Compares with current codebase
-3. Reports stale diagrams
-4. Lists missing modules
-5. Suggests updates
-```
+Test files:
 
-### Example 3: PR Impact
+| File                       | Purpose                                                              |
+| -------------------------- | -------------------------------------------------------------------- |
+| `test_python_analyzer.py`  | AST-driven import extraction; verifies edges for `import`/`from`.    |
+| `test_ts_analyzer.py`      | `import`/`require`/dynamic `import()`; type-only and relative paths. |
+| `test_dispatcher.py`       | Mixed-language fixture; verifies correct routing per extension.      |
+| `test_mermaid_renderer.py` | Empty graphs, non-empty graphs, ID/label sanitization.               |
+| `test_staleness.py`        | Mtime comparison across multiple language extensions.                |
+| `test_smoke_repo.py`       | Runs dispatcher against the repo root; asserts non-empty mermaid     |
+|                            | for both Python and TypeScript/JavaScript.                           |
 
-```
-User: Show architecture impact of this PR
+Run only the skill's tests:
 
-Claude:
-1. Gets changed files from PR
-2. Identifies new/modified/deleted modules
-3. Generates impact diagram
-4. Highlights dependency changes
-```
-
-## Detection Algorithms
-
-### Import Analysis
-
-```python
-# Extract imports from Python file
-import ast
-
-def extract_imports(file_path):
-    """Extract import statements from Python file."""
-    tree = ast.parse(Path(file_path).read_text())
-    imports = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                imports.append(alias.name)
-        elif isinstance(node, ast.ImportFrom):
-            if node.module:
-                imports.append(node.module)
-    return imports
+```bash
+pytest amplifier-bundle/skills/code-visualizer/tests -q
 ```
 
-### Staleness Check
+## Security Considerations
 
-```python
-def check_staleness(diagram_file, source_dir):
-    """Check if diagram is stale compared to source."""
-    diagram_mtime = Path(diagram_file).stat().st_mtime
-
-    for source in Path(source_dir).rglob("*.py"):
-        if source.stat().st_mtime > diagram_mtime:
-            return True, source  # Stale
-
-    return False, None  # Fresh
-```
-
-## Best Practices
-
-### When to Update Diagrams
-
-1. **New modules**: Add to dependency graph
-2. **Changed imports**: Update relationships
-3. **Deleted files**: Remove from diagrams
-4. **Architectural changes**: Regenerate completely
-
-### Diagram Placement
-
-| Diagram Type          | Recommended Location |
-| --------------------- | -------------------- |
-| Module overview       | README.md            |
-| Detailed architecture | docs/ARCHITECTURE.md |
-| Package structure     | package/README.md    |
-| API flow              | api/README.md        |
-
-### Naming Conventions
-
-````markdown
-## Architecture
-
-<!-- code-visualizer:auto-generated -->
-<!-- last-updated: 2025-01-15 -->
-<!-- source-hash: abc123 -->
-
-```mermaid
-flowchart TD
-    ...
-```
-````
-
-## Success Criteria
-
-A good visualization:
-
-- [ ] Shows all current modules
-- [ ] Reflects actual import relationships
-- [ ] Uses appropriate diagram type
-- [ ] Placed in discoverable location
-- [ ] Includes freshness metadata
-- [ ] Clear and not overcrowded
+- **No code execution**: Analyzers only parse source. No `exec`/`eval`/
+  subprocess on analyzed files.
+- **Path validation**: `<path>` and `--output` are resolved with
+  `Path.resolve()` and rejected if non-existent or non-directory.
+- **Filename validation**: `--basename` must match `^[A-Za-z0-9._-]+$`.
+- **Symlink safety**: `os.walk(..., followlinks=False)` plus `IGNORE_DIRS`
+  prevents loops and escape.
+- **Bounded reads**: Per-file size cap (~5 MB); UTF-8 decode with
+  `errors="ignore"`.
+- **Bounded regex**: Anchored, no nested quantifiers; protects against ReDoS.
+- **Mermaid sanitization**: Node IDs strip non-`[A-Za-z0-9_]`; labels with
+  embedded quotes are escaped.
+- **Stdlib-only**: Zero third-party runtime dependencies; no supply-chain
+  surface.
+- **Output containment**: Writes are constrained to the resolved `--output`
+  directory; source content is never logged.
 
 ## Limitations
 
-**IMPORTANT**: Understand these limitations before relying on this skill:
+- **Static heuristics**: Regex-based extraction for TS/JS/Rust/Go misses some
+  edge syntax (TS type-only imports across multiple lines, Rust nested
+  `use {a, b::c}`, Go cgo blocks). Documented per analyzer in source.
+- **No call graphs**: Edges are import/use only. Runtime/dynamic imports
+  beyond `import("...")`/`__import__` are not modeled.
+- **External imports**: Rendered as ghost target nodes inline; not resolved to
+  real files.
+- **Combined view**: Cross-language edges are out of MVP scope.
+- **Shell scripts**: Not first-class; `.sh` files are ignored.
+- **Compiler-grade accuracy**: Not a goal. The skill optimizes for "useful
+  diagram in seconds" over "perfect AST."
 
-### Staleness Detection Limitations
+## Philosophy Alignment
 
-1. **Timestamp-based, not semantic**: Detection compares file modification times, not actual code changes
-   - A file touched but not meaningfully changed will trigger "stale"
-   - Reformatting code triggers false positives
-   - Git operations that update mtime trigger false positives
+| Principle               | How v2.0 follows it                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| **Ruthless Simplicity** | Stdlib-only; regex over tree-sitter; max-mtime over semantic diff.                   |
+| **Zero-BS**             | Real parsers (`ast` for Python, regex for others). Limitations documented honestly.  |
+| **Modular Design**      | Each analyzer is a brick with a single `normalize()` stud. No inheritance.           |
+| **Brick Composition**   | Renderer/dispatcher/staleness are independent bricks reusing only the data contract. |
 
-2. **Cannot detect logic changes**: Adding a function that doesn't change imports won't be detected
-   - Internal refactoring within a module is invisible
-   - Changes to function signatures not reflected
-   - New class methods added without import changes won't show
+## Migration from 1.x
 
-3. **Import-centric view**: Only tracks import relationships
-   - Runtime dependencies (dependency injection) not detected
-   - Configuration-based connections invisible
-   - Duck typing relationships not captured
+The 1.x skill was Python-only. Forward-compatibility notes (verify against
+your actual 1.x integration before relying on them):
 
-### Scope Limitations
-
-1. **Python-only**: Currently only analyzes Python files
-   - No TypeScript, JavaScript, Rust, Go support
-   - Multi-language projects partially covered
-
-2. **Static analysis only**: No runtime information
-   - Dynamic imports (`__import__`, `importlib`) not detected
-   - Conditional imports may be missed
-   - Plugin architectures not fully represented
-
-3. **Single-project scope**: Cannot analyze cross-repository dependencies
-   - External package internals not shown
-   - Monorepo relationships require manual configuration
-
-### Accuracy Expectations
-
-| Scenario                      | Accuracy | Notes                       |
-| ----------------------------- | -------- | --------------------------- |
-| New module detection          | 95%+     | Reliable for Python modules |
-| Import relationship mapping   | 90%+     | Misses dynamic imports      |
-| Staleness detection           | 70-80%   | False positives common      |
-| Circular dependency detection | 85%+     | May miss complex cycles     |
-| Class hierarchy extraction    | 85%+     | Mixins can be tricky        |
-
-### When NOT to Use This Skill
-
-- **Security-critical dependency audits**: Use proper security scanning tools
-- **Runtime dependency analysis**: Use profilers or dynamic analysis tools
-- **Cross-language projects**: Manual analysis may be more accurate
-- **Heavily dynamic codebases**: Plugin architectures, metaprogramming
-
-## Dependencies
-
-This skill requires:
-
-1. **mermaid-diagram-generator skill**: Must be available for diagram syntax generation
-2. **Python 3.8+**: For AST parsing features used
-3. **Git (optional)**: For enhanced staleness detection using git history
-
-If mermaid-diagram-generator is unavailable, this skill will provide raw relationship data but cannot generate embedded diagrams.
-
-## PR Review Integration
-
-### How Diagrams Appear in PRs
-
-When reviewing PRs, this skill generates impact diagrams that can be added to PR descriptions:
-
-**PR Description Template:**
-
-````markdown
-## Architecture Impact
-
-<!-- Generated by code-visualizer -->
-
-### Changed Dependencies
-
-```mermaid
-flowchart LR
-    subgraph changed["Modified Modules"]
-        style changed fill:#FFE4B5
-        auth[auth/service.py]
-        api[api/routes.py]
-    end
-
-    subgraph added["New Modules"]
-        style added fill:#90EE90
-        oauth[auth/oauth.py]
-    end
-
-    subgraph unchanged["Existing"]
-        models[models/user.py]
-        db[db/connection.py]
-    end
-
-    oauth --> auth
-    auth --> models
-    api --> auth
-    api --> db
-```
-
-### Impact Summary
-
-- **New modules**: 1 (oauth.py)
-- **Modified modules**: 2 (auth/service.py, api/routes.py)
-- **New dependencies**: oauth.py -> auth/service.py
-- **Diagrams to update**: README.md (STALE)
-````
-
-### CI Integration Example
-
-Add to `.github/workflows/pr-review.yml`:
-
-```yaml
-- name: Check Diagram Staleness
-  run: |
-    # Claude Code analyzes and reports
-    # Outputs: STALE diagrams that need updating
-    # Generates: Suggested diagram updates
-```
-
-### Reviewer Workflow
-
-1. **PR opened** -> code-visualizer generates impact diagram
-2. **Reviewer sees** -> Visual diff of architecture changes
-3. **Staleness check** -> Warns if existing diagrams need updates
-4. **Action items** -> Lists diagrams requiring manual update
+1. Diagrams previously named `<basename>.mmd` are now
+   `<basename>-python.mmd`. Update any references in `README.md` /
+   `ARCHITECTURE.md`.
+2. Staleness reports now include a per-language breakdown. CI scripts that
+   parsed the old single-line output should be updated to handle multiple
+   languages.
+3. Any direct Python helper used in 1.x is superseded by
+   `dispatcher.analyze(path)` returning a `dict[language, Graph]`. Callers
+   that only want Python can use `dispatcher.analyze(path)["python"]`.
 
 ## Remember
 
-This skill automates what developers often forget:
-
-- Keeping diagrams in sync with code
-- Documenting architecture changes
-- Understanding dependency impacts
-
-The goal is diagrams that stay fresh automatically.
-
-**But remember the limitations**: Staleness detection is approximate. When accuracy matters, verify manually.
+The skill automates what developers forget across all four supported
+languages: keeping diagrams in sync with code. It's not a compiler; it's a
+fast, honest, multi-language snapshot.
