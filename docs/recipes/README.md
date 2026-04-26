@@ -639,3 +639,12 @@ amplihack recipe validate <file>         # Validate recipe YAML
 amplihack recipe sync <name>             # Sync recipe from workflow markdown
 amplihack recipe show <name>             # Print recipe steps and metadata
 ```
+
+## Resilience, Idempotency & Known Fixes
+
+These documents explain bugs that caused hollow-success failures and the rules
+introduced to prevent recurrence:
+
+- **[Recent Fixes — April 2026](RECENT_FIXES_APRIL_2026.md)** — eval async/sync boundary bugs, LLM provider env override, code-visualizer multi-language support (PRs #4471, #4472, #4477, #4480)
+- **[Recent Fixes — March 2026](RECENT_FIXES_MARCH_2026.md)** — worktree execution context, hook reinjection suppression, pre-commit retry, checkpoint commits, context validation
+- **[Worktree Reattach & Prune Fix](step-04-worktree-reattach-prune.md)** — why `git worktree prune` must follow every `rm -rf` before `git worktree add`

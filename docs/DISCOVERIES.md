@@ -706,3 +706,77 @@ Checklist validation gates (STOP checkpoints, pre-flight validation) trigger Son
 - **Test interventions across ALL target models** - what helps one can break another
 - **Validation gates harmful for autonomous models** - Sonnet needs zero checkpoints
 - **No universal CLAUDE.md solution** - different models need different approaches
+
+---
+
+## LLM Provider Env Override Must Beat File-Based Detection (2026-04-25)
+
+### Issue
+
+`SIMARD_LLM_PROVIDER=copilot` was silently ignored. Every LLM call routed to
+the bundled Claude Code CLI ("Not logged in"), scoring 0.00% on all evaluations
+while reporting `✓ completed` — a classic hollow-success pattern.
+
+### Root Cause
+
+`amplihack.llm.client._detect_launcher` read only
+`<project_root>/.claude/runtime/launcher_context.json`. Callers that bypass
+`amplihack copilot` (e.g., Rust daemons invoking `amplihack.eval` via Python
+subprocess) never have that file written, so detection unconditionally fell
+through to `"claude"`. The env var was never consulted.
+
+A second bug made the copilot path dead code regardless: the SDK probe imported
+`copilot.types` (removed in `copilot >= 0.1.0`), silently setting
+`_COPILOT_SDK_OK = False`.
+
+### Solution
+
+`_detect_launcher` now checks env vars first, file second, default third.
+`completion()` refuses to silently reroute when an env override is pinned — it
+logs a warning and returns `""` instead of masking the misconfiguration.
+`_query_copilot` was rewritten against the real `copilot 0.1.0` API.
+
+### Rule
+
+Always check `AMPLIHACK_LLM_PROVIDER` / `SIMARD_LLM_PROVIDER` before
+file-based detection. Never silently fall back to a different provider — surface
+the misconfiguration explicitly.
+
+---
+
+## Sync/Async Boundary Bugs in Eval Pipeline (2026-04-25)
+
+### Issue
+
+Every L1-L12 progressive benchmark failed with two sequential errors:
+
+1. `ValueError: a coroutine was expected, got ('', ReasoningTrace(...))`
+2. `AttributeError: 'coroutine' object has no attribute 'effort_calibration'`
+
+Both were asyncio misuse bugs introduced at sync/async boundaries in
+`eval/agent_subprocess.py` and `eval/progressive_test_suite.py`.
+
+### Root Cause
+
+**Bug 1** (`agent_subprocess.py`): `asyncio.run(agent.answer_question(...))`.
+`answer_question` is a **sync** method that returns the value directly via
+`_run_async_or_return`. `asyncio.run` expects a coroutine; receiving the
+already-resolved tuple raised `ValueError`.
+
+**Bug 2** (`progressive_test_suite.py`): `grade_metacognition(...)` without
+`asyncio.run`. The function is genuinely **async**. The returned coroutine was
+never awaited, and accessing `.effort_calibration` on the unawaited coroutine
+raised `AttributeError`.
+
+### Solution
+
+- Remove `asyncio.run` from the `answer_question` call (it's sync).
+- Add `asyncio.run(grade_metacognition(...))` (it's async).
+
+### Rule
+
+Before bridging sync/async, determine the concrete return type. Methods that
+use `_run_async_or_return` resolve the value synchronously — they return the
+result, not a coroutine. Pure `async def` functions return coroutines and
+require `asyncio.run` in sync callers. Getting either wrong produces silent
+hollow success.
