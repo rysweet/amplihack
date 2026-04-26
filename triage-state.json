@@ -1,12 +1,24 @@
 {
-  "ts": "2026-04-26T08:00:00Z",
-  "run": 24944611565,
-  "run_number": 22,
+  "ts": "2026-04-26T12:00:00Z",
+  "run": 24950431477,
+  "run_number": 23,
   "date": "2026-04-26",
-  "open_prs": [4473, 4465, 4463, 4462, 4461, 4458, 4422, 4216, 4112],
+  "open_prs": [4487, 4473, 4465, 4463, 4462, 4461, 4458, 4422, 4216, 4112],
   "closed_since_last": [],
-  "new_since_last": [],
+  "new_since_last": [4487],
   "prs": {
+    "4487": {
+      "risk": "low",
+      "priority": "merge-urgent",
+      "type": "docs-automated",
+      "draft": false,
+      "tests": false,
+      "labels": ["documentation", "automation"],
+      "status": "open",
+      "age_days": 0,
+      "expires": "2026-04-27T06:41:00Z",
+      "note": "NEW. Daily-doc PR covering 4 merged PRs (Apr 25). NOT draft — first in streak to be mergeable directly. Expires Apr 27 6:41 UTC. Supersedes #4473."
+    },
     "4473": {
       "risk": "low",
       "priority": "close",
@@ -15,9 +27,9 @@
       "tests": false,
       "labels": ["documentation", "automation", "triage:low-risk", "triage:complete"],
       "status": "open",
-      "age_days": 2,
+      "age_days": 1,
       "expired": true,
-      "note": "EXPIRED Apr 26 6:31 UTC. 8th consecutive daily-doc draft expiry. Should be closed. Fix daily-doc workflow."
+      "note": "EXPIRED Apr 26 6:31 UTC. Superseded by #4487. 8th consecutive daily-doc draft expiry. Should be closed."
     },
     "4465": {
       "risk": "low",
@@ -26,7 +38,7 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 3,
+      "age_days": 2,
       "note": "Community PR (Jah-yee). Fixes broken path link in README.md. Clean, merge-ready, closes #4408."
     },
     "4463": {
@@ -36,7 +48,7 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review", "merge-conflicts"],
       "status": "open",
-      "age_days": 3,
+      "age_days": 2,
       "note": "Community PR (Jah-yee). Makes Code Style section actionable. Conflicts with #4422 and #4458. Best candidate for #4421 cluster."
     },
     "4462": {
@@ -46,7 +58,7 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 3,
+      "age_days": 2,
       "note": "Community PR (Jah-yee). Adds claude install link. Has broken URL /enfo/ in body. Overlaps #4463."
     },
     "4461": {
@@ -56,8 +68,8 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 3,
-      "note": "Community PR (Jah-yee). Fixes inconsistent command amplihack launch→claude. Clean single-line fix, merge-ready."
+      "age_days": 2,
+      "note": "Community PR (Jah-yee). Fixes inconsistent command amplihack launch->claude. Clean single-line fix, merge-ready."
     },
     "4458": {
       "risk": "low",
@@ -66,7 +78,7 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 4,
+      "age_days": 3,
       "note": "Community PR (findmail). From main branch. Conflicts with #4422 and #4463. Superseded by #4463."
     },
     "4422": {
@@ -76,7 +88,7 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:needs-review"],
       "status": "open",
-      "age_days": 7,
+      "age_days": 6,
       "note": "Community PR (yuchengpersonal). Conflicts with #4458 and #4463. Superseded by #4463."
     },
     "4216": {
@@ -86,8 +98,8 @@
       "tests": true,
       "labels": ["triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
       "status": "open",
-      "age_days": 24,
-      "note": "Owner PR. ANTHROPIC_DISABLED flag + 41 tests. Has workstream artifacts. 24d stale."
+      "age_days": 23,
+      "note": "Owner PR. ANTHROPIC_DISABLED flag + 41 tests. Has workstream artifacts. 23d stale."
     },
     "4112": {
       "risk": "low",
@@ -96,10 +108,13 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 26,
-      "note": "Community PR (xingzihai). Clarifies required vs optional API keys in .env docs. 26d stale, clean."
+      "age_days": 25,
+      "note": "Community PR (xingzihai). Clarifies required vs optional API keys in .env docs. 25d stale, clean."
     }
   },
   "daily_doc_consecutive_expiries": 8,
-  "daily_doc_expired_prs": [4396, 4408, 4416, 4433, 4453, 4464, 4473]
+  "daily_doc_expired_prs": [4396, 4408, 4416, 4433, 4453, 4464, 4473],
+  "daily_doc_latest_pr": 4487,
+  "daily_doc_latest_is_draft": false,
+  "daily_doc_latest_expires": "2026-04-27T06:41:00Z"
 }
