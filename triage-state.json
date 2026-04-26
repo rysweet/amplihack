@@ -1,23 +1,23 @@
 {
-  "ts": "2026-04-25T12:30:00Z",
-  "run": 24937490245,
-  "run_number": 21,
-  "date": "2026-04-25",
+  "ts": "2026-04-26T08:00:00Z",
+  "run": 24944611565,
+  "run_number": 22,
+  "date": "2026-04-26",
   "open_prs": [4473, 4465, 4463, 4462, 4461, 4458, 4422, 4216, 4112],
   "closed_since_last": [],
   "new_since_last": [],
   "prs": {
     "4473": {
       "risk": "low",
-      "priority": "critical",
+      "priority": "close",
       "type": "docs-automated",
       "draft": true,
       "tests": false,
       "labels": ["documentation", "automation", "triage:low-risk", "triage:complete"],
       "status": "open",
-      "age_days": 1,
-      "expires": "2026-04-26T06:31:00Z",
-      "note": "CRITICAL: Expires Apr 26 at 6:31 AM UTC. 8th consecutive daily-doc draft expiry if not acted upon. Must undraft+merge OR fix automation."
+      "age_days": 2,
+      "expired": true,
+      "note": "EXPIRED Apr 26 6:31 UTC. 8th consecutive daily-doc draft expiry. Should be closed. Fix daily-doc workflow."
     },
     "4465": {
       "risk": "low",
@@ -26,8 +26,8 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 2,
-      "note": "Community PR (Jah-yee). Fixes broken path link in README.md (COPILOT_CLI.md → GH Pages URL). Clean, merge-ready, closes #4408."
+      "age_days": 3,
+      "note": "Community PR (Jah-yee). Fixes broken path link in README.md. Clean, merge-ready, closes #4408."
     },
     "4463": {
       "risk": "low",
@@ -36,8 +36,8 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review", "merge-conflicts"],
       "status": "open",
-      "age_days": 2,
-      "note": "Community PR (Jah-yee). Makes Code Style section actionable (+15/-6). Conflicts with #4422 and #4458. Best candidate for #4421 conflict cluster."
+      "age_days": 3,
+      "note": "Community PR (Jah-yee). Makes Code Style section actionable. Conflicts with #4422 and #4458. Best candidate for #4421 cluster."
     },
     "4462": {
       "risk": "low",
@@ -46,8 +46,8 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 2,
-      "note": "Community PR (Jah-yee). Adds Claude install link to PREREQUISITES.md. Has broken URL typo (/enfo/ → /en/). Overlaps CONTRIBUTING.md with #4463."
+      "age_days": 3,
+      "note": "Community PR (Jah-yee). Adds claude install link. Has broken URL /enfo/ in body. Overlaps #4463."
     },
     "4461": {
       "risk": "low",
@@ -56,8 +56,8 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 2,
-      "note": "Community PR (Jah-yee). Fixes README command inconsistency (amplihack launch → amplihack claude). Clean single-line fix, merge-ready."
+      "age_days": 3,
+      "note": "Community PR (Jah-yee). Fixes inconsistent command amplihack launch→claude. Clean single-line fix, merge-ready."
     },
     "4458": {
       "risk": "low",
@@ -66,8 +66,8 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 3,
-      "note": "Community PR (findmail). Code Style improvements. Opened from main branch — unusual. Conflicts with #4422 and #4463. Superseded by #4463."
+      "age_days": 4,
+      "note": "Community PR (findmail). From main branch. Conflicts with #4422 and #4463. Superseded by #4463."
     },
     "4422": {
       "risk": "low",
@@ -76,18 +76,18 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:needs-review"],
       "status": "open",
-      "age_days": 6,
-      "note": "Community PR (yuchengpersonal). Code Style section improvements with ruff commands. Conflicts with #4458 and #4463. Superseded by #4463."
+      "age_days": 7,
+      "note": "Community PR (yuchengpersonal). Conflicts with #4458 and #4463. Superseded by #4463."
     },
     "4216": {
       "risk": "medium",
-      "priority": "high",
+      "priority": "medium",
       "type": "feat-anthropic-disablement",
       "tests": true,
       "labels": ["triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
       "status": "open",
-      "age_days": 23,
-      "note": "Owner PR (rysweet). ANTHROPIC_DISABLED=true env flag across fleet/eval/agents/vendor. 41 tests. 23d stale. Has workstream artifacts to clean before merge."
+      "age_days": 24,
+      "note": "Owner PR. ANTHROPIC_DISABLED flag + 41 tests. Has workstream artifacts. 24d stale."
     },
     "4112": {
       "risk": "low",
@@ -96,8 +96,10 @@
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
-      "age_days": 25,
-      "note": "Community PR (xingzihai). Clarifies required vs optional API keys in .env docs. 25d stale, clean change, no conflicts."
+      "age_days": 26,
+      "note": "Community PR (xingzihai). Clarifies required vs optional API keys in .env docs. 26d stale, clean."
     }
-  }
+  },
+  "daily_doc_consecutive_expiries": 8,
+  "daily_doc_expired_prs": [4396, 4408, 4416, 4433, 4453, 4464, 4473]
 }
