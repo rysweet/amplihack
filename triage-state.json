@@ -1,11 +1,11 @@
 {
-  "ts": "2026-04-26T12:00:00Z",
-  "run": 24950431477,
-  "run_number": 23,
+  "ts": "2026-04-26T18:00:00Z",
+  "run": 24956501572,
+  "run_number": 24,
   "date": "2026-04-26",
-  "open_prs": [4487, 4473, 4465, 4463, 4462, 4461, 4458, 4422, 4216, 4112],
-  "closed_since_last": [],
-  "new_since_last": [4487],
+  "open_prs": [4487, 4465, 4463, 4462, 4461, 4458, 4422, 4216, 4112],
+  "closed_since_last": [4473],
+  "new_since_last": [],
   "prs": {
     "4487": {
       "risk": "low",
@@ -17,19 +17,7 @@
       "status": "open",
       "age_days": 0,
       "expires": "2026-04-27T06:41:00Z",
-      "note": "NEW. Daily-doc PR covering 4 merged PRs (Apr 25). NOT draft — first in streak to be mergeable directly. Expires Apr 27 6:41 UTC. Supersedes #4473."
-    },
-    "4473": {
-      "risk": "low",
-      "priority": "close",
-      "type": "docs-automated",
-      "draft": true,
-      "tests": false,
-      "labels": ["documentation", "automation", "triage:low-risk", "triage:complete"],
-      "status": "open",
-      "age_days": 1,
-      "expired": true,
-      "note": "EXPIRED Apr 26 6:31 UTC. Superseded by #4487. 8th consecutive daily-doc draft expiry. Should be closed."
+      "note": "Daily-doc PR covering 4 merged PRs (Apr 25). NOT draft. Expires Apr 27 6:41 UTC. Merge ASAP."
     },
     "4465": {
       "risk": "low",
@@ -49,7 +37,7 @@
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review", "merge-conflicts"],
       "status": "open",
       "age_days": 2,
-      "note": "Community PR (Jah-yee). Makes Code Style section actionable. Conflicts with #4422 and #4458. Best candidate for #4421 cluster."
+      "note": "Community PR (Jah-yee). Code Style actionable guidance. merge-conflicts label. Preferred over #4422 #4458 for #4421 cluster."
     },
     "4462": {
       "risk": "low",
@@ -59,7 +47,7 @@
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
       "age_days": 2,
-      "note": "Community PR (Jah-yee). Adds claude install link. Has broken URL /enfo/ in body. Overlaps #4463."
+      "note": "Community PR (Jah-yee). Claude install link in PREREQUISITES.md. Broken URL /enfo/ reported. Closes #4419."
     },
     "4461": {
       "risk": "low",
@@ -69,7 +57,7 @@
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
       "age_days": 2,
-      "note": "Community PR (Jah-yee). Fixes inconsistent command amplihack launch->claude. Clean single-line fix, merge-ready."
+      "note": "Community PR (Jah-yee). Single-line fix: amplihack launch → amplihack claude. Clean, merge-ready, closes #4420."
     },
     "4458": {
       "risk": "low",
@@ -79,7 +67,7 @@
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
       "age_days": 3,
-      "note": "Community PR (findmail). From main branch. Conflicts with #4422 and #4463. Superseded by #4463."
+      "note": "Community PR (findmail). From main branch. Fixes #4421 (conflicts with #4422 #4463). Close as superseded by #4463."
     },
     "4422": {
       "risk": "low",
@@ -89,32 +77,32 @@
       "labels": ["documentation", "triage:low-risk", "triage:needs-review"],
       "status": "open",
       "age_days": 6,
-      "note": "Community PR (yuchengpersonal). Conflicts with #4458 and #4463. Superseded by #4463."
+      "note": "Community PR (yuchengpersonal). Fixes #4421 (conflicts with #4458 #4463). Close as superseded by #4463."
     },
     "4216": {
       "risk": "medium",
       "priority": "medium",
-      "type": "feat-anthropic-disablement",
+      "type": "feat-backend",
       "tests": true,
       "labels": ["triage:complete", "triage:needs-review", "triage:medium-risk", "triage:has-tests"],
       "status": "open",
       "age_days": 23,
-      "note": "Owner PR. ANTHROPIC_DISABLED flag + 41 tests. Has workstream artifacts. 23d stale."
+      "note": "Owner PR (rysweet). ANTHROPIC_DISABLED flag feature. 41 tests pass. Atlas PR Impact Check failure (pre-existing). Remove workstream artifacts then merge."
     },
     "4112": {
       "risk": "low",
       "priority": "low",
-      "type": "docs-env-setup",
+      "type": "docs-env-keys",
       "tests": false,
       "labels": ["documentation", "triage:low-risk", "triage:complete", "triage:needs-review"],
       "status": "open",
       "age_days": 25,
-      "note": "Community PR (xingzihai). Clarifies required vs optional API keys in .env docs. 25d stale, clean."
+      "note": "Community PR (xingzihai). Clarifies required vs optional API keys. Clean, stale 25d. Merge or close."
     }
   },
-  "daily_doc_consecutive_expiries": 8,
-  "daily_doc_expired_prs": [4396, 4408, 4416, 4433, 4453, 4464, 4473],
-  "daily_doc_latest_pr": 4487,
-  "daily_doc_latest_is_draft": false,
-  "daily_doc_latest_expires": "2026-04-27T06:41:00Z"
+  "daily_doc_streak": {
+    "consecutive_unclosed_expiries": 0,
+    "note": "#4473 closed. #4487 is non-draft — positive signal. Streak reset.",
+    "history": ["#4396","#4408","#4416","#4433","#4453","#4464","#4473"]
+  }
 }
