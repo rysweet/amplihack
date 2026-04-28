@@ -29,6 +29,20 @@ pre-commit install
 # 4. Copy the environment template
 cp .env.example .env
 # Edit .env with your API keys as needed
+#
+# Required API keys (for basic usage with Claude Code):
+#   - ANTHROPIC_API_KEY: Get from https://platform.claude.com/account/keys
+#
+# Optional API keys (feature-specific):
+#   - Azure credentials (AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
+#     AZURE_SUBSCRIPTION_ID): Only needed for remote execution on Azure VMs
+#   - OPENAI_API_KEY / AZURE_OPENAI_*: For OpenAI/Azure OpenAI integrations
+#
+# Note: GitHub Copilot CLI uses your existing GitHub Copilot subscription
+# (no additional API key needed). Microsoft Amplifier uses an interactive
+# configuration wizard on first startup.
+#
+# All other variables in .env.example have sensible defaults and are optional.
 ```
 
 ### Running Tests
