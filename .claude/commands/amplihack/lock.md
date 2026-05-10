@@ -1,7 +1,7 @@
 ---
 name: lock
-version: 3.0.0
-description: Enable autonomous co-pilot mode — agent formulates goal and works until done
+version: 4.0.0
+description: Commit to a goal and work autonomously until it is achieved
 triggers:
   - "Enable continuous work mode"
   - "Work autonomously"
@@ -10,75 +10,93 @@ triggers:
   - "Work toward this goal"
 ---
 
-# Lock: Autonomous Co-Pilot Mode
+# Lock: Commit to Autonomous Goal Pursuit
 
-**Purpose**: Enable autonomous co-pilot mode. The agent formulates a goal from the user's natural language, defines what "done" looks like, and works until the goal is achieved or it needs human help.
+**Purpose**: Commit to a single goal and work autonomously toward it until
+the goal is achieved or you genuinely need human help. Uses native
+runtime autopilot — **no Python tool, no external hook, no `python` shell-out**.
+
+## Runtime support
+
+This command works whether or not your runtime has built-in autopilot:
+
+- **GitHub Copilot CLI**: Native autopilot is on while the user holds the
+  session in autopilot mode (Shift+Tab toggle in the UI). The system
+  injects `<autopilot_mode>` reminders so you stay on task without the
+  user re-prompting between turns.
+- **Claude Code**: Built-in `--max-turns` and the SessionCopilot hook
+  fulfill the same role when configured.
+- **Anywhere else**: Just persist on the goal until done. The contract
+  below is what matters; no daemon needs to be running.
 
 ## Instructions
 
 When the user invokes this command:
 
-### Step 1: Formulate the goal
+### Step 1 — Formulate the goal explicitly
 
-Read the user's message. From their natural language, formulate:
+Read the user's message. Extract:
 
-1. **Goal**: A clear, specific objective statement
-2. **Definition of Done**: Concrete criteria for when the goal is achieved (e.g. "tests pass", "PR created", "file exists with X content")
+1. **Goal**: A single, specific objective sentence
+2. **Definition of Done**: Observable, verifiable criteria
+   (e.g. "tests pass", "PR opened", "file exists with X content")
 
-Write both to the goal file as a single document:
+State both back to the user as the first lines of your response so the
+commitment is on the record. You don't need to write a goal file — the
+runtime's autopilot already keeps you on task.
 
-```bash
-mkdir -p .claude/runtime/locks
-```
+### Step 2 — Begin working immediately
 
-Then use the Write tool to create `.claude/runtime/locks/.lock_goal` with content like:
+- Do not ask for confirmation.
+- Do not pause between subtasks.
+- After each tool batch, briefly say what you found and what's next.
+- When the Definition of Done is met, run a verification step
+  (re-run the test, fetch the PR URL, stat the file) and call
+  `task_complete` with a summary.
 
-```
-Goal: [clear objective from user's words]
+### Step 3 — Escalate only when truly blocked
 
-Definition of Done:
-- [concrete criterion 1]
-- [concrete criterion 2]
-- [concrete criterion 3]
-```
+If you hit a question only the user can answer (credentials, scope,
+ambiguous spec), use `ask_user`. Do not escalate for things you could
+decide yourself — autopilot's whole point is autonomous decision-making.
 
-### Step 2: Enable lock
+## Auto-disable conditions
 
-```bash
-python .claude/tools/amplihack/lock_tool.py lock
-```
+You stop autonomous work when any of these hold:
 
-### Step 3: Begin working
-
-Immediately start working toward the goal. Do not ask for confirmation. The LockModeHook will use SessionCopilot to monitor progress and provide guidance on each turn.
-
-## How it works
-
-1. The hook fires on every `provider:request` event
-2. SessionCopilot reads the session transcript and reasons about progress
-3. If the agent is working — no intervention
-4. If the agent is idle — injects specific next-step guidance
-5. If the goal is achieved — auto-disables lock mode
-6. If stuck — auto-disables and escalates to the user
-
-## Disabling
-
-Lock mode auto-disables when:
-
-- Goal is achieved (`mark_complete`)
-- Co-pilot needs human help (`escalate`)
-- User runs `/amplihack:unlock`
+- The Definition of Done is met **and verified** → `task_complete`
+- You are genuinely blocked on missing info → `ask_user`
+- The user runs `/amplihack:unlock` (sets explicit "stop" boundary)
 
 ## Examples
 
-User says: "fix the auth bug and make sure tests pass"
-→ Agent writes goal: "Fix the authentication bug. Definition of Done: auth tests pass, no regressions in test suite."
-→ Agent enables lock, starts working.
+**User says**: "fix the auth bug and make sure tests pass"
 
-User says: "implement OAuth2 login and create a PR"
-→ Agent writes goal: "Implement OAuth2 login flow. Definition of Done: OAuth2 endpoint works, tests cover happy path and error cases, PR created on GitHub."
-→ Agent enables lock, starts working.
+→ You write at the top of your reply:
+```
+Goal: Fix the authentication bug.
+Definition of Done: Auth tests pass; no regressions in suite.
+```
+→ Then you start: read repro, find bug, fix, run auth tests, run full suite.
 
-User says: "keep going"
-→ Agent writes goal: "Continue working on the current task until all pending items are complete. Definition of Done: all TODO items resolved, tests pass."
-→ Agent enables lock, continues.
+**User says**: "implement OAuth2 login and create a PR"
+
+→ Goal: Implement OAuth2 login flow.
+   Definition of Done: OAuth2 endpoint works; tests cover happy + error paths; PR open on GitHub.
+→ Implement, test, commit, push, `gh pr create`, return PR URL.
+
+**User says**: "keep going"
+
+→ Goal: Continue current task until pending items resolved.
+   Definition of Done: All open todos in this session marked done; tests green.
+→ Resume from `plan.md` / SQL todos.
+
+## What changed from v3
+
+- Removed the `python .claude/tools/amplihack/lock_tool.py lock` shell-out.
+  That tool only existed for Claude Code's hook subsystem and wrote
+  `~/.amplihack/.claude/runtime/locks/.lock_active`, which Copilot CLI
+  and other runtimes never read.
+- The contract is now purely behavioral: commit to the goal, persist
+  until done, escalate only on genuine blockers. The runtime's
+  built-in autopilot enforces this without a sidecar process.
