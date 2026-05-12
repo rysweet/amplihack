@@ -64,12 +64,19 @@ export AMPLIHACK_TRACE_LOGGING=true
 Then install amplihack:
 
 ```bash
-# Try without installing (temporary)
+# Option 1: Run via uvx (no permanent entry in PATH, but still installs amplihack's
+# agents/skills into your project — suitable for trying it out)
 uvx amplihack install
 
-# Or install permanently
+# Option 2: Install permanently (adds `amplihack` to your PATH via uv)
 uv tool install amplihack
 ```
+
+> **Note:** `uvx amplihack install` does run amplihack's `install` command (which
+> sets up agents and skills in the current directory). The difference from Option 2
+> is that the `amplihack` binary itself is **not added to your PATH** permanently —
+> you'd need to prefix every invocation with `uvx`. If you plan to use amplihack
+> regularly, Option 2 is recommended.
 
 ## Verify Everything Works
 
