@@ -148,12 +148,99 @@ test: add coverage for recipe validation
 
 ## Code Style
 
-- **Python**: Follow existing code conventions. Pre-commit hooks enforce
-  formatting.
-- **Markdown**: Follow
-  [markdownlint](https://github.com/DavidAnson/markdownlint) rules (see
-  `.markdownlint.json`).
-- Keep functions focused and well-documented.
+We use automated tools to maintain consistent code style across the project.
+
+### Python
+
+- **Formatter**: [Ruff](https://docs.astral.sh/ruff/) (runs via pre-commit hooks)
+- **Line length**: 100 characters max
+- **Python version**: 3.11+
+
+**Quick start:**
+```bash
+# Format all Python files
+ruff format .
+
+# Check for linting issues
+ruff check .
+
+# Auto-fix linting issues
+ruff check --fix .
+```
+
+**Key conventions:**
+- Use 4 spaces for indentation (not tabs)
+- Follow PEP 8 naming conventions
+- Keep functions focused and well-documented
+- Run `pre-commit run --all-files` before committing
+
+**What if pre-commit fails?**
+```bash
+# Common fix: auto-format your code
+ruff format <file.py>
+ruff check --fix <file.py>
+git add <file.py>
+git commit
+```
+
+### Markdown
+
+- **Linter**: [markdownlint](https://github.com/DavidAnson/markdownlint)
+- **Config**: See `.markdownlint.json` for rules
+
+**Common rules:**
+- Maximum line length: 100 characters
+- Use `#` for headings (not underlines)
+- Use `-` for unordered lists (not `*`)
+
+**Check your markdown:**
+```bash
+# Install markdownlint CLI
+npm install -g markdownlint-cli
+
+# Check all markdown files
+markdownlint .
+```
+
+### Pre-commit Hooks
+
+Pre-commit hooks automatically check your code before each commit. To set up:
+
+```bash
+# Install pre-commit
+pip install pre-commit
+# or
+uv tool install pre-commit
+
+# Install the hooks
+pre-commit install
+```
+
+**What gets checked:**
+- Python formatting (Ruff)
+- Markdown formatting (markdownlint)
+- Trailing whitespace
+- YAML syntax
+- And more...
+
+**Skip hooks temporarily** (not recommended):
+```bash
+git commit --no-verify
+```
+
+**Run checks manually:**
+```bash
+pre-commit run --all-files
+```
+
+### Getting Help
+
+If you're unsure about code style:
+1. Check existing code for patterns
+2. Run `ruff format` — it will handle most style questions
+3. Open an issue or PR — reviewers will help guide you
+
+Remember: Pre-commit hooks are your friend! They catch issues before you commit.
 
 ## Pull Request Guidelines
 
