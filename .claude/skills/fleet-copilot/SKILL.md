@@ -1,9 +1,9 @@
 ---
 name: fleet-copilot
-version: 2.0.0
+version: 3.0.0
 description: >-
-  Autonomous co-pilot — agent formulates goal from natural language, enables
-  lock mode with SessionCopilot reasoning, works until goal is achieved.
+  Autonomous co-pilot — agent formulates goal from natural language and works
+  until the goal is achieved. Uses native runtime autopilot (no Python tool).
 triggers:
   - "fleet copilot"
   - "copilot mode"
@@ -15,9 +15,11 @@ invocable_by: user
 
 # Fleet Co-Pilot Skill
 
-The agent takes the user's natural language, formulates a goal with definition
-of done, writes it to the goal file, enables lock mode, and starts working.
-SessionCopilot reasoning monitors progress on each turn.
+The agent takes the user's natural language, formulates a goal with a
+definition of done, and works until the goal is achieved. **No Python
+tool is invoked** — autonomous behavior is provided by the runtime's
+built-in autopilot (Copilot CLI's autopilot mode, Claude Code's
+`--max-turns`, etc.).
 
 ## Usage
 
@@ -31,40 +33,41 @@ SessionCopilot reasoning monitors progress on each turn.
 
 When this skill is activated:
 
-### Step 1: Formulate the goal
+### Step 1 — Formulate the goal explicitly
 
-From the user's natural language, create:
+From the user's natural language, derive:
 
-1. **Goal**: Clear objective statement
-2. **Definition of Done**: Concrete, verifiable criteria
+1. **Goal**: a single, specific objective sentence
+2. **Definition of Done**: observable, verifiable criteria
 
-### Step 2: Write the goal file
+State both back to the user as the first lines of your response so the
+commitment is on the record.
 
-Use the Write tool to create `.claude/runtime/locks/.lock_goal`:
+### Step 2 — Begin working immediately
 
-```
-Goal: [objective from user's words]
+- Do not ask for confirmation.
+- Persist between subtasks; the runtime's autopilot keeps you on task
+  without a sidecar process.
+- After each tool batch, briefly say what you found and what's next.
 
-Definition of Done:
-- [criterion 1]
-- [criterion 2]
-- [criterion 3]
-```
+### Step 3 — Verify and complete
 
-### Step 3: Enable lock
+When the Definition of Done is met, run a verification step (re-run
+the test, fetch the PR URL, stat the file) and call `task_complete`
+with a summary.
 
-```bash
-python .claude/tools/amplihack/lock_tool.py lock
-```
+## Auto-disable / stop conditions
 
-### Step 4: Start working
-
-Begin immediately. The LockModeHook uses SessionCopilot to monitor and guide.
-
-## Auto-disable
-
-Lock mode stops when:
-
-- Goal achieved (`mark_complete`)
-- Human needed (`escalate`)
+- Definition of Done is met **and verified** → `task_complete`
+- Genuinely blocked on missing info → `ask_user`
 - User runs `/amplihack:unlock`
+
+## What changed from v2
+
+- Removed the `python .claude/tools/amplihack/lock_tool.py lock`
+  invocation. That tool only worked under Claude Code's hook
+  subsystem; in Copilot CLI and other runtimes it was a no-op
+  shell-out to a missing relative path.
+- Removed the `.claude/runtime/locks/.lock_goal` file write — Copilot
+  CLI's autopilot mode does not read that file. The goal lives in
+  the conversation, where every runtime can see it.
