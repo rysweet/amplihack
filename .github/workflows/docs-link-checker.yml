@@ -67,13 +67,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Ensure broken-links label exists
-          if ! gh label list --json name --jq '.[].name' | grep -q "^broken-links$"; then
-            gh label create "broken-links" \
-              --description "Issues related to broken links in documentation" \
-              --color "d73a4a"
-            echo "Created broken-links label"
-          fi
+          # Ensure broken-links label exists (idempotent).
+          # `gh label create --force` creates the label or updates it if it
+          # already exists, so this never fails the job. The previous
+          # `gh label list | grep` existence check was unreliable because
+          # `gh label list` defaults to 30 results, missing labels beyond
+          # that page and causing a spurious "label already exists" error.
+          gh label create "broken-links" \
+            --description "Issues related to broken links in documentation" \
+            --color "d73a4a" \
+            --force
 
           # Check if there's already an open issue for broken links
           EXISTING_ISSUE=$(gh issue list --label "broken-links" --state open --json number --jq '.[0].number // empty')
