@@ -148,12 +148,11 @@ test: add coverage for recipe validation
 
 ## Code Style
 
-- **Python**: Follow existing code conventions. Pre-commit hooks enforce
-  formatting.
-- **Markdown**: Follow
-  [markdownlint](https://github.com/DavidAnson/markdownlint) rules (see
-  `.markdownlint.json`).
+- **Python**: We use `ruff` for Python linting and formatting, and `ruff format` for code style. Pre-commit hooks enforce formatting automatically. If pre-commit fails on Python files, run `uv run ruff check --fix && uv run ruff format` to auto-fix most issues.
+- **Markdown**: Follow [markdownlint](https://github.com/DavidAnson/markdownlint) rules (see [`.markdownlint.json`](.markdownlint.json)).
 - Keep functions focused and well-documented.
+
+**Pre-commit checks**: Pre-commit runs ruff (Python), markdownlint (Markdown), and a few other checks automatically on each commit.
 
 ## Pull Request Guidelines
 
