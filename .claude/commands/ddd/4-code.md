@@ -2,7 +2,7 @@
 name: ddd:4-code
 version: 1.0.0
 description: DDD Phase 4 - Implement and verify code
-argument-hint: [optional feedback or instructions]
+argument-hint: "[optional feedback or instructions]"
 allowed-tools: TodoWrite, Read, Write, Edit, MultiEdit, Grep, Glob, Task, Bash(*)
 triggers:
   - "Implement DDD code"
