@@ -87,7 +87,7 @@ Skill: _activates automatically_
 ```markdown
 ---
 description: Analyzes test coverage gaps and suggests improvements
-argument-hint: [target-path]
+argument-hint: "[target-path]"
 ---
 
 # Test Coverage Analyzer

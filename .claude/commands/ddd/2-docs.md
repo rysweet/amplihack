@@ -2,7 +2,7 @@
 name: ddd:2-docs
 version: 1.0.0
 description: DDD Phase 2 - Update all non-code files
-argument-hint: [optional override instructions]
+argument-hint: "[optional override instructions]"
 allowed-tools: TodoWrite, Read, Write, Edit, MultiEdit, Grep, Glob, Task, Bash(git diff:*), Bash(git status:*), Bash(git add:*)
 triggers:
   - "Update DDD documentation"

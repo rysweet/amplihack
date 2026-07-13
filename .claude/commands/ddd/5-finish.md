@@ -2,7 +2,7 @@
 name: ddd:5-finish
 version: 1.0.0
 description: DDD Phase 5 - Cleanup and finalize
-argument-hint: [optional instructions]
+argument-hint: "[optional instructions]"
 allowed-tools: TodoWrite, Read, Write, Bash(git:*), Bash(make check:*), Bash(rm:*), Glob, Task
 triggers:
   - "Finish DDD workflow"

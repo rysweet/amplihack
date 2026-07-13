@@ -2,7 +2,7 @@
 name: ddd:1-plan
 version: 1.0.0
 description: DDD Phase 1 - Planning and design
-argument-hint: [feature description or leave empty to use existing plan]
+argument-hint: "[feature description or leave empty to use existing plan]"
 allowed-tools: TodoWrite, Read, Grep, Glob, Task
 triggers:
   - "Start DDD workflow"

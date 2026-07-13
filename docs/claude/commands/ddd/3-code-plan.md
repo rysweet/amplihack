@@ -2,7 +2,7 @@
 name: ddd:3-code-plan
 version: 1.0.0
 description: DDD Phase 3 - Plan code implementation
-argument-hint: [optional override instructions]
+argument-hint: "[optional override instructions]"
 allowed-tools: TodoWrite, Read, Grep, Glob, Task, Bash(git diff:*), Bash(make check:*)
 triggers:
   - "Plan code implementation for DDD"
